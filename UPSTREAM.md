@@ -93,7 +93,7 @@ ahpd serves 22 of the 42 `vscode/*` methods in `common/agentHostExtensionProtoco
 
 ### Claude
 
-- [ ] **Claude Agent SDK 0.3.304.** Upstream pins it exactly (`3fa345dbdaf8`); ahpd asks for `^0.3.301` (`packages/agent-claude/package.json`). Read the SDK changelog from 0.3.301 to 0.3.304.
+- [x] **Claude Agent SDK 0.3.304.** Upstream pins it exactly (`3fa345dbdaf8`). ahpd asks for `^0.3.325` since `claude/sdk-0.3.325`, after a read of the changelog from 0.3.301 to 0.3.325.
 - Upstream's Claude agent moved its client tools and prompt queue onto its callback rule (`1b3420fbbb83`, `ae2b7b27e4c0`, `3b216a5d6126`) and updates client tools without restarting a session (`7d57b0daeff1`). Compare the last one with how `packages/agent-claude/src/session/servers.ts` takes a changed client tool list.
 
 ### Copilot only

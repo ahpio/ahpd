@@ -97,14 +97,14 @@ export async function toPiTool(
     log?.(`@ahpd/agent-pi: dropping client tool "${definition.name}", which is one of pi's own`, 'warn');
     return undefined;
   }
-  const { defineTool, Type } = await loadPi();
+  const { defineTool } = await loadPi();
   return defineTool({
     name: definition.name,
     label: definition.title ?? definition.name,
     description: definition.description ?? definition.title ?? definition.name,
-    // pi validates the call against this. The host's schema is already JSON
-    // Schema, and pi's `Type.Unsafe` takes it as it is rather than restating it.
-    parameters: Type.Unsafe(definition.inputSchema ?? { type: 'object' }),
+    // pi validates the call against this as JSON Schema, whatever built it,
+    // so the host's schema goes as it is.
+    parameters: definition.inputSchema ?? { type: 'object' },
     execute: async (toolCallId, params, signal) => {
       if (bound.run === undefined) {
         const answer = await client(bound, toolCallId, params as Record<string, unknown>);

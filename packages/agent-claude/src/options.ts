@@ -40,7 +40,9 @@ export interface Declaration {
  *
  * `on` and `off` set it and `default` leaves it to the settings files. That
  * is why `default` produces nothing rather than an unset: the layer is absent,
- * so whatever those files say is what runs.
+ * so whatever those files say is what runs. `on` also runs a sandboxed Bash
+ * command without a prompt, which the SDK stopped doing by default in 0.3.325;
+ * deny and ask rules still stop one.
  */
 export const sandbox: Declaration = {
   schema: {
@@ -48,7 +50,7 @@ export const sandbox: Declaration = {
     enum: ['default', 'on', 'off'],
     description: "The CLI's own sandbox for shell commands. On and off set it; default follows the settings files.",
   },
-  toQuery: (value) => value === 'on' ? { settings: { sandbox: { enabled: true } } }
+  toQuery: (value) => value === 'on' ? { settings: { sandbox: { enabled: true, autoAllowBashIfSandboxed: true } } }
     : value === 'off' ? { settings: { sandbox: { enabled: false } } }
     : {},
 };

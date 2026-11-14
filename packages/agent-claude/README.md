@@ -60,7 +60,7 @@ An agent is a record on `x-ahpd-agents`: `{ id, engine, owner, name, description
 | `models` | the CLI's own list | The models that agent offers in the picker, each an `{ "id", "name" }` |
 | `modelSources` | none | Endpoints whose model lists that agent also offers, each `{ "fetch", "match", "key" }` |
 | `keepCliModels` | `false` | With either list, add them to the CLI's list rather than replace it |
-| `sandbox` | `default` | The CLI's own sandbox for shell commands: `default` leaves it to the settings files, `on` and `off` set it |
+| `sandbox` | `default` | The CLI's own sandbox for shell commands: `default` leaves it to the settings files, `on` and `off` set it. `on` runs a sandboxed Bash command without a prompt |
 | `thinking` | `adaptive` | Extended thinking: `adaptive` lets the agent decide when to think, `disabled` is none |
 | `outputStyle` | none | The name of a style from the CLI's own settings |
 | `env` | none | Variables for the CLI's process, laid over the daemon's own environment on this host, and the whole of it in a machine |

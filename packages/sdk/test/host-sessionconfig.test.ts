@@ -147,7 +147,7 @@ describe('choosing a model', () => {
     // What the operator wrote the variant down as, in the query the CLI runs.
     const onWork = await made('ahp-session:/onwork', 'claude');
     expect(onWork.thinking).toEqual({ type: 'disabled' });
-    expect(onWork.settings).toEqual({ sandbox: { enabled: true } });
+    expect(onWork.settings).toEqual({ sandbox: { enabled: true, autoAllowBashIfSandboxed: true } });
     // And a variant that says nothing is the empty one, which changes nothing.
     const onTest = await made('ahp-session:/ontest', 'claude-test');
     expect(onTest.thinking).toEqual({ type: 'adaptive' });
@@ -781,7 +781,7 @@ describe('a session\'s config across a restart', () => {
 
   it('runs a resumed session in the sandbox its store holds, which its preset need not say', async () => {
     const options = await resumedQuery({ sandboxEnabled: 'on' });
-    expect(options?.settings).toEqual({ sandbox: { enabled: true } });
+    expect(options?.settings).toEqual({ sandbox: { enabled: true, autoAllowBashIfSandboxed: true } });
   });
 
   it('lets a preset that says off turn off a stored sandbox on, in both spellings it was written in', async () => {
@@ -797,7 +797,7 @@ describe('a session\'s config across a restart', () => {
   it('lets a stored sandbox that is off, default or false leave the preset in charge', async () => {
     for (const held of ['off', 'default', false]) {
       expect((await resumedQuery({ sandboxEnabled: held }, { sandbox: 'on' }))?.settings, String(held))
-        .toEqual({ sandbox: { enabled: true } });
+        .toEqual({ sandbox: { enabled: true, autoAllowBashIfSandboxed: true } });
       expect((await resumedQuery({ sandboxEnabled: held }))?.settings, String(held)).toBeUndefined();
     }
   });

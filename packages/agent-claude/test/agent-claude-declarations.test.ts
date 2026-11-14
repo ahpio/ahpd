@@ -100,7 +100,7 @@ const queried = async (
 };
 
 it('turns a sandbox value into the flag settings layer, and default into nothing', () => {
-  expect(sandbox.toQuery?.('on')).toEqual({ settings: { sandbox: { enabled: true } } });
+  expect(sandbox.toQuery?.('on')).toEqual({ settings: { sandbox: { enabled: true, autoAllowBashIfSandboxed: true } } });
   expect(sandbox.toQuery?.('off')).toEqual({ settings: { sandbox: { enabled: false } } });
   expect(sandbox.toQuery?.('default')).toEqual({});
 });
@@ -238,7 +238,7 @@ it('takes the same modes away for a tool\'s name the operator\'s eligibility set
 
 it('builds a session query from the declared values of its record', async () => {
   const options = await queried({ sandbox: 'on', thinking: 'disabled', outputStyle: 'concise' });
-  expect(options.settings).toEqual({ sandbox: { enabled: true } });
+  expect(options.settings).toEqual({ sandbox: { enabled: true, autoAllowBashIfSandboxed: true } });
   expect(options.thinking).toEqual({ type: 'disabled' });
   // The style is not an option of the query; it waits for the handshake.
   await settle();
@@ -256,7 +256,7 @@ it('names a switched-off plugin server in the CLI\'s own settings', async () => 
   // reads from its settings, and what a record put in them is added to rather
   // than replaced.
   expect(options.settings).toEqual({
-    sandbox: { enabled: true },
+    sandbox: { enabled: true, autoAllowBashIfSandboxed: true },
     deniedMcpServers: [{ serverName: 'one' }, { serverName: 'two words' }],
   });
 });
@@ -281,5 +281,5 @@ it('a record with no sandbox keeps a stored on', async () => {
   // The other half of that: an upgrade never runs a session less sandboxed
   // than it was, so a stored on still turns it on where the record is silent.
   expect((await queried({ thinking: 'disabled' }, { sandboxEnabled: 'on' })).settings)
-    .toEqual({ sandbox: { enabled: true } });
+    .toEqual({ sandbox: { enabled: true, autoAllowBashIfSandboxed: true } });
 });
