@@ -118,7 +118,7 @@
     "kind": "npm",
     "version": "0.0.34",
     "requires": ["node"],
-    "packages": ["pi-acp", "@earendil-works/pi-coding-agent@1.3.0"],
+    "packages": ["pi-acp", "@earendil-works/pi-coding-agent@1.5.2"],
     "bin": ["pi-acp", "pi"]
   },
   {
