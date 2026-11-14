@@ -10,7 +10,7 @@ Current progress and pending items only, as of 2026-11-14. *Outside this reposit
 ## Main
 
 - The last stable release is 0.14.0 (`v0.14.0`). `v0.15.0-rc.3` is tagged on `28dd315e0` (#320). Its release run 43394827388 passed `parts`, `release` and `image` on 2026-11-13, and staged the 13 packages under `next`. Softov approved them on 2026-11-13, and npm serves `0.15.0-rc.3` under `next` since 14:36 UTC. What the release needs is in [pending/release.md](../pending/release.md), and the checks by hand are ordered in [pending/triage.md](../pending/triage.md).
-- Main's last merge is #335 (`e49c3a4d3`), which moves the computer image's pi part to pi 1.5.2, on 2026-11-14. On that day #329, #332, #331, #333 and #335 merged. On 2026-11-13, #321 to #328 merged after the rc.3 release. No PR is open.
+- Main's last merge is #336 (`179a79c0c`), the parts bump from 2026-11-13, on 2026-11-14. On that day #329, #332, #331, #333, #335 and #336 merged. On 2026-11-13, #321 to #328 merged after the rc.3 release. No PR is open.
 - plugin/20261114-1455 waits for Softov's review to close.
 - [claude/20261114-1816-the-context-figure-follows-a-long-turn](../plans/claude/20261114-1816-the-context-figure-follows-a-long-turn/plan.md) is merged in #331, and closes on Softov's word. #331 also fixes the plugin turn case that waited a fixed 20 ms.
 - The brief [vs-code-shows-the-claude-context-figure.md](../briefs/vs-code-shows-the-claude-context-figure.md) waits for "plan it".
@@ -74,19 +74,9 @@ Current progress and pending items only, as of 2026-11-14. *Outside this reposit
 
 Remove each only on Softov's word.
 
-- `base-main`: detached, in use by another session's test daemon.
-- `pending-check`: detached, built for checks on a test daemon.
-- `pr302-check`: detached at #302's head, merged.
-- Ten `build-agents-*` worktrees, each on a branch that is on main: the plans of #301 to #310. Their daemon sessions stay.
-- `release-report`: detached, for plan-only commits of the release check.
-- `bot-talk`, `bot-no-users`, `op-text`, `dc-listing`, `flakes`, `console-log`, `flakes2` and `flakes3`: the branches of #321 to #328, each merged.
-- `parts-bump`: branch `parts-bump-20261113-2`, pushed, with no PR yet.
-- `bot-trust`: the branch of #329, merged.
-- `ahpd-part-bump`: the branch of #316, merged.
-- `piece-marks`: the branch of #317, merged.
-- `prerelease-part` and `release-rc3`: the branches of #319 and #320, merged.
-- `notes-catch-up`, `downgrade-semver`, `release-rc2` and `devtunnel-flake`: the branches of #311, #312, #313 and #314, each merged.
-- Local branches with no worktree: `fork/host-124-shell-integration`, `fork/maycxc-1248-1303-1334`, `host/20261031-0804-actions-answered`, `host/20261101-0329-maycxc-union`, `host/20261101-0331-maycxc-cancel-4e6d5cb8` and `pr-250`.
+- On 2026-11-14, Softov had the merged worktrees removed. Only `/github/ahpd` on `main` is left.
+- About 60 local branches have no worktree, from plans built before 2026-11-12. `git branch` lists them.
+- Loose files in `/github/ahpd.worktrees/` wait for Softov: `test-tmp`, the `union-*.log` files, the `.patch` files, `review-host62.md` and `acp-server.orig.mjs`.
 
 ## Plans waiting to close
 
