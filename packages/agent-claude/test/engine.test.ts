@@ -204,7 +204,7 @@ it('opens one backend per record, with the record\'s own id, name and values', a
   // Each query its first send started is built from its own record: the first has thinking off, the
   // second the fallback and its own sandbox.
   expect(sdk.options.map((held) => held['thinking'])).toEqual([{ type: 'disabled' }, { type: 'adaptive' }]);
-  expect(sdk.options.map((held) => held['settings'])).toEqual([undefined, { sandbox: { enabled: true } }]);
+  expect(sdk.options.map((held) => held['settings'])).toEqual([undefined, { sandbox: { enabled: true, autoAllowBashIfSandboxed: true } }]);
 });
 
 it('applies an edit at the next turn, restarting the CLI on the conversation it had', async () => {
