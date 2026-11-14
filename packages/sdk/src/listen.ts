@@ -57,6 +57,8 @@ const openedOf = (seen: {
   socket?: number | undefined;
   address?: string | undefined;
   forwardedFor?: string | undefined;
+  userAgent?: string | undefined;
+  origin?: string | undefined;
 }): Opened => {
   const path = pathOf(seen.url);
   return {
@@ -66,6 +68,8 @@ const openedOf = (seen: {
     ...(seen.socket === undefined ? {} : { socket: seen.socket }),
     ...(seen.address === undefined ? {} : { address: seen.address }),
     ...(seen.forwardedFor === undefined ? {} : { forwardedFor: seen.forwardedFor }),
+    ...(seen.userAgent === undefined ? {} : { userAgent: seen.userAgent }),
+    ...(seen.origin === undefined ? {} : { origin: seen.origin }),
   };
 };
 
@@ -290,6 +294,8 @@ export async function listen(options: ListenOptions, onConnect: OnConnect): Prom
           // Bun answers the address from the request and nowhere else.
           address: server_.requestIP?.(request)?.address,
           forwardedFor: request.headers.get('x-forwarded-for') ?? undefined,
+          userAgent: request.headers.get('user-agent') ?? undefined,
+          origin: request.headers.get('origin') ?? undefined,
         };
         if (server_.upgrade(request, { data })) return undefined;
         return new Response(SPEAKS_AHP, { status: 426, headers: PLAIN_HEADERS });
@@ -306,6 +312,7 @@ export async function listen(options: ListenOptions, onConnect: OnConnect): Prom
           }, bounding);
           const arrival = ws.data as {
             principal?: Principal; root?: boolean; node?: string; url?: string; address?: string; forwardedFor?: string;
+            userAgent?: string; origin?: string;
           } | undefined;
           bound.set(ws, {
             peer,
@@ -315,6 +322,8 @@ export async function listen(options: ListenOptions, onConnect: OnConnect): Prom
               socket: number,
               address: arrival?.address,
               forwardedFor: arrival?.forwardedFor,
+              userAgent: arrival?.userAgent,
+              origin: arrival?.origin,
             })),
             seen,
           });
@@ -375,6 +384,8 @@ export async function listen(options: ListenOptions, onConnect: OnConnect): Prom
       // transport that tells them apart.
       const address = info.remoteAddr.transport === 'tcp' ? info.remoteAddr.hostname : undefined;
       const forwardedFor = request.headers.get('x-forwarded-for') ?? undefined;
+      const userAgent = request.headers.get('user-agent') ?? undefined;
+      const origin = request.headers.get('origin') ?? undefined;
       const { socket, response } = Deno.upgradeWebSocket(request);
       sockets.add(socket);
       let held: Bound | undefined;
@@ -392,7 +403,7 @@ export async function listen(options: ListenOptions, onConnect: OnConnect): Prom
         held = {
           peer,
           connected: onConnect(peer, identity.principal, identity.root, openedOf({
-            url: request.url, node: identity.node, socket: number, address, forwardedFor,
+            url: request.url, node: identity.node, socket: number, address, forwardedFor, userAgent, origin,
           })),
           seen,
         };
@@ -497,6 +508,8 @@ export async function listen(options: ListenOptions, onConnect: OnConnect): Prom
       socket: number,
       address: request.socket?.remoteAddress,
       forwardedFor: request.headers['x-forwarded-for'],
+      userAgent: request.headers['user-agent'],
+      origin: request.headers.origin,
     }));
     decided.delete(request);
     socket.on('message', (raw) => {
@@ -764,7 +777,7 @@ interface DenoSocket {
 
 interface NodeRequest {
   url?: string;
-  headers: { authorization?: string; 'x-forwarded-for'?: string };
+  headers: { authorization?: string; 'x-forwarded-for'?: string; 'user-agent'?: string; origin?: string };
   /** The socket the request came in on, which is where Node reports the peer's address. */
   socket?: { remoteAddress?: string };
 }

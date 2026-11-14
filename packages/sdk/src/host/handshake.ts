@@ -333,6 +333,7 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
        * replay. Read before the snapshots below, which are answered whole.
        */
       connection.protocolVersion = agreed;
+      connection.arrival = 'initialize';
       clientVersions.set(connection.clientId, agreed);
       // Met, so a later `reconnect` under this id is answerable.
       known.add(connection.clientId);
@@ -578,7 +579,11 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
         },
       };
     },
-    ping: async () => null,
+    // The time is kept for the client's row: a ping is the client saying it is alive.
+    ping: async () => {
+      connection.lastPing = Date.now();
+      return null;
+    },
     /**
      * A client that dropped, coming back.
      *
@@ -643,6 +648,7 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
       const agreed = clientVersions.get(clientId);
       if (agreed === undefined) delete connection.protocolVersion;
       else connection.protocolVersion = agreed;
+      connection.arrival = 'reconnect';
       // A legacy VS Code window, by the name it gave at `initialize` and what
       // this `reconnect` declares, as the reference host reads it.
       // https://github.com/microsoft/vscode/blob/58a595f76bdc150460d7e0d279d26cc6fc577b0a/src/vs/platform/agentHost/node/protocolServerHandler.ts#L1350-L1351

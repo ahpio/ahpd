@@ -163,6 +163,21 @@ it('leaves the forwarded claim off a socket whose request carried none', async (
   expect(openings[0]).not.toHaveProperty('forwardedFor');
 });
 
+it('gives a Node socket the User-Agent and the Origin its request carried, as sent', async () => {
+  openings.length = 0;
+  running = await listen({ port: 0 }, watching);
+  expect(await knock(`ws://127.0.0.1:${running.port}`, { 'user-agent': 'ahpc/test', origin: 'https://example.test' })).toBe('open');
+  expect(openings[0]).toMatchObject({ userAgent: 'ahpc/test', origin: 'https://example.test' });
+});
+
+it('leaves the User-Agent and the Origin off a socket whose request carried neither', async () => {
+  openings.length = 0;
+  running = await listen({ port: 0 }, watching);
+  expect(await knock(`ws://127.0.0.1:${running.port}`)).toBe('open');
+  expect(openings[0]).not.toHaveProperty('userAgent');
+  expect(openings[0]).not.toHaveProperty('origin');
+});
+
 it('admits an unknown token when no connection token is required, and names nobody', async () => {
   /*
    * `--without-connection-token` is a host that requires nothing at the door,

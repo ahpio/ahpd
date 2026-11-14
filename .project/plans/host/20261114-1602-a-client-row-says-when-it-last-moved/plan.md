@@ -1,7 +1,7 @@
 ---
 title: A client row says when it last moved
 domain: host
-status: planned
+status: built
 priority: medium
 created: 2026-11-14
 revalidated: 2026-11-14
@@ -91,8 +91,8 @@ all -> clientRow / rowOf -> tick refresh -> reader
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - The row says when it last moved](task-01-the-row-says-when-it-last-moved.md) | todo | - |
-| [02 - The row carries the upgrade headers](task-02-the-row-carries-the-upgrade-headers.md) | todo | - |
+| [01 - The row says when it last moved](task-01-the-row-says-when-it-last-moved.md) | done | - |
+| [02 - The row carries the upgrade headers](task-02-the-row-carries-the-upgrade-headers.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -103,17 +103,17 @@ all -> clientRow / rowOf -> tick refresh -> reader
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-the-row-says-when-it-last-moved.md](task-01-the-row-says-when-it-last-moved.md), once the plan it requires is built.
+- **Done so far:** tasks 01 and 02 done on 2026-11-14, as [implemented.md](implemented.md) says. Softov validated them with the ahpw client page.
+- **Next action:** none.
 - **Open questions:** none.
 - **Watch out for:** the tap's counts are deleted on a departure, so the times go with them. A notification that throws is counted too, though `receive` answers nothing.
 
 ## Final verification checklist
 
-- [ ] A row's `lastIn` and `lastOut` move when a frame crosses, and reach a reader within 5 seconds.
-- [ ] A row carries `lastPing` after the client pings.
-- [ ] A row carries `arrival: 'initialize'` on a new socket, and `arrival: 'reconnect'` after a reconnect.
-- [ ] A row's `refused` grows by one for each refused request.
-- [ ] A row carries `userAgent` and `origin` on Node, and by hand on Bun and Deno.
-- [ ] `pnpm --filter @ahpd/sdk test`, `pnpm --filter @ahpd/server test`, `pnpm build`, `pnpm typecheck` and `pnpm boundary` pass.
-- [ ] `PLUGINS.md` names every new field, and says which ones are claims.
+- [x] A row's `lastIn` and `lastOut` move when a frame crosses, and reach a reader within 5 seconds.
+- [x] A row carries `lastPing` after the client pings.
+- [x] A row carries `arrival: 'initialize'` on a new socket, and `arrival: 'reconnect'` after a reconnect.
+- [x] A row's `refused` grows by one for each refused request.
+- [x] A row carries `userAgent` and `origin` on Node, and by hand on Bun and Deno.
+- [x] `pnpm --filter @ahpd/sdk test`, `pnpm --filter @ahpd/server test`, `pnpm build`, `pnpm typecheck` and `pnpm boundary` pass.
+- [x] `PLUGINS.md` names every new field, and says which ones are claims.

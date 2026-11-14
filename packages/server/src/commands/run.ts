@@ -22,6 +22,7 @@ import {
   clientsChannel,
   clientPluginsIn,
   connectorsChannel,
+  countFrame,
   completionsCommand,
   COMPLETIONS_COMMAND,
   invokeOperation,
@@ -847,17 +848,7 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
   const traffic = new Map<number, ClientCounts>();
   const tap: Tap = (from, text, peer) => {
     capture.write?.(lineFor(from, text, peer, transport));
-    const counts = traffic.get(peer) ?? { framesIn: 0, framesOut: 0, bytesIn: 0, bytesOut: 0 };
-    const bytes = Buffer.byteLength(text, 'utf8');
-    if (from === 'client') {
-      counts.framesIn += 1;
-      counts.bytesIn += bytes;
-    }
-    else {
-      counts.framesOut += 1;
-      counts.bytesOut += bytes;
-    }
-    traffic.set(peer, counts);
+    traffic.set(peer, countFrame(traffic.get(peer), from, Buffer.byteLength(text, 'utf8'), Date.now()));
   };
 
   /*

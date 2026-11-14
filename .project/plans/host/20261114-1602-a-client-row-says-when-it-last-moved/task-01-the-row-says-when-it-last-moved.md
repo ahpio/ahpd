@@ -1,6 +1,6 @@
 ---
 title: The row says when it last moved
-status: todo
+status: done
 depends: []
 layer: "server, sdk host, sdk clients, docs"
 refs:
@@ -59,3 +59,5 @@ It also says how the socket came in, and how many of its requests the host refus
 - By hand on a test daemon: ahpw's row shows `lastIn` and `lastOut` moving within 5 seconds.
 
 ## Resume
+
+Built as the steps say. `handle` counts a throw in a `try` around its whole body, so a notification whose handler throws is counted too. The check by hand waits for the ahpw client page.

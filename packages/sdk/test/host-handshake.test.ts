@@ -396,12 +396,22 @@ describe('a connection accepted with what the listener knew', () => {
     expect(row).toMatchObject({ path: '/join', node: 'node-a' });
   });
 
+  it('keeps the User-Agent and the Origin the request carried, as sent', async () => {
+    const host = serving(WORK);
+    host.accept(peer(), undefined, false, { socket: 3, userAgent: 'ahpc/test', origin: 'https://example.test' });
+
+    const [row] = host.clientRegistry.connected();
+    expect(row).toMatchObject({ userAgent: 'ahpc/test', origin: 'https://example.test' });
+  });
+
   it('lists a connection that came in with nothing said about it without a socket or a claim', async () => {
     const host = serving(WORK);
     host.accept(peer());
     const [row] = host.clientRegistry.connected();
     expect(row?.socket).toBeUndefined();
     expect(row?.forwardedFor).toBeUndefined();
+    expect(row?.userAgent).toBeUndefined();
+    expect(row?.origin).toBeUndefined();
   });
 });
 
@@ -476,6 +486,47 @@ describe('what the row says of the client', () => {
 
     const [row] = host.clientRegistry.connected();
     expect(row).toMatchObject({ sessions: ['ahp-session:/live'] });
+  });
+});
+
+describe('what the row says of how the connection moves', () => {
+  it('carries when the client last pinged, and nothing before it pings', async () => {
+    const host = serving(WORK);
+    const client = host.accept(peer());
+    await client.handle(hello(['0.9.0']));
+    expect(host.clientRegistry.connected()[0]?.lastPing).toBeUndefined();
+
+    const before = Date.now();
+    await client.handle({ method: 'ping', params: {} });
+    const [row] = host.clientRegistry.connected();
+    expect(row?.lastPing).toBeGreaterThanOrEqual(before);
+  });
+
+  it('says a socket that introduced itself came in fresh, and one that reconnected resumed', async () => {
+    const host = serving(WORK);
+    const a = host.accept(peer(), undefined, false, { socket: 1 });
+    await a.handle(hello(['0.9.0']));
+    expect(host.clientRegistry.connected()[0]).toMatchObject({ arrival: 'initialize' });
+    a.close();
+
+    const back = host.accept(peer(), undefined, false, { socket: 2 });
+    await back.handle({
+      method: 'reconnect',
+      params: { channel: 'ahp-root://', clientId: 'probe', lastSeenServerSeq: 0, subscriptions: [] },
+    });
+    expect(host.clientRegistry.connected()[0]).toMatchObject({ socket: 2, arrival: 'reconnect' });
+  });
+
+  it('counts each request the host refused, and carries no count before the first', async () => {
+    const host = serving(WORK);
+    const client = host.accept(peer());
+    await client.handle(hello(['0.9.0']));
+    expect(host.clientRegistry.connected()[0]?.refused).toBeUndefined();
+
+    await expect(client.handle({ method: 'noSuchMethod', params: {} })).rejects.toMatchObject({ code: -32601 });
+    await expect(client.handle({ method: 'noSuchMethod', params: {} })).rejects.toMatchObject({ code: -32601 });
+    await client.handle({ method: 'ping', params: {} });
+    expect(host.clientRegistry.connected()[0]?.refused).toBe(2);
   });
 });
 

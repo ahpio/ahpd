@@ -193,6 +193,10 @@ export interface ConnectedClient {
   address?: string;
   /** The `X-Forwarded-For` claim the request carried, kept as sent and never trusted. */
   forwardedFor?: string;
+  /** The `User-Agent` claim the request carried, kept as sent and never trusted. */
+  userAgent?: string;
+  /** The `Origin` claim the request carried, kept as sent and never trusted. */
+  origin?: string;
   /** The path the socket's URL opened on, with no query. */
   path?: string;
   /** The node whose own token admitted it, on the join path. */
@@ -219,6 +223,12 @@ export interface ConnectedClient {
   subscriptions: string[];
   /** When the connection was accepted, as a wall-clock millisecond. */
   connectedAt: number;
+  /** When the client last sent `ping`, as a wall-clock millisecond. */
+  lastPing?: number;
+  /** How the client last introduced itself on this socket: `initialize`, or `reconnect` to resume. */
+  arrival?: 'initialize' | 'reconnect';
+  /** How many of its requests the host refused, counted from one. */
+  refused?: number;
 }
 
 /** A connection that opened, or one that closed. */
@@ -2053,12 +2063,22 @@ export interface Connection {
    * it, and a listener behind a proxy is what makes it worth reading.
    */
   forwardedFor?: string;
+  /** The `User-Agent` text the request carried, as sent: a claim, as `forwardedFor` is. */
+  userAgent?: string;
+  /** The `Origin` text the request carried, as sent: a claim, as `forwardedFor` is. */
+  origin?: string;
   /** The path the socket's URL opened on, with no query. */
   path?: string;
   /** The node whose own token admitted it, on the join path. */
   node?: string;
   /** When the connection was accepted, as a wall-clock millisecond. */
   connectedAt: number;
+  /** When the client last sent `ping`, as a wall-clock millisecond. */
+  lastPing?: number;
+  /** How the client last introduced itself on this socket, which `initialize` and `reconnect` set. */
+  arrival?: 'initialize' | 'reconnect';
+  /** How many requests on this connection threw, a notification included, which `handle` counts. */
+  refused?: number;
   /**
    * The protocol version this connection agreed on at `initialize`.
    *
