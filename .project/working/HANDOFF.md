@@ -10,7 +10,7 @@ Current progress and pending items only, as of 2026-11-14. *Outside this reposit
 ## Main
 
 - The last stable release is 0.14.0 (`v0.14.0`). `v0.15.0-rc.3` is tagged on `28dd315e0` (#320). Its release run 43394827388 passed `parts`, `release` and `image` on 2026-11-13, and staged the 13 packages under `next`. Softov approved them on 2026-11-13, and npm serves `0.15.0-rc.3` under `next` since 14:36 UTC. What the release needs is in [pending/release.md](../pending/release.md), and the checks by hand are ordered in [pending/triage.md](../pending/triage.md).
-- Main's last merge is #331 (`ac4004cd2`) on 2026-11-14. #329, #332 and #331 merged on 2026-11-14, and #321 to #328 on 2026-11-13, after the rc.3 release. No PR is open.
+- Main's last merge is #333 (`ce4fa155f`) on 2026-11-14: Claude Agent SDK 0.3.325 and pi 1.5.2. #329, #332, #331 and #333 merged on 2026-11-14, and #321 to #328 on 2026-11-13, after the rc.3 release. No PR is open.
 - plugin/20261114-1455 waits for Softov's review to close.
 - [claude/20261114-1816-the-context-figure-follows-a-long-turn](../plans/claude/20261114-1816-the-context-figure-follows-a-long-turn/plan.md) is merged in #331, and closes on Softov's word. #331 also fixes the plugin turn case that waited a fixed 20 ms.
 - The brief [vs-code-shows-the-claude-context-figure.md](../briefs/vs-code-shows-the-claude-context-figure.md) waits for "plan it".
@@ -31,9 +31,10 @@ Current progress and pending items only, as of 2026-11-14. *Outside this reposit
 ## The dev daemon
 
 - Softov's dev daemon runs from `/github/ahpd` with `~/.config/ahpd/config-dev.json`, on ports 5180 and 37537. It runs from `src`, so a restart is all a merge needs. It needs `DEEPSEEK_API_KEY` in its environment. Never restart it or use its ports yourself.
-- Softov restarted it on 2026-11-13 after #317. #321, #322, #323, #326, #329 and #331 change the daemon. #324, #325, #327 and #328 change tests only.
+- Softov restarted it on 2026-11-13 after #317. #321, #322, #323, #326, #329, #331 and #333 change the daemon. #324, #325, #327 and #328 change tests only.
 - #329 lets a bot talk run with no grants on the bot plugin's entry.
 - #331 updates a Claude session's context figure during a turn and after a compaction.
+- #333 moves Claude to SDK 0.3.325 and pi to 1.5.2. A Claude session with `sandbox: on` still runs sandboxed Bash without a prompt.
 - A restart brings the bot talk, bots on a host with no users, and the operations in the client's language.
 - It also writes plugin warnings to the daemon's log with a time and a level.
 - `/github/ahpd` is a shared checkout. Work in a worktree from `origin/main` under `/github/ahpd.worktrees/`.
