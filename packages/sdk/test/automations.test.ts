@@ -2220,3 +2220,52 @@ it('refuses a write the store throws on, in a frame to the client that sent it',
   expect(store.list()).toEqual([]);
   expect(lines).toContain('a dispatch from a failed: A pinned automation runs one turn at a time in its own chat, so overlap cannot be parallel');
 });
+
+/*
+ * A run whose first turn this host ends before any backend runs it: its
+ * session is made, so the start succeeds, and the turn's own error is the
+ * run's ending, as a backend's error is.
+ */
+describe('a run whose first turn the host ends', () => {
+  /** The example backend, offering `m1` alone. */
+  const offering = (): Agent => {
+    const base = echo({ path: DIR, pace: 0 });
+    return {
+      ...base,
+      create: (start: Start): Session => {
+        const session = base.create(start) as Session;
+        return { ...session, models: () => [{ id: 'm1', name: 'One' }] };
+      },
+    };
+  };
+
+  const ran = async (definition: Record<string, unknown>) => {
+    const host = createHost({ path: DIR, agents: [offering()], automations: memoryAutomations() });
+    const client = host.accept(peer());
+    await client.handle({
+      method: 'initialize',
+      params: { clientId: 'a', protocolVersions: ['0.9.0'], initialSubscriptions: ['ahp-root://'] },
+    });
+    await write(client, definition);
+    const run = await client.handle({
+      method: 'runAutomation', params: { channel: AUTOMATIONS, automation: ONE, requestId: 'req-1' },
+    }) as { resource: string };
+    await until(async () => (await runState(client, run.resource)).lifecycle.status !== 'running');
+    return runState(client, run.resource);
+  };
+
+  it('fails on a model its agent does not offer', async () => {
+    const state = await ran({ ...DEFINITION, session: { ...DEFINITION.session, model: { id: 'm2' } } });
+    expect(state.lifecycle).toMatchObject({
+      status: 'failed',
+      error: { errorType: 'modelSelectionFailed', message: 'Its agent echo does not offer the turn\'s model m2' },
+    });
+    expect(state.lifecycle.completedAt).toBeTypeOf('string');
+    expect(state.sessions).toHaveLength(1);
+  });
+
+  it('completes on a model its agent offers', async () => {
+    const state = await ran({ ...DEFINITION, session: { ...DEFINITION.session, model: { id: 'm1' } } });
+    expect(state.lifecycle.status).toBe('completed');
+  });
+});

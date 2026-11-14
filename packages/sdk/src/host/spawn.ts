@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { chatReducer } from '@microsoft/agent-host-protocol';
-import type { ChatAction, ChatState, ErrorInfo } from '@microsoft/agent-host-protocol';
+import type { ChatAction, ChatState } from '@microsoft/agent-host-protocol';
 import { CommandAutoApprover, DEFAULT_TERMINAL_AUTO_APPROVE_RULES, splitCommand } from '../access/commandautoapprover.js';
 import type { CommandSplit, CommandSplitter, SensitiveEditLocation, TerminalAutoApprovePatterns, TerminalAutoApproveRules } from '../access/commandautoapprover.js';
 import { RpcError, INTERNAL_ERROR } from '../rpc.js';
@@ -35,6 +35,7 @@ import { BASELINE_TURN } from '../types/changes.js';
 import type { Bag } from '../types/common.js';
 import type { Agent, BoundTool, Start } from '../types/agent.js';
 import type { TurnEndEvent, TurnEndReason } from '../types/events.js';
+import type { RunEnding } from '../types/automations.js';
 import type { Owner } from '../types/usage.js';
 import type { Connection } from '../types/host.js';
 import type { Session, SubagentChat, SubagentRequest } from '../types/session.js';
@@ -223,6 +224,20 @@ export function createSpawn(ctx: HostContext): Spawn {
   const raiseTurnEnd = (end: Omit<TurnEndEvent, 'type'>): void => {
     const sender = end.sender ?? senderOf(end.turnId) ?? kept.sender(idOf(end.session), end.turnId);
     void fire({ ...end, type: 'turn_end', ...(sender === undefined ? {} : { sender }) });
+    if (end.channel === sessions.get(end.session)?.defaultChat) ctx.settleRun(end.session, runEndingOf(end.reason));
+  };
+  /*
+   * How the run a session was started for ends when its default chat's turn
+   * ends, as VS Code's host settles a run on its sessions' default chats:
+   * completed, cancelled, or failed with the turn's own `ErrorInfo`. Read from
+   * every turn end, the ones this host says itself as well as its backends',
+   * so a turn refused before any backend ran it ends its run too.
+   * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostAutomationService.ts#L1249-L1297
+   */
+  const runEndingOf = (reason: TurnEndReason): RunEnding => {
+    if (reason.kind === 'cancelled') return { status: 'cancelled' };
+    if (reason.kind === 'error' || reason.kind === 'rejected') return { status: 'failed', error: reason.error };
+    return { status: 'completed' };
   };
   /*
    * Why an action that ends a turn on `chat` ended it, as VS Code's host reads
@@ -1651,27 +1666,6 @@ export function createSpawn(ctx: HostContext): Spawn {
         }
         else if (action.type === 'chat/turnComplete' || action.type === 'chat/turnCancelled' || action.type === 'chat/error') {
           raiseTurnEnd({ session: uri, channel: chatUri, turnId: turn, reason: endingOf(chatUri, action), ...(sender === undefined ? {} : { sender }) });
-        }
-        /*
-         * And the run this session was started for, when its default chat's
-         * turn ends, as VS Code's host settles a run on its sessions' default
-         * chats: completed, cancelled, or failed with the chat error's own
-         * `ErrorInfo`. One call per action, so a run is never settled twice for
-         * one event.
-         * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostAutomationService.ts#L1249-L1297
-         */
-        if (chatUri === sessions.get(uri)?.defaultChat) {
-          if (action.type === 'chat/turnComplete') ctx.settleRun(uri, { status: 'completed' });
-          else if (action.type === 'chat/turnCancelled') ctx.settleRun(uri, { status: 'cancelled' });
-          else if (action.type === 'chat/error') {
-            const failure = ((action.part ?? {}) as Bag).error as Bag | undefined;
-            ctx.settleRun(uri, {
-              status: 'failed',
-              ...(typeof failure?.errorType === 'string' && typeof failure.message === 'string'
-                ? { error: failure as unknown as ErrorInfo }
-                : {}),
-            });
-          }
         }
         /*
          * The harness a transcript is written under, kept as soon as the
