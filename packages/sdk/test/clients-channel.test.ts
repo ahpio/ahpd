@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { clientsChannel } from '../src/clients/channel.js';
+import { clientsChannel, countFrame } from '../src/clients/channel.js';
 import { createHost } from '../src/host.js';
 import { fileUsers } from '../src/access/users.js';
 import { invokeOperation, OPERATION_COMMAND } from '../src/kinds/operations.js';
@@ -347,4 +347,19 @@ it('lists the drop operation in the locale the client sent, and in English for o
     description: 'Closes this connection. The client can connect again at once.',
     confirmation: 'Drop this client? Its connection closes now, and it can connect again.',
   });
+});
+
+it('adds a client frame to the in counts and a host frame to the out counts, each with the time it crossed', () => {
+  const counts = countFrame(undefined, 'client', 12, 1000);
+  expect(counts).toEqual({ framesIn: 1, framesOut: 0, bytesIn: 12, bytesOut: 0, lastIn: 1000 });
+  // The same counts, changed in place.
+  expect(countFrame(counts, 'host', 30, 2000)).toBe(counts);
+  expect(counts).toEqual({ framesIn: 1, framesOut: 1, bytesIn: 12, bytesOut: 30, lastIn: 1000, lastOut: 2000 });
+});
+
+it('puts the time of the last frame each way on the row, beside the counts', async () => {
+  await served(() => ({ framesIn: 3, framesOut: 4, bytesIn: 50, bytesOut: 60, lastIn: 1_700_000_000_000, lastOut: 1_700_000_000_500 }));
+  const ana = await connect(8, 'ana-window', 'ana');
+  const rows = await subscribe(ana);
+  expect(rows['8']).toMatchObject({ framesIn: 3, lastIn: 1_700_000_000_000, lastOut: 1_700_000_000_500 });
 });

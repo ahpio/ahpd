@@ -219,6 +219,12 @@ export interface ConnectedClient {
   subscriptions: string[];
   /** When the connection was accepted, as a wall-clock millisecond. */
   connectedAt: number;
+  /** When the client last sent `ping`, as a wall-clock millisecond. */
+  lastPing?: number;
+  /** How the client last introduced itself on this socket: `initialize`, or `reconnect` to resume. */
+  arrival?: 'initialize' | 'reconnect';
+  /** How many of its requests the host refused, counted from one. */
+  refused?: number;
 }
 
 /** A connection that opened, or one that closed. */
@@ -2059,6 +2065,12 @@ export interface Connection {
   node?: string;
   /** When the connection was accepted, as a wall-clock millisecond. */
   connectedAt: number;
+  /** When the client last sent `ping`, as a wall-clock millisecond. */
+  lastPing?: number;
+  /** How the client last introduced itself on this socket, which `initialize` and `reconnect` set. */
+  arrival?: 'initialize' | 'reconnect';
+  /** How many requests on this connection threw, a notification included, which `handle` counts. */
+  refused?: number;
   /**
    * The protocol version this connection agreed on at `initialize`.
    *

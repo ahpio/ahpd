@@ -1894,7 +1894,9 @@ One row for each connection the daemon is serving, keyed by the number the liste
 
 `authenticated` is the resources of the tokens the client pushed, each once. `sessions` is the URIs of the sessions it is present in. `queuedBytes` is what the wire still holds for it, when its peer can say, and `queueLimit` is the most the wire may hold.
 
-A row carries `framesIn`, `framesOut`, `bytesIn` and `bytesOut`: the frames its socket has carried in each direction, and the UTF-8 bytes of those frames. A daemon that counts nothing sends no counters.
+A row carries `framesIn`, `framesOut`, `bytesIn` and `bytesOut`: the frames its socket has carried in each direction, and the UTF-8 bytes of those frames. Beside them it carries `lastIn` and `lastOut`, the wall-clock milliseconds of the last frame each way. A daemon that counts nothing sends no counters and no times.
+
+A row carries `lastPing`, when the client last sent `ping`, and `arrival`, how it last introduced itself on the socket: `initialize` for a new one, `reconnect` for one that resumed. `refused` is how many of its requests the host refused, and is absent until the first.
 
 `forwardedFor` is a claim the client made, kept as it was sent. Nothing in the host parses it into an address or trusts it: `address` is the only one the socket itself reported, and behind a proxy that is the proxy's. `clientVersion`, `clientTitle` and `capabilities` are the client's claims too, kept as it declared them. A row never carries the URL's query or a token: `path` is the URL cut at its query, and `authenticated` is the resources alone.
 

@@ -56,6 +56,29 @@ export interface ClientCounts {
   bytesIn: number;
   /** UTF-8 bytes of the frames the host sent. */
   bytesOut: number;
+  /** When the client last sent a frame, as a wall-clock millisecond. */
+  lastIn?: number;
+  /** When the host last sent a frame, as a wall-clock millisecond. */
+  lastOut?: number;
+}
+
+/**
+ * One frame added to a socket's counts: its bytes in the frame's direction,
+ * and the time it crossed. `from` is who sent it, as `Tap` names it, and
+ * `counts` is changed in place and answered, or made when there is none.
+ */
+export function countFrame(counts: ClientCounts | undefined, from: 'client' | 'host', bytes: number, now: number): ClientCounts {
+  const held = counts ?? { framesIn: 0, framesOut: 0, bytesIn: 0, bytesOut: 0 };
+  if (from === 'client') {
+    held.framesIn += 1;
+    held.bytesIn += bytes;
+    held.lastIn = now;
+  } else {
+    held.framesOut += 1;
+    held.bytesOut += bytes;
+    held.lastOut = now;
+  }
+  return held;
 }
 
 /** How a clients channel reaches the registry. */

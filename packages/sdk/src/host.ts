@@ -1999,6 +1999,9 @@ export function createHost(options: HostOptions): Host {
       queueLimit: clientQueueBytes(rootConfig),
       subscriptions: [...connection.activeSubscriptions],
       connectedAt: connection.connectedAt,
+      ...(connection.lastPing === undefined ? {} : { lastPing: connection.lastPing }),
+      ...(connection.arrival === undefined ? {} : { arrival: connection.arrival }),
+      ...(connection.refused === undefined || connection.refused === 0 ? {} : { refused: connection.refused }),
     };
   };
 
@@ -2441,88 +2444,97 @@ export function createHost(options: HostOptions): Host {
          */
         methods: Object.keys(handlers),
         async handle(request) {
-          const notify = ownIn(notifications, request.method);
-          if (notify) {
-            // Dropped rather than refused: a notification carries no id, so
-            // there is nowhere to say no, and a client that has not
-            // introduced itself has no subscriptions to unsubscribe and no
-            // `clientSeq` an echo could be matched against.
-            if (!conn.handshook) return undefined;
-            notify(request.params);
-            return undefined;
-          }
           /*
-           * A protocol handler first, and then an `x-` command the daemon or a
-           * plugin serves. A served
-           * one passes the same handshake check and the same gate below.
+           * A request that throws is a refusal, counted on the connection for
+           * its row before it goes on to be answered as an error.
            */
-          const served = methodIn(options.methods, request.method);
-          const handler = ownIn(handlers, request.method) ?? (served === undefined
-            ? undefined
-            : async (params: Record<string, unknown> | undefined) => served.method.handle(params ?? {}, connection.principal, connection.clientId, ownerFor(connection)));
-          /*
-           * A method this host does not have is said, in the reference host's
-           * words: a host that answered an empty success to it would leave the
-           * client waiting for state that is never coming.
-           * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/protocolServerHandler.ts#L2763
-           */
-          if (!handler) {
-            throw new RpcError(METHOD_NOT_FOUND, `Method not found: ${request.method}`);
+          try {
+            const notify = ownIn(notifications, request.method);
+            if (notify) {
+              // Dropped rather than refused: a notification carries no id, so
+              // there is nowhere to say no, and a client that has not
+              // introduced itself has no subscriptions to unsubscribe and no
+              // `clientSeq` an echo could be matched against.
+              if (!conn.handshook) return undefined;
+              notify(request.params);
+              return undefined;
+            }
+            /*
+             * A protocol handler first, and then an `x-` command the daemon or a
+             * plugin serves. A served
+             * one passes the same handshake check and the same gate below.
+             */
+            const served = methodIn(options.methods, request.method);
+            const handler = ownIn(handlers, request.method) ?? (served === undefined
+              ? undefined
+              : async (params: Record<string, unknown> | undefined) => served.method.handle(params ?? {}, connection.principal, connection.clientId, ownerFor(connection)));
+            /*
+             * A method this host does not have is said, in the reference host's
+             * words: a host that answered an empty success to it would leave the
+             * client waiting for state that is never coming.
+             * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/protocolServerHandler.ts#L2763
+             */
+            if (!handler) {
+              throw new RpcError(METHOD_NOT_FOUND, `Method not found: ${request.method}`);
+            }
+            // Everything before the handshake is `-32601`, in the same words, as
+            // the reference host answers a transport that has not introduced
+            // itself. `ping` is the one exception the spec states outright: the
+            // round trip is a liveness check, and a liveness check that needs a
+            // handshake first cannot tell a half-open socket from a busy one.
+            // https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/protocolServerHandler.ts#L896-L899
+            if (!conn.handshook && !GREETINGS.has(request.method)) {
+              throw new RpcError(METHOD_NOT_FOUND, `Method not found: ${request.method}`);
+            }
+            /*
+             * The one gate.
+             *
+             * Every command passes here, so a handler added later is gated as
+             * every other one is. A client's resource, under the client scheme,
+             * is gated by that scheme as any other scheme is.
+             *
+             * A host with no user directory has no principal and refuses nothing,
+             * which is what keeps every install that never configured one exactly
+             * as it was.
+             */
+            const gate = admit(request.method, (request.params ?? {}) as Record<string, unknown>);
+            if (gate !== undefined) await gate;
+            // A second `initialize` is a method the handshake took: the version
+            // is agreed, and re-agreeing it would re-key every subscription this
+            // connection is holding. Answered as the reference host's request
+            // table answers it, which holds no handler for one.
+            if (conn.handshook && request.method === 'initialize') {
+              throw new RpcError(METHOD_NOT_FOUND, `Method not found: ${request.method}`);
+            }
+            /*
+             * A channel the protocol fixes, named as something else.
+             *
+             * Twenty commands declare `channel` as a literal - `ahp-root://`
+             * for most, `ahp-automations://` for the two automation ones -
+             * because they are about the host rather than about any one
+             * session. A host that answered them on whatever arrived would make
+             * a client sending the wrong constant look correct, which is how a
+             * client ships one: it typechecks, every test passes against the
+             * lenient host, and the first conformant one refuses it with
+             * nothing on screen saying why.
+             *
+             * Only when the client actually named one. A command sent without a
+             * `channel` has named nothing wrong, and this host has always taken
+             * those - refusing them now would be a rule applied backwards.
+             */
+            const fixed = ownIn(DECLARED, request.method);
+            const named = (request.params as { channel?: unknown } | undefined)?.channel;
+            // The catalogue and the root under any of their spellings are still themselves.
+            if (fixed !== undefined && typeof named === 'string' && named !== '' && named !== fixed
+              && !(fixed === AUTOMATIONS && isAutomations(named))
+              && !(fixed === ROOT && isRootChannel(named))) {
+              throw new RpcError(INVALID_PARAMS, `${request.method} is answered on ${fixed}, not on ${named}`);
+            }
+            return await handler(request.params);
+          } catch (error) {
+            connection.refused = (connection.refused ?? 0) + 1;
+            throw error;
           }
-          // Everything before the handshake is `-32601`, in the same words, as
-          // the reference host answers a transport that has not introduced
-          // itself. `ping` is the one exception the spec states outright: the
-          // round trip is a liveness check, and a liveness check that needs a
-          // handshake first cannot tell a half-open socket from a busy one.
-          // https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/protocolServerHandler.ts#L896-L899
-          if (!conn.handshook && !GREETINGS.has(request.method)) {
-            throw new RpcError(METHOD_NOT_FOUND, `Method not found: ${request.method}`);
-          }
-          /*
-           * The one gate.
-           *
-           * Every command passes here, so a handler added later is gated as
-           * every other one is. A client's resource, under the client scheme,
-           * is gated by that scheme as any other scheme is.
-           *
-           * A host with no user directory has no principal and refuses nothing,
-           * which is what keeps every install that never configured one exactly
-           * as it was.
-           */
-          const gate = admit(request.method, (request.params ?? {}) as Record<string, unknown>);
-          if (gate !== undefined) await gate;
-          // A second `initialize` is a method the handshake took: the version
-          // is agreed, and re-agreeing it would re-key every subscription this
-          // connection is holding. Answered as the reference host's request
-          // table answers it, which holds no handler for one.
-          if (conn.handshook && request.method === 'initialize') {
-            throw new RpcError(METHOD_NOT_FOUND, `Method not found: ${request.method}`);
-          }
-          /*
-           * A channel the protocol fixes, named as something else.
-           *
-           * Twenty commands declare `channel` as a literal - `ahp-root://`
-           * for most, `ahp-automations://` for the two automation ones -
-           * because they are about the host rather than about any one
-           * session. A host that answered them on whatever arrived would make
-           * a client sending the wrong constant look correct, which is how a
-           * client ships one: it typechecks, every test passes against the
-           * lenient host, and the first conformant one refuses it with
-           * nothing on screen saying why.
-           *
-           * Only when the client actually named one. A command sent without a
-           * `channel` has named nothing wrong, and this host has always taken
-           * those - refusing them now would be a rule applied backwards.
-           */
-          const fixed = ownIn(DECLARED, request.method);
-          const named = (request.params as { channel?: unknown } | undefined)?.channel;
-          // The catalogue and the root under any of their spellings are still themselves.
-          if (fixed !== undefined && typeof named === 'string' && named !== '' && named !== fixed
-            && !(fixed === AUTOMATIONS && isAutomations(named))
-            && !(fixed === ROOT && isRootChannel(named))) {
-            throw new RpcError(INVALID_PARAMS, `${request.method} is answered on ${fixed}, not on ${named}`);
-          }
-          return handler(request.params);
         },
         close() {
           const was = [...connection.activeSubscriptions];
