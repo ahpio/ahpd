@@ -1,6 +1,6 @@
 ---
 title: The row carries the upgrade headers
-status: todo
+status: done
 depends: []
 layer: "sdk listen, sdk host, docs"
 refs:
@@ -53,3 +53,5 @@ A row carries the `User-Agent` and `Origin` its socket opened with, on Node, Bun
 - By hand: a Bun and a Deno listener each report both headers. Write the result in *Resume* if no runtime is at hand.
 
 ## Resume
+
+Built as the steps say. Checked by hand on 2026-11-14: a Bun 1.4.0 and a Deno 2.9.6 listener each reported both headers. Deno's own WebSocket client puts `Deno/2.9.6` before the agent text it is given, and the row keeps it as sent.
