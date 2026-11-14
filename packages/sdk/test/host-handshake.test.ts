@@ -396,12 +396,22 @@ describe('a connection accepted with what the listener knew', () => {
     expect(row).toMatchObject({ path: '/join', node: 'node-a' });
   });
 
+  it('keeps the User-Agent and the Origin the request carried, as sent', async () => {
+    const host = serving(WORK);
+    host.accept(peer(), undefined, false, { socket: 3, userAgent: 'ahpc/test', origin: 'https://example.test' });
+
+    const [row] = host.clientRegistry.connected();
+    expect(row).toMatchObject({ userAgent: 'ahpc/test', origin: 'https://example.test' });
+  });
+
   it('lists a connection that came in with nothing said about it without a socket or a claim', async () => {
     const host = serving(WORK);
     host.accept(peer());
     const [row] = host.clientRegistry.connected();
     expect(row?.socket).toBeUndefined();
     expect(row?.forwardedFor).toBeUndefined();
+    expect(row?.userAgent).toBeUndefined();
+    expect(row?.origin).toBeUndefined();
   });
 });
 

@@ -193,6 +193,10 @@ export interface ConnectedClient {
   address?: string;
   /** The `X-Forwarded-For` claim the request carried, kept as sent and never trusted. */
   forwardedFor?: string;
+  /** The `User-Agent` claim the request carried, kept as sent and never trusted. */
+  userAgent?: string;
+  /** The `Origin` claim the request carried, kept as sent and never trusted. */
+  origin?: string;
   /** The path the socket's URL opened on, with no query. */
   path?: string;
   /** The node whose own token admitted it, on the join path. */
@@ -2059,6 +2063,10 @@ export interface Connection {
    * it, and a listener behind a proxy is what makes it worth reading.
    */
   forwardedFor?: string;
+  /** The `User-Agent` text the request carried, as sent: a claim, as `forwardedFor` is. */
+  userAgent?: string;
+  /** The `Origin` text the request carried, as sent: a claim, as `forwardedFor` is. */
+  origin?: string;
   /** The path the socket's URL opened on, with no query. */
   path?: string;
   /** The node whose own token admitted it, on the join path. */

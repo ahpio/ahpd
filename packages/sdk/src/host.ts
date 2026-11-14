@@ -1986,6 +1986,8 @@ export function createHost(options: HostOptions): Host {
       ...(info?.capabilities === undefined ? {} : { capabilities: info.capabilities }),
       ...(connection.address === undefined ? {} : { address: connection.address }),
       ...(connection.forwardedFor === undefined ? {} : { forwardedFor: connection.forwardedFor }),
+      ...(connection.userAgent === undefined ? {} : { userAgent: connection.userAgent }),
+      ...(connection.origin === undefined ? {} : { origin: connection.origin }),
       ...(connection.path === undefined ? {} : { path: connection.path }),
       ...(connection.node === undefined ? {} : { node: connection.node }),
       ...(connection.protocolVersion === undefined ? {} : { protocolVersion: connection.protocolVersion }),
@@ -2263,6 +2265,8 @@ export function createHost(options: HostOptions): Host {
         ...(opened?.socket === undefined ? {} : { socket: opened.socket }),
         ...(opened?.address === undefined ? {} : { address: opened.address }),
         ...(opened?.forwardedFor === undefined ? {} : { forwardedFor: opened.forwardedFor }),
+        ...(opened?.userAgent === undefined ? {} : { userAgent: opened.userAgent }),
+        ...(opened?.origin === undefined ? {} : { origin: opened.origin }),
         ...(opened?.path === undefined ? {} : { path: opened.path }),
         ...(opened?.node === undefined ? {} : { node: opened.node }),
         /*

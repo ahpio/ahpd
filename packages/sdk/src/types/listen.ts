@@ -55,6 +55,10 @@ export interface Opened {
    * listener is what makes it worth reading, and nothing here trusts it.
    */
   forwardedFor?: string;
+  /** The `User-Agent` the request carried, kept as sent: the client's claim, which nothing trusts. */
+  userAgent?: string;
+  /** The `Origin` the request carried, kept as sent: the client's claim, which nothing trusts. */
+  origin?: string;
 }
 
 /**
