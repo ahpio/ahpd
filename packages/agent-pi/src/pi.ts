@@ -34,7 +34,6 @@ export interface Pi {
   defineTool: typeof PiCodingAgent.defineTool;
   getAgentDir: typeof PiCodingAgent.getAgentDir;
   getSupportedThinkingLevels: typeof PiAi.getSupportedThinkingLevels;
-  Type: typeof PiAi.Type;
 }
 
 /** The one import, once something has asked for it. */
@@ -67,7 +66,6 @@ export function loadPi(): Promise<Pi> {
       defineTool: coding.defineTool,
       getAgentDir: coding.getAgentDir,
       getSupportedThinkingLevels: ai.getSupportedThinkingLevels,
-      Type: ai.Type,
     };
     ready = pi;
     return pi;
