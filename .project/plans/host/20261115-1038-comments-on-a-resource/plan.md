@@ -74,6 +74,12 @@ addComment { resource } -> the same writer
 | An edit made while nobody has the resource open as shared does not move a range | `(defaulted: only the shared channel knows the change)` | 02 |
 | The six comment tools take an optional `resource`; `listComments` in a session also lists the comments on files under its folders | Softov, 2026-11-15, chose "Yes, tools take a resource" | 03 |
 | The tools keep VS Code's names and text, with one line on `resource` | the plan `host/20261110-0813-an-agent-reads-and-writes-comments` | 03 |
+| `resource` takes a file URI or an absolute path; any other name is refused, not answered with no comments | Softov, 2026-11-15: "its a error or must accept. one or another, blank failure is wrong" | 05 |
+| A session's channel shows its own comments and the comments outside any session on files under its folder; an action on one of those goes to its file | Softov, 2026-11-15: "a session list its comments + comments that does not have session" | 05 |
+| Only comments written by hand on a file have no session | Softov, 2026-11-15: "only special comments will be without session, the handmade ones" | 05 |
+| A session shows the comments outside any session on files under its folder and on its artifacts | Softov, 2026-11-15, chose "Folder and artifacts" | 05 |
+| A session's comments on a file move with the file's live edits, as its own comments do | Softov, 2026-11-15: "line position is a thing to be fixed, even if a latter task just for that" | 06 |
+| A session's comments stay in its record; a file's channel shows every session's comments on it | Softov, 2026-11-15: "store annotation with the session. session record and host gathers" | 05 |
 
 ## Proposed architecture
 
@@ -91,6 +97,8 @@ addComment { resource } -> the same writer
 | [02 - Ranges move with the edits](task-02-ranges-move-with-the-edits.md) | implemented | 01 |
 | [03 - The comment tools take a resource](task-03-the-tools-take-a-resource.md) | implemented | 01 |
 | [04 - The comments in the docs](task-04-the-comments-in-the-docs.md) | implemented | 03 |
+| [05 - A session and a file show each other's comments](task-05-a-session-shows-the-file-comments.md) | implemented | 01, 03 |
+| [06 - A session's comments move with the edits](task-06-session-comments-move-with-edits.md) | todo | 02, 05 |
 
 ## Risks and tradeoffs
 
@@ -100,10 +108,10 @@ addComment { resource } -> the same writer
 
 ## Resume state
 
-- **Done so far:** tasks 01 to 04 built on 2026-11-15, on branch `host/20261115-1038-comments-on-a-resource`, stacked on the shared resource branch.
-- **Next action:** plan `shell/20261115-1038-comments-in-a-file`; then Softov tests both.
+- **Done so far:** tasks 01 to 05 built on 2026-11-15, on branch `host/20261115-1038-comments-on-a-resource`, stacked on the shared resource branch.
+- **Next action:** Softov checks the comments both ways, in ahpw and in VS Code; then [task-06-session-comments-move-with-edits.md](task-06-session-comments-move-with-edits.md).
 - **Open questions:** none.
-- **Watch out for:** `ACTION_HOMES` refuses an `annotations/*` action on any channel that is not a session's; task 01 opens it for the resource channel. Plan `host/20261115-0829` is not merged yet: build on its branch.
+- **Watch out for:** `ACTION_HOMES` refuses an `annotations/*` action on any channel that is not a session's; task 01 opens it for the resource channel. Plan `host/20261115-0829` is merged into main.
 
 ## Final verification checklist
 

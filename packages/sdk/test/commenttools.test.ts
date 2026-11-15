@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { annotationsReducer } from '@microsoft/agent-host-protocol';
 import type { Annotation, AnnotationsAction, AnnotationsState } from '@microsoft/agent-host-protocol';
@@ -508,6 +509,22 @@ describe('comments on a resource, outside the session', () => {
     expect(fileWrites).toHaveLength(1);
     expect(() => tool(ADD_COMMENT).run({ resource: FILE, resourceUri: 'file:///repo/other.md', range: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 3 }, text: 'x' }, at))
       .toThrow(/resourceUri must be/);
+  });
+
+  it('takes an absolute path as the file URI, and refuses a name no comment is kept under', () => {
+    const base = toolAt();
+    const path = join(tmpdir(), 'repo', 'PLAN.md');
+    const asked: string[] = [];
+    const at = Object.assign(base.at, {
+      resourceComments: { stateOf: (resource: string) => { asked.push(resource); return { annotations: [] }; }, mark: () => {}, under: () => [] },
+    }) as ToolCall;
+    tool(LIST_COMMENTS).run({ resource: path }, at);
+    expect(asked).toEqual([pathToFileURL(path).href]);
+    // A relative path or another scheme would answer "no comments" for a file that has some.
+    expect(() => tool(LIST_COMMENTS).run({ resource: 'repo/PLAN.md' }, at)).toThrow(/resource must be a file URI, such as file:\/\/\/work\/PLAN.md, or an absolute path/);
+    expect(() => tool(LIST_COMMENTS).run({ resource: 'computer://box/PLAN.md' }, at)).toThrow(/resource must be a file URI/);
+    // The new comment's resourceUri may be the same file as a path.
+    tool(ADD_COMMENT).run({ resource: pathToFileURL(path).href, resourceUri: path, range: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 1 }, text: 'x' }, at);
   });
 
   it('keeps the session comments where they were without a resource', () => {

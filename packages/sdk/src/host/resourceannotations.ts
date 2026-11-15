@@ -33,6 +33,14 @@ export interface ResourceAnnotationsPorts {
   emit(channel: string, action: Record<string, unknown>, origin?: Origin): void;
   /** Whether the connection may name this session as a comment's origin. */
   hasSession(connection: Connection, session: string): boolean;
+  /** The sessions' annotations channels that show this resource's comments too, besides its own channel. */
+  alsoOn?(resource: string): readonly string[];
+  /** Every session's comments on the resource, each kept in its session's record. */
+  sessionCommentsOn?(resource: string): { session: string; annotation: Annotation }[];
+  /** Whether the connection may change a comment kept in this session. */
+  writesSession?(connection: Connection, session: string): boolean;
+  /** Change a comment kept in this session's record, and say it where the session's comments are said. */
+  markSession?(session: string, action: AnnotationsAction, origin: Origin): void;
 }
 
 export interface ResourceAnnotations {
@@ -44,16 +52,27 @@ export interface ResourceAnnotations {
   readGrant(channel: string): Grant;
   /** What an action on the channel needs: the resource's `comment`. */
   commentGrant(channel: string): Grant;
-  /** The comments on a resource now. */
+  /** The comments kept on a resource now: the ones made outside any session. */
   stateOf(resource: string): AnnotationsState;
+  /** The action with each new entry stamped as `writer`, whatever the sender put there. */
+  stamped(action: AnnotationsAction, writer: Writer): AnnotationsAction;
+  /** What the resource's channel shows: its own comments, and every session's comments on it. */
+  shownOn(resource: string): AnnotationsState;
   /** A client's action on the channel; the answer is a reason to refuse it, or nothing. */
   dispatch(channel: string, action: Record<string, unknown>, origin: Origin, connection: Connection): string | undefined;
   /** An action from a tool or the host itself, written as `writer`. */
   write(resource: string, action: AnnotationsAction, writer: Writer, origin?: Origin): void;
-  /** The resources with comments whose URI starts with one of these folders. */
+
+  /** The resources with comments that are one of these places, or under one of them as a folder. */
   under(folders: readonly string[]): string[];
+  /** Whether the resource is one of these places, or under one of them as a folder. */
+  within(resource: string, places: readonly string[]): boolean;
   /** A change taken on the resource's shared channel: move each range through it. */
   moved(resource: string, change: TextChange, before: string, after: string): void;
+  /** The comments outside any session on the resources under these folders, as a session shows them beside its own. */
+  outsideUnder(folders: readonly string[]): Annotation[];
+  /** The resource under these folders that holds this comment outside any session, or nothing. */
+  holderOf(folders: readonly string[], annotationId: string): string | undefined;
 }
 
 /** The writer a connection is, as an entry's stamp names it. */
@@ -127,6 +146,22 @@ export function createResourceAnnotations(ports: ResourceAnnotationsPorts): Reso
   const apply = (resource: string, action: AnnotationsAction, origin?: Origin): void => {
     keep(resource, annotationsReducer(stateOf(resource), action));
     ports.emit(`${ANNOTATIONS_SCHEME}:${resource}`, action as unknown as Record<string, unknown>, origin);
+    for (const channel of ports.alsoOn?.(resource) ?? []) ports.emit(channel, action as unknown as Record<string, unknown>, origin);
+  };
+
+  /** A resource's comments made outside any session: their origin is the resource's own channel. */
+  const outside = (resource: string): Annotation[] =>
+    stateOf(resource).annotations.filter((one) => one.origin?.session === `${ANNOTATIONS_SCHEME}:${resource}`);
+
+  /** Every resource with comments kept, here or in the store. */
+  const known = (): string[] => [...new Set<string>([...held.keys(), ...(ports.store()?.list?.() ?? [])])];
+
+  const within = (resource: string, places: readonly string[]): boolean =>
+    places.some((place) => resource === place || resource.startsWith(place.endsWith('/') ? place : `${place}/`));
+
+  const under = (folders: readonly string[]): string[] => {
+    return known().filter((resource) => within(resource, folders))
+      .filter((resource) => stateOf(resource).annotations.length > 0);
   };
 
   return {
@@ -135,6 +170,8 @@ export function createResourceAnnotations(ports: ResourceAnnotationsPorts): Reso
     readGrant: (channel) => grantOn(annotatedResourceOf(channel) ?? '', 'get'),
     commentGrant: (channel) => grantOn(annotatedResourceOf(channel) ?? '', 'comment'),
     stateOf,
+    stamped: (action, writer) => withStamps(action, writer),
+    shownOn: (resource) => ({ annotations: [...stateOf(resource).annotations, ...(ports.sessionCommentsOn?.(resource) ?? []).map((one) => one.annotation)] }),
 
     dispatch(channel, action, origin, connection) {
       const resource = annotatedResourceOf(channel);
@@ -152,6 +189,18 @@ export function createResourceAnnotations(ports: ResourceAnnotationsPorts): Reso
         const annotation = action.annotation as Annotation | undefined;
         if (annotation === undefined || annotation.resource !== resource) return `a comment on ${channel} must name ${resource} as its resource`;
       }
+      /*
+       * A session's comment, shown here from its session's record, is changed
+       * there, by someone who may change that session's comments.
+       */
+      const target = typeof action.annotationId === 'string' ? action.annotationId : undefined;
+      const kept = target === undefined || stateOf(resource).annotations.some((one) => one.id === target)
+        ? undefined : ports.sessionCommentsOn?.(resource).find((one) => one.annotation.id === target);
+      if (kept !== undefined && ports.markSession !== undefined) {
+        if (ports.writesSession?.(connection, kept.session) !== true) return `${kept.session}'s comments are not yours to change`;
+        ports.markSession(kept.session, withStamps(action as unknown as AnnotationsAction, writerOf(connection)), origin);
+        return undefined;
+      }
       // Updating or removing an entry keeps it on this resource; the reducer ignores an unknown id.
       apply(resource, withStamps(action as unknown as AnnotationsAction, writerOf(connection)), origin);
       return undefined;
@@ -161,11 +210,13 @@ export function createResourceAnnotations(ports: ResourceAnnotationsPorts): Reso
       apply(resource, withStamps(action, writer), origin);
     },
 
-    under(folders) {
-      const known = new Set<string>([...held.keys(), ...(ports.store()?.list?.() ?? [])]);
-      return [...known].filter((resource) => folders.some((folder) => resource.startsWith(folder.endsWith('/') ? folder : `${folder}/`)))
-        .filter((resource) => stateOf(resource).annotations.length > 0);
-    },
+
+    under,
+    within,
+
+    outsideUnder: (folders) => under(folders).flatMap(outside),
+
+    holderOf: (folders, annotationId) => under(folders).find((resource) => outside(resource).some((one) => one.id === annotationId)),
 
     moved(resource, change, before, after) {
       const state = held.get(resource) ?? (ports.store() === undefined ? undefined : stateOf(resource));

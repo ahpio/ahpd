@@ -12,6 +12,7 @@ import { HOSTS_OWN } from './common.js';
 import { AUTO_ARCHIVE_KEY, AUTO_DELETE_KEY } from './sessionlifecycle.js';
 import { accountKey, RESTART_KEY } from './root.js';
 import { claimOf } from './terminals.js';
+import { writerOf } from './resourceannotations.js';
 import { SANDBOX_ROOT_KEY } from '../types/sandbox.js';
 import type { HeldCopies, TemplatePlugin } from '../types/clientplugins.js';
 import type { Bag } from '../types/common.js';
@@ -265,7 +266,27 @@ export function createActions(ctx: HostContext, conn: ConnectionContext): Action
       }
       const owning = channel.slice(0, -ANNOTATIONS_PATH_SEGMENT.length);
       const id = idOf(owning);
-      const mark = (): void => { ctx.markAnnotation(owning, action as unknown as AnnotationsAction, origin); };
+      const mark = (): void => {
+        /*
+         * A comment written outside any session, shown here beside the
+         * session's own, is changed where it is kept: on its file, with the
+         * file's `comment` grant, as on the file's own channel.
+         */
+        const target = typeof action.annotationId === 'string' ? action.annotationId : undefined;
+        const holder = target === undefined || ctx.marksOf(id).annotations.some((one) => one.id === target)
+          ? undefined : ctx.resourceAnnotations.holderOf(ctx.placesOf(owning), target);
+        if (holder === undefined) {
+          // Stamped as a file's comments are, so a file's channel says who wrote each entry and when.
+          ctx.markAnnotation(owning, ctx.resourceAnnotations.stamped(action as unknown as AnnotationsAction, writerOf(connection)), origin);
+          return;
+        }
+        const grant = ctx.resourceAnnotations.commentGrant(ctx.resourceAnnotations.channelOf(holder));
+        if (connection.principal !== undefined && !connection.principal.can(grant)) {
+          no(`${connection.principal.id} may not ${grant} here`);
+          return;
+        }
+        ctx.resourceAnnotations.write(holder, action as unknown as AnnotationsAction, writerOf(connection), origin);
+      };
       const found = (): boolean => (sessions.has(owning) || owners.has(owning) || unavailableProvider(id) !== undefined)
         && ctx.nameOf(id) === owning;
       if (found()) {

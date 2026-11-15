@@ -2,9 +2,11 @@ import { WAIT_MS } from '../../../tools/wait.ts';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { createHost } from '../src/host.js';
 import { fileResources } from '../src/resources/resources.js';
+import { memorySessions } from '../src/sessions/sessions.js';
 import { echo } from '../../../examples/echo/agent.js';
 import type { AnnotationsState } from '@microsoft/agent-host-protocol';
 import type { ResourceAnnotationsStore } from '../src/types/host.js';
@@ -182,4 +184,110 @@ it('makes a comment whose words are deleted an outdated point, and keeps the thr
   expect(kept._meta?.ahpd).toMatchObject({ outdated: true });
   expect(kept.entries).toHaveLength(1);
   await host.close();
+});
+
+/*
+ * A session shows its own comments and the ones people wrote outside any
+ * session on files under its folder, as VS Code reads them: from the
+ * session's annotations channel. A reply there is written on the file.
+ */
+it('shows a session the comments outside any session under its folder, and writes a reply to one on the file', async () => {
+  const fileUri = pathToFileURL(file).href;
+  const onFile = `x-ahpd-annotations:${fileUri}`;
+  const note = (id: string, text: string) => ({ ...comment(id, text), annotation: { ...comment(id, text).annotation, origin: { session: onFile }, resource: fileUri } });
+  const host = makeHost();
+  const ana = await join_(host, 'ana', [onFile]);
+  ana.send(note('c1', 'On one'), onFile);
+  await until(() => seen(ana.peer, onFile).some((one) => one.action.type === 'annotations/set'), 'the comment');
+
+  const window = peer();
+  const client = host.accept(window);
+  await client.handle({ method: 'initialize', params: { clientId: 'window', protocolVersions: ['0.9.0'], initialSubscriptions: ['ahp-root://'] } });
+  const session = 'ahp-session:/one';
+  await client.handle({ method: 'createSession', params: { channel: session, provider: 'echo', workingDirectories: [pathToFileURL(root).href] } });
+  const notes = `${session}/annotations`;
+  const opened = await client.handle({ method: 'subscribe', params: { channel: notes } }) as { snapshot: { state: AnnotationsState } };
+  expect(opened.snapshot.state.annotations.map((one) => one.id)).toEqual(['c1']);
+
+  // A comment written on the file later reaches the session's channel too.
+  ana.send(note('c2', 'On two'), onFile);
+  await until(() => seen(window, notes).some((one) => one.action.type === 'annotations/set'), 'the new comment in the session');
+
+  // The window replies on its session's channel: the reply is kept on the file, not on the session.
+  void client.handle({ method: 'dispatchAction', params: { channel: notes, clientSeq: 1, action: { type: 'annotations/entrySet', annotationId: 'c1', entry: { id: 'r1', text: 'Seen.' } } } });
+  await until(() => seen(ana.peer, onFile).some((one) => one.action.type === 'annotations/entrySet'), 'the reply on the file');
+  const again = await join_(host, 'third', [onFile]);
+  const kept = (again.opened[onFile]!.snapshot.state as unknown as AnnotationsState).annotations.find((one) => one.id === 'c1')!;
+  expect(kept.entries.map((one) => one.id)).toEqual(['c1-1', 'r1']);
+  const reopened = await client.handle({ method: 'subscribe', params: { channel: notes } }) as { snapshot: { state: AnnotationsState } };
+  expect(reopened.snapshot.state.annotations.map((one) => one.id)).toEqual(['c1', 'c2']);
+  await host.close();
+});
+
+/*
+ * A file's channel shows its own comments and every session's comments on
+ * it. A session's comment stays in its session's record, as VS Code keeps it,
+ * and a reply to it from the file's channel is written there.
+ */
+it('shows a file every session comment on it, and writes a reply to one in its session', async () => {
+  const fileUri = pathToFileURL(file).href;
+  const onFile = `x-ahpd-annotations:${fileUri}`;
+  const host = makeHost();
+  const window = peer();
+  const client = host.accept(window);
+  await client.handle({ method: 'initialize', params: { clientId: 'window', protocolVersions: ['0.9.0'], initialSubscriptions: ['ahp-root://'] } });
+  const session = 'ahp-session:/one';
+  await client.handle({ method: 'createSession', params: { channel: session, provider: 'echo', workingDirectories: [pathToFileURL(root).href] } });
+  const notes = `${session}/annotations`;
+  await client.handle({ method: 'subscribe', params: { channel: notes } });
+
+  // The window comments in its session, as VS Code does.
+  const ana = await join_(host, 'ana', [onFile]);
+  void client.handle({ method: 'dispatchAction', params: { channel: notes, clientSeq: 1, action: { type: 'annotations/set', annotation: { id: 's1', origin: { session }, resource: fileUri, resolved: false, entries: [{ id: 's1-1', text: 'From the session.' }] } } } });
+  await until(() => seen(ana.peer, onFile).some((one) => one.action.type === 'annotations/set'), 'the session comment on the file');
+  const later = await join_(host, 'later', [onFile]);
+  expect((later.opened[onFile]!.snapshot.state as unknown as AnnotationsState).annotations.map((one) => one.id)).toEqual(['s1']);
+
+  // A reply on the file's channel is kept in the session, and the session's client hears it.
+  ana.send({ type: 'annotations/entrySet', annotationId: 's1', entry: { id: 'r1', text: 'Seen from the file.' } }, onFile);
+  await until(() => seen(window, notes).some((one) => one.action.type === 'annotations/entrySet'), 'the reply in the session');
+  const reopened = await client.handle({ method: 'subscribe', params: { channel: notes } }) as { snapshot: { state: AnnotationsState } };
+  expect(reopened.snapshot.state.annotations.find((one) => one.id === 's1')!.entries.map((one) => one.id)).toEqual(['s1-1', 'r1']);
+  await host.close();
+});
+
+/*
+ * A session's artifacts count as where it works, wherever they are: a file
+ * opened from a session's artifacts shows the comments outside any session.
+ */
+it('shows a session the comments outside any session on its artifacts, outside its folder', async () => {
+  const elsewhere = mkdtempSync(join(tmpdir(), 'ahpd-elsewhere-'));
+  const away = join(elsewhere, 'BRIEF.md');
+  writeFileSync(away, '# Brief\n');
+  const fileUri = pathToFileURL(away).href;
+  const onFile = `x-ahpd-annotations:${fileUri}`;
+  const sessions = memorySessions();
+  const host = createHost({ path: root, agents: [echo({ path: root, pace: 0 })], resources: fileResources(), resourceAnnotations: memory(), sessions });
+  try {
+    const ana = await join_(host as ReturnType<typeof makeHost>, 'ana', [onFile]);
+    const note = { ...comment('c1', 'On the brief'), annotation: { ...comment('c1', 'On the brief').annotation, origin: { session: onFile }, resource: fileUri } };
+    ana.send(note, onFile);
+    await until(() => seen(ana.peer, onFile).some((one) => one.action.type === 'annotations/set'), 'the comment');
+
+    const window = peer();
+    const client = host.accept(window);
+    await client.handle({ method: 'initialize', params: { clientId: 'window', protocolVersions: ['0.9.0'], initialSubscriptions: ['ahp-root://'] } });
+    const session = 'ahp-session:/one';
+    await client.handle({ method: 'createSession', params: { channel: session, provider: 'echo', workingDirectories: [pathToFileURL(root).href] } });
+    const notes = `${session}/annotations`;
+    const before = await client.handle({ method: 'subscribe', params: { channel: notes } }) as { snapshot: { state: AnnotationsState } };
+    expect(before.snapshot.state.annotations).toEqual([]);
+    sessions.setArtifacts('one', [{ uri: fileUri }]);
+    const after = await client.handle({ method: 'subscribe', params: { channel: notes } }) as { snapshot: { state: AnnotationsState } };
+    expect(after.snapshot.state.annotations.map((one) => one.id)).toEqual(['c1']);
+  }
+  finally {
+    await host.close();
+    rmSync(elsewhere, { recursive: true, force: true });
+  }
 });

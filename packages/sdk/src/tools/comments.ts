@@ -2,6 +2,8 @@ import type {
   Annotation, AnnotationEntry, AnnotationOrigin, AnnotationsAction, AnnotationsState, TextRange,
 } from '@microsoft/agent-host-protocol';
 import type { HostTool, ToolCall } from '../types/host.js';
+import { isAbsolute } from 'node:path';
+import { uriOf } from '../resources/fileuri.js';
 
 /**
  * The comment tools, and what a comment is on a session's annotations channel.
@@ -503,13 +505,16 @@ const allowed = (at: ToolCall): void => {
  * `annotations/*` action takes, so a comment an agent makes is one state to
  * every client of the session and is kept like any other.
  */
-const run = (at: ToolCall, tool: string, input: unknown, writes: boolean): string => {
+const run = (at: ToolCall, tool: string, given: unknown, writes: boolean): string => {
   if (writes) allowed(at);
+  let input = given;
   const args = (input ?? {}) as Record<string, unknown>;
-  const resource = typeof args.resource === 'string' && args.resource !== '' ? args.resource : undefined;
+  const resource = typeof args.resource === 'string' && args.resource !== '' ? fileUriOf(args.resource, 'resource') : undefined;
   if (tool === LIST_COMMENTS && resource === undefined) return listEverywhere(at, input);
-  if (tool === ADD_COMMENT && resource !== undefined && args.resourceUri !== resource) {
-    throw new Error(`resourceUri must be ${resource}, the resource whose comments it goes on`);
+  if (tool === ADD_COMMENT && resource !== undefined) {
+    const resourceUri = typeof args.resourceUri === 'string' ? fileUriOf(args.resourceUri, 'resourceUri') : undefined;
+    if (resourceUri !== resource) throw new Error(`resourceUri must be ${resource}, the resource whose comments it goes on`);
+    input = { ...args, resourceUri };
   }
   const place = resource !== undefined ? resourcePlace(at, resource) : placeOfComment(at, args);
   const outcome = applyCommentTool(place.state, at.session, tool, input, originOf(at));
@@ -517,6 +522,18 @@ const run = (at: ToolCall, tool: string, input: unknown, writes: boolean): strin
   // enum, so the cast stands in for naming it, as it does on the channel.
   for (const action of outcome.actions) place.mark(action as unknown as AnnotationsAction);
   return place.resource === undefined ? outcome.result : onFile(outcome.result);
+};
+
+/**
+ * A file named to the comment tools, as the `file:` URI its comments are kept
+ * under. An agent passes a path about as often as a URI, so an absolute path
+ * is taken; anything else is refused, since a name no comment is kept under
+ * would answer "no comments" for a file that has some.
+ */
+const fileUriOf = (value: string, field: string): string => {
+  if (value.startsWith('file://')) return value;
+  if (isAbsolute(value)) return uriOf(value);
+  throw new Error(`${field} must be a file URI, such as file:///work/PLAN.md, or an absolute path, such as /work/PLAN.md; got ${value}`);
 };
 
 /** Where comments live: the session's channel, or one resource's own, where people comment outside a session. */
@@ -624,7 +641,7 @@ export const commentTools = (): HostTool[] => [
         type: 'object',
         properties: {
           resourceUri: { type: 'string', description: 'URI of the file to add a comment to.' },
-          resource: { type: 'string', description: 'A file whose own comments to use: the ones people write on the file outside a session. Omit for this session\'s comments.' },
+          resource: { type: 'string', description: 'A file whose own comments to use, as a file URI or an absolute path: the ones people write on the file outside a session. Omit for this session\'s comments.' },
           range: RANGE_INPUT,
           text: { type: 'string', description: 'Comment text to add.' },
         },
@@ -644,7 +661,7 @@ export const commentTools = (): HostTool[] => [
         type: 'object',
         properties: {
           includeResolved: { type: 'boolean', description: 'Whether resolved comments should be included. Defaults to false.' },
-          resource: { type: 'string', description: 'A file whose own comments to use: the ones people write on the file outside a session. Omit for this session\'s comments.' },
+          resource: { type: 'string', description: 'A file whose own comments to use, as a file URI or an absolute path: the ones people write on the file outside a session. Omit for this session\'s comments.' },
         },
       },
       annotations: { readOnlyHint: true },
@@ -661,7 +678,7 @@ export const commentTools = (): HostTool[] => [
         type: 'object',
         properties: {
           commentId: { type: 'string', description: 'ID of the comment to reply to.' },
-          resource: { type: 'string', description: 'A file whose own comments to use: the ones people write on the file outside a session. Omit for this session\'s comments.' },
+          resource: { type: 'string', description: 'A file whose own comments to use, as a file URI or an absolute path: the ones people write on the file outside a session. Omit for this session\'s comments.' },
           text: { type: 'string', description: 'Reply text to add.' },
         },
         required: ['commentId', 'text'],
@@ -680,7 +697,7 @@ export const commentTools = (): HostTool[] => [
         type: 'object',
         properties: {
           commentIds: { type: 'array', items: { type: 'string' }, description: 'Comment IDs to delete.' },
-          resource: { type: 'string', description: 'A file whose own comments to use: the ones people write on the file outside a session. Omit for this session\'s comments.' },
+          resource: { type: 'string', description: 'A file whose own comments to use, as a file URI or an absolute path: the ones people write on the file outside a session. Omit for this session\'s comments.' },
         },
         required: ['commentIds'],
       },
@@ -698,7 +715,7 @@ export const commentTools = (): HostTool[] => [
         type: 'object',
         properties: {
           commentIds: { type: 'array', items: { type: 'string' }, description: 'Comment IDs to update.' },
-          resource: { type: 'string', description: 'A file whose own comments to use: the ones people write on the file outside a session. Omit for this session\'s comments.' },
+          resource: { type: 'string', description: 'A file whose own comments to use, as a file URI or an absolute path: the ones people write on the file outside a session. Omit for this session\'s comments.' },
           resolved: { type: 'boolean', description: 'Whether the comments should be marked as resolved. Defaults to true.' },
         },
         required: ['commentIds'],

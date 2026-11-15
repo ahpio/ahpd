@@ -96,3 +96,10 @@ The host stamps each new entry with who wrote it and when, whatever the client p
 
 A comment's `origin.session` is a session of the writer, or the channel itself for a comment made outside any session. While the resource is open as a shared resource, each comment's range moves with the edits. A comment whose words are deleted becomes a point where they were, with `_meta.ahpd.outdated` set, and its thread stays. The comments are kept between restarts.
 
+A session's comments stay in the session's record, as VS Code keeps them. The two channels show each other's comments:
+
+- A resource's channel shows its own comments and every session's comments on that resource. A reply, a resolve or a delete there on a session's comment is kept in that session, and needs the session's `review`.
+- A session's channel shows its own comments and the comments outside any session on files under its folder or listed as its artifacts. VS Code draws both on the file. A reply, a resolve or a delete there on a file's comment is kept on the file, and needs the file's `comment`.
+
+The host stamps a session's new entries as it stamps a resource's, so each channel says who wrote each entry and when.
+

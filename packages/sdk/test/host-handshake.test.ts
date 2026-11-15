@@ -761,7 +761,8 @@ describe('a client that dropped, coming back', () => {
     await late.handle(hello(['0.9.0']));
     const kept = await late.handle({
       method: 'reconnect',
-      params: { channel: ROOT, clientId: 'probe', lastSeenServerSeq: upTo + 9, subscriptions: [marks] },
+      // Just before the last mark: each mark is said on its file's comments channel too, so the seqs are not one a mark.
+      params: { channel: ROOT, clientId: 'probe', lastSeenServerSeq: (actions(p, marks).at(-1)?.serverSeq ?? upTo + 1) - 1, subscriptions: [marks] },
     }) as { type: string };
     expect(kept.type).toBe('replay');
   });
