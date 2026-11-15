@@ -31,7 +31,7 @@ It sends each change and each caret to every subscriber.
 3. Write `mapPosition(position, changes, assoc)`; `assoc` 1 puts a position at an insert after the insert, and -1 before it.
 4. Write `mapChanges(changes, through)`; map each `from` with `assoc` 1 and each `to` with `assoc` -1.
 5. In `mapChanges`, never let `to` fall before `from`.
-6. Make `x-ahpd-document/changed` and `x-ahpd-document/selected` dispatchable, and route them to `documents.ts`.
+6. Make `x-ahpd-shared/changed` and `x-ahpd-shared/selected` dispatchable, and route them to `documents.ts`.
 7. Keep the last 500 changes taken, each with the version it applied to.
 8. On `changed` at the current version, apply it, add one to the version, and emit it.
 9. On `changed` at an older version in the log, map it through each change taken since.

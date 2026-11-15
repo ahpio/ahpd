@@ -23,7 +23,7 @@ A write from outside never undoes an edit the host holds and has not written yet
 
 1. Write the text through `options.resources.write` 2 s after the last change.
 2. While changes go on, write it at least every 10 s.
-3. After each write, keep the text written and its version, and emit `x-ahpd-document/saved` with that version.
+3. After each write, keep the text written and its version, and emit `x-ahpd-shared/saved` with that version.
 4. At the first subscribe, watch the file through `options.resources.watch`.
 5. When the watch reports the file changed, read it.
 6. Compare the new text with the text last written; cut the same start and the same end.

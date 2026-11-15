@@ -6,11 +6,11 @@ import { afterEach, beforeEach, expect, it } from 'vitest';
 import { createHost } from '../src/host.js';
 import { fileResources } from '../src/resources/resources.js';
 import { echo } from '../../../examples/echo/agent.js';
-import { DOCUMENT_LOG } from '../src/host/documents.js';
+import { SHARED_LOG } from '../src/host/shared.js';
 import type { Peer } from '../src/types/rpc.js';
 
 /*
- * A shared document, `x-ahpd-document:<file URI>`, against a real folder.
+ * A shared resource of kind `text`, `x-ahpd-shared:<file URI>`, against a real folder.
  *
  * Two clients open one file. What each one sees is the `action` notes its
  * peer collected; the file on disk is read back to see what the host wrote.
@@ -52,7 +52,7 @@ async function join_(host: ReturnType<typeof makeHost>, clientId: string) {
   const client = host.accept(p);
   await client.handle({ method: 'initialize', params: { clientId, protocolVersions: ['0.9.0'], initialSubscriptions: ['ahp-root://'] } });
   const opened = await client.handle({ method: 'subscribe', params: { channel } }) as {
-    snapshot: { fromSeq: number; state: { text: string; version: number; saved: number; people: { client: string; name: string }[] } };
+    snapshot: { fromSeq: number; state: { text: string; version: number; saved: number; people: { client: string; name: string; kind?: string; editing?: boolean }[] } };
   };
   let seq = 0;
   const send = (action: Record<string, unknown>): number => {
@@ -63,30 +63,32 @@ async function join_(host: ReturnType<typeof makeHost>, clientId: string) {
   return { client, peer: p, opened, send };
 }
 
-const changed = (version: number, changes: unknown, ranges: unknown = []) => ({ type: 'x-ahpd-document/changed', version, changes, ranges });
+const changed = (version: number, changes: unknown, ranges: unknown = []) => ({ type: 'x-ahpd-shared/changed', version, changes, ranges });
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'ahpd-doc-'));
   file = join(root, 'PLAN.md');
   writeFileSync(file, '## Tasks\n- one\n');
-  channel = `x-ahpd-document:file://${file}`;
+  channel = `x-ahpd-shared:file://${file}`;
 });
 afterEach(() => { rmSync(root, { recursive: true, force: true }); });
 
 it('hands a subscriber the text, version 0 and the people, and tells the others who joined and left', async () => {
   const host = makeHost();
   const ana = await join_(host, 'ana');
-  expect(ana.opened.snapshot.state).toMatchObject({ text: '## Tasks\n- one\n', version: 0, saved: 0 });
+  expect(ana.opened.snapshot.state).toMatchObject({ kind: 'text', text: '## Tasks\n- one\n', version: 0, saved: 0 });
+  // A host with no users directory: each person is a guest, named by the start of the client id.
+  expect(ana.opened.snapshot.state.people[0]).toMatchObject({ client: 'ana', name: 'ana guest', kind: 'guest', editing: false });
   expect(ana.opened.snapshot.state.people.map((one) => one.client)).toEqual(['ana']);
 
   const rafael = await join_(host, 'rafael');
   expect(rafael.opened.snapshot.state.people.map((one) => one.client)).toEqual(['ana', 'rafael']);
-  await until(() => seen(ana.peer).some((one) => one.action.type === 'x-ahpd-document/joined' && one.action.client === 'rafael'), 'joined');
+  await until(() => seen(ana.peer).some((one) => one.action.type === 'x-ahpd-shared/joined' && one.action.client === 'rafael'), 'joined');
   // The one who joined is not told of itself: its snapshot holds it.
-  expect(seen(rafael.peer).some((one) => one.action.type === 'x-ahpd-document/joined')).toBe(false);
+  expect(seen(rafael.peer).some((one) => one.action.type === 'x-ahpd-shared/joined')).toBe(false);
 
   void rafael.client.handle({ method: 'unsubscribe', params: { channel } });
-  await until(() => seen(ana.peer).some((one) => one.action.type === 'x-ahpd-document/left' && one.action.client === 'rafael'), 'left');
+  await until(() => seen(ana.peer).some((one) => one.action.type === 'x-ahpd-shared/left' && one.action.client === 'rafael'), 'left');
   await host.close();
 });
 
@@ -96,8 +98,8 @@ it('takes a change at the current version, and sends it to everyone with the sen
   const rafael = await join_(host, 'rafael');
   const seq = ana.send({ ...changed(0, [{ from: 14, to: 14, insert: '- two\n' }], [{ anchor: 20, head: 20 }]), id: 'tab-1' });
   for (const who of [ana, rafael]) {
-    await until(() => seen(who.peer).some((one) => one.action.type === 'x-ahpd-document/changed'), 'the change');
-    const got = seen(who.peer).find((one) => one.action.type === 'x-ahpd-document/changed')!;
+    await until(() => seen(who.peer).some((one) => one.action.type === 'x-ahpd-shared/changed'), 'the change');
+    const got = seen(who.peer).find((one) => one.action.type === 'x-ahpd-shared/changed')!;
     expect(got.origin).toEqual({ clientId: 'ana', clientSeq: seq });
     expect(got.action).toMatchObject({ version: 0, changes: [{ from: 14, to: 14, insert: '- two\n' }], ranges: [{ anchor: 20, head: 20 }], id: 'tab-1' });
   }
@@ -111,8 +113,8 @@ it('moves a change made on an older version past the one taken first, so both la
   // Both on version 0: Ana inserts at the start, Rafael at the end.
   ana.send(changed(0, [{ from: 0, to: 0, insert: '# Plan\n' }]));
   rafael.send(changed(0, [{ from: 15, to: 15, insert: '- two\n' }]));
-  await until(() => seen(ana.peer).filter((one) => one.action.type === 'x-ahpd-document/changed').length === 2, 'both changes');
-  const [first, second] = seen(ana.peer).filter((one) => one.action.type === 'x-ahpd-document/changed');
+  await until(() => seen(ana.peer).filter((one) => one.action.type === 'x-ahpd-shared/changed').length === 2, 'both changes');
+  const [first, second] = seen(ana.peer).filter((one) => one.action.type === 'x-ahpd-shared/changed');
   expect(first!.action).toMatchObject({ version: 0, changes: [{ from: 0, to: 0, insert: '# Plan\n' }] });
   // Rafael's, moved past Ana's seven characters, applies to version 1.
   expect(second!.action).toMatchObject({ version: 1, changes: [{ from: 22, to: 22, insert: '- two\n' }] });
@@ -130,7 +132,7 @@ it('puts two inserts at one place in the order the host took them', async () => 
   const rafael = await join_(host, 'rafael');
   ana.send(changed(0, [{ from: 0, to: 0, insert: 'A' }]));
   rafael.send(changed(0, [{ from: 0, to: 0, insert: 'B' }]));
-  await until(() => seen(ana.peer).filter((one) => one.action.type === 'x-ahpd-document/changed').length === 2, 'both changes');
+  await until(() => seen(ana.peer).filter((one) => one.action.type === 'x-ahpd-shared/changed').length === 2, 'both changes');
   const third = await join_(host, 'third');
   expect(third.opened.snapshot.state.text.startsWith('AB## Tasks')).toBe(true);
   await host.close();
@@ -140,8 +142,8 @@ it('refuses a change older than its log, and the text stays as it was', async ()
   const host = makeHost();
   const ana = await join_(host, 'ana');
   const rafael = await join_(host, 'rafael');
-  for (let i = 0; i < DOCUMENT_LOG + 1; i += 1) ana.send(changed(i, [{ from: 0, to: 0, insert: 'x' }]));
-  await until(() => seen(rafael.peer).filter((one) => one.action.type === 'x-ahpd-document/changed').length === DOCUMENT_LOG + 1, 'every change');
+  for (let i = 0; i < SHARED_LOG + 1; i += 1) ana.send(changed(i, [{ from: 0, to: 0, insert: 'x' }]));
+  await until(() => seen(rafael.peer).filter((one) => one.action.type === 'x-ahpd-shared/changed').length === SHARED_LOG + 1, 'every change');
   rafael.send(changed(0, [{ from: 0, to: 0, insert: 'late' }]));
   await until(() => seen(rafael.peer).some((one) => one.rejectionReason !== undefined), 'the refusal');
   expect(seen(rafael.peer).find((one) => one.rejectionReason !== undefined)!.rejectionReason).toMatch(/^stale:/);
@@ -154,14 +156,14 @@ it('moves carets with a change and brings a caret on an older version up to the 
   const host = makeHost();
   const ana = await join_(host, 'ana');
   const rafael = await join_(host, 'rafael');
-  rafael.send({ type: 'x-ahpd-document/selected', version: 0, ranges: [{ anchor: 10, head: 12 }, { anchor: 3, head: 3 }] });
-  await until(() => seen(ana.peer).some((one) => one.action.type === 'x-ahpd-document/selected'), 'the carets');
+  rafael.send({ type: 'x-ahpd-shared/selected', version: 0, ranges: [{ anchor: 10, head: 12 }, { anchor: 3, head: 3 }] });
+  await until(() => seen(ana.peer).some((one) => one.action.type === 'x-ahpd-shared/selected'), 'the carets');
   ana.send(changed(0, [{ from: 0, to: 0, insert: '>>' }]));
-  await until(() => seen(rafael.peer).some((one) => one.action.type === 'x-ahpd-document/changed'), 'the change');
+  await until(() => seen(rafael.peer).some((one) => one.action.type === 'x-ahpd-shared/changed'), 'the change');
   // A caret on version 0, sent after the change, arrives on version 1.
-  rafael.send({ type: 'x-ahpd-document/selected', version: 0, ranges: [{ anchor: 5, head: 5 }] });
-  await until(() => seen(ana.peer).filter((one) => one.action.type === 'x-ahpd-document/selected').length === 2, 'the second carets');
-  const late = seen(ana.peer).filter((one) => one.action.type === 'x-ahpd-document/selected')[1]!;
+  rafael.send({ type: 'x-ahpd-shared/selected', version: 0, ranges: [{ anchor: 5, head: 5 }] });
+  await until(() => seen(ana.peer).filter((one) => one.action.type === 'x-ahpd-shared/selected').length === 2, 'the second carets');
+  const late = seen(ana.peer).filter((one) => one.action.type === 'x-ahpd-shared/selected')[1]!;
   expect(late.action).toMatchObject({ version: 1, ranges: [{ anchor: 7, head: 7 }] });
   const third = await join_(host, 'third');
   expect(third.opened.snapshot.state.people.find((one) => one.client === 'rafael')).toMatchObject({ ranges: [{ anchor: 7, head: 7 }] });
@@ -173,10 +175,10 @@ it('writes the text to the file after the last change, and says which version is
   const ana = await join_(host, 'ana');
   ana.send(changed(0, [{ from: 15, to: 15, insert: '- two\n' }]));
   await until(() => readFileSync(file, 'utf8') === '## Tasks\n- one\n- two\n', 'the write', WAIT_MS + 3_000);
-  await until(() => seen(ana.peer).some((one) => one.action.type === 'x-ahpd-document/saved' && one.action.version === 1), 'saved');
+  await until(() => seen(ana.peer).some((one) => one.action.type === 'x-ahpd-shared/saved' && one.action.version === 1), 'saved');
   // The host's own write comes back through the watch as no change.
   await new Promise((r) => { setTimeout(r, 500); });
-  expect(seen(ana.peer).filter((one) => one.action.type === 'x-ahpd-document/changed')).toHaveLength(1);
+  expect(seen(ana.peer).filter((one) => one.action.type === 'x-ahpd-shared/changed')).toHaveLength(1);
   await host.close();
 });
 
@@ -185,11 +187,11 @@ it('takes a write from outside as one change, and keeps an edit it has not writt
   const ana = await join_(host, 'ana');
   // Ana's edit is held, not yet on disk.
   ana.send(changed(0, [{ from: 0, to: 0, insert: '# Plan\n' }]));
-  await until(() => seen(ana.peer).some((one) => one.action.type === 'x-ahpd-document/changed'), 'her change');
+  await until(() => seen(ana.peer).some((one) => one.action.type === 'x-ahpd-shared/changed'), 'her change');
   // An agent's tool writes the file it read, which does not have her edit.
   writeFileSync(file, '## Tasks\n- one\n- from the agent\n');
-  await until(() => seen(ana.peer).filter((one) => one.action.type === 'x-ahpd-document/changed').length === 2, 'the outside write');
-  const outside = seen(ana.peer).filter((one) => one.action.type === 'x-ahpd-document/changed')[1]!;
+  await until(() => seen(ana.peer).filter((one) => one.action.type === 'x-ahpd-shared/changed').length === 2, 'the outside write');
+  const outside = seen(ana.peer).filter((one) => one.action.type === 'x-ahpd-shared/changed')[1]!;
   expect(outside.origin).toBeUndefined();
   expect(outside.action).toMatchObject({ version: 1, changes: [{ from: 22, to: 22, insert: '- from the agent\n' }] });
   // Both are in the file once the host writes it.
@@ -201,7 +203,7 @@ it('writes the text and lets the document go when the last person leaves', async
   const host = makeHost();
   const ana = await join_(host, 'ana');
   ana.send(changed(0, [{ from: 0, to: 0, insert: '# Plan\n' }]));
-  await until(() => seen(ana.peer).some((one) => one.action.type === 'x-ahpd-document/changed'), 'her change');
+  await until(() => seen(ana.peer).some((one) => one.action.type === 'x-ahpd-shared/changed'), 'her change');
   void ana.client.handle({ method: 'unsubscribe', params: { channel } });
   await until(() => readFileSync(file, 'utf8') === '# Plan\n## Tasks\n- one\n', 'the write on leaving');
   // A later subscriber reads the file afresh, at version 0.
@@ -217,8 +219,8 @@ it('refuses a file that is not text, and a scheme that is not file:', async () =
   const p = peer();
   const client = host.accept(p);
   await client.handle({ method: 'initialize', params: { clientId: 'x', protocolVersions: ['0.9.0'], initialSubscriptions: ['ahp-root://'] } });
-  await expect(client.handle({ method: 'subscribe', params: { channel: `x-ahpd-document:file://${binary}` } })).rejects.toThrow(/not text/);
-  await expect(client.handle({ method: 'subscribe', params: { channel: 'x-ahpd-document:bot://x' } })).rejects.toThrow(/Only a file: URI/);
+  await expect(client.handle({ method: 'subscribe', params: { channel: `x-ahpd-shared:file://${binary}` } })).rejects.toThrow(/not text/);
+  await expect(client.handle({ method: 'subscribe', params: { channel: 'x-ahpd-shared:bot://x' } })).rejects.toThrow(/Only a file: URI/);
   await host.close();
 });
 
@@ -228,7 +230,7 @@ it('keeps document actions out of a reconnect, and names the channel missing so 
   const rafael = await join_(host, 'rafael');
   const upTo = rafael.opened.snapshot.fromSeq;
   ana.send(changed(0, [{ from: 0, to: 0, insert: '# Plan\n' }]));
-  await until(() => seen(rafael.peer).some((one) => one.action.type === 'x-ahpd-document/changed'), 'the change');
+  await until(() => seen(rafael.peer).some((one) => one.action.type === 'x-ahpd-shared/changed'), 'the change');
   const back = host.accept(peer());
   await back.handle({ method: 'initialize', params: { clientId: 'rafael', protocolVersions: ['0.9.0'] } });
   const result = await back.handle({
@@ -238,5 +240,29 @@ it('keeps document actions out of a reconnect, and names the channel missing so 
   expect(result.type).toBe('replay');
   expect((result.actions ?? []).some((one) => one.channel === channel)).toBe(false);
   expect(result.missing).toContain(channel);
+  await host.close();
+});
+
+it('tells everyone who is editing, not only reading', async () => {
+  const host = makeHost();
+  const ana = await join_(host, 'ana');
+  const rafael = await join_(host, 'rafael');
+  const seq = ana.send({ type: 'x-ahpd-shared/editing', editing: true });
+  await until(() => seen(rafael.peer).some((one) => one.action.type === 'x-ahpd-shared/editing'), 'editing');
+  const got = seen(rafael.peer).find((one) => one.action.type === 'x-ahpd-shared/editing')!;
+  expect(got.origin).toEqual({ clientId: 'ana', clientSeq: seq });
+  expect(got.action).toMatchObject({ editing: true });
+  const third = await join_(host, 'third');
+  expect(third.opened.snapshot.state.people.find((one) => one.client === 'ana')).toMatchObject({ editing: true });
+  await host.close();
+});
+
+it('names the host own root connection root and the start of its client id', async () => {
+  const host = makeHost();
+  const p = peer();
+  const client = host.accept(p, undefined, true);
+  await client.handle({ method: 'initialize', params: { clientId: 'f3eb9c', protocolVersions: ['0.9.0'], initialSubscriptions: ['ahp-root://'] } });
+  const opened = await client.handle({ method: 'subscribe', params: { channel } }) as { snapshot: { state: { people: { name: string; kind: string }[] } } };
+  expect(opened.snapshot.state.people).toEqual([expect.objectContaining({ name: 'root f3eb', kind: 'root' })]);
   await host.close();
 });

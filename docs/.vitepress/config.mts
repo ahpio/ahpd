@@ -50,7 +50,7 @@ const sidebar: DefaultTheme.SidebarItem[] = [
       page('Sessions', '/sdk/SESSIONS'),
       page('Chats', '/sdk/CHATS'),
       page('Resources', '/sdk/RESOURCES'),
-      page('Shared documents', '/sdk/DOCUMENTS'),
+      page('Shared resources', '/sdk/SHARED'),
       page('Tools', '/sdk/TOOLS'),
       page('Terminals', '/sdk/TERMINALS'),
       page('Automations', '/sdk/AUTOMATIONS'),

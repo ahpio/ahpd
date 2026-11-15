@@ -57,7 +57,7 @@ import { clientQueueBytes, replayBytes } from './host/limits.js';
 import {
   ROOT, RESTART_NEEDED, isRootChannel, AUTOMATIONS, AUTOMATIONS_ME, spaceOf, servedIn, methodIn, named,
   chatUriFor, subagentChatUri, WORKER_ACTIONS, toolCallOfSubagentChat, isAutomations, automationOwner,
-  parseResourceWatchChannelUri, schemeOf, ANNOTATIONS_PATH_SEGMENT, DOCUMENT_SCHEME,
+  parseResourceWatchChannelUri, schemeOf, ANNOTATIONS_PATH_SEGMENT, SHARED_SCHEME,
 } from './host/channels.js';
 import type { Space } from './host/channels.js';
 import { DELTA_WINDOW_MS, merger } from './host/deltas.js';
@@ -67,7 +67,7 @@ import { GREETINGS, UNGATED, seesAccount, seesConfig, DECLARED, ownIn } from './
 import type { Home } from './host/gate.js';
 import { createChatRecord } from './host/chatrecord.js';
 import { createRouting } from './host/routing.js';
-import { createDocuments } from './host/documents.js';
+import { createSharedResources } from './host/shared.js';
 import { createRelay } from './host/relay.js';
 import { AGENT_CLIENT_SCHEME } from './host/clienturi.js';
 import { createChangesets } from './host/changesets.js';
@@ -906,7 +906,7 @@ export function createHost(options: HostOptions): Host {
      * subscribes again and its snapshot holds the whole document, while a
      * document's keystrokes would push every other channel out of the buffer.
      */
-    if (schemeOf(channel) === DOCUMENT_SCHEME) {
+    if (schemeOf(channel) === SHARED_SCHEME) {
       broadcast(channel, 'action', envelope, (connection) => (connection.peer === refused?.by ? undefined : projectActionForClient(connection, envelope)));
       return;
     }
@@ -1228,7 +1228,7 @@ export function createHost(options: HostOptions): Host {
    */
   const leftChannel = (client: string, channel: string): void => {
     // A shared document forgets the person once none of their connections has it open.
-    documents.left(client, channel);
+    shared.left(client, channel);
     const served = servedIn(options.channels, channel);
     if (served?.channel.left === undefined) return;
     for (const one of connections) {
@@ -1592,7 +1592,7 @@ export function createHost(options: HostOptions): Host {
    * The shared documents: a file's text held while anyone has it open, its
    * changes put in order, and the file written behind them.
    */
-  const documents = createDocuments({
+  const shared = createSharedResources({
     resources: () => options.resources,
     emit: (channel, action, origin) => emit(channel, action, origin),
     watching: (client, channel) => [...connections].some((one) => one.clientId === client && one.activeSubscriptions.has(channel)),
@@ -1612,7 +1612,7 @@ export function createHost(options: HostOptions): Host {
     logs, detached, refuse,
     serverSeq: 0,
     closed: false, shutdown: () => host.close(), refusing: undefined, bareSessions: new Set<string>(), startedWorkspaceless: new Set<string>(), commandTurns: new Set<string>(), described, links,
-    watches, marksOf, restoredSessions, activeClientsOf, markAnnotation, documents,
+    watches, marksOf, restoredSessions, activeClientsOf, markAnnotation, shared,
     restartNeeded: false,
     markRestart: () => {
       if (ctx.restartNeeded) return;
@@ -2230,7 +2230,7 @@ export function createHost(options: HostOptions): Host {
           await step(`the plugin ${by}`, close);
         }
         // The shared documents are written before the store they write through closes.
-        await step('the shared documents', () => documents.close());
+        await step('the shared resources', () => shared.close());
         await step('the users watch', () => usersWatch?.close());
         /*
          * And what reads what sessions do, before the stores it reads.

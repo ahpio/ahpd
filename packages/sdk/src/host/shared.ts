@@ -1,14 +1,19 @@
 import { AhpErrorCodes } from '@microsoft/agent-host-protocol';
 import { INVALID_PARAMS, RpcError } from '../rpc.js';
 import { reason } from '../utils/values.js';
-import { DOCUMENT_SCHEME, documentFileOf, schemeOf } from './channels.js';
+import { SHARED_SCHEME, sharedUriOf, schemeOf } from './channels.js';
 import { applyChange, checkCarets, checkChange, differenceOf, mapCaret, mapChange, type Caret, type TextChange } from './textchanges.js';
 import type { ResourceStore, Watcher } from '../types/resources.js';
 import type { Connection } from '../types/host.js';
 import type { Origin } from './state.js';
 
 /**
- * Shared documents: one file, open in several clients, edited by all of them.
+ * Shared resources: one resource, open in several clients, changed by all of them.
+ *
+ * A shared resource has a `kind`, which says what its state and its changes
+ * are. `text` is the only kind today: a file's text, changed by
+ * `{ from, to, insert }` lists. Another kind, such as a JSON record, would
+ * bring its own state and its own changes on the same channel.
  *
  * The host holds the text while anyone has the file open, and puts every
  * change in order. A client sends a change with the version it was made on;
@@ -17,39 +22,46 @@ import type { Origin } from './state.js';
  * file 2 s after the last change, and a write to the file from outside, such
  * as an agent's own tool, comes in as one change.
  *
- * The channel is `x-ahpd-document:<file URI>`. Its actions never enter the
+ * The channel is `x-ahpd-shared:<resource URI>`. Its actions never enter the
  * replay buffer: a client that comes back subscribes again, and the snapshot
  * holds the whole state.
  */
 
-/** The longest text a document holds, the limit ahpw's file page uses. */
-export const DOCUMENT_LIMIT = 5_000_000;
-/** How many changes a document keeps, to move a change made on an older version. */
-export const DOCUMENT_LOG = 500;
+/** The longest text a shared resource holds, the limit ahpw's file page uses. */
+export const SHARED_LIMIT = 5_000_000;
+/** How many changes a shared resource keeps, to move a change made on an older version. */
+export const SHARED_LOG = 500;
 /** How long after the last change the text is written. */
 export const WRITE_AFTER_MS = 2_000;
 /** The longest a change waits to be written while changes go on. */
 export const WRITE_AT_MOST_MS = 10_000;
 
-/** One person in a document, by the client id they connected with. */
-export interface DocumentPerson {
+/** What a person is: the host's own root connection, a signed-in user, a guest on a host with no users, or an agent. */
+export type SharedPersonKind = 'root' | 'user' | 'guest' | 'agent';
+
+/** One person in a shared resource, by the client id they connected with. */
+export interface SharedPerson {
   client: string;
   name: string;
-  agent: boolean;
+  kind: SharedPersonKind;
+  /** Whether they are editing, not only reading; a client says so with `editing`. */
+  editing: boolean;
   ranges: Caret[];
 }
 
-/** What a subscriber is handed: the document as it is now. */
-export interface DocumentState {
+/** What a subscriber is handed: the shared resource as it is now. */
+export interface SharedState {
+  /** What the resource is, and so what its changes are; `text` is the only kind today. */
+  kind: 'text';
   resource: string;
   text: string;
   version: number;
   saved: number;
-  people: DocumentPerson[];
+  people: SharedPerson[];
 }
 
 /** What the documents need from the host. */
-export interface DocumentPorts {
+export interface SharedPorts {
   /** The store that serves `file:`. */
   resources(): ResourceStore | undefined;
   /** Send one action to the channel's subscribers. */
@@ -71,7 +83,7 @@ interface Document {
   writing?: string | undefined;
   /** Each change taken, with the version it was applied to. */
   log: { version: number; change: TextChange }[];
-  people: Map<string, DocumentPerson>;
+  people: Map<string, SharedPerson>;
   watcher?: Watcher;
   timer?: ReturnType<typeof setTimeout> | undefined;
   /** When the oldest change not yet written was taken. */
@@ -84,11 +96,11 @@ interface Document {
 }
 
 /** The documents a host holds, by file URI. */
-export interface Documents {
+export interface SharedResources {
   /** Whether the channel is a document's. */
   isDocument(channel: string): boolean;
   /** Open the document for a subscriber, add them, and answer its state. */
-  open(channel: string, connection: Connection): Promise<DocumentState>;
+  open(channel: string, connection: Connection): Promise<SharedState>;
   /** A client stopped watching a channel. */
   left(client: string, channel: string): void;
   /** A client's action on a document; the answer is a reason to refuse it, or nothing. */
@@ -99,12 +111,21 @@ export interface Documents {
   close(): Promise<void>;
 }
 
+/** The start of a client id, to tell two people of one kind apart. */
+const shortId = (connection: Connection): string => connection.clientId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 4) || 'x';
+
 /**
- * A person's name: their id, or on a host with no users directory the start
- * of their client id and `guest`. The id comes first, because a client takes a
- * colour from a name's first letters, and two guests must differ.
+ * Who a connection is, and the name others see: a user's id; `root` and the
+ * start of the client id for the host's own root connection; and on a host
+ * with no users directory the start of the client id and `guest`, id first,
+ * because a client takes a colour from a name's first letters and two guests
+ * must differ.
  */
-const nameOf = (connection: Connection): string => connection.principal?.id ?? `${connection.clientId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 4) || 'x'} guest`;
+const personOf = (connection: Connection): { name: string; kind: SharedPersonKind } => {
+  if (connection.root === true) return { name: `root ${shortId(connection)}`, kind: 'root' };
+  if (connection.principal !== undefined) return { name: connection.principal.id, kind: 'user' };
+  return { name: `${shortId(connection)} guest`, kind: 'guest' };
+};
 
 /** The folder a file is in, and its name, to watch the folder for that one name. */
 const splitFile = (file: string): { folder: string; name: string } => {
@@ -112,7 +133,7 @@ const splitFile = (file: string): { folder: string; name: string } => {
   return { folder: file.slice(0, cut), name: file.slice(cut + 1) };
 };
 
-export function createDocuments(ports: DocumentPorts): Documents {
+export function createSharedResources(ports: SharedPorts): SharedResources {
   const docs = new Map<string, Document>();
   const opening = new Map<string, Promise<Document>>();
 
@@ -125,12 +146,13 @@ export function createDocuments(ports: DocumentPorts): Documents {
   const readText = async (file: string): Promise<string> => {
     const read = await store().read(file);
     if (read.encoding !== 'utf-8') throw new RpcError(INVALID_PARAMS, `${file} is not text, so it cannot be a shared document`);
-    if (read.data.length > DOCUMENT_LIMIT) throw new RpcError(INVALID_PARAMS, `${file} is over ${DOCUMENT_LIMIT} characters, so it cannot be a shared document`);
+    if (read.data.length > SHARED_LIMIT) throw new RpcError(INVALID_PARAMS, `${file} is over ${SHARED_LIMIT} characters, so it cannot be a shared document`);
     return read.data;
   };
 
   /** The state a subscriber is handed. */
-  const stateOf = (doc: Document): DocumentState => ({
+  const stateOf = (doc: Document): SharedState => ({
+    kind: 'text',
     resource: doc.file,
     text: doc.text,
     version: doc.version,
@@ -163,7 +185,7 @@ export function createDocuments(ports: DocumentPorts): Documents {
     doc.savedText = text;
     doc.saved = version;
     doc.unsavedSince = version === doc.version ? undefined : Date.now();
-    if (!doc.closed) ports.emit(doc.channel, { type: `${DOCUMENT_SCHEME}/saved`, version });
+    if (!doc.closed) ports.emit(doc.channel, { type: `${SHARED_SCHEME}/saved`, version });
   });
 
   /** Write after the last change, and at least every 10 s while changes go on. */
@@ -189,7 +211,7 @@ export function createDocuments(ports: DocumentPorts): Documents {
     const moved = later.reduce((one, through) => mapChange(one, through), change);
     doc.text = applyChange(doc.text, moved);
     doc.log.push({ version: doc.version, change: moved });
-    if (doc.log.length > DOCUMENT_LOG) doc.log.splice(0, doc.log.length - DOCUMENT_LOG);
+    if (doc.log.length > SHARED_LOG) doc.log.splice(0, doc.log.length - SHARED_LOG);
     doc.version += 1;
     for (const person of doc.people.values()) person.ranges = person.ranges.map((one) => mapCaret(one, moved));
     return moved;
@@ -222,7 +244,7 @@ export function createDocuments(ports: DocumentPorts): Documents {
     const by = doc.writer !== undefined && Date.now() - doc.writer.at < WRITE_AT_MOST_MS ? doc.writer.owner : undefined;
     doc.writer = undefined;
     ports.emit(doc.channel, {
-      type: `${DOCUMENT_SCHEME}/changed`,
+      type: `${SHARED_SCHEME}/changed`,
       version: doc.version - 1,
       changes: moved,
       ranges: [],
@@ -277,47 +299,53 @@ export function createDocuments(ports: DocumentPorts): Documents {
   };
 
   return {
-    isDocument: (channel) => schemeOf(channel) === DOCUMENT_SCHEME,
+    isDocument: (channel) => schemeOf(channel) === SHARED_SCHEME,
 
     async open(channel, connection) {
-      const file = documentFileOf(channel);
+      const file = sharedUriOf(channel);
       if (file === undefined || schemeOf(file) !== 'file') {
         throw new RpcError(INVALID_PARAMS, `Only a file: URI is a shared document, not ${file ?? channel}`);
       }
       const doc = await docOf(channel, file);
       const client = connection.clientId;
       if (!doc.people.has(client)) {
-        const person: DocumentPerson = { client, name: nameOf(connection), agent: false, ranges: [] };
+        const person: SharedPerson = { client, ...personOf(connection), editing: false, ranges: [] };
         doc.people.set(client, person);
         // Said before the subscriber is added, so it goes to the others only.
-        ports.emit(channel, { type: `${DOCUMENT_SCHEME}/joined`, client, name: person.name, agent: false });
+        ports.emit(channel, { type: `${SHARED_SCHEME}/joined`, client, name: person.name, kind: person.kind, editing: false });
       }
       return stateOf(doc);
     },
 
     left(client, channel) {
-      const file = documentFileOf(channel);
+      const file = sharedUriOf(channel);
       if (file === undefined) return;
       const doc = docs.get(file);
       if (doc === undefined || !doc.people.has(client) || ports.watching(client, channel)) return;
       doc.people.delete(client);
-      ports.emit(channel, { type: `${DOCUMENT_SCHEME}/left`, client });
+      ports.emit(channel, { type: `${SHARED_SCHEME}/left`, client });
       if (doc.people.size === 0) drop(doc);
     },
 
     dispatch(channel, action, origin, connection) {
-      const file = documentFileOf(channel);
+      const file = sharedUriOf(channel);
       const doc = file === undefined ? undefined : docs.get(file);
       if (doc === undefined || doc.closed) return `${channel} is not open: subscribe to it first`;
       const type = String(action.type ?? '');
+      const person = doc.people.get(connection.clientId);
+      if (person === undefined) return `${channel} is not open on this client: subscribe to it first`;
+      if (type === `${SHARED_SCHEME}/editing`) {
+        if (typeof action.editing !== 'boolean') return 'editing must be true or false';
+        person.editing = action.editing;
+        ports.emit(channel, { type, editing: action.editing }, origin);
+        return undefined;
+      }
       const version = action.version;
       if (!Number.isInteger(version) || (version as number) < 0 || (version as number) > doc.version) {
         return `version must be a whole number from 0 to ${doc.version}`;
       }
       const made = version as number;
-      const person = doc.people.get(connection.clientId);
-      if (person === undefined) return `${channel} is not open on this client: subscribe to it first`;
-      if (type === `${DOCUMENT_SCHEME}/selected`) {
+      if (type === `${SHARED_SCHEME}/selected`) {
         const later = since(doc, made);
         const given = checkCarets(action.ranges, Number.MAX_SAFE_INTEGER);
         if (given === undefined) return 'ranges must be a list of { anchor, head }';
@@ -329,7 +357,7 @@ export function createDocuments(ports: DocumentPorts): Documents {
         ports.emit(channel, { type, version: doc.version, ranges }, origin);
         return undefined;
       }
-      if (type === `${DOCUMENT_SCHEME}/changed`) {
+      if (type === `${SHARED_SCHEME}/changed`) {
         const checked = checkChange(action.changes, Number.MAX_SAFE_INTEGER);
         if ('problem' in checked) return checked.problem;
         const later = since(doc, made);
@@ -356,7 +384,7 @@ export function createDocuments(ports: DocumentPorts): Documents {
         scheduleWrite(doc);
         return undefined;
       }
-      return `${type} is not an action of a shared document`;
+      return `${type} is not an action of a shared resource`;
     },
 
     wroteBy(uri, owner) {

@@ -50,8 +50,8 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 ### Runtime path
 
 ```
-subscribe x-ahpd-document:<file URI> -> read the file through `resources` -> snapshot { text, version, people }
-dispatchAction x-ahpd-document/changed -> rebase -> apply -> emit to every subscriber -> write the file after 2 s
+subscribe x-ahpd-shared:<file URI> -> read the file through `resources` -> snapshot { text, version, people }
+dispatchAction x-ahpd-shared/changed -> rebase -> apply -> emit to every subscriber -> write the file after 2 s
 the file changes on disk -> watch -> one change on the version last written -> rebase -> emit
 ```
 
@@ -67,7 +67,9 @@ the file changes on disk -> watch -> one change on the version last written -> r
 | What | Source | Task |
 | --- | --- | --- |
 | The host serves the channel, not a plugin, so clients dispatch to it | Softov, 2026-11-15 | 01 |
-| The channel is `x-ahpd-document:<file URI>`, one per file | Softov, 2026-11-15 | 01 |
+| The channel is `x-ahpd-shared:<resource URI>`, a shared resource, one per resource; its state names its `kind`, and `text` is the only kind | Softov, 2026-11-15: "instead the channel to be document or file I was thinking more like a shared resource" | 01 |
+| Each person carries a `kind` (`root`, `user`, `guest`, `agent`) and `editing`; a client says when it edits with `x-ahpd-shared/editing`, which needs `file:put` | Softov, 2026-11-15: "Mark kind and editing" | 01, 02 |
+| The host's own root connection is named `root` and the start of its client id | Softov, 2026-11-15: "for root client put root random" | 01 |
 | A change is a list of `{ from, to, insert }`, every position on the text of one version, in order and not overlapping | Softov, 2026-11-15 | 02 |
 | A person's carets are a list of `{ anchor, head }`, one per caret. An empty list is a person with no caret | Softov, 2026-11-15 | 02 |
 | The host rebases a change made on an older version, and refuses one older than its log | Softov, 2026-11-15 | 02 |
@@ -80,7 +82,7 @@ the file changes on disk -> watch -> one change on the version last written -> r
 | The log keeps the last 500 changes | `(defaulted: minutes of typing for one person)` | 02 |
 | When two inserts are at the same place, the one the host took first goes first | `(defaulted: the rule a client needs to reach the same text)` | 02 |
 | The host writes the file 2 s after the last change, and at least every 10 s while changes go on | `(defaulted: short enough that a stop loses little, long enough to batch typing)` | 03 |
-| `x-ahpd-document/saved` tells every subscriber which version is on disk | `(defaulted: a client shows "Saved" from it)` | 03 |
+| `x-ahpd-shared/saved` tells every subscriber which version is on disk | `(defaulted: a client shows "Saved" from it)` | 03 |
 | A write from disk carries `by` only when the host knows the writer, from a `resourceWrite` | `(defaulted: an agent's own tool writes the file directly, and the host cannot tell who did)` | 03 |
 | The host writes every open document when it closes | `(defaulted: the last 2 s of edits are not lost on a clean stop)` | 03 |
 | The document channel is kept out of the replay buffer, and a reconnect lists it in `missing` | `(defaulted: the snapshot holds the whole state, and AHP's `missing` makes the client subscribe again)` | 01 |
@@ -101,15 +103,17 @@ the file changes on disk -> watch -> one change on the version last written -> r
 | `text` | The text the host holds |
 | `version` | How many changes the host has taken since it read the file |
 | `saved` | The version last written to the file |
-| `people` | One entry per subscribed client: `client`, `name`, `agent`, `ranges` |
+| `kind` | What the resource is: `text` |
+| `people` | One entry per subscribed client: `client`, `name`, `kind`, `editing`, `ranges` |
 
 | Action | Sent by | What it carries |
 | --- | --- | --- |
-| `x-ahpd-document/joined` | The host, at a subscribe | `client`, `name`, `agent` |
-| `x-ahpd-document/left` | The host, at an unsubscribe or a disconnect | `client` |
-| `x-ahpd-document/selected` | A client | `version`, `ranges` |
-| `x-ahpd-document/changed` | A client, or the host for a write from disk | `version`, `changes`, `ranges`, and `by` from the host when it knows the writer |
-| `x-ahpd-document/saved` | The host, after a write | `version` |
+| `x-ahpd-shared/joined` | The host, at a subscribe | `client`, `name`, `kind`, `editing` |
+| `x-ahpd-shared/editing` | A client, when it starts or stops editing | `editing` |
+| `x-ahpd-shared/left` | The host, at an unsubscribe or a disconnect | `client` |
+| `x-ahpd-shared/selected` | A client | `version`, `ranges` |
+| `x-ahpd-shared/changed` | A client, or the host for a write from disk | `version`, `changes`, `ranges`, and `by` from the host when it knows the writer |
+| `x-ahpd-shared/saved` | The host, after a write | `version` |
 
 In a client's action, `version` is the version it counted on.
 In the host's action, `version` is the version the positions are in now; after a `changed`, the host is at `version + 1`.
@@ -133,7 +137,7 @@ In the host's action, `version` is the version the positions are in now; after a
 
 ## Resume state
 
-- **Done so far:** tasks 01 to 04 built on 2026-11-15, on branch `host/20261115-0829-a-file-is-a-shared-document`; waiting for Softov's test.
+- **Done so far:** tasks 01 to 04 built on 2026-11-15, on branch `host/20261115-0829-a-file-is-a-shared-document`; Softov tested them and asked for the shared resource name, kinds, `editing` and root names, built the same day.
 - **Next action:** Softov runs the daemon from the branch with ahpw's plan; then review, `implemented.md`, and a PR.
 - **Open questions:** none.
 - **Watch out for:** `emit` keeps every action for replay unless told not to. The tie rule in task 02 is what ahpw's client must match.

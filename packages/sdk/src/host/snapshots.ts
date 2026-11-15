@@ -412,12 +412,12 @@ export function createSnapshots(ctx: HostContext): Snapshots {
       return value({ resource: channel, state: runState(found), fromSeq: ctx.serverSeq });
     }
     /*
-     * A shared document, opened for the client that subscribes: its text,
+     * A shared resource, opened for the client that subscribes: its text,
      * its version and the people in it, the subscriber among them.
      */
-    if (ctx.documents.isDocument(channel)) {
-      if (connection === undefined) throw new RpcError(AhpErrorCodes.NotFound, `A shared document is opened by a client: ${channel}`);
-      const state = await ctx.documents.open(channel, connection);
+    if (ctx.shared.isDocument(channel)) {
+      if (connection === undefined) throw new RpcError(AhpErrorCodes.NotFound, `A shared resource is opened by a client: ${channel}`);
+      const state = await ctx.shared.open(channel, connection);
       return value({ resource: channel, state, fromSeq: ctx.serverSeq });
     }
     /*

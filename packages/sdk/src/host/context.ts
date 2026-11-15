@@ -1,5 +1,5 @@
 import type { Agent } from '../types/agent.js';
-import type { Documents } from './documents.js';
+import type { SharedResources } from './shared.js';
 import type { Catalogs } from '../i18n.js';
 import type { ClientChange, Connection, HostOptions, HostTool, ResourceProvider } from '../types/host.js';
 import type { PublishOptions } from '../types/plugin.js';
@@ -337,8 +337,8 @@ export interface HostContext extends ChatRecord, Routing, Relay, Changesets, Fac
   attachWatch(channel: string, principal?: Principal): Promise<Bag | undefined>;
   /** The marks a session carries, as a snapshot of its annotations channel reports them. */
   marksOf: (id: string) => AnnotationsState;
-  /** The shared documents, `x-ahpd-document:<file URI>`. */
-  documents: Documents;
+  /** The shared resources, `x-ahpd-shared:<resource URI>`. */
+  shared: SharedResources;
   /**
    * Make one mark on a session, keep it and say it on its annotations channel.
    *

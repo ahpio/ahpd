@@ -1,5 +1,5 @@
 /**
- * Changes to a text, as a shared document's channel carries them.
+ * Changes to a text, as a shared resource of kind `text` carries them.
  *
  * A change is a list of `{ from, to, insert }`. Every position is a character
  * offset in the text before any entry of the list applies, the entries are in
