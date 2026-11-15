@@ -21,6 +21,7 @@ The case fails at line 556 with `expected [] to deeply equal [ 't3' ]`, in 38 to
 | 43196712705 | `linux (2/2)`, main |
 | 43379594402 | `linux (2/2)`, main, `6f2e32d59` |
 | 43501399066 | `linux (2/2)`, main, `74b138b73` |
+| 43699616772 | `linux (2/2)`, PR #339 |
 
 ## Cause
 
@@ -37,6 +38,10 @@ On 2026-11-13, a print of every turn action in the case showed:
 
 So the first fix below does not apply. Plan host/20261113-2243 asserts on `t3`'s end first, so the next failure says how `t3` ended.
 
+On 2026-11-15, run 43699616772 failed at line 559 with `expected [ 'chat/error: undefined' ] to deeply equal [ 'chat/turnComplete' ]`.
+So `t3` ended with `chat/error`.
+The case prints `action['error']`, but a `chat/error` action carries its words in `part`, as in `mapping.ts`. So the log does not say why `t3` failed.
+
 ## Impact
 
 A CI job fails at random, mostly on Linux, and blocks a merge until it runs again.
@@ -47,4 +52,5 @@ None. Running the job again is not a fix.
 
 ## Fix
 
-- Read how `t3` ended in the next failure, which the case now asserts first.
+- The case now prints the `part` of `t3`'s `chat/error`, with its `errorType` and `message`.
+- Find the cause from those words in the next failure.

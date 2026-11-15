@@ -28,6 +28,7 @@ import { isRecord, knownAgents } from '@ahpd/sdk';
 import type { RecordCollection } from '@ahpd/sdk';
 import { ask, answering, confirm, here, type Term } from '../ask.js';
 import { asSpec, configDir, configPath } from '../config.js';
+import { marketplacesOf } from '../pluginlist.js';
 import { AGENT_PLUGIN, agentLines, alsoLines, configuredAgents, findAgents, findAlso, findRuntimes, missingLines, runtimeLines } from '../found.js';
 import { editableEntry, installPlugins, readEntry, run as runProgram, writeEntry, type Runner } from '../install.js';
 import { isNamed, sourceOf, pluginIdOf } from '../plugins.js';
@@ -408,6 +409,21 @@ export async function configure(options: ConfigureOptions): Promise<Configured> 
   if (paths.length === 0) {
     stop(`Every folder was refused, and a daemon serves ${process.cwd()} unless "paths" names others. `
       + 'Answer Yes to one of them, or unset paths and start it where you want it served.');
+  }
+
+  /*
+   * The plugin lists, as URLs split by commas, asked last.
+   *
+   * A question cannot answer with nothing, so `none` is the answer that reads
+   * no list. Enter keeps what the file names, or the default, which is written
+   * only when the file named the key already: a default left unwritten moves
+   * with the next release.
+   */
+  const marketplaces = marketplacesOf(held);
+  const shown = marketplaces.length === 0 ? 'none' : marketplaces.join(', ');
+  const typedLists = (await ask('Plugin marketplaces', shown, options.term)).trim();
+  if (typedLists !== shown || held.pluginMarketplaces !== undefined) {
+    held.pluginMarketplaces = typedLists === 'none' ? [] : typedLists.split(',').map((one) => one.trim()).filter((one) => one !== '');
   }
 
   held.host = host;

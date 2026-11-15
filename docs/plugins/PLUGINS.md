@@ -1710,7 +1710,7 @@ Six commands change the file the daemon loads, one moves an installed package, a
 
 | Method | Grant | What it does |
 | --- | --- | --- |
-| `x-ahpd/plugins/install` | `plugin:install` | Installs one source the way `ahpd plugin install` does, names the package npm wrote in `plugins` and loads it. Takes `source`; answers `{ id }`, the id the new row is listed under |
+| `x-ahpd/plugins/install` | `plugin:install` | Installs one source the way `ahpd plugin install` does, names the package npm wrote in `plugins` and loads it. Takes `source` and an optional `marketplace`, the plugin list to install from; answers `{ id }`, the id the new row is listed under |
 | `x-ahpd/plugins/remove` | `plugin:install` | Takes the plugin out of `plugins` and uninstalls it, or leaves the package installed with `keep: true`. Takes `id` and an optional `keep`. A plugin written by `write` has its folder deleted instead, unless `keep: true` |
 | `x-ahpd/plugins/update` | `plugin:install` | Moves the plugin's package to the newest version whose `@ahpd/sdk` range admits this daemon, the way `ahpd plugin update <name>` does, and loads it again. Takes `id`; answers `{ id, from, to }`, or `{ id }` when nothing moved. A plugin the configuration names by its path is refused |
 | `x-ahpd/plugins/write` | `plugin:install` | Writes a plugin in a client: `index.ts` and `package.json` in `<plugin root>/plugins/.<id>.new/`, runs `npm install` there, swaps the folder into `<plugin root>/plugins/<id>/` only when npm succeeds, names it in `plugins` and loads it. Takes `id`, `source` and `packageJson`; a second write of the same `id` replaces the files and reloads it |
@@ -1720,6 +1720,15 @@ Six commands change the file the daemon loads, one moves an installed package, a
 | `x-ahpd/plugins/options` | `plugin:options` | Writes one option, checked against the plugin's own schema. Takes `id`, `key` and a `value`; a `value` left out takes the option out |
 
 An `install`, `update`, `remove` or `write` that npm fails is refused `-32603` with npm's own reason, as VS Code refuses a failure of its own work; a parameter the method cannot take is refused `-32602`.
+
+Two commands read the plugin lists, which [The plugin lists](#the-plugin-lists) describes:
+
+| Method | Grant | What it does |
+| --- | --- | --- |
+| `x-ahpd/plugins/available` | `plugin:list` | Answers `{ marketplaces, plugins }`, as `ahpd plugin available` does: each list in `pluginMarketplaces` with its `url`, its `state`, `on` or `missing`, and its `checkedAt`, and every entry of every list with its `marketplace` |
+| `x-ahpd/plugins/details` | `plugin:list` | Answers what a details page shows for one listed plugin before an install. Takes `id`, and an optional `marketplace` and `version` |
+
+A plugin that runs a version its list marks `deprecated` has a `warning` alert on its row, with `ref: "deprecated:<version>"` and the list's message.
 
 The `id` is the plugin's id, which is also the row's id and the root config key
 it is edited by. A value the schema marks `writeOnly` is answered `<set>`. A
@@ -2149,6 +2158,20 @@ The configuration directory is `$XDG_CONFIG_HOME/ahpd` or `~/.config/ahpd`.
 A bare registry name is asked of the registry before npm runs: the newest version whose `@ahpd/sdk` range admits this daemon is installed, and a package whose manifest has no `ahpd` field is refused before anything is installed. The registry cannot answer for a path, a URL or a git spec, so the package that source landed is read after npm installed it: one whose `package.json` is missing, or has no `ahpd` field, is uninstalled again and the command refuses. npm 12 runs no install script in the plugin root, so a git source that needs a build step ships the build or a `.ts` entry.
 
 `ahpd plugin remove` takes the name `plugins` holds, which for an installed source is the package name npm wrote, and uninstalls it; `--keep` takes the entry out and leaves the package installed. A name that starts with `-` is refused before npm runs, as an install source is.
+
+### The plugin lists
+
+A plugin list is a JSON file that names plugins, each with every version and the URLs of each version's files. `pluginMarketplaces` names the lists the daemon reads, in order, as VS Code's `chat.plugins.marketplaces` does. The default is `["https://plugins.ahpio.com/v1/plugins.json"]`, and `[]` reads none. `ahpd configure` asks for them, and `--plugin-marketplace <url>`, which repeats, names them for one run.
+
+The daemon fetches each list at its start when the list it keeps is older than `pluginCheckHours`, 12 by default, and again each period. The fetch sends `User-Agent: ahpd/<version>` and the `ETag` of the list it keeps, and nothing else. Each list is kept in `plugin-marketplaces/` in the configuration folder. A fetch that fails leaves the list as it was, and says why at debug level. A list must be format 1 and at most 5 MB. Under `CI` the daemon fetches no list.
+
+`ahpd plugin available`, `GET /plugin/available` and `x-ahpd/plugins/available` answer every entry of every list, two with the same id included, each with the `marketplace` it came from. Each entry has the list's fields and `versions`, and its icons are `data:` URIs that the daemon fetched once and keeps in `plugin-files/icons/`. An entry is installed when an installed package is its `source`, or else when an installed plugin has its `id`. It then has `installed`, with the installed row's `id`, its `version`, the `marketplace` it was installed from, and the `deprecated` message of that version when its list marks one.
+
+`x-ahpd/plugins/details` takes `{ id, marketplace?, version? }`. The entry is the named marketplace's, or the first that lists the id, and the version is the one named, or the newest that fits this daemon. The daemon fetches the version's `manifest`, `readme`, `changelog` and `license` once each, and keeps them in `plugin-files/<list>/<id>/<version>/`. A file must be `https:` and at most 1 MB. The answer has `id`, `marketplace`, `version`, `versions`, `readme`, `changelog` and `license`, the manifest's `contracts`, `links` and `optionsSchema`, its `homepage`, `bugs` and `repository`, and the version's icons. A part the daemon could not fetch is one `{ part, problem }` in `problems`, and the rest are answered.
+
+`x-ahpd/plugins/details { id, installed: true }` answers an installed plugin's own files, where `id` is its row: `{ id, readme?, changelog?, license? }`, read from the root of the package it loads from, each at most 1 MB. A plugin from a list, from a folder or from a file shows what is installed, not what a list says of another build.
+
+An install of a source a list has takes its version from that list: the list `--marketplace` or `marketplace` names, then the one the package was installed from, then the first list that has the source. The version is the newest that fits this daemon by the rule npm's versions are read with, a prerelease and a version marked `deprecated` left out. A `github:` source is installed at its version's commit. After npm runs, the package is checked against the list: its integrity for an npm source, and the commit npm resolved for a `github:` one. A package that differs is uninstalled, and an update that differs puts back the version it moved from. Both are refused with the two values. A source no list has installs from npm, or as written. The list each installed package came from is kept in `plugin-marketplaces/installed.json`. A `github:` plugin is left as installed by an update, as before.
 
 ### Writing a plugin in a client
 

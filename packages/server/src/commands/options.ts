@@ -23,6 +23,7 @@ import type { Config, HttpSetting, RoutesSetting } from '../config.js';
 import { asSpec, configDir, configPath, eligibilityProblems, loadConfig, managedPermissionsProblems, shellEnvProblems } from '../config.js';
 import { READY_TIMEOUT_MS } from '../daemon.js';
 import { ICON_LIMIT, ICON_TIMEOUT_MS } from '../icons.js';
+import { DEFAULT_CHECK_HOURS, DEFAULT_MARKETPLACES } from '../pluginlist.js';
 import { sourceOf, pluginIdOf, pluginIdsOf, runPlugins } from '../plugins.js';
 import { proxyConfiguration, proxyProblems, proxySchema, type ProxyConfiguration } from '../proxy/providers.js';
 
@@ -276,6 +277,10 @@ export interface Options {
   noPlugins: boolean;
   /** Ask npm, in the background, whether a newer version exists. */
   updateCheck: boolean;
+  /** The plugin lists the daemon reads, in order; empty reads none. */
+  pluginMarketplaces: string[];
+  /** How many hours a fetched plugin list is kept before it is fetched again. */
+  pluginCheckHours: number;
   /** One line for each key the configuration holds that this daemon does not know. */
   warnings: string[];
   /** The configuration files read, in the order they were merged. */
@@ -1011,6 +1016,20 @@ export const serverFields = {
     description: 'Ask npm, in the background, whether a newer version exists. On by default; --no-update-check, NO_UPDATE_NOTIFIER, CI and "updateCheck": false in the configuration turn it off.',
     cli: { negatable: true },
   },
+  pluginMarketplaces: {
+    type: 'array',
+    items: { type: 'string' },
+    title: 'Plugin marketplaces',
+    description: 'A URL that serves a plugin list, read in the order given. https://plugins.ahpio.com/v1/plugins.json by default; [] in the configuration reads none. Under CI the daemon fetches no list. Repeatable.',
+    cli: { flag: '--plugin-marketplace', value: 'URL' },
+  },
+  pluginCheckHours: {
+    type: 'number',
+    exclusiveMinimum: 0,
+    title: 'Plugin list period',
+    description: 'How many hours a fetched plugin list is kept before the daemon fetches it again. Default 12.',
+    cli: { value: 'HOURS' },
+  },
 } satisfies Record<string, Field>;
 
 /** The fields only the configuration file sets, which have no flag. */
@@ -1191,6 +1210,11 @@ export const pluginWriteFields = {
     type: 'boolean',
     description: 'Take it out of the configuration and leave the package installed.',
   },
+  marketplace: {
+    type: 'string',
+    description: 'The plugin list to install from, one of pluginMarketplaces. Without it, the first list that has the source; a source no list has installs from npm or as written.',
+    cli: { value: 'URL' },
+  },
 } satisfies Record<string, Field>;
 
 /**
@@ -1237,6 +1261,7 @@ export const servedTeamFields = {
 export const servedPluginWriteFields = {
   noEnable: pluginWriteFields.noEnable,
   keep: pluginWriteFields.keep,
+  marketplace: pluginWriteFields.marketplace,
 } satisfies Record<string, Field>;
 
 /**
@@ -1569,6 +1594,8 @@ const noCwd = input['noCwd'] === true;
     typedPlugins,
     noPlugins,
     updateCheck: given('updateCheck') ?? true,
+    pluginMarketplaces: given('pluginMarketplaces') ?? [...DEFAULT_MARKETPLACES],
+    pluginCheckHours: given('pluginCheckHours') ?? DEFAULT_CHECK_HOURS,
     warnings,
     configFiles: loaded.files,
   };

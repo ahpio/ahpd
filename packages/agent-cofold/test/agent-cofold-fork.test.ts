@@ -555,7 +555,7 @@ it('keeps the chat going when the store cannot truncate the conversation', async
   // How t3 ended comes first, with an error's own words, so a failure says which end it was.
   const ends = told(through.notes, through.chatUri)
     .filter((action) => action.turnId === 't3' && (action.type === 'chat/turnComplete' || action.type === 'chat/turnCancelled' || action.type === 'chat/error'))
-    .map((action) => (action.type === 'chat/error' ? `chat/error: ${JSON.stringify(action['error'])}` : String(action.type)));
+    .map((action) => (action.type === 'chat/error' ? `chat/error: ${JSON.stringify(action['part'])}` : String(action.type)));
   expect(ends).toEqual(['chat/turnComplete']);
   expect(told(through.notes, through.chatUri).filter((action) => action.type === 'chat/turnComplete').map((action) => action.turnId))
     .toEqual(['t3']);

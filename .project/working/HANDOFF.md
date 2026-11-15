@@ -10,12 +10,12 @@ Current progress and pending items only, as of 2026-11-15. *Outside this reposit
 ## Main
 
 - The last stable release is 0.14.0 (`v0.14.0`). `v0.15.0-rc.3` is tagged on `28dd315e0` (#320). Its release run 43394827388 passed `parts`, `release` and `image` on 2026-11-13, and staged the 13 packages under `next`. Softov approved them on 2026-11-13, and npm serves `0.15.0-rc.3` under `next` since 14:36 UTC. What the release needs is in [pending/release.md](../pending/release.md), and the checks by hand are ordered in [pending/triage.md](../pending/triage.md).
-- Main's last merge is #338 (`9863785ca`), on 2026-11-15: a Claude history reads across its compactions. On 2026-11-14, #329, #332, #331, #333, #335, #336 and #337 merged. On 2026-11-13, #321 to #328 merged after the rc.3 release. No PR is open.
+- Main's last merge is #339 (`a01d874cb`) on 2026-11-15. With it, the daemon reads the plugin list. Before it, the merge of #340 (`4b4700f3f`) fixed two random cases in tests only. Earlier that day, #338 (`9863785ca`) merged. On 2026-11-14, #329, #332, #331, #333, #335, #336 and #337 merged. On 2026-11-13, #321 to #328 merged after the rc.3 release. No PR is open.
 - plugin/20261114-1455 waits for Softov's review to close.
 - [claude/20261114-1816-the-context-figure-follows-a-long-turn](../plans/claude/20261114-1816-the-context-figure-follows-a-long-turn/plan.md) is merged in #331, and closes on Softov's word. #331 also fixes the plugin turn case that waited a fixed 20 ms.
 - The brief [vs-code-shows-the-claude-context-figure.md](../briefs/vs-code-shows-the-claude-context-figure.md) waits for "plan it".
 - [claude/20261115-0157-the-history-reads-across-compactions](../plans/claude/20261115-0157-the-history-reads-across-compactions/plan.md) is merged in #338, and closes on Softov's word. After a restart, a Claude session shows its turns before each compaction again, and draws each compaction notice. The test daemon check passed at `9863785ca`.
-- [plugin/20261113-2029-the-daemon-reads-the-plugin-list](../plans/plugin/20261113-2029-the-daemon-reads-the-plugin-list/plan.md) is on main since `38301b166`, `planned`, with four tasks `todo`. `0d84c2e27` added the `deprecated` answer and `pluginMarketplaces`. The review of 2026-11-15 is `3f5e00b21`. It fixes the refs against main and lists both entries of one id, each with its marketplace. It adds `installed.json`, no fetch under `CI`, and icons as `data:` URIs. The build of its four tasks is on branch `plugin/20261113-2029-the-daemon-reads-the-plugin-list` in `/github/ahpd.worktrees/plugin-list`, not committed, and waits for Softov's test. The server suite passes 1931 cases, and the checks on a test daemon from the branch passed. The list at `https://plugins.ahpio.com/v1/plugins.json` holds 12 plugins on 2026-11-15.
+- [plugin/20261113-2029-the-daemon-reads-the-plugin-list](../plans/plugin/20261113-2029-the-daemon-reads-the-plugin-list/plan.md) is merged in #339, with four tasks `implemented`, and waits for Softov's review. The daemon reads `pluginMarketplaces`, answers `x-ahpd/plugins/available` and `details`, and installs a listed version. `details` with `installed: true` answers the README, changelog and license of the installed package. Its `linux (2/2)` failed once in the cofold truncation case, and passed on one rerun after #340. The list at `https://plugins.ahpio.com/v1/plugins.json` holds 12 plugins on 2026-11-15.
 - Problems found on 2026-11-14, none with a fix chosen:
   - [stop-refuses-a-run-whose-sessions-run-no-turn.md](../problems/stop-refuses-a-run-whose-sessions-run-no-turn.md): Softov asked for a problem file, not a fix.
   - In ahpw, `the-automation-form-hides-a-model-its-agent-does-not-offer.md` on ahpw main (`7ffec74`).
@@ -38,12 +38,13 @@ Current progress and pending items only, as of 2026-11-15. *Outside this reposit
 ## The dev daemon
 
 - Softov's dev daemon runs from `/github/ahpd` with `~/.config/ahpd/config-dev.json`, on ports 5180 and 37537. It runs from `src`, so a restart is all a merge needs. It needs `DEEPSEEK_API_KEY` in its environment. Never restart it or use its ports yourself.
-- Softov restarted it on 2026-11-13 after #317. Since then, #321, #322, #323, #326, #329, #331, #333, #337 and #338 change the daemon. #324, #325, #327 and #328 change tests only.
+- Softov restarted it on 2026-11-13 after #317. Since then, #321, #322, #323, #326, #329, #331, #333, #337, #338 and #339 change the daemon. #324, #325, #327, #328 and #340 change tests only.
 - #329 lets a bot talk run with no grants on the bot plugin's entry.
 - #331 updates a Claude session's context figure during a turn and after a compaction.
 - #333 moves Claude to SDK 0.3.325 and pi to 1.5.2. A Claude session with `sandbox: on` still runs sandboxed Bash without a prompt. [ideas/sandboxed-bash-asks-as-the-sdk-default.md](../ideas/sandboxed-bash-asks-as-the-sdk-default.md) checks that default in 0.16.
 - #337 settles an automation run when the host ends its session's first turn, such as on a model the agent does not offer.
 - #338 reads a Claude session's turns before each compaction after a restart, and draws each compaction notice.
+- #339 reads the plugin lists, and ahpw (from ahpw #86) shows them in the Plugins sidebar.
 - Softov's automation "Test automation" has a run stuck at `running` since 2026-11-14, on the model `opus[1m]`, which Claude no longer offers. A restart fails that run as interrupted. Its model is fixed by a pick in ahpw's form.
 - A restart brings the bot talk, bots on a host with no users, and the operations in the client's language.
 - It also writes plugin warnings to the daemon's log with a time and a level.
@@ -86,7 +87,7 @@ Current progress and pending items only, as of 2026-11-15. *Outside this reposit
 
 Remove each only on Softov's word.
 
-- On 2026-11-14, Softov had the merged worktrees removed. On 2026-11-15, `/github/ahpd.worktrees/claude-history` (merged in #338), `/github/ahpd.worktrees/handoff` (detached, for HANDOFF commits on main), `/github/ahpd.worktrees/plugin-list-review` (detached, for the plan review) were added. `/github/ahpd.worktrees/plugin-list` holds the build of the plugin list plan.
+- On 2026-11-14, Softov had the merged worktrees removed. On 2026-11-15, `/github/ahpd.worktrees/claude-history` (merged in #338), `/github/ahpd.worktrees/handoff` (detached, for HANDOFF commits on main), `/github/ahpd.worktrees/plugin-list-review` (detached, for the plan review) were added. `plugin-list` and `cofold-print` were removed after #339 and #340 merged, with ahpw's `plugin-browse`.
 - About 60 local branches have no worktree, from plans built before 2026-11-12. `git branch` lists them, and deleting them waits for Softov's word.
 - Another session left changes in `/github/ahpd` that are not committed. They are the brief `a-cloudflare-tunnel-publishes-the-daemon.md` and the new brief `the-agents-are-listed-by-provider.md`. Leave them.
 - `/github/ahpw` is on `host-refine-ui`, from another session. Its local main is fast-forwarded with `git fetch origin main:main`.
@@ -133,8 +134,8 @@ Each plan here has every task `implemented`, and closes as `built` on Softov's w
 ## Open findings with no brief yet
 
 - `@ahpd/agent-acp` 0.14.0 declares `@ahpd/sdk >=0.10 <1`, and does not import beside sdk 0.15.0-rc.3, which no longer exports `callTimes`. A daemon on rc.3 installs 0.14.0, since the version rule skips a prerelease. Seen on 2026-11-15.
-- ahpw's plan `plugins/20261115-0746-a-person-finds-a-plugin-to-install` is on ahpw main at `e0cedea`. Its build is on branch `plugins/20261115-0746-a-person-finds-a-plugin-to-install` in `/github/ahpw.worktrees/plugin-browse`, not committed, and waits for Softov's test. It needs a host from the ahpd branch of plugin/20261113-2029, which now answers `installed.id`.
-- Softov's test of 2026-11-15 found that `x-ahpd/plugins/remove` gave npm the row id, and that `npm uninstall` ran without `--legacy-peer-deps`. Both are fixed on the ahpd branch. His `~/.config/ahpd` may still hold `@ahpd/web` in `package.json`, since that uninstall failed.
+- ahpw's plan `plugins/20261115-0746-a-person-finds-a-plugin-to-install` is merged in ahpw #86 (`108a3e719`), with four tasks `implemented`, and waits for Softov's review. The Plugins sidebar is one list with search and Install. An installed plugin's page has Overview, Features and Settings from its own package, and Marketplace facts only when it came from a list.
+- Softov's test of 2026-11-15 found that `x-ahpd/plugins/remove` gave npm the row id, and that `npm uninstall` ran without `--legacy-peer-deps`. Both are fixed in #339. His `~/.config/ahpd` may still hold `@ahpd/web` in `package.json`, since that uninstall failed.
 - The plugin list names first-party plugins without their scope, such as `agent-acp`. ahpd names them `ahpd-agent-acp`, since none exports a `name`. The plugins repository's check (`scripts/check.mjs`, `unscoped`) holds the list to the first rule. The build of plugin/20261113-2029 matches by source first.
 - Each read of the session list starts one server per ACP preset that has `session/list`, 8 on Softov's box. A fix would answer from the record and ask the servers only on a refresh.
 - A restored ACP session shows the host's added first-prompt text as the person's own words, in Codex and Gemini.

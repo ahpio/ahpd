@@ -1,6 +1,6 @@
 ---
 title: The daemon keeps the list on disk
-status: todo
+status: implemented
 depends: []
 layer: "server"
 refs:
@@ -62,3 +62,10 @@ Under `CI`, the daemon fetches nothing.
 - Two stubbed marketplaces with the same id answer two entries, each with `marketplace` set to its URL.
 
 ## Resume
+
+Built on 2026-11-15; awaits review.
+`pluginlist.ts` holds the fetch, the files and the reads. `run.ts` calls `refreshMarketplaces` at start and on a timer of the period, capped at 2^31 - 1 ms. A new list refreshes the plugin channel. Under `CI` it fetches nothing.
+The flags are `--plugin-marketplace <url>`, which repeats, and `--plugin-check-hours`.
+`ahpd configure` asks `Plugin marketplaces` last, after the folders, since the configure cases answer by position. `ask` cannot answer with nothing, so `none` reads no list, in place of the empty answer of step 16. Enter keeps the default unwritten.
+`pnpm exec tsc -p tsconfig.json --noEmit` in `packages/server` cannot find `@ahpd/sdk` in a fresh worktree, so `pnpm typecheck` at the root was run, and passes.
+`pluginlist.test.ts` passes 36 cases. A test daemon from the branch ran on port 39200. Its start wrote one file in `plugin-marketplaces/`, and a restart left its `checkedAt` as it was. A start with `CI=1` wrote none.

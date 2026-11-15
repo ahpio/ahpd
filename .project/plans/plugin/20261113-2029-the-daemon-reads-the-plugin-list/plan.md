@@ -83,6 +83,7 @@ client -> x-ahpd/plugins/install {source, marketplace?} -> listed? versions from
 | The fetch sends `User-Agent: ahpd/<version>` | Softov, 2026-10-25: "Yes for the User-Agent" | 01 |
 | The fetch sends no telemetry | Softov, 2026-10-25: "No telemetry for now" | 01 |
 | The list is a registry action and a plugin channel command; each entry says if its id is installed | Softov, 2026-10-25 | 02 |
+| An entry is installed when an installed package is its source, and else when an installed plugin has its id | Softov, 2026-11-15: "Match by source, then by id" | 02 |
 | `available` answers each icon as a `data:` URI that the daemon fetched and keeps on disk | Softov, 2026-11-15: "Daemon fetches, answers data: URIs" | 02 |
 | A details command answers the README, contracts, links and options schema of one entry | Softov, 2026-10-25 | 04 |
 | A client never contacts plugins.ahpio.com or the registry; the daemon fetches and keeps the files | Softov, 2026-10-25 | 02, 04 |
@@ -95,6 +96,7 @@ client -> x-ahpd/plugins/install {source, marketplace?} -> listed? versions from
 | Each list's file is in `plugin-marketplaces/` in the configuration folder, named by a hash of its URL, with its `ETag` | `(defaulted: beside update.json)` | 01 |
 | A details file is kept under `plugin-files/<hash>/<id>/<version>/` and never fetched again | `(defaulted: a version's files never change)` | 04 |
 | `x-ahpd/plugins/available` and `details` need `plugin:list` | `(defaulted: the grant that reads the plugin channel)` | 02, 04 |
+| `details` with `installed: true` answers the files of the installed package | Softov, 2026-11-15: "the plugin detail is the readme already present onto the system also, if any and no marketplace." | 04 |
 
 ## Proposed architecture
 
@@ -108,10 +110,10 @@ client -> x-ahpd/plugins/install {source, marketplace?} -> listed? versions from
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - The daemon keeps the list on disk](task-01-the-daemon-keeps-the-list-on-disk.md) | todo | - |
-| [02 - A client reads the list](task-02-a-client-reads-the-list.md) | todo | 01 |
-| [03 - An install takes a listed version](task-03-an-install-takes-a-listed-version.md) | todo | 01 |
-| [04 - A client reads a listed plugin's details](task-04-a-client-reads-a-listed-plugins-details.md) | todo | 02 |
+| [01 - The daemon keeps the list on disk](task-01-the-daemon-keeps-the-list-on-disk.md) | implemented | - |
+| [02 - A client reads the list](task-02-a-client-reads-the-list.md) | implemented | 01 |
+| [03 - An install takes a listed version](task-03-an-install-takes-a-listed-version.md) | implemented | 01 |
+| [04 - A client reads a listed plugin's details](task-04-a-client-reads-a-listed-plugins-details.md) | implemented | 02 |
 
 ## Risks and tradeoffs
 
@@ -123,9 +125,11 @@ client -> x-ahpd/plugins/install {source, marketplace?} -> listed? versions from
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-the-daemon-keeps-the-list-on-disk.md](task-01-the-daemon-keeps-the-list-on-disk.md).
+- **Done so far:** tasks 01 to 04 are built on branch `plugin/20261113-2029-the-daemon-reads-the-plugin-list` in `/github/ahpd.worktrees/plugin-list` on 2026-11-15, not committed. Each task's *Resume* says what ran and where the build differs from its steps.
+- **Next action:** Softov tests the branch. The tree is committed and a PR is opened on his word.
 - **Open questions:** none.
+- **Found in Softov's test of 2026-11-15:** `x-ahpd/plugins/remove` gave npm the row's id, such as `web`, in place of the package, `@ahpd/web`. Every `npm uninstall` also ran without `--legacy-peer-deps`, so a root with an older plugin failed with ERESOLVE. Both are fixed on the branch, each with a test.
+- **Found in the build:** the list's ids are not the ids ahpd gives the first-party plugins. None exports a `name`, so ahpd calls `@ahpd/agent-acp` `ahpd-agent-acp`, and the plugins repository's check strips the scope to `agent-acp`. `available` matches by source first for this reason. The check is in the plugins repository, and is not changed here.
 - **Watch out for:** the tests stub the fetch; no test reaches plugins.ahpio.com. A spawned test daemon has `CI=1` from `daemonEnv`, which keeps it off the network.
 
 ## Final verification checklist

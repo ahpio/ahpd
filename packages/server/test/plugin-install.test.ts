@@ -7,6 +7,8 @@ import { fittingVersion, installPlugins, isPackageName, launch, packageOf, pinne
 import type { Ran, Runner } from '../src/install.js';
 import { registry } from '../src/update.js';
 import type { Fetch } from '../src/update.js';
+import { readInstalled, recordInstalled, refreshMarketplace } from '../src/pluginlist.js';
+import type { ListedPlugin, ListedVersion } from '../src/pluginlist.js';
 
 /*
  * `ahpd plugin install` and `ahpd plugin remove`, without npm.
@@ -466,7 +468,7 @@ it('uninstalls and refuses a source whose package has no ahpd field', async () =
     configDir, configFile, version: '0.8.0', enable: true, run: runner, fetch: aPlugin, say,
   })).rejects.toThrow('demo is not an ahpd plugin: its package.json has no "ahpd" field.');
   expect(calls.map((one) => one.argv[0])).toEqual(['install', 'uninstall']);
-  expect(calls[1]?.argv).toEqual(['uninstall', '--prefix', configDir, '--', 'demo']);
+  expect(calls[1]?.argv).toEqual(['uninstall', '--prefix', configDir, '--legacy-peer-deps', '--', 'demo']);
   expect(existsSync(configFile)).toBe(false);
 });
 
@@ -480,7 +482,7 @@ it('uninstalls and refuses a source whose package landed no manifest at all', as
     configDir, configFile, version: '0.8.0', enable: true, run: runner, fetch: aPlugin, say,
   })).rejects.toThrow('demo is not an ahpd plugin: its package.json has no "ahpd" field.');
   expect(calls.map((one) => one.argv[0])).toEqual(['install', 'uninstall']);
-  expect(calls[1]?.argv).toEqual(['uninstall', '--prefix', configDir, '--', 'demo']);
+  expect(calls[1]?.argv).toEqual(['uninstall', '--prefix', configDir, '--legacy-peer-deps', '--', 'demo']);
   expect(existsSync(configFile)).toBe(false);
 });
 
@@ -555,7 +557,7 @@ it('removes a string entry and an object entry, then uninstalls them', async () 
   expect(read().plugins).toEqual(['@ahpd/c']);
   expect(read().port).toBe(1234);
   expect(calls.find((one) => one.argv[0] === 'uninstall')?.argv)
-    .toEqual(['uninstall', '--prefix', configDir, '--', '@ahpd/a', '@ahpd/b']);
+    .toEqual(['uninstall', '--prefix', configDir, '--legacy-peer-deps', '--', '@ahpd/a', '@ahpd/b']);
 });
 
 it('drops the name with --keep but leaves the package installed', async () => {
@@ -831,7 +833,7 @@ it('removes from the plugin root when the variable is set, and configures the da
   write({ plugins: ['@ahpd/a'] });
   const { runner, calls } = fake();
   await removePlugins(['@ahpd/a'], { configDir, configFile, uninstall: true, run: runner, say });
-  expect(calls.map((one) => one.argv)).toEqual([['uninstall', '--prefix', pluginRoot, '--', '@ahpd/a']]);
+  expect(calls.map((one) => one.argv)).toEqual([['uninstall', '--prefix', pluginRoot, '--legacy-peer-deps', '--', '@ahpd/a']]);
   expect(read().plugins).toEqual([]);
   expect(said.join('\n')).toContain(pluginRoot);
 });
@@ -944,7 +946,7 @@ it('never uninstalls the sdk', async () => {
   write({ plugins: ['@ahpd/a'] });
   const { runner, calls } = fake();
   await removePlugins(['@ahpd/a', '@ahpd/sdk'], { configDir, configFile, uninstall: true, run: runner, say });
-  expect(calls.map((one) => one.argv)).toEqual([['uninstall', '--prefix', configDir, '--', '@ahpd/a']]);
+  expect(calls.map((one) => one.argv)).toEqual([['uninstall', '--prefix', configDir, '--legacy-peer-deps', '--', '@ahpd/a']]);
   calls.length = 0;
   await removePlugins(['@ahpd/sdk'], { configDir, configFile, uninstall: true, run: runner, say });
   expect(calls).toEqual([]);
@@ -1073,4 +1075,166 @@ it('says the Removing line before npm runs', async () => {
   const { runner, before } = heard();
   await removePlugins(['@ahpd/a', '@ahpd/b'], { configDir, configFile, uninstall: true, run: runner, say });
   expect(before).toEqual([[`plugins -= @ahpd/a, @ahpd/b in ${configFile}.`, 'Removing @ahpd/a, @ahpd/b with npm.']]);
+});
+
+/*
+ * A source a plugin list has takes its version from the list, and npm's
+ * result is checked against it.
+ */
+
+const OURS = 'https://plugins.example.com/v1/plugins.json';
+const THEIRS = 'https://other.example.com/v1/plugins.json';
+
+/** Keep a list for `url` in the configuration folder, as the daemon's fetch would. */
+const listed = async (url: string, plugins: ListedPlugin[]): Promise<void> => {
+  const fetch: Fetch = async () => Response.json({ version: 1, plugins });
+  expect(await refreshMarketplace({ url, version: '0.15.0', dir: configDir, fetch })).toBe('written');
+};
+
+/** One listed version with its integrity, or its commit for a git source. */
+const listedVersion = (version: string, more: Partial<ListedVersion> = {}): ListedVersion => ({
+  version,
+  sdk: '>=0.10 <1',
+  integrity: `sha512-${version}`,
+  files: { download: `https://registry.example.com/${version}.tgz`, manifest: `https://plugins.example.com/${version}/package.json` },
+  ...more,
+});
+
+/** agent-acp as a list holds it. */
+const acp = (versions: ListedVersion[]): ListedPlugin => ({ id: 'agent-acp', source: '@ahpd/agent-acp', versions });
+
+/**
+ * The fake runner, which also writes `node_modules/.package-lock.json` after an
+ * install as npm does, with the integrity or the resolved URL each package
+ * name is given here.
+ */
+const locking = (locks: Record<string, { integrity?: string; resolved?: string }>, lands: Record<string, string> = {}, added?: Record<string, string>) => {
+  const inner = fake({}, lands, added === undefined ? {} : { added });
+  const runner: Runner = async (program, argv, options) => {
+    const done = await inner.runner(program, argv, options);
+    const at = argv.indexOf('--prefix');
+    if (argv[0] === 'install' && done.code === 0 && at !== -1) {
+      const into = argv[at + 1] as string;
+      const packages = Object.fromEntries(Object.entries(locks).map(([name, lock]) => [`node_modules/${name}`, lock]));
+      mkdirSync(join(into, 'node_modules'), { recursive: true });
+      writeFileSync(join(into, 'node_modules', '.package-lock.json'), JSON.stringify({ packages }));
+    }
+    return done;
+  };
+  return { runner, calls: inner.calls };
+};
+
+it('installs a listed name at the list\'s version, asks npm nothing first, and keeps its marketplace', async () => {
+  write({ plugins: [] });
+  await listed(OURS, [acp([listedVersion('0.16.0-rc.1'), listedVersion('0.14.0'), listedVersion('0.13.0')])]);
+  const { runner, calls } = locking({ '@ahpd/agent-acp': { integrity: 'sha512-0.14.0' } });
+  const registryAsked = fakeRegistry({});
+  await installPlugins(['@ahpd/agent-acp'], {
+    configDir, configFile, version: '0.15.0', enable: true, run: runner, fetch: registryAsked.fetch, say, marketplaces: [OURS],
+  });
+  expect(registryAsked.asked).toEqual([]);
+  expect(calls[0]?.argv.at(-1)).toBe('@ahpd/agent-acp@0.14.0');
+  expect(readInstalled(configDir)).toEqual({ '@ahpd/agent-acp': { marketplace: OURS, source: '@ahpd/agent-acp' } });
+});
+
+it('refuses a listed install whose integrity differs, names both values, and leaves no package', async () => {
+  write({ plugins: [] });
+  await listed(OURS, [acp([listedVersion('0.14.0')])]);
+  const { runner, calls } = locking({ '@ahpd/agent-acp': { integrity: 'sha512-other' } });
+  await expect(installPlugins(['@ahpd/agent-acp'], {
+    configDir, configFile, version: '0.15.0', enable: true, run: runner, fetch: aPlugin, say, marketplaces: [OURS],
+  })).rejects.toThrow(`@ahpd/agent-acp 0.14.0 is not the one ${OURS} lists: npm installed integrity sha512-other, the list has sha512-0.14.0.`);
+  expect(calls.map((one) => one.argv[0])).toEqual(['install', 'uninstall']);
+  expect(read().plugins).toEqual([]);
+  expect(readInstalled(configDir)).toEqual({});
+});
+
+it('installs from the marketplace named, at that list\'s version', async () => {
+  write({ plugins: [] });
+  await listed(OURS, [acp([listedVersion('0.14.0')])]);
+  await listed(THEIRS, [acp([listedVersion('0.13.0')])]);
+  const { runner, calls } = locking({ '@ahpd/agent-acp': { integrity: 'sha512-0.13.0' } });
+  await installPlugins(['@ahpd/agent-acp'], {
+    configDir, configFile, version: '0.15.0', enable: true, run: runner, fetch: aPlugin, say, marketplaces: [OURS, THEIRS], marketplace: THEIRS,
+  });
+  expect(calls[0]?.argv.at(-1)).toBe('@ahpd/agent-acp@0.13.0');
+  expect(readInstalled(configDir)['@ahpd/agent-acp']?.marketplace).toBe(THEIRS);
+});
+
+it('refuses a marketplace pluginMarketplaces does not name, before npm runs', async () => {
+  write({ plugins: [] });
+  const { runner, calls } = locking({});
+  await expect(installPlugins(['@ahpd/agent-acp'], {
+    configDir, configFile, version: '0.15.0', enable: true, run: runner, fetch: aPlugin, say, marketplaces: [OURS], marketplace: THEIRS,
+  })).rejects.toThrow(`${THEIRS} is not in pluginMarketplaces.`);
+  expect(calls).toEqual([]);
+});
+
+it('installs a name no list has from npm, as before', async () => {
+  write({ plugins: [] });
+  await listed(OURS, [acp([listedVersion('0.14.0')])]);
+  const { runner, calls } = locking({});
+  const registryAsked = fakeRegistry({ 'left-pad': packument(['1.3.0']), 'left-pad/1.3.0': { version: '1.3.0', ahpd: {} } });
+  await installPlugins(['left-pad'], {
+    configDir, configFile, version: '0.15.0', enable: true, run: runner, fetch: registryAsked.fetch, say, marketplaces: [OURS],
+  });
+  expect(registryAsked.asked).toEqual(['left-pad', 'left-pad/1.3.0']);
+  expect(calls[0]?.argv.at(-1)).toBe('left-pad@1.3.0');
+  expect(readInstalled(configDir)).toEqual({});
+});
+
+it('installs a listed github: source at its version\'s commit, and checks the commit npm resolved', async () => {
+  write({ plugins: [] });
+  const git: ListedVersion = { version: '0.8.0', commit: 'abc123', files: { download: 'https://codeload.example.com/abc123', manifest: 'https://plugins.example.com/web/package.json' } };
+  await listed(OURS, [{ id: 'web', source: 'github:ahpio/ahpw', versions: [git] }]);
+  const { runner, calls } = locking({ web: { resolved: 'git+ssh://git@github.com/ahpio/ahpw.git#abc123' } }, { web: '0.8.0' }, { web: 'github:ahpio/ahpw#abc123' });
+  expect(await installPlugins(['github:ahpio/ahpw'], {
+    configDir, configFile, version: '0.15.0', enable: true, run: runner, fetch: aPlugin, say, marketplaces: [OURS],
+  })).toEqual(['web']);
+  expect(calls[0]?.argv.at(-1)).toBe('github:ahpio/ahpw#abc123');
+  expect(readInstalled(configDir)).toEqual({ web: { marketplace: OURS, source: 'github:ahpio/ahpw' } });
+});
+
+it('refuses a listed github: install whose commit differs', async () => {
+  write({ plugins: [] });
+  const git: ListedVersion = { version: '0.8.0', commit: 'abc123', files: { download: 'https://codeload.example.com/abc123', manifest: 'https://plugins.example.com/web/package.json' } };
+  await listed(OURS, [{ id: 'web', source: 'github:ahpio/ahpw', versions: [git] }]);
+  const { runner } = locking({ web: { resolved: 'git+ssh://git@github.com/ahpio/ahpw.git#fff000' } }, { web: '0.8.0' }, { web: 'github:ahpio/ahpw#abc123' });
+  await expect(installPlugins(['github:ahpio/ahpw'], {
+    configDir, configFile, version: '0.15.0', enable: true, run: runner, fetch: aPlugin, say, marketplaces: [OURS],
+  })).rejects.toThrow(`web 0.8.0 is not the one ${OURS} lists: npm installed commit fff000, the list has abc123.`);
+});
+
+it('puts back the version an update moved from when the list refuses the new one', async () => {
+  installed({ '@ahpd/agent-acp': '0.13.0' });
+  await listed(OURS, [acp([listedVersion('0.14.0'), listedVersion('0.13.0')])]);
+  const { runner, calls } = locking({ '@ahpd/agent-acp': { integrity: 'sha512-other' } }, { '@ahpd/agent-acp': '0.14.0' });
+  await expect(updatePlugins('all', {
+    configDir, version: '0.15.0', run: runner, fetch: aPlugin, say, marketplaces: [OURS],
+  })).rejects.toThrow(`@ahpd/agent-acp 0.14.0 is not the one ${OURS} lists`);
+  expect(calls.map((one) => one.argv.at(-1))).toEqual(['@ahpd/agent-acp@0.14.0', '@ahpd/agent-acp@0.13.0']);
+});
+
+it('updates a listed package to the list\'s version, and keeps its marketplace', async () => {
+  installed({ '@ahpd/agent-acp': '0.13.0' });
+  await listed(OURS, [acp([listedVersion('0.14.0', { deprecated: 'Broken.' }), listedVersion('0.13.1'), listedVersion('0.13.0')])]);
+  const { runner, calls } = locking({ '@ahpd/agent-acp': { integrity: 'sha512-0.13.1' } }, { '@ahpd/agent-acp': '0.13.1' });
+  await updatePlugins('all', { configDir, version: '0.15.0', run: runner, fetch: aPlugin, say, marketplaces: [OURS] });
+  expect(calls.map((one) => one.argv.at(-1))).toEqual(['@ahpd/agent-acp@0.13.1']);
+  expect(readInstalled(configDir)['@ahpd/agent-acp']?.marketplace).toBe(OURS);
+});
+
+it('forgets the marketplace of a package removed', async () => {
+  write({ plugins: ['@ahpd/agent-acp'] });
+  recordInstalled(configDir, '@ahpd/agent-acp', { marketplace: OURS, source: '@ahpd/agent-acp' });
+  const { runner } = fake();
+  await removePlugins(['@ahpd/agent-acp'], { configDir, configFile, uninstall: true, run: runner, say });
+  expect(readInstalled(configDir)).toEqual({});
+});
+
+it('uninstalls with --legacy-peer-deps, so a plugin in the root whose peer range leaves out the sdk installed does not stop a remove', async () => {
+  write({ plugins: ['@ahpd/web'] });
+  const { runner, calls } = fake();
+  await removePlugins(['@ahpd/web'], { configDir, configFile, uninstall: true, run: runner, say });
+  expect(calls[0]?.argv).toContain('--legacy-peer-deps');
 });

@@ -25,7 +25,9 @@ import { readJsonObject, writeJsonAtomic } from '@ahpd/sdk';
 import type { PluginSpec } from '@ahpd/sdk';
 import { asSpec } from './config.js';
 import { hasScheme, isNamed, sourceOf, pluginIdOf } from './plugins.js';
-import { satisfies } from './compat.js';
+import { newestFitting, type Offered } from './compat.js';
+import { fittingListed, forgetInstalled, installedListing, listedVersions, recordInstalled } from './pluginlist.js';
+import type { Listing, ListedVersion } from './pluginlist.js';
 import { askRegistry, newer, parse, registryPath } from './update.js';
 import type { Fetch } from './update.js';
 
@@ -208,6 +210,8 @@ const ABBREVIATED = 'application/vnd.npm.install-v1+json';
 export interface VersionOptions {
   /** How the registry is asked; absent, or undefined, is the global `fetch`. */
   fetch?: Fetch | undefined;
+  /** The plugin list entry the package is listed in, whose versions are read in place of the registry's. */
+  listing?: Listing | undefined;
 }
 
 /** A packument's `versions`, or nothing when the answer is not one. */
@@ -238,12 +242,6 @@ const sdkRangeOf = (manifest: unknown): string | undefined => {
   return typeof range === 'string' ? range : undefined;
 };
 
-/** Why no version of a package can be installed, naming the newest one's range. */
-const noFit = (name: string, newest: { version: string; range: string } | undefined, daemonVersion: string): string =>
-  newest === undefined
-    ? `${name} has no version that admits @ahpd/sdk ${daemonVersion}.`
-    : `${name} has no version that admits @ahpd/sdk ${daemonVersion}: its newest, ${newest.version}, needs ${newest.range}.`;
-
 /**
  * The newest version of a registry package that this daemon can load.
  *
@@ -260,32 +258,27 @@ const noFit = (name: string, newest: { version: string; range: string } | undefi
  * own version is `unknown`, which no range can be compared against. When the
  * registry did answer and no version admits the daemon, this refuses, because
  * the loader would refuse such a plugin at the next start.
+ *
+ * A package in a plugin list is read from its `listing` and not from the
+ * registry, by the same rule: the newest listed version is the upper limit in
+ * place of `dist-tags.latest`, which a list does not carry, and a version the
+ * list marks `deprecated` is never chosen.
  */
 export const fittingVersion = async (name: string, daemonVersion: string, options: VersionOptions = {}): Promise<string | undefined> => {
   if (daemonVersion === 'unknown') return undefined;
+  if (options.listing !== undefined) return fittingListed(name, options.listing.plugin.versions, daemonVersion)?.version;
   const packument = await askRegistry(registryPath(name), { fetch: options.fetch, accept: ABBREVIATED });
   const versions = versionsIn(packument);
   if (versions === undefined) return undefined;
   const latest = latestIn(packument);
-  /** The newest version considered, kept for the refusal below, which names its range. */
-  let newest: { version: string; range: string } | undefined;
-  const fits: string[] = [];
+  const offered: Offered[] = [];
   for (const [version, manifest] of Object.entries(versions)) {
     const read = parse(version);
     if (read === undefined || read.prerelease) continue;
     if (latest !== undefined && newer(version, latest)) continue;
-    const range = sdkRangeOf(manifest);
-    if (range !== undefined && (newest === undefined || newer(version, newest.version))) newest = { version, range };
-    // No range is a plugin that declares nothing to check, which is one the
-    // loader loads; a range this daemon cannot read is one it would refuse.
-    if (range === undefined) { fits.push(version); continue; }
-    try {
-      if (satisfies(daemonVersion, range)) fits.push(version);
-    }
-    catch { /* refused at the next start, so not installed now */ }
+    offered.push({ version, range: sdkRangeOf(manifest) });
   }
-  if (fits.length === 0) throw new Error(noFit(name, newest, daemonVersion));
-  return fits.reduce((best, one) => (newer(one, best) ? one : best));
+  return newestFitting(name, offered, daemonVersion);
 };
 
 /**
@@ -590,6 +583,18 @@ export interface InstallOptions {
   fetch: Fetch;
   /** One line of this command's own output. */
   say(line: string): void;
+  /** The plugin lists a listed source takes its versions from, in order; absent reads none, and npm decides. */
+  marketplaces?: readonly string[] | undefined;
+  /** The marketplace the sources install from, which `marketplaces` must name; absent takes the first that lists each. */
+  marketplace?: string | undefined;
+}
+
+/** One source as npm is given it, with the listed version it was chosen as, when a list chose it. */
+interface Wanted {
+  /** What npm is given. */
+  target: string;
+  /** The list entry and the version npm is checked against after it runs. */
+  listed?: { listing: Listing; version: ListedVersion };
 }
 
 /** A package name as the registry has it, which a path, a URL and git's `owner/repo` are not. */
@@ -612,21 +617,77 @@ const REGISTRY_NAME = /^(?:@[a-z0-9~-][a-z0-9._~-]*\/)?[a-z0-9~-][a-z0-9._~-]*$/
  * A registry that does not answer, or has no such version, is npm's to report.
  * Every name is asked at once, so three names are three requests and not one
  * request three times over.
+ *
+ * A source a plugin list has, an npm name or a `github:` source alike, takes
+ * its version from that list (`listedVersions`): a `github:` source is then
+ * installed at its version's commit. A listed version is not asked of the
+ * registry, since the check after npm reads its manifest, and the version npm
+ * installs is checked against the list there. A source no list has installs as
+ * it does with no list.
  */
-const refuseNonPlugins = async (names: readonly string[], options: InstallOptions): Promise<string[]> => {
-  return Promise.all(names.map(async (name) => {
+const refuseNonPlugins = async (names: readonly string[], options: InstallOptions): Promise<Wanted[]> => {
+  const lists = options.marketplaces === undefined ? undefined : { urls: options.marketplaces, dir: options.configDir, marketplace: options.marketplace };
+  return Promise.all(names.map(async (name): Promise<Wanted> => {
     const bare = packageOf(name);
-    if (!REGISTRY_NAME.test(bare)) return name;
-    const chosen = name === bare ? await fittingVersion(bare, options.version, { fetch: options.fetch }) : undefined;
+    if (!REGISTRY_NAME.test(bare)) {
+      const listing = lists === undefined ? undefined : listedVersions(name, lists);
+      if (listing === undefined) return { target: name };
+      const version = fittingListed(name, listing.plugin.versions, options.version);
+      if (version === undefined) return { target: name };
+      if (version.commit === undefined) throw new Error(`${name} ${version.version} has no commit in ${listing.marketplace}, so it cannot be installed from that list.`);
+      return { target: `${name}#${version.commit}`, listed: { listing, version } };
+    }
+    const listing = lists === undefined ? undefined : listedVersions(bare, lists);
+    const chosen = name === bare ? await fittingVersion(bare, options.version, { fetch: options.fetch, listing }) : undefined;
     const target = chosen === undefined ? name : `${bare}@${chosen}`;
     const tag = target === bare ? 'latest' : target.slice(bare.length + 1);
+    const version = listing?.plugin.versions.find((one) => one.version === tag);
+    if (listing !== undefined && version !== undefined) return { target, listed: { listing, version } };
     const manifest = await askRegistry(`${registryPath(bare)}/${encodeURIComponent(tag)}`, { fetch: options.fetch });
-    if (manifest === undefined) return target;
+    if (manifest === undefined) return { target };
     if (typeof manifest !== 'object' || manifest === null || !('ahpd' in manifest)) {
       throw new Error(`${bare} is not an ahpd plugin: its package.json has no "ahpd" field.`);
     }
-    return target;
+    return { target };
   }));
+};
+
+/**
+ * What npm installed for one package, as its lock file says: the integrity of
+ * a registry package, and the `resolved` URL of a git one.
+ */
+const lockedIn = (root: string, name: string): { integrity?: string; resolved?: string } => {
+  try {
+    const packages = readEntry(join(root, 'node_modules', '.package-lock.json')).packages;
+    const held = typeof packages === 'object' && packages !== null ? (packages as Record<string, unknown>)[`node_modules/${name}`] : undefined;
+    if (typeof held !== 'object' || held === null) return {};
+    const { integrity, resolved } = held as Record<string, unknown>;
+    return {
+      ...(typeof integrity === 'string' ? { integrity } : {}),
+      ...(typeof resolved === 'string' ? { resolved } : {}),
+    };
+  }
+  catch {
+    return {};
+  }
+};
+
+/**
+ * Why the package npm installed is not the one its list names, or nothing.
+ *
+ * An npm source is checked by its integrity, and a `github:` source by the
+ * commit npm resolved it to. A value npm left no record of is a difference
+ * too, since nothing then says the two are the same.
+ */
+export const listedMismatch = (root: string, name: string, listed: { listing: Listing; version: ListedVersion }): string | undefined => {
+  const { listing, version } = listed;
+  const locked = lockedIn(root, name);
+  const [what, expected, actual] = version.commit !== undefined && version.integrity === undefined
+    ? ['commit', version.commit, locked.resolved?.split('#').pop()]
+    : ['integrity', version.integrity, locked.integrity];
+  if (expected === undefined) return `${name} ${version.version} has no ${what} in ${listing.marketplace}, so it cannot be checked.`;
+  if (actual !== undefined && actual.toLowerCase() === expected.toLowerCase()) return undefined;
+  return `${name} ${version.version} is not the one ${listing.marketplace} lists: npm installed ${what} ${actual ?? 'none'}, the list has ${expected}.`;
 };
 
 /** Whether a source names a package the registry can be asked about, rather than a path, a URL or a git spec. */
@@ -731,7 +792,8 @@ export async function installPlugins(names: readonly string[], options: InstallO
     }
     if (packageOf(name) === SDK) throw new Error(SDK_IS_NOT_A_PLUGIN);
   }
-  const wanted = await refuseNonPlugins(names, options);
+  const asked = await refuseNonPlugins(names, options);
+  const wanted = asked.map((one) => one.target);
   const root = pluginRoot(options.configDir);
   // The config dir is made either way: the packages may go elsewhere, but
   // the entry is still written to the daemon's own configuration there.
@@ -762,10 +824,19 @@ export async function installPlugins(names: readonly string[], options: InstallO
      */
     const manifest = manifestIn(root, name);
     if (manifest === undefined || !('ahpd' in manifest)) {
-      const undone = await options.run('npm', ['uninstall', '--prefix', root, '--', name]);
+      const undone = await options.run('npm', ['uninstall', '--prefix', root, '--legacy-peer-deps', '--', name]);
       if (undone.code !== 0) throw npmFailed(`npm could not uninstall ${name}, which is not an ahpd plugin`, undone);
       throw new Error(`${name} is not an ahpd plugin: its package.json has no "ahpd" field.`);
     }
+    // A version a list chose is the one the list names, or it is not kept.
+    const listed = asked[at]?.listed;
+    const differs = listed === undefined ? undefined : listedMismatch(root, name, listed);
+    if (differs !== undefined) {
+      const undone = await options.run('npm', ['uninstall', '--prefix', root, '--legacy-peer-deps', '--', name]);
+      if (undone.code !== 0) throw npmFailed(`npm could not uninstall ${name}, which is not the version its list names`, undone);
+      throw new Error(differs);
+    }
+    if (listed !== undefined) recordInstalled(options.configDir, name, { marketplace: listed.listing.marketplace, source: listed.listing.plugin.source });
     packages.push(name);
   }
   options.say(`Installed ${wanted.join(', ')} into ${root}.`);
@@ -792,6 +863,8 @@ export interface UpdateOptions {
   fetch: Fetch;
   /** One line of this command's own output. */
   say(line: string): void;
+  /** The plugin lists a listed package takes its versions from, in order; absent reads none, and npm decides. */
+  marketplaces?: readonly string[] | undefined;
 }
 
 /** A package `plugin update` moved, with its version on disk before and after npm; absent is not installed. */
@@ -859,11 +932,19 @@ export async function updatePlugins(names: 'all' | readonly string[], options: U
    * load has nothing to be installed at, and is said in the same words an
    * install refuses it with.
    */
-  const planned = await Promise.all(moving.map(async (name): Promise<{ name: string; target: string } | { name: string; why: string }> => {
+  type Planned = { name: string; target: string; listed?: { listing: Listing; version: ListedVersion } } | { name: string; why: string };
+  const planned = await Promise.all(moving.map(async (name): Promise<Planned> => {
     if (name !== packageOf(name)) return { name, target: name };
     try {
-      const version = await fittingVersion(name, options.version, { fetch: options.fetch });
-      return { name, target: version === undefined ? `${name}@latest` : `${name}@${version}` };
+      // The list the package was installed from, or the first that lists it.
+      const listing = options.marketplaces === undefined ? undefined : installedListing(name, { urls: options.marketplaces, dir: options.configDir });
+      const version = await fittingVersion(name, options.version, { fetch: options.fetch, listing });
+      const listed = listing?.plugin.versions.find((one) => one.version === version);
+      return {
+        name,
+        target: version === undefined ? `${name}@latest` : `${name}@${version}`,
+        ...(listing === undefined || listed === undefined ? {} : { listed: { listing, version: listed } }),
+      };
     }
     catch (error) {
       return { name, why: error instanceof Error ? error.message : String(error) };
@@ -872,7 +953,7 @@ export async function updatePlugins(names: 'all' | readonly string[], options: U
   for (const one of planned) {
     if ('why' in one) options.say(one.why);
   }
-  const kept = planned.filter((one): one is { name: string; target: string } => 'target' in one);
+  const kept = planned.filter((one): one is Exclude<Planned, { why: string }> => 'target' in one);
   if (kept.length === 0) {
     options.say('Nothing to update.');
     return [];
@@ -881,10 +962,27 @@ export async function updatePlugins(names: 'all' | readonly string[], options: U
   const sdkFrom = installedVersion(root, SDK);
   const refused: string[] = [];
   let reason: Ran | undefined;
-  for (const one of kept) {
+  /** What a list refused after npm ran, one sentence for each package put back. */
+  const differed: string[] = [];
+  for (const [at, one] of kept.entries()) {
     options.say(`Updating ${one.target} with npm.`);
     const done = await options.run('npm', ['install', '--prefix', root, ...daemonsSdk(options.version), one.target]);
-    if (done.code === 0) continue;
+    if (done.code === 0) {
+      const name = packageOf(one.name);
+      const differs = one.listed === undefined ? undefined : listedMismatch(root, name, one.listed);
+      if (differs === undefined) {
+        if (one.listed !== undefined) recordInstalled(options.configDir, name, { marketplace: one.listed.listing.marketplace, source: one.listed.listing.plugin.source });
+        continue;
+      }
+      // The version the package moved from goes back, so a list that refuses
+      // a version leaves the plugin as it was and not uninstalled.
+      const before = from[at];
+      const back = before === undefined
+        ? await options.run('npm', ['uninstall', '--prefix', root, '--legacy-peer-deps', '--', name])
+        : await options.run('npm', ['install', '--prefix', root, ...daemonsSdk(options.version), `${name}@${before}`]);
+      differed.push(back.code === 0 ? differs : `${differs} npm could not put ${name} back as it was.`);
+      continue;
+    }
     // Which package npm refused, and npm's own words for the first of them.
     reason ??= done;
     refused.push(packageOf(one.name));
@@ -903,8 +1001,9 @@ export async function updatePlugins(names: 'all' | readonly string[], options: U
   }
   // "Nothing to update." is left unsaid when npm refused some, because the
   // refusal that follows says why nothing did.
-  if (moved.length === 0 && reason === undefined) options.say('Nothing to update.');
+  if (moved.length === 0 && reason === undefined && differed.length === 0) options.say('Nothing to update.');
   if (reason !== undefined) throw npmFailed(`npm could not update ${refused.join(', ')}`, reason);
+  if (differed.length > 0) throw new Error(differed.join(' '));
   return moved;
 }
 
@@ -949,9 +1048,10 @@ export async function removePlugins(names: readonly string[], options: RemoveOpt
   const uninstalled = packages.filter((name) => name !== SDK);
   if (uninstalled.length === 0) return;
   options.say(`Removing ${uninstalled.join(', ')} with npm.`);
-  const done = await options.run('npm', ['uninstall', '--prefix', root, '--', ...uninstalled]);
+  const done = await options.run('npm', ['uninstall', '--prefix', root, '--legacy-peer-deps', '--', ...uninstalled]);
   if (done.code !== 0) {
     throw npmFailed(`npm could not uninstall ${uninstalled.join(', ')}`, done);
   }
+  forgetInstalled(options.configDir, uninstalled);
   options.say(`Uninstalled ${uninstalled.join(', ')} from ${root}.`);
 }
