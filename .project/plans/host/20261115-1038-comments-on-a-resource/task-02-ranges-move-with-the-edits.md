@@ -1,6 +1,6 @@
 ---
 title: Ranges move with the edits
-status: todo
+status: implemented
 depends: [task-01-the-annotations-channel.md]
 layer: "sdk"
 refs:
@@ -37,3 +37,7 @@ A range whose text is deleted becomes a point, marked outdated, and the comment 
 - `pnpm test packages/sdk/test/resource-annotations.test.ts` passes.
 
 ## Resume
+
+Built on 2026-11-15.
+- The shared resources tell the writer of each change through an optional `taken` port.
+- An outdated comment is written as one `annotations/set` with the point and `_meta.ahpd.outdated`, since `annotations/updated` carries no `_meta`.

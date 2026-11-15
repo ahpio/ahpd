@@ -79,3 +79,20 @@ The host writes the text 2 s after the last change, and at least every 10 s whil
 ## Reconnecting
 
 A shared resource's actions are not kept for replay. A `reconnect` lists its channel in `missing`, and the client subscribes again.
+
+## Comments
+
+People comment on a resource and reply on its own channel, `x-ahpd-annotations:<resource URI>`, apart from the edits. The state, the actions and the reducer are AHP's annotations: `annotations/set`, `annotations/updated`, `annotations/removed`, `annotations/entrySet` and `annotations/entryRemoved`.
+
+Reading the channel needs the resource's `get`, such as `file:get`. Each action on it needs the resource's `comment`, which the read group holds, so whoever may read a file may comment on it unless a role drops `comment`.
+
+The host stamps each new entry with who wrote it and when, whatever the client put there:
+
+```json
+{ "type": "annotations/entrySet", "annotationId": "c1",
+  "entry": { "id": "c1-2", "text": "The resource kind.",
+    "_meta": { "ahpd": { "by": "user:rafael", "name": "rafael", "at": "2026-11-15T14:02:11Z" } } } }
+```
+
+A comment's `origin.session` is a session of the writer, or the channel itself for a comment made outside any session. While the resource is open as a shared resource, each comment's range moves with the edits. A comment whose words are deleted becomes a point where they were, with `_meta.ahpd.outdated` set, and its thread stays. The comments are kept between restarts.
+

@@ -415,6 +415,11 @@ export function createSnapshots(ctx: HostContext): Snapshots {
      * A shared resource, opened for the client that subscribes: its text,
      * its version and the people in it, the subscriber among them.
      */
+    // A resource's comments, outside any session.
+    if (ctx.resourceAnnotations.isChannel(channel)) {
+      const resource = channel.slice(channel.indexOf(':') + 1);
+      return value({ resource: channel, state: ctx.resourceAnnotations.stateOf(resource), fromSeq: ctx.serverSeq });
+    }
     if (ctx.shared.isDocument(channel)) {
       if (connection === undefined) throw new RpcError(AhpErrorCodes.NotFound, `A shared resource is opened by a client: ${channel}`);
       const state = await ctx.shared.open(channel, connection);

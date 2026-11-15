@@ -1,6 +1,6 @@
 ---
 title: The comment tools take a resource
-status: todo
+status: implemented
 depends: [task-01-the-annotations-channel.md]
 layer: "sdk"
 refs:
@@ -37,3 +37,8 @@ An agent reads, answers and resolves the comments on a file of its session with 
 - `pnpm test packages/sdk/test/commenttools.test.ts` passes.
 
 ## Resume
+
+Built on 2026-11-15.
+- Only `addComment` and `listComments` take `resource`. `replyToComment`, `resolveComments` and `deleteComments` find a comment by its id, first on the session's channel, then on the files under its folders, so the model needs no second id.
+- A comment from a file's own channel carries `onFile: true` in a tool's answer.
+- A person's comment is listed only once it is past `created`, as VS Code's tools list them; plan `shell/20261115-1038-comments-in-a-file` writes it as `submitted`.

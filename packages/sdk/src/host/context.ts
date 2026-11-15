@@ -1,5 +1,6 @@
 import type { Agent } from '../types/agent.js';
 import type { SharedResources } from './shared.js';
+import type { ResourceAnnotations } from './resourceannotations.js';
 import type { Catalogs } from '../i18n.js';
 import type { ClientChange, Connection, HostOptions, HostTool, ResourceProvider } from '../types/host.js';
 import type { PublishOptions } from '../types/plugin.js';
@@ -339,6 +340,8 @@ export interface HostContext extends ChatRecord, Routing, Relay, Changesets, Fac
   marksOf: (id: string) => AnnotationsState;
   /** The shared resources, `x-ahpd-shared:<resource URI>`. */
   shared: SharedResources;
+  /** The comments on resources outside any session, `x-ahpd-annotations:<resource URI>`. */
+  resourceAnnotations: ResourceAnnotations;
   /**
    * Make one mark on a session, keep it and say it on its annotations channel.
    *

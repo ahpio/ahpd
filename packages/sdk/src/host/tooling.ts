@@ -2466,6 +2466,11 @@ export function createTooling(ctx: HostContext): Tooling {
     setArtifacts: (list) => { setArtifacts(uri, list); },
     annotations: () => marksOf(idOf(uri)),
     markAnnotation: (action) => { markAnnotation(uri, action); },
+    resourceComments: {
+      stateOf: (resource) => ctx.resourceAnnotations.stateOf(resource),
+      mark: (resource, action) => { ctx.resourceAnnotations.write(resource, action, { by: `session:${uri}`, name: 'agent' }); },
+      under: (folders) => ctx.resourceAnnotations.under(folders),
+    },
     terminals: () => [...terminals.values()].map((held) => ({
       uri: held.uri,
       title: held.title(),

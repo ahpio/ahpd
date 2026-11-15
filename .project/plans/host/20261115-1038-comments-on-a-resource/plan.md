@@ -1,7 +1,7 @@
 ---
 title: Comments on a resource, outside any session
 domain: host
-status: planned
+status: active
 priority: medium
 created: 2026-11-15
 revalidated: 2026-11-15
@@ -87,10 +87,10 @@ addComment { resource } -> the same writer
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - The annotations channel of a resource](task-01-the-annotations-channel.md) | todo | - |
-| [02 - Ranges move with the edits](task-02-ranges-move-with-the-edits.md) | todo | 01 |
-| [03 - The comment tools take a resource](task-03-the-tools-take-a-resource.md) | todo | 01 |
-| [04 - The comments in the docs](task-04-the-comments-in-the-docs.md) | todo | 03 |
+| [01 - The annotations channel of a resource](task-01-the-annotations-channel.md) | implemented | - |
+| [02 - Ranges move with the edits](task-02-ranges-move-with-the-edits.md) | implemented | 01 |
+| [03 - The comment tools take a resource](task-03-the-tools-take-a-resource.md) | implemented | 01 |
+| [04 - The comments in the docs](task-04-the-comments-in-the-docs.md) | implemented | 03 |
 
 ## Risks and tradeoffs
 
@@ -100,8 +100,8 @@ addComment { resource } -> the same writer
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-the-annotations-channel.md](task-01-the-annotations-channel.md).
+- **Done so far:** tasks 01 to 04 built on 2026-11-15, on branch `host/20261115-1038-comments-on-a-resource`, stacked on the shared resource branch.
+- **Next action:** plan `shell/20261115-1038-comments-in-a-file`; then Softov tests both.
 - **Open questions:** none.
 - **Watch out for:** `ACTION_HOMES` refuses an `annotations/*` action on any channel that is not a session's; task 01 opens it for the resource channel. Plan `host/20261115-0829` is not merged yet: build on its branch.
 

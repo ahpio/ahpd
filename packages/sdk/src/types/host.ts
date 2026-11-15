@@ -259,6 +259,14 @@ export interface ClientRegistry {
 }
 
 /** How to construct a host. */
+/** Where a resource's comments are kept: the protocol's annotations state, one per resource URI. */
+export interface ResourceAnnotationsStore {
+  read(resource: string): AnnotationsState | undefined;
+  write(resource: string, state: AnnotationsState): void;
+  /** Every resource with comments kept, so a session can list the ones under its folders. */
+  list?(): string[];
+}
+
 export interface HostOptions {
   /**
    * The directory whose sessions this host serves, on the machine it runs on.
@@ -1146,6 +1154,11 @@ export interface HostOptions {
    */
   rootConfigStore?: RootConfigStore;
   /**
+   * Where the comments on a resource outside any session are kept, one state
+   * per resource URI. With none, they live in memory.
+   */
+  resourceAnnotations?: ResourceAnnotationsStore;
+  /**
    * What this host says about itself when a window asks.
    *
    * The reference window has requests of its own for the host's version, its
@@ -1919,6 +1932,17 @@ export interface ToolCall {
    * calls this.
    */
   markAnnotation(action: AnnotationsAction): void;
+  /**
+   * The comments on resources outside any session, which people write on a
+   * file they have open. Given by a host that keeps them.
+   */
+  resourceComments?: {
+    stateOf(resource: string): AnnotationsState;
+    /** Write one action on the resource's comments, as the calling session. */
+    mark(resource: string, action: AnnotationsAction): void;
+    /** The resources with comments under these folders. */
+    under(folders: readonly string[]): string[];
+  };
   /**
    * Replace what this call has produced so far, which every client watching
    * the chat is shown as the running call's partial content, the spec's

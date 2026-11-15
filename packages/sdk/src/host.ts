@@ -68,6 +68,7 @@ import type { Home } from './host/gate.js';
 import { createChatRecord } from './host/chatrecord.js';
 import { createRouting } from './host/routing.js';
 import { createSharedResources } from './host/shared.js';
+import { createResourceAnnotations } from './host/resourceannotations.js';
 import { createRelay } from './host/relay.js';
 import { AGENT_CLIENT_SCHEME } from './host/clienturi.js';
 import { createChangesets } from './host/changesets.js';
@@ -1592,11 +1593,18 @@ export function createHost(options: HostOptions): Host {
    * The shared documents: a file's text held while anyone has it open, its
    * changes put in order, and the file written behind them.
    */
+  /** The comments on resources outside any session; their ranges move with the shared resources' changes. */
+  const resourceAnnotations = createResourceAnnotations({
+    store: () => options.resourceAnnotations,
+    emit: (channel, action, origin) => emit(channel, action, origin),
+    hasSession: (connection, session) => (sessions.has(session) || owners.has(session)) && visible(connection, session),
+  });
   const shared = createSharedResources({
     resources: () => options.resources,
     emit: (channel, action, origin) => emit(channel, action, origin),
     watching: (client, channel) => [...connections].some((one) => one.clientId === client && one.activeSubscriptions.has(channel)),
     log: { warn: (message) => { log.warn(message); }, error: (message) => { log.error(message); } },
+    taken: (resource, change, before, after) => { resourceAnnotations.moved(resource, change, before, after); },
   });
   const ctx = {
     options, dir, known, lastSeen, baselineDebt, clearBaselineDebt, waitsOver, locales, clientNames, clientVersions, clientInfos, localeOf: (clientId: string) => locales.get(clientId),
@@ -1612,7 +1620,7 @@ export function createHost(options: HostOptions): Host {
     logs, detached, refuse,
     serverSeq: 0,
     closed: false, shutdown: () => host.close(), refusing: undefined, bareSessions: new Set<string>(), startedWorkspaceless: new Set<string>(), commandTurns: new Set<string>(), described, links,
-    watches, marksOf, restoredSessions, activeClientsOf, markAnnotation, shared,
+    watches, marksOf, restoredSessions, activeClientsOf, markAnnotation, shared, resourceAnnotations,
     restartNeeded: false,
     markRestart: () => {
       if (ctx.restartNeeded) return;

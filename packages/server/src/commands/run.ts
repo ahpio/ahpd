@@ -95,6 +95,7 @@ import { handedAgent } from '../agents/handed.js';
 import { fileVault } from '../vault.js';
 import { daemonRootConfig } from '../rootconfig.js';
 import { fileRootConfigStore } from '../rootconfigstore.js';
+import { fileResourceAnnotations } from '../resourceannotationstore.js';
 import { pty } from '../pty.js';
 import { shellIntegrationOf } from '../shellintegration.js';
 import { screen } from '../screen.js';
@@ -1597,6 +1598,11 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
      */
     rootConfigStore: fileRootConfigStore({
       file: rootConfigPath(),
+      onProblem: (message) => { stamp(message, 'warn'); },
+    }),
+    // The comments on files outside any session, kept between restarts beside the root config.
+    resourceAnnotations: fileResourceAnnotations({
+      folder: join(configDir(), 'annotations'),
       onProblem: (message) => { stamp(message, 'warn'); },
     }),
     /*

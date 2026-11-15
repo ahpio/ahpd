@@ -2,7 +2,7 @@ import { computerSource } from '../machines/computers.js';
 import type { Connection } from '../types/host.js';
 import { idOf } from '../sessions/catalog.js';
 import type { Grant, Principal } from '../types/users.js';
-import { ROOT, AUTOMATIONS, SHARED_SCHEME, isRootChannel, schemeOf, spaceOf } from './channels.js';
+import { ROOT, AUTOMATIONS, SHARED_SCHEME, annotatedResourceOf, isRootChannel, schemeOf, spaceOf } from './channels.js';
 import type { HostContext } from './context.js';
 import type { ChannelKind } from './channels.js';
 
@@ -274,6 +274,9 @@ export const channelRead = (channel: string, kind: ChannelKind, served?: Grant):
   if (channel.startsWith('ahp-automation')) return 'automation:list';
   // A shared resource hands over the file's text, so it is a read of the file.
   if (schemeOf(channel) === SHARED_SCHEME) return 'file:get';
+  // A resource's comments are a read of the resource.
+  const commented = annotatedResourceOf(channel);
+  if (commented !== undefined) return `${schemeOf(commented) || 'file'}:get` as Grant;
   const space = spaceOf(channel);
   if (space === 'chat') return 'chat:turns';
   if (space === 'terminal' || kind === 'terminal') return 'terminal:output';
@@ -316,7 +319,7 @@ export const dispatchNeeds = (channel: string, kind: ChannelKind, action?: Recor
     return keys.every((key) => key === 'workspaceTrust') ? 'trust:push' : 'config:change';
   }
   // A shared resource's actions say what they need in `ACTION_NEEDS`.
-  if (schemeOf(channel) === SHARED_SCHEME) return undefined;
+  if (schemeOf(channel) === SHARED_SCHEME || annotatedResourceOf(channel) !== undefined) return undefined;
   return kind === 'other' && !channel.startsWith('ahp-automation') ? 'file:watch' : undefined;
 };
 

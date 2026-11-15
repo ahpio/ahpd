@@ -69,6 +69,8 @@ export interface SharedPorts {
   /** Whether any connection of this client still watches the channel. */
   watching(client: string, channel: string): boolean;
   log: { warn(message: string): void; error(message: string): void };
+  /** A change was taken on a resource, with its text before and after it: the comments' ranges move with it. */
+  taken?(resource: string, change: TextChange, before: string, after: string): void;
 }
 
 interface Document {
@@ -112,7 +114,7 @@ export interface SharedResources {
 }
 
 /** The start of a client id, to tell two people of one kind apart. */
-const shortId = (connection: Connection): string => connection.clientId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 4) || 'x';
+export const shortId = (connection: Connection): string => connection.clientId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 4) || 'x';
 
 /**
  * Who a connection is, and the name others see: a user's id; `root` and the
@@ -121,7 +123,7 @@ const shortId = (connection: Connection): string => connection.clientId.replace(
  * because a client takes a colour from a name's first letters and two guests
  * must differ.
  */
-const personOf = (connection: Connection): { name: string; kind: SharedPersonKind } => {
+export const personOf = (connection: Connection): { name: string; kind: SharedPersonKind } => {
   if (connection.root === true) return { name: `root ${shortId(connection)}`, kind: 'root' };
   if (connection.principal !== undefined) return { name: connection.principal.id, kind: 'user' };
   return { name: `${shortId(connection)} guest`, kind: 'guest' };
@@ -209,7 +211,9 @@ export function createSharedResources(ports: SharedPorts): SharedResources {
     const later = since(doc, version);
     if (later === undefined) return undefined;
     const moved = later.reduce((one, through) => mapChange(one, through), change);
+    const before = doc.text;
     doc.text = applyChange(doc.text, moved);
+    ports.taken?.(doc.file, moved, before, doc.text);
     doc.log.push({ version: doc.version, change: moved });
     if (doc.log.length > SHARED_LOG) doc.log.splice(0, doc.log.length - SHARED_LOG);
     doc.version += 1;
