@@ -14,6 +14,7 @@ refs:
 In run 43652823221 of #337, the rerun of `windows (1/4)` failed the case "refuses a folder change to a workspace-less session, in VS Code's words".
 The case's own assertions passed. Its `onTestFinished` failed with `EBUSY: resource busy or locked, rmdir '...\ahpd-home-zssGyT\.copilot\chats\windowed'`.
 The first run of the same job passed this case.
+In run 43701729871 of #340, the first run of `windows (1/4)` failed the same way.
 
 ## Cause
 
@@ -31,5 +32,5 @@ None. Running the job again is not a fix.
 
 ## Fix
 
-- Close the session and its host before the case removes its home.
-- Remove the home with `maxRetries`, as `rm` allows on Windows.
+- The case now removes its home with `maxRetries: 5` and `retryDelay: 100`, as the other sdk tests do.
+- Close the session and its host before the case removes its home, if the case fails again.

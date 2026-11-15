@@ -898,7 +898,7 @@ describe('more than one directory', () => {
     vi.stubEnv('USERPROFILE', home);
     onTestFinished(async () => {
       vi.unstubAllEnvs();
-      await rm(home, { recursive: true, force: true });
+      await rm(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     });
     const scratch = await windowed([], true, { workspacelessFolder: 'scratch' });
     await scratch.client.handle({ method: 'dispatchAction', params: { channel: scratch.uri, clientSeq: 1, action: { type: 'session/workingDirectorySet', directory: uriOf(EXTRA) } } });

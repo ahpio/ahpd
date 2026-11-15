@@ -52,5 +52,5 @@ None. Running the job again is not a fix.
 
 ## Fix
 
-- Print the `part` of `t3`'s `chat/error` in the case, so the next failure says why `t3` failed.
-- Then find the cause from those words.
+- The case now prints the `part` of `t3`'s `chat/error`, with its `errorType` and `message`.
+- Find the cause from those words in the next failure.
