@@ -116,7 +116,7 @@ interface Opened {
  * which is the case a background subagent cannot be listed in. `turn` is the
  * turn the frames a case feeds answer, running from the start.
  */
-async function open(seam = true, turn = true): Promise<Opened> {
+async function open(seam = true, turn = true, over: Record<string, unknown> = {}): Promise<Opened> {
   sdk.reset();
   const main: Bag[] = [];
   const workers = new Map<string, Bag[]>();
@@ -149,6 +149,7 @@ async function open(seam = true, turn = true): Promise<Opened> {
       set: (chat, task) => { tasks.set.push({ chat, task }); },
       remove: (chat, id) => { tasks.remove.push({ chat, id }); },
     },
+    ...over,
   });
   await settle();
   if (turn) {
@@ -574,6 +575,32 @@ const submitted = async (): Promise<unknown[]> => {
  * has one. It is read when the turn begins, which is what makes the host's
  * function, rather than a list captured earlier, what the hook answers from.
  */
+/*
+ * The session's own instructions, which the CLI's conversation keeps once it
+ * has them: given on the first prompt, not again, and again on the first
+ * prompt after a compaction, which may have dropped the turn that held them.
+ */
+it('gives the session\'s instructions once, and again after a compaction', async () => {
+  const { session } = await open(true, false, { instructions: ['Record what you make.'] });
+  const told = [{ hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: 'Record what you make.' } }];
+  session.sendMessage('t-first', 'hello');
+  await settle();
+  expect(await submitted()).toEqual(told);
+  expect(await submitted()).toEqual([{}]);
+
+  sdk.push({ type: 'system', subtype: 'compact_boundary' });
+  await settle();
+  expect(await submitted()).toEqual(told);
+  expect(await submitted()).toEqual([{}]);
+});
+
+it('gives a resumed session none of its own instructions, its conversation already holding them', async () => {
+  const { session } = await open(true, false, { instructions: ['Record what you make.'], resume: 'sdk-held' });
+  session.sendMessage('t-first', 'hello');
+  await settle();
+  expect(await submitted()).toEqual([{}]);
+});
+
 it('gives a turn the instructions the host asked for, and nothing once it ends', async () => {
   const { session } = await open(true, false);
   const words = ['<remote_session_origin>', 'report back', '</remote_session_origin>'];

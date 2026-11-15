@@ -1,6 +1,6 @@
 ---
 title: Claude is told the session's instructions once, and again after a compaction
-status: todo
+status: done
 depends: []
 layer: "agent-claude"
 refs:
@@ -39,3 +39,4 @@ A turn's own instructions still go with that turn.
 
 ## Resume
 
+Done 2026-11-15. `instructionsGiven` is on the session context, raised by the hook and lowered on `compact_boundary`. Two cases in `agent-claude-background-work.test.ts`; `open` takes options to spread into `createSession`.

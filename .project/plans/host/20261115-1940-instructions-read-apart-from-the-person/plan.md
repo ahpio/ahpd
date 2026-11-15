@@ -6,7 +6,7 @@ priority: high
 created: 2026-11-15
 revalidated: 2026-11-15
 refs:
-  - git://82e656d7c - the last commit that holds the brief this plan covers, `briefs/the-artifact-tools-follow-their-root-config-key.md`
+  - git://BRIEFSHA - the last commit that holds the brief this plan covers, `briefs/the-artifact-tools-follow-their-root-config-key.md`
   - https://github.com/ahpio/ahpd/pull/344 - the artifact tools follow `artifactTools`, off by default, and the add tool's description carries their wording
   - "[code://packages/sdk/src/host/tooling.ts#L2946-L2956](../../../../packages/sdk/src/host/tooling.ts#L2946-L2956) - `instructions`, which filters the tools apart from `contributingTo`"
   - "[code://packages/sdk/src/host/tooling.ts#L2844-L2860](../../../../packages/sdk/src/host/tooling.ts#L2844-L2860) - `boundTools` and `offeredTools`, the tools a chat is handed"
@@ -77,9 +77,9 @@ spawn -> tooling.instructions(uri, chatUri, provider) -> Start.instructions
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - instructions follow the bound tools](task-01-instructions-follow-the-bound-tools.md) | todo | - |
-| [02 - acp wraps the host instructions](task-02-acp-wraps-the-host-instructions.md) | todo | - |
-| [03 - claude tells once and after compact](task-03-claude-tells-once-and-after-compact.md) | todo | - |
+| [01 - instructions follow the bound tools](task-01-instructions-follow-the-bound-tools.md) | done | - |
+| [02 - acp wraps the host instructions](task-02-acp-wraps-the-host-instructions.md) | done | - |
+| [03 - claude tells once and after compact](task-03-claude-tells-once-and-after-compact.md) | done | - |
 | [04 - ahpw and ahpc get a brief](task-04-ahpw-and-ahpc-get-a-brief.md) | todo | - |
 
 ## Risks and tradeoffs
@@ -90,10 +90,10 @@ spawn -> tooling.instructions(uri, chatUri, provider) -> Start.instructions
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-instructions-follow-the-bound-tools.md](task-01-instructions-follow-the-bound-tools.md).
+- **Done so far:** tasks 01, 02 and 03, on 2026-11-15. #344 merged as `addd41fcc`.
+- **Next action:** [task-04-ahpw-and-ahpc-get-a-brief.md](task-04-ahpw-and-ahpc-get-a-brief.md).
 - **Open questions:** none.
-- **Watch out for:** #344 must be on `main` before this branch merges; it removes the instruction gate that task 01 replaces.
+- **Watch out for:** a bare session gets no tool instructions now, since `instructions` reads `handedTools`.
 
 ## Final verification checklist
 

@@ -357,6 +357,16 @@ export interface SessionContext extends Omit<Config, 'methods'>, Omit<ClientTool
    */
   hostInstructions: { turn: Bag; said: string[] } | undefined;
   /**
+   * Whether the CLI's conversation holds the session's instructions.
+   *
+   * Raised when the `UserPromptSubmit` hook gives them, and lowered when the
+   * CLI compacts, because a compaction may drop the turn that held them. A
+   * resumed session starts with it raised: its conversation already holds
+   * them, as VS Code's host counts a chat with turns as told.
+   * https://github.com/microsoft/vscode/blob/1564f100807a/src/vs/platform/agentHost/node/chatContributions/artifactTools/artifactToolsContribution.ts#L45-L50
+   */
+  instructionsGiven: boolean;
+  /**
    * The agent the running query was built with: what was applied, as VS
    * Code's pipeline names what it last gave the CLI.
    *
