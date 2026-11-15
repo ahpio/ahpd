@@ -88,7 +88,7 @@ Remove each only on Softov's word.
 
 - On 2026-11-14, Softov had the merged worktrees removed. On 2026-11-15, `/github/ahpd.worktrees/claude-history` (merged in #338) and `/github/ahpd.worktrees/handoff` (detached, for HANDOFF commits on main) were added.
 - About 60 local branches have no worktree, from plans built before 2026-11-12. `git branch` lists them, and deleting them waits for Softov's word.
-- Another session left changes in `/github/ahpd` that are not committed: the brief `a-cloudflare-tunnel-publishes-the-daemon.md`, the new brief `the-agents-are-listed-by-provider.md`, and a `deprecated` answer in plugin/20261113-2029's `plan.md`, task 02 and task 03. Leave them.
+- Another session left changes in `/github/ahpd` that are not committed. They are the brief `a-cloudflare-tunnel-publishes-the-daemon.md`, the new brief `the-agents-are-listed-by-provider.md`, and a `deprecated` answer in plugin/20261113-2029. Leave them.
 - `/github/ahpw` is on `host-refine-ui`, from another session. Its local main is fast-forwarded with `git fetch origin main:main`.
 - Loose files in `/github/ahpd.worktrees/` wait for Softov: `test-tmp`, the `union-*.log` files, the `.patch` files, `review-host62.md` and `acp-server.orig.mjs`.
 
