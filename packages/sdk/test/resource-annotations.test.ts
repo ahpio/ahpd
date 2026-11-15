@@ -157,6 +157,9 @@ it('moves a range with a live edit before it, and leaves one after it', async ()
   await until(() => seen(ana.peer).some((one) => one.action.type === 'annotations/updated'), 'the move');
   const moved = seen(ana.peer).find((one) => one.action.type === 'annotations/updated')!;
   expect(moved.action.range).toEqual({ start: { line: 2, character: 2 }, end: { line: 2, character: 5 } });
+  // The edit goes out first: a client that drew the moved range on the old text would move it twice.
+  const order = ana.peer.notes.filter((n) => n.method === 'action').map((n) => (n.params as Envelope).action.type);
+  expect(order.indexOf('x-ahpd-shared/changed')).toBeLessThan(order.indexOf('annotations/updated'));
   // An edit after the comment moves nothing.
   const before = seen(ana.peer).length;
   ana.send({ type: 'x-ahpd-shared/changed', version: 1, changes: [{ from: 28, to: 28, insert: '- three\n' }], ranges: [] }, shared);
