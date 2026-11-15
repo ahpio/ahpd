@@ -10,7 +10,7 @@ Current progress and pending items only, as of 2026-11-15. *Outside this reposit
 ## Main
 
 - The last stable release is 0.14.0 (`v0.14.0`). `v0.15.0-rc.3` is tagged on `28dd315e0` (#320). Its release run 43394827388 passed `parts`, `release` and `image` on 2026-11-13, and staged the 13 packages under `next`. Softov approved them on 2026-11-13, and npm serves `0.15.0-rc.3` under `next` since 14:36 UTC. What the release needs is in [pending/release.md](../pending/release.md), and the checks by hand are ordered in [pending/triage.md](../pending/triage.md).
-- Main's last merge is #348 (`74a5d756a`) on 2026-11-15, from another session: the sandbox schema names every value. Before it came #345 (`c28d0a4f6`), the model gateway rename. The fix of a Windows case, #347 (`4d3d3adf5`), merged before that. Earlier, #343 (`804a23937`) and #341 (`7bc308a23`) merged from another session. Before it, #342 (`eb94c97a6`) gave the cases of `host-permissions.test.ts` a home of their own. A `TMPDIR` under a home dot folder no longer fails two of them. Before it, #339 (`a01d874cb`) made the daemon read the plugin list. Before #339, the merge of #340 (`4b4700f3f`) fixed two random cases in tests only. Earlier that day, #338 (`9863785ca`) merged. On 2026-11-14, #329, #332, #331, #333, #335, #336 and #337 merged. On 2026-11-13, #321 to #328 merged after the rc.3 release. No PR is open.
+- Main's last merge is #354 (`6d660a940`) on 2026-11-15. Four test fixes merged that day: #350, #352, #353 and #354. #348 (`74a5d756a`) merged before them, from another session: the sandbox schema names every value. Before it came #345 (`c28d0a4f6`), the model gateway rename. The fix of a Windows case, #347 (`4d3d3adf5`), merged before that. Earlier, #343 (`804a23937`) and #341 (`7bc308a23`) merged from another session. Before it, #342 (`eb94c97a6`) gave the cases of `host-permissions.test.ts` a home of their own. A `TMPDIR` under a home dot folder no longer fails two of them. Before it, #339 (`a01d874cb`) made the daemon read the plugin list. Before #339, the merge of #340 (`4b4700f3f`) fixed two random cases in tests only. Earlier that day, #338 (`9863785ca`) merged. On 2026-11-14, #329, #332, #331, #333, #335, #336 and #337 merged. On 2026-11-13, #321 to #328 merged after the rc.3 release. No PR is open.
 - plugin/20261114-1455 waits for Softov's review to close.
 - [proxy/20261115-1352-the-model-proxy-is-the-model-gateway](../plans/proxy/20261115-1352-the-model-proxy-is-the-model-gateway/plan.md) is merged in #345, and ahpw's `hosts/20261115-1356-the-model-gateway-section` in ahpw #92 (`113d3feaa`). Both close on Softov's word. No old name is read: a daemon restarted on main ignores `modelProxy` with a warning. The rc.4 bump waits for Softov's word (2026-11-15).
 - [claude/20261114-1816-the-context-figure-follows-a-long-turn](../plans/claude/20261114-1816-the-context-figure-follows-a-long-turn/plan.md) is merged in #331, and closes on Softov's word. #331 also fixes the plugin turn case that waited a fixed 20 ms.
@@ -67,15 +67,22 @@ Current progress and pending items only, as of 2026-11-15. *Outside this reposit
 - A case that fails at random gets a problem file, to be fixed. The CI runs since 2026-11-10 were read on 2026-11-13. A case counts when it failed on main, or passed on a rerun of the same commit.
 - With a problem file:
   - `computer-devcontainer.test.ts`: three cases are fixed by container/20261113-2134, the fourth is [a-dev-container-case-waits-on-a-late-docker-call.md](../problems/a-dev-container-case-waits-on-a-late-docker-call.md), and the fifth is [a-dev-container-stop-case-reads-running-after-the-stop.md](../problems/a-dev-container-stop-case-reads-running-after-the-stop.md).
-  - `nested-process.test.ts`, two cases: [a-test-removes-its-folder-while-a-child-writes-in-it.md](../problems/a-test-removes-its-folder-while-a-child-writes-in-it.md).
+  - The ACP and service-install teardowns: [a-test-removes-its-folder-while-a-child-writes-in-it.md](../problems/a-test-removes-its-folder-while-a-child-writes-in-it.md).
+  - `nested-process.test.ts` leaves refs under `refs/agents/` in the repository: [nested-process-cases-write-checkpoints-into-the-repository.md](../problems/nested-process-cases-write-checkpoints-into-the-repository.md).
   - `host-attachments.test.ts`: [two-attachment-cases-time-out-on-windows.md](../problems/two-attachment-cases-time-out-on-windows.md).
   - `computer-servercheck.test.ts` "runs its own script under sh": task 02 of plugin/20261106-1058.
-  - `computer-disposable.test.ts`: the teardown in the nested-process file's problem, and two cases in [a-disposable-machine-case-fails-at-random.md](../problems/a-disposable-machine-case-fails-at-random.md).
+  - `computer-disposable.test.ts`: two cases in [a-disposable-machine-case-fails-at-random.md](../problems/a-disposable-machine-case-fails-at-random.md).
   - `host-files.test.ts`: [a-workspace-less-case-removes-its-home-while-a-folder-is-busy.md](../problems/a-workspace-less-case-removes-its-home-while-a-folder-is-busy.md).
   - `changes-refresh.test.ts` and `worktrees.test.ts`: [git-cases-time-out-on-windows.md](../problems/git-cases-time-out-on-windows.md).
   - `computer-far-docker.test.ts`: [a-far-docker-listing-misses-one-profile-on-windows.md](../problems/a-far-docker-listing-misses-one-profile-on-windows.md).
   - `commands.test.ts`: [the-machine-commands-case-times-out-on-windows.md](../problems/the-machine-commands-case-times-out-on-windows.md).
 - `tunnel-devtunnel-view.test.ts` "starts no poll when the tunnel stops during its first read" was fixed by #314.
+- The CI runs from 2026-11-12 to 2026-11-15 were read on 2026-11-15, every attempt included. Four fixes merged then:
+  - #350: the nested-process and disposable teardowns end every process that names their folder.
+  - #352: a usage-port case holds one daemon start.
+  - #353: the scripted Docker waits on a lock being removed on Windows.
+  - #354: the cofold truncation case waits for the writer claim.
+- #351 gives the options cases the scripted Docker.
 
 ## Builders
 
