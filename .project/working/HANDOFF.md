@@ -66,7 +66,6 @@ Current progress and pending items only, as of 2026-11-15. *Outside this reposit
 - `release.yml` runs the whole `pnpm test` under `timeout 1500` before it publishes, so a flaky case can fail a tag run. The suite took 520 s on 2026-11-12.
 - A case that fails at random gets a problem file, to be fixed. The CI runs since 2026-11-10 were read on 2026-11-13. A case counts when it failed on main, or passed on a rerun of the same commit.
 - With a problem file:
-  - `agent-cofold-fork.test.ts`: [a-cofold-truncation-case-ends-its-third-turn-without-completing.md](../problems/a-cofold-truncation-case-ends-its-third-turn-without-completing.md).
   - `computer-devcontainer.test.ts`: three cases are fixed by container/20261113-2134, the fourth is [a-dev-container-case-waits-on-a-late-docker-call.md](../problems/a-dev-container-case-waits-on-a-late-docker-call.md), and the fifth is [a-dev-container-stop-case-reads-running-after-the-stop.md](../problems/a-dev-container-stop-case-reads-running-after-the-stop.md).
   - `nested-process.test.ts`, two cases: [a-test-removes-its-folder-while-a-child-writes-in-it.md](../problems/a-test-removes-its-folder-while-a-child-writes-in-it.md).
   - `host-attachments.test.ts`: [two-attachment-cases-time-out-on-windows.md](../problems/two-attachment-cases-time-out-on-windows.md).
