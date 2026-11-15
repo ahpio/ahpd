@@ -1,6 +1,6 @@
 ---
 title: ahpw and ahpc each hold a brief for the push of artifactTools
-status: todo
+status: done
 depends: []
 layer: "docs"
 refs:
@@ -34,3 +34,5 @@ The defaults report says what ahpd does with `artifactTools`.
 
 ## Resume
 
+
+Done 2026-11-15. ahpw `b71f1c5` and ahpc `ae08b2f`, each on branch `brief/the-client-turns-on-the-artifact-tools`, not pushed. The report's `artifactTools` row is corrected.

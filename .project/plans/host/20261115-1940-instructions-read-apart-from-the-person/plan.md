@@ -1,10 +1,12 @@
 ---
 title: The host's instructions read apart from the person's words
 domain: host
-status: active
+status: built
 priority: high
 created: 2026-11-15
 revalidated: 2026-11-15
+changes:
+  - specs/host-tools.md
 refs:
   - git://a889c18fe - the last commit that holds the brief this plan covers, `briefs/the-artifact-tools-follow-their-root-config-key.md`
   - https://github.com/ahpio/ahpd/pull/344 - the artifact tools follow `artifactTools`, off by default, and the add tool's description carries their wording
@@ -80,7 +82,7 @@ spawn -> tooling.instructions(uri, chatUri, provider) -> Start.instructions
 | [01 - instructions follow the bound tools](task-01-instructions-follow-the-bound-tools.md) | done | - |
 | [02 - acp wraps the host instructions](task-02-acp-wraps-the-host-instructions.md) | done | - |
 | [03 - claude tells once and after compact](task-03-claude-tells-once-and-after-compact.md) | done | - |
-| [04 - ahpw and ahpc get a brief](task-04-ahpw-and-ahpc-get-a-brief.md) | todo | - |
+| [04 - ahpw and ahpc get a brief](task-04-ahpw-and-ahpc-get-a-brief.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -90,14 +92,14 @@ spawn -> tooling.instructions(uri, chatUri, provider) -> Start.instructions
 
 ## Resume state
 
-- **Done so far:** tasks 01, 02 and 03, on 2026-11-15. #344 merged as `addd41fcc`.
-- **Next action:** [task-04-ahpw-and-ahpc-get-a-brief.md](task-04-ahpw-and-ahpc-get-a-brief.md).
+- **Done so far:** every task, on 2026-11-15. #344 merged as `addd41fcc`. See [implemented.md](implemented.md).
+- **Next action:** none in ahpd. The briefs in ahpw and ahpc wait for a plan each.
 - **Open questions:** none.
 - **Watch out for:** a bare session gets no tool instructions now, since `instructions` reads `handedTools`.
 
 ## Final verification checklist
 
-- [ ] `pnpm typecheck` passes.
-- [ ] The tests of `packages/sdk`, `packages/agent-acp` and `packages/agent-claude` pass.
+- [x] `pnpm typecheck` passes.
+- [x] The tests of `packages/sdk`, `packages/agent-acp` and `packages/agent-claude` pass.
 - [ ] CI is green on the pull request.
-- [ ] A brief exists in ahpw and in ahpc.
+- [x] A brief exists in ahpw and in ahpc.
