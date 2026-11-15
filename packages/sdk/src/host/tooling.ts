@@ -2957,7 +2957,6 @@ export function createTooling(ctx: HostContext): Tooling {
       ...ctx.contributing.flatMap((one) => {
         if (one.optIn === true && !named.includes(one.definition.name)) return [];
         if (one.isEnabledForSession?.(toolSession(uri)) === false) return [];
-        if (!artifactToolsFor() && ARTIFACT_TOOL_NAMES.includes(one.definition.name)) return [];
         return one.instruction === undefined ? [] : [one.instruction];
       }),
       ...rulesTold(uri),

@@ -70,7 +70,7 @@ function peer(): Peer {
   return { send: () => {}, notify: () => {}, request: async () => ({}), answered: () => {}, close: () => {} };
 }
 
-it('marks the tool the instruction names eager, defers remove and list, and leaves the rest alone', async () => {
+it('marks the add tool eager, defers remove and list, and leaves the rest alone', async () => {
   // The whole set, so a tool with no policy is in the sample beside the three
   // that carry one.
   const host = createHost({

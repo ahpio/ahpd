@@ -189,19 +189,12 @@ const entrySchema = {
   required: ['type', 'label', 'isArtifact'],
 };
 
-/**
- * The instruction the reference host adds to a session's first turn while
- * these tools are offered, so the model knows when to call them. Here it
- * goes into the agent's instructions, which is the same thing said once.
- */
-const ARTIFACT_TOOLS_INSTRUCTION = `Record notable artifacts and references with \`${ADD}\` so they are surfaced next to the chat input. Registration is optional, not an inventory of everything saved; default to no registration. ${CLASSIFICATION} Other artifacts are deliverables the user explicitly requested or standalone results the user is clearly likely to reopen, download, or reuse; references are existing resources the user will likely want to view. Batch related entries in one call when practical. Do not record routine files, scratch files, caches, logs, intermediate results, or configuration snapshots unless the user asked for them as deliverables; persistence or location outside the workspace is not an eligibility signal. Do not record incidental resources, commits you create unless the user asks, or sessions and chats created with session-management tools. Never create, copy, or relocate a file solely to have an artifact to register.`;
-
 export const artifactTools = (): HostTool[] => [
   {
     definition: {
       name: ADD,
       title: 'Add Artifact or Reference',
-      description: `Record one or more artifacts or references so they are surfaced next to the chat input. Use \`items\` and batch related entries in one call when practical. Registration is optional, not an inventory of everything saved; default to no registration. ${CLASSIFICATION} Other artifacts are deliverables the user requested or standalone results they are clearly likely to reopen, download, or reuse, such as a report or plan the user asked for. References are noteworthy existing resources the user will likely want to view. Do not record routine files, scratch files, caches, logs, intermediate results, or configuration snapshots unless the user asked for them as deliverables; persistence or location outside the workspace is not an eligibility signal. Do not record incidental resources or sessions and chats created with session-management tools. Never create, copy, or relocate a file solely to have an artifact to register.`,
+      description: `Record one or more artifacts or references so they are surfaced next to the chat input. Use \`items\` and batch related entries in one call when practical. Registration is optional, not an inventory of everything saved; default to no registration. ${CLASSIFICATION} Other artifacts are deliverables the user requested or standalone results they are clearly likely to reopen, download, or reuse, such as a report or plan the user asked for. References are noteworthy existing resources the user will likely want to view. Do not record routine files, scratch files, caches, logs, intermediate results, or configuration snapshots unless the user asked for them as deliverables; persistence or location outside the workspace is not an eligibility signal. Do not record incidental resources, commits you create unless the user asks, or sessions and chats created with session-management tools. Never create, copy, or relocate a file solely to have an artifact to register.`,
       inputSchema: {
         type: 'object',
         properties: {
@@ -211,11 +204,14 @@ export const artifactTools = (): HostTool[] => [
       },
       annotations: { readOnlyHint: false },
     },
-    instruction: ARTIFACT_TOOLS_INSTRUCTION,
     /*
-     * The reference's rule: the add tool the instruction names is never
-     * deferred, and remove and list are, since the model reaches them through
-     * the discovery the instruction points at.
+     * The reference's rule: the add tool is never deferred, so the model reads
+     * its description, which says when to record one, from the first turn;
+     * remove and list are, since the model reaches them by tool search once it
+     * has something recorded. The reference says nothing else about the set:
+     * its first-turn instruction is the integrations' list of kinds, which
+     * this host does not have.
+     * https://github.com/microsoft/vscode/blob/1564f100807a/src/vs/platform/agentHost/node/shared/artifactServerTools.ts#L74-L93
      */
     deferLoading: false,
     run: (input, at) => {

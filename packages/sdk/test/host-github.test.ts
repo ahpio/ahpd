@@ -523,21 +523,19 @@ describe('what a session recorded', () => {
     return answers.map((one) => one.hookSpecificOutput?.additionalContext ?? '').join('\n');
   };
 
-  it('tells the model when to record one, in the reference host\'s words, beside each prompt', async () => {
+  it('says when to record one in the add tool\'s description, and nothing beside the prompt', async () => {
     const { client, uri } = await withTools();
     // The CLI its first send starts.
     await sendAnswered(client, uri);
     const prompt = sessionQueries().at(-1)?.options.systemPrompt as { type: string; preset: string; append?: string } | undefined;
     expect(prompt).toEqual({ type: 'preset', preset: 'claude_code' });
-    expect(await toldOnPrompt()).toContain('Record notable artifacts and references with `add_artifact_or_reference`');
+    expect(await toldOnPrompt()).not.toContain('add_artifact_or_reference');
   });
 
   it('gives the long wording whatever a client pushes, and offers every tool the same', async () => {
     const { client, uri } = await withTools({ telemetryLevel: 'off' });
     await sendAnswered(client, uri);
-    const told = await toldOnPrompt();
-    expect(told).toContain('Record notable artifacts and references with `add_artifact_or_reference`');
-    expect(told).not.toContain('Artifact registration is optional; default to none.');
+    expect(await toldOnPrompt()).not.toContain('Artifact registration is optional; default to none.');
     // Every tool is offered, in the same order: no root key selects words or
     // availability.
     const state = (await client.handle({ method: 'subscribe', params: { channel: uri } }) as {
@@ -553,7 +551,9 @@ describe('what a session recorded', () => {
       'setAgentMergeEnabled', 'readAgentMergeCI', 'replyToAgentMergeReviewThread', 'rerunAgentMergeWorkflow',
       'ahp_resource', 'ahp_terminals', 'schedule_wakeup', 'ask_user',
     ]);
-    expect(tools.find((one) => one.name === 'add_artifact_or_reference')?.description).toContain('Record one or more artifacts or references so they are surfaced next to the chat input.');
+    const described = tools.find((one) => one.name === 'add_artifact_or_reference')?.description;
+    expect(described).toContain('Record one or more artifacts or references so they are surfaced next to the chat input.');
+    expect(described).toContain('Do not record incidental resources, commits you create unless the user asks, or sessions and chats created with session-management tools.');
   });
 
   it('publishes them on the session and its row, and says the change as the whole map', async () => {

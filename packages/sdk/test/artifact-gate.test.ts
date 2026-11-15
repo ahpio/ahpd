@@ -18,11 +18,11 @@ import { WORK } from './support/work.js';
 beforeEach(resetSdk);
 
 /*
- * The artifact tools are offered, bound and instructed on the root config's
- * word alone, as the reference host answers `artifactTools` in its root
- * config: absent, the model is told nothing about artifacts and holds no
- * artifact tool; set, the tools are bound and their one instruction rides the
- * chat's first start, as it does today.
+ * The artifact tools are offered and bound on the root config's word alone,
+ * as the reference host answers `artifactTools` in its root config: absent,
+ * the model holds no artifact tool; set, the three are bound. Either way the
+ * chat is told nothing about artifacts beside the prompt: the add tool's
+ * description says when to record one, as the reference's does.
  *
  * Read from the seam the backends see - the `Start` a plugin's session makes -
  * rather than from any host-internal list, so the test holds wherever the gate
@@ -101,7 +101,7 @@ it('offers no artifact tool and says nothing about artifacts by default', async 
   expect(aboutArtifacts).toEqual([]);
 });
 
-it('binds the artifact tools and carries their instruction once the config asks for them', async () => {
+it('binds the artifact tools once the config asks for them, and still says nothing beside the prompt', async () => {
   const { plugin, host, seen, problems } = starting({ artifactTools: true });
   expect(problems).toEqual([]);
   await open(host);
@@ -112,6 +112,6 @@ it('binds the artifact tools and carries their instruction once the config asks 
   const names = boundNames(0, seen);
   for (const name of ARTIFACT_TOOL_NAMES) expect(names).toContain(name);
   const told = seen[0]?.instructions ?? [];
-  expect(told.filter((one) => one.includes(ARTIFACT_INSTRUCTION_MARK))).toHaveLength(1);
+  expect(told.filter((one) => one.includes(ARTIFACT_INSTRUCTION_MARK))).toEqual([]);
 });
 
