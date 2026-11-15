@@ -6,7 +6,7 @@ priority: high
 created: 2026-11-15
 revalidated: 2026-11-15
 refs:
-  - git://BRIEFSHA - the last commit that holds the brief this plan covers, `briefs/the-artifact-tools-follow-their-root-config-key.md`
+  - git://a889c18fe - the last commit that holds the brief this plan covers, `briefs/the-artifact-tools-follow-their-root-config-key.md`
   - https://github.com/ahpio/ahpd/pull/344 - the artifact tools follow `artifactTools`, off by default, and the add tool's description carries their wording
   - "[code://packages/sdk/src/host/tooling.ts#L2946-L2956](../../../../packages/sdk/src/host/tooling.ts#L2946-L2956) - `instructions`, which filters the tools apart from `contributingTo`"
   - "[code://packages/sdk/src/host/tooling.ts#L2844-L2860](../../../../packages/sdk/src/host/tooling.ts#L2844-L2860) - `boundTools` and `offeredTools`, the tools a chat is handed"
