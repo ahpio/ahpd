@@ -9,10 +9,10 @@
  * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentSideEffects.ts#L1684-L1766
  */
 
-import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, expect, it } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createHost } from '../src/host.js';
 import { ROOT } from '../src/host/channels.js';
 import { fileResources } from '../src/resources/resources.js';
@@ -29,9 +29,23 @@ const SESSION = 'ahp-session:/one';
 /** The session's chat, which the host mints: read off the session's state by `serving`. */
 let CHAT = '';
 
+/*
+ * The case's folder, and a home of its own beside it, so the folder is never
+ * under a dot folder of the home, where no write is approved by itself, as a
+ * temporary folder such as `~/.local/cache/tmp` would put it.
+ */
 let dir: string;
-beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'ahpd-permissions-')); });
-afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), 'ahpd-permissions-'));
+  const home = join(dir, 'home');
+  mkdirSync(home);
+  vi.stubEnv('HOME', home);
+  vi.stubEnv('USERPROFILE', home);
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
+  rmSync(dir, { recursive: true, force: true });
+});
 
 /** An envelope as a client reads it. */
 interface Heard {
