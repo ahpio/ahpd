@@ -95,14 +95,16 @@ session history after a restart -> claude.ts transcript -> turnsOf -> getSession
 
 - **Done so far:** plan written, 2026-11-15. Task 02 added the same day, after the build of task 01 found that the SDK gives a system entry with no subtype.
 - **Done so far, build:** tasks 01 and 02 implemented, 2026-11-15, not committed. The agent-claude suite passes, 679 of 679. Session `8cf0f145` reads back 13 turns with the branch, and 3 with main.
-- **Next action:** the PR, on Softov's word, then check and check-windows. The test daemon check runs after the merge. The plan closes as `built` on Softov's word.
+- **Merged:** #338, as `9863785ca`, on 2026-11-15, with check and check-windows green on run 43667174169.
+- **Checked by hand:** the test daemon at `9863785ca` serves session `8cf0f145` as 13 turns, each with its prompt, from `b1a85f09`. `Conversation compacted` is on turn `2c3d4ffb`.
+- **Next action:** the plan closes as `built` on Softov's word, after his review.
 - **Open questions:** none.
 - **Watch out for:** a turn before a compaction now has a fork anchor after a restart. A live session already has one for such a turn, so a fork or a rewind there behaves as it does live.
 
 ## Final verification checklist
 
-- [ ] Session `8cf0f145` on the test daemon shows its first turn at 15:29 UTC.
-- [ ] A session with no compaction makes one SDK call, as now.
-- [ ] Session `8cf0f145` draws `Conversation compacted` on the turn of its compaction.
-- [ ] A transcript with two compactions reads back every turn once, in order.
-- [ ] The agent-claude suite passes, and check and check-windows are green.
+- [x] Session `8cf0f145` on the test daemon shows its first turn at 15:29 UTC.
+- [x] A session with no compaction makes one SDK call, as now.
+- [x] Session `8cf0f145` draws `Conversation compacted` on the turn of its compaction.
+- [x] A transcript with two compactions reads back every turn once, in order.
+- [x] The agent-claude suite passes, and check and check-windows are green.
