@@ -7,7 +7,7 @@ import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  resetSdk, actions, builtServer, claude, createHost, emit, firstMessage, flushed, gitChanges, hello, hostTools, machine,
+  resetSdk, actions, artifactToolsOn, builtServer, claude, createHost, emit, firstMessage, flushed, gitChanges, hello, hostTools, machine,
  peer, sdk, sendAnswered, sessionQueries, settle,
 } from './support/host.js';
 import { uriOf } from '../src/resources/fileuri.js';
@@ -494,7 +494,7 @@ describe('what a session recorded', () => {
    */
   const KEY = 'agentHost/sessionArtifacts';
   const withTools = async (pushed: Record<string, unknown> = {}) => {
-    const host = createHost({ path: WORK, agents: [claude({ paths: [WORK] })], ...machine(), tools: hostTools() });
+    const host = createHost({ path: WORK, agents: [claude({ paths: [WORK] })], ...machine(), tools: hostTools(), rootConfigStore: artifactToolsOn() });
     const p = peer();
     const client = host.accept(p);
     const said = await client.handle(hello(['0.9.0'])) as { _meta?: Record<string, unknown> };
@@ -713,6 +713,7 @@ describe('the pull request a create-pr recorded', () => {
       github: fake.port,
       changes,
       tools: hostTools(),
+      rootConfigStore: artifactToolsOn(),
       sessions: store,
     });
     const p = peer();
