@@ -73,7 +73,6 @@ Current progress and pending items only, as of 2026-11-15. *Outside this reposit
   - `computer-servercheck.test.ts` "runs its own script under sh": task 02 of plugin/20261106-1058.
   - `computer-disposable.test.ts`: the teardown in the nested-process file's problem, and two cases in [a-disposable-machine-case-fails-at-random.md](../problems/a-disposable-machine-case-fails-at-random.md).
   - `host-files.test.ts`: [a-workspace-less-case-removes-its-home-while-a-folder-is-busy.md](../problems/a-workspace-less-case-removes-its-home-while-a-folder-is-busy.md).
-  - `usage-port.test.ts`: [a-usage-port-case-times-out-on-windows.md](../problems/a-usage-port-case-times-out-on-windows.md).
   - `changes-refresh.test.ts` and `worktrees.test.ts`: [git-cases-time-out-on-windows.md](../problems/git-cases-time-out-on-windows.md).
   - `computer-far-docker.test.ts`: [a-far-docker-listing-misses-one-profile-on-windows.md](../problems/a-far-docker-listing-misses-one-profile-on-windows.md).
   - `commands.test.ts`: [the-machine-commands-case-times-out-on-windows.md](../problems/the-machine-commands-case-times-out-on-windows.md).

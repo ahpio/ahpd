@@ -46,6 +46,13 @@ afterEach(() => { rmSync(home, { recursive: true, force: true }); });
  * goes away, and the case is what the daemon did before it left, not the socket
  * it would then hold open.
  */
+/*
+ * How long one start may take, and a case of one start with it. A start from
+ * source takes 12 s to 14 s on a Windows runner, so a case holds one start.
+ */
+const START_MS = process.platform === 'win32' ? 25_000 : 15_000;
+const CASE_MS = START_MS + 5_000;
+
 const cli = (plugins: PluginSpec[]): Promise<Said> => {
   writeFileSync(config, `${JSON.stringify({ plugins })}\n`);
   const child = spawn(
@@ -63,7 +70,7 @@ const cli = (plugins: PluginSpec[]): Promise<Said> => {
   child.stdout.on('data', (chunk: Buffer) => { stdout += String(chunk); });
   child.stderr.on('data', (chunk: Buffer) => { stderr += String(chunk); });
   return new Promise((done) => {
-    const timer = setTimeout(() => { child.kill(); }, 15000);
+    const timer = setTimeout(() => { child.kill(); }, START_MS);
     child.on('exit', (code) => { clearTimeout(timer); done({ code, stdout, stderr }); });
   });
 };
@@ -84,19 +91,21 @@ it('keeps usage in a folder of its own, beside the sessions and the automations'
   // beside it.
   expect(existsSync(join(home, 'ahpd', 'sessions.json'))).toBe(false);
   expect(existsSync(join(home, 'ahpd'))).toBe(true);
-}, 20_000);
+}, CASE_MS);
 
-it('tells a plugin that its usage store was not wanted, and lets one take the port over', async () => {
+it('tells a plugin that its usage store was not wanted', async () => {
   const refused = await cli([BACKEND, USAGE]);
   expect(refused.stderr).toContain('plugin usage-store sets usage, which the daemon already set');
   expect(refused.stderr).toContain("pass 'replace' to take it over");
   // The daemon's own store is what the host keeps, so the folder is still there.
   expect(existsSync(usageFolder())).toBe(true);
+}, CASE_MS);
 
+it('lets a plugin that says replace take the usage port over', async () => {
   const taken = await cli([BACKEND, { name: USAGE, options: { replace: true } }]);
   expect(taken.code).toBe(0);
   // The same plugin with 'replace', which is the whole difference between a
   // port the daemon keeps and a port a plugin has taken.
   expect(taken.stderr).not.toContain('already set');
   expect(taken.stderr).toContain('plugin usage-store');
-}, 20_000);
+}, CASE_MS);
