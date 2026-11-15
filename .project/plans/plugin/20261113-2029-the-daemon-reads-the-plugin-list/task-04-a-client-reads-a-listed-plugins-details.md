@@ -17,7 +17,7 @@ The daemon fetches each file from the version's `files` once, keeps it on disk, 
 
 - `UPDATE: packages/server/src/pluginlist.ts` - `listedDetails`, the fetch and the files on disk.
 - `UPDATE: packages/server/src/pluginschannel.ts:878-889` - the command `x-ahpd/plugins/details`.
-- `UPDATE: packages/server/src/config.ts:966` - `pluginFilesPath`, beside `pluginListPath`.
+- `UPDATE: packages/server/src/config.ts:966` - `pluginFilesPath`, beside `pluginMarketplacesPath`.
 - `UPDATE: packages/server/test/pluginlist.test.ts` - the details over stubbed files.
 - `UPDATE: docs/plugins/PLUGINS.md` - the command and its answer.
 

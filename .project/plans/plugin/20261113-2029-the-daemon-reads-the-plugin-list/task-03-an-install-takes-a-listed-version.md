@@ -24,15 +24,16 @@ The install then checks the package against the list's `integrity` or `commit`, 
 
 ## Steps
 
-1. Add `listedVersions(source)` in `pluginlist.ts`, which answers the list's versions for a source, or nothing.
+1. Add `listedVersions(source)` in `pluginlist.ts`, which answers the versions of the first marketplace that has the source, or nothing.
 2. In `fittingVersion`, use `listedVersions` when it answers, and the npm packument otherwise, with the same rule.
 3. Skip a listed prerelease, as the npm path does, so the list can serve prereleases later.
-4. Keep `selfupdate.ts` on npm, since ahpd itself is not in the list.
-5. For a listed `github:` source, install `github:<owner>/<repo>#<commit>` of the chosen version.
-6. After npm runs, read the installed package's `integrity` from `node_modules/.package-lock.json` for an npm source.
-7. Read the installed commit from the same file's `resolved` for a `github:` source.
-8. When the value differs from the list, remove the package and refuse with both values and the list's URL.
-9. When no listed version fits the daemon, refuse with the newest version and its `sdk`, as npm does.
+4. Skip a listed version that has `deprecated`.
+5. Keep `selfupdate.ts` on npm, since ahpd itself is not in the list.
+6. For a listed `github:` source, install `github:<owner>/<repo>#<commit>` of the chosen version.
+7. After npm runs, read the installed package's `integrity` from `node_modules/.package-lock.json` for an npm source.
+8. Read the installed commit from the same file's `resolved` for a `github:` source.
+9. When the value differs from the list, remove the package and refuse with both values and the list's URL.
+10. When no listed version fits the daemon, refuse with the newest version and its `sdk`, as npm does.
 
 ## Validation
 

@@ -43,8 +43,8 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 ### Runtime path
 
 ```
-start + every pluginCheckHours -> GET pluginList (If-None-Match, User-Agent) -> plugin-list.json on disk
-client -> x-ahpd/plugins/available -> plugin-list.json + installed rows -> entries with installed
+start + every pluginCheckHours -> GET each of pluginMarketplaces (If-None-Match, User-Agent) -> plugin-marketplaces/<hash>.json on disk
+client -> x-ahpd/plugins/available -> the marketplaces merged in order, first id wins + installed rows -> entries with marketplace and installed
 client -> x-ahpd/plugins/details {id, version?} -> files URLs -> plugin-files/<id>/<version>/ on disk -> readme, changelog, manifest
 client -> x-ahpd/plugins/install {name} -> listed? versions from the list : npm packument -> npm install -> integrity or commit check
 ```
@@ -59,12 +59,15 @@ client -> x-ahpd/plugins/install {name} -> listed? versions from the list : npm 
 
 | What | Source | Task |
 | --- | --- | --- |
-| The list is on by default; an empty URL turns it off | Softov, 2026-10-25: "yes" | 01 |
-| A setting holds the URL, `https://plugins.ahpio.com/v1/plugins.json` by default, and `ahpd configure` asks for it | Softov, 2026-10-25 | 01 |
+| The list is on by default; `[]` turns the marketplaces off | Softov, 2026-10-25: "yes" | 01 |
+| A daemon reads several marketplaces in order, ours by default; on the same id the first wins, and an entry names its marketplace | Softov, 2026-11-15: "Several, in order" | 01, 02, 03 |
+| The setting is `pluginMarketplaces`, as VS Code names `chat.plugins.marketplaces` | Softov, 2026-11-15: "pluginMarketplaces" | 01 |
+| A setting holds the URLs, `https://plugins.ahpio.com/v1/plugins.json` by default, and `ahpd configure` asks for it | Softov, 2026-10-25 | 01 |
 | The default URL carries the format version, `/v1/plugins.json`, so a later format is served beside it | Softov, 2026-11-14: "/ahpd/plugins/v1.json" | 01 |
 | The default URL is `https://plugins.ahpio.com/v1/plugins.json` | Softov, 2026-11-14: "/v1/plugins.json" | 01 |
 | The list is at its own host, `plugins.ahpio.com`, which moves by DNS apart from the site | Softov, 2026-11-14: "plugins.ahpio.com" | 01 |
 | A listed prerelease is skipped; a prerelease mode for a daemon or a plugin is a later plan | Softov, 2026-11-14: "something we could see to support latter" | 03 |
+| A listed version with `deprecated` is never installed or updated to; a plugin row that runs one shows the message | Softov, 2026-11-14: "Keep it, marked" | 02, 03 |
 | The list fetch and the auto-update share one period, 12 hours by default | Softov, 2026-10-25 | 01 |
 | The period is a setting outside `ahpd configure` | Softov, 2026-10-25: "does not need to be on ahpd configure" | 01 |
 | The fetch sends `User-Agent: ahpd/<version>` | Softov, 2026-10-25: "Yes for the User-Agent" | 01 |
@@ -74,8 +77,8 @@ client -> x-ahpd/plugins/install {name} -> listed? versions from the list : npm 
 | A client never contacts plugins.ahpio.com or the registry; the daemon fetches and keeps the files | Softov, 2026-10-25 | 04 |
 | `fittingVersion` reads a listed plugin's versions from the list, and an unlisted one's from npm | Softov, 2026-11-13 | 03 |
 | An install refuses a package whose integrity or commit differs from the list | Softov, 2026-11-13 | 03 |
-| The settings are `pluginList` and `pluginCheckHours` | `(defaulted: beside updateCheck, in its style)` | 01 |
-| The list's file is `plugin-list.json` in the configuration folder, with its `ETag` | `(defaulted: beside update.json)` | 01 |
+| The period setting is `pluginCheckHours` | `(defaulted: beside updateCheck, in its style)` | 01 |
+| Each list's file is in `plugin-marketplaces/` in the configuration folder, named by a hash of its URL, with its `ETag` | `(defaulted: beside update.json)` | 01 |
 | A details file is kept under `plugin-files/<id>/<version>/` and never fetched again | `(defaulted: a version's files never change)` | 04 |
 | `x-ahpd/plugins/available` and `details` need `plugin:list` | `(defaulted: the grant that reads the plugin channel)` | 02, 04 |
 
@@ -83,7 +86,7 @@ client -> x-ahpd/plugins/install {name} -> listed? versions from the list : npm 
 
 - **Data flow** - `pluginlist.ts` fetches and reads the list. The action, the channel commands and the install read it from disk, never from the network.
 - **Event flow** - The daemon fetches at start when the file is older than the period, then on a timer let go of with `unref`.
-- **State flow** - `plugin-list.json` holds the list, its `ETag` and `checkedAt`. A fetch that fails leaves it as it was.
+- **State flow** - Each file in `plugin-marketplaces/` holds one list, its URL, its `ETag` and `checkedAt`. A fetch that fails leaves it as it was.
 - **Layer responsibilities** - `pluginlist.ts`: fetch, read, files · `install.ts`: the listed versions and the check · `commands/plugin.ts`: the action · `pluginschannel.ts`: the commands.
 - **Source-of-truth files** - [`code://packages/server/src/pluginlist.ts`](../../../../packages/server/src/pluginlist.ts) once written.
 
@@ -111,8 +114,9 @@ client -> x-ahpd/plugins/install {name} -> listed? versions from the list : npm 
 
 ## Final verification checklist
 
-- [ ] A fresh daemon writes `plugin-list.json`, and a restart within 12 hours does not fetch again.
-- [ ] `"pluginList": ""` fetches nothing, and `available` answers that the list is off.
+- [ ] A fresh daemon writes one file in `plugin-marketplaces/`, and a restart within 12 hours does not fetch again.
+- [ ] `"pluginMarketplaces": []` fetches nothing, and `available` answers no marketplaces.
+- [ ] A second marketplace with an id ours has does not replace ours, and its other plugins appear with their `marketplace`.
 - [ ] `ahpd plugin available` prints each listed plugin, with the installed ones marked.
 - [ ] An install of `@ahpd/agent-acp` takes its version from the list, and a stubbed list with a wrong `integrity` refuses it.
 - [ ] `x-ahpd/plugins/details {id: "agent-acp"}` answers the README of the version that fits the daemon.
