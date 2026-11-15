@@ -174,6 +174,11 @@ function walkedOf(contribution: Contribution, record: Record<string, unknown> | 
   for (const agent of contribution.agents) {
     walked.push({ where: `agent ${agent.provider}`, schema: agent.schema() });
   }
+  for (const configuration of contribution.providerConfigurations) {
+    for (const [key, schema] of Object.entries(configuration.properties)) {
+      walked.push({ where: `root config ${key}`, schema });
+    }
+  }
   return walked;
 }
 
