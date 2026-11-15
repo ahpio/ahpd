@@ -1,6 +1,6 @@
 ---
 title: A read-back turn draws its notices
-status: todo
+status: implemented
 depends: [task-01-the-turns-before-a-compaction-read-back.md]
 layer: "agent-claude"
 refs:
@@ -49,4 +49,9 @@ A Claude turn read back from its transcript draws its compaction notices and not
 - By hand: expect `Conversation compacted` on the turn of its compaction.
 
 ## Resume
+
+- Implemented on 2026-11-15 with task 01, not committed.
+- `withSystemText` and `systemIn` in `transcript.ts` fill each system message from its entry.
+- No case checks that a read with no system message reads no file, because the read has no effect a case can see. The case with no compaction checks one SDK call.
+- Session `8cf0f145` draws `Conversation compacted` on turn `2c3d4ffb`, the prompt the compaction ran under, before its reply.
 

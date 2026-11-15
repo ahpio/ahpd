@@ -1,6 +1,6 @@
 ---
 title: The turns before a compaction read back
-status: todo
+status: implemented
 depends: []
 layer: "agent-claude"
 refs:
@@ -53,4 +53,13 @@ refs:
 - By hand: read the history of session `8cf0f145`, and expect its first turn at 15:29 UTC.
 
 ## Resume
+
+- Implemented on 2026-11-15, not committed, in `/github/ahpd.worktrees/claude-history`.
+- `withEarlierSegments` and `entriesBefore` in `transcript.ts` read each segment, and `turnsOf` looks up the file once for all its reads.
+- The cases with a compaction fail on main's `transcript.ts`, and pass on the branch.
+- The agent-claude suite passes, 679 of 679, and `pnpm typecheck` passes.
+- The check by hand ran as a read of session `8cf0f145` with the branch's `turnsOf`, because `test-daemon.sh` runs origin/main.
+  - Main gives 3 turns, the first a reply of the preserved segment with no prompt.
+  - The branch gives 13 turns, each with its prompt, the first at the session's first entry, from 15:29:16 UTC.
+- The test daemon check runs after the merge.
 
