@@ -43,8 +43,17 @@ const seen = (p: ReturnType<typeof peer>): Envelope[] => p.notes
   .map((n) => n.params as Envelope)
   .filter((n) => n.channel === channel);
 
-function makeHost() {
-  return createHost({ path: root, agents: [echo({ path: root, pace: 0 })], resources: fileResources() });
+function makeHost(resources = fileResources()) {
+  return createHost({ path: root, agents: [echo({ path: root, pace: 0 })], resources });
+}
+
+/** The file store, counting each write once the host's call to it has resolved. */
+function countedResources(): { resources: ReturnType<typeof fileResources>; written: () => number } {
+  const resources = fileResources();
+  const write = resources.write!.bind(resources);
+  let written = 0;
+  resources.write = async (...args) => { await write(...args); written += 1; };
+  return { resources, written: () => written };
 }
 
 async function join_(host: ReturnType<typeof makeHost>, clientId: string) {
@@ -200,12 +209,16 @@ it('takes a write from outside as one change, and keeps an edit it has not writt
 });
 
 it('writes the text and lets the document go when the last person leaves', async () => {
-  const host = makeHost();
+  const counted = countedResources();
+  const host = makeHost(counted.resources);
   const ana = await join_(host, 'ana');
   ana.send(changed(0, [{ from: 0, to: 0, insert: '# Plan\n' }]));
   await until(() => seen(ana.peer).some((one) => one.action.type === 'x-ahpd-shared/changed'), 'her change');
   void ana.client.handle({ method: 'unsubscribe', params: { channel } });
-  await until(() => readFileSync(file, 'utf8') === '# Plan\n## Tasks\n- one\n', 'the write on leaving');
+  // The host lets the document go once its write resolves, and the file can
+  // hold the text before that, so the case waits for the write itself.
+  await until(() => counted.written() === 1, 'the write on leaving');
+  expect(readFileSync(file, 'utf8')).toBe('# Plan\n## Tasks\n- one\n');
   // A later subscriber reads the file afresh, at version 0.
   const again = await join_(host, 'again');
   expect(again.opened.snapshot.state).toMatchObject({ text: '# Plan\n## Tasks\n- one\n', version: 0 });
