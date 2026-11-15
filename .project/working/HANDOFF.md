@@ -10,7 +10,7 @@ Current progress and pending items only, as of 2026-11-15. *Outside this reposit
 ## Main
 
 - The last stable release is 0.14.0 (`v0.14.0`). `v0.15.0-rc.3` is tagged on `28dd315e0` (#320). Its release run 43394827388 passed `parts`, `release` and `image` on 2026-11-13, and staged the 13 packages under `next`. Softov approved them on 2026-11-13, and npm serves `0.15.0-rc.3` under `next` since 14:36 UTC. What the release needs is in [pending/release.md](../pending/release.md), and the checks by hand are ordered in [pending/triage.md](../pending/triage.md).
-- Main's last merge is #339 (`a01d874cb`) on 2026-11-15. With it, the daemon reads the plugin list. Before it, the merge of #340 (`4b4700f3f`) fixed two random cases in tests only. Earlier that day, #338 (`9863785ca`) merged. On 2026-11-14, #329, #332, #331, #333, #335, #336 and #337 merged. On 2026-11-13, #321 to #328 merged after the rc.3 release. No PR is open.
+- Main's last merge is #342 (`eb94c97a6`) on 2026-11-15. It gives the cases of `host-permissions.test.ts` a home of their own, so a `TMPDIR` under a home dot folder no longer fails two of them. Before it, #339 (`a01d874cb`) made the daemon read the plugin list. Before #339, the merge of #340 (`4b4700f3f`) fixed two random cases in tests only. Earlier that day, #338 (`9863785ca`) merged. On 2026-11-14, #329, #332, #331, #333, #335, #336 and #337 merged. On 2026-11-13, #321 to #328 merged after the rc.3 release. #341 is open from another session.
 - plugin/20261114-1455 waits for Softov's review to close.
 - [claude/20261114-1816-the-context-figure-follows-a-long-turn](../plans/claude/20261114-1816-the-context-figure-follows-a-long-turn/plan.md) is merged in #331, and closes on Softov's word. #331 also fixes the plugin turn case that waited a fixed 20 ms.
 - The brief [vs-code-shows-the-claude-context-figure.md](../briefs/vs-code-shows-the-claude-context-figure.md) waits for "plan it".
@@ -38,7 +38,7 @@ Current progress and pending items only, as of 2026-11-15. *Outside this reposit
 ## The dev daemon
 
 - Softov's dev daemon runs from `/github/ahpd` with `~/.config/ahpd/config-dev.json`, on ports 5180 and 37537. It runs from `src`, so a restart is all a merge needs. It needs `DEEPSEEK_API_KEY` in its environment. Never restart it or use its ports yourself.
-- Softov restarted it on 2026-11-13 after #317. Since then, #321, #322, #323, #326, #329, #331, #333, #337, #338 and #339 change the daemon. #324, #325, #327, #328 and #340 change tests only.
+- Softov restarted it on 2026-11-13 after #317. Since then, #321, #322, #323, #326, #329, #331, #333, #337, #338 and #339 change the daemon. The others, #324, #325, #327, #328, #340 and #342, change only tests.
 - #329 lets a bot talk run with no grants on the bot plugin's entry.
 - #331 updates a Claude session's context figure during a turn and after a compaction.
 - #333 moves Claude to SDK 0.3.325 and pi to 1.5.2. A Claude session with `sandbox: on` still runs sandboxed Bash without a prompt. [ideas/sandboxed-bash-asks-as-the-sdk-default.md](../ideas/sandboxed-bash-asks-as-the-sdk-default.md) checks that default in 0.16.
