@@ -27,6 +27,16 @@ On 2026-11-13 the adopted container case and `reads a dev container's vault-name
 
 On 2026-11-14, in a full run with a load average near 6, `computer-libvirt.test.ts`: `suspends and resumes a VM through its state, with a stretch closed at each hold` and `computer-state-seed.test.ts`: `seeds a state volume once, again only for a seed that changed, and keeps what the agent wrote` timed out at 5000 ms. Both files passed alone at `0d95f584c`.
 
+On 2026-11-15 the model gateway branch from `804a23937` does not change `packages/computer`.
+In its full run, with a load average near 9, four more cases timed out at 5000 ms:
+
+- `computer-devcontainer.test.ts`: `stops the container a folder is, ending the window's relay first`
+- `computer-needs.test.ts`: `mounts one state volume for two machines of one profile and owner, and one per owner`
+- `computer-parts-mount.test.ts`: `mounts each part from a volume filled once where Docker refuses image mounts`
+- `computer-state-seed.test.ts`: `gives the seeded files to the machine’s user, and leaves a root machine’s alone`
+
+A run of those four files at a load average of 7 passed all of them, and timed out on `reads a dev container's vault-named need again after a restart` in their place.
+
 On 2026-11-13 `computer-disposable.test.ts`: `takes the machine's own git volume with it, and asks for none where the profile leaves it open` timed out alone the same way, at `2bf97a6c1`.
 
 ## Cause
