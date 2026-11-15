@@ -24,6 +24,8 @@ import type { Runner } from '../src/install.js';
 import { registry, type Fetch } from '../src/update.js';
 import { loadPlugins, pluginSet, runPlugins, type PluginSet } from '../src/plugins.js';
 import { pluginsChannel } from '../src/pluginschannel.js';
+import { recordInstalled, refreshMarketplace } from '../src/pluginlist.js';
+import type { ListedPlugin, ListedVersion } from '../src/pluginlist.js';
 import { daemonRootConfig } from '../src/rootconfig.js';
 
 const URI = 'x-ahpd-plugins://';
@@ -752,6 +754,20 @@ it('refuses install and remove to a member, which holds neither grant', async ()
   await close();
 });
 
+it('uninstalls the package a removed row names, which is not the row id', async () => {
+  // The row id is not the package name, as `@ahpd/web` is the row `web`.
+  const { runner, calls } = fakeNpm({ '@acme/web': 'github:acme/web' }, { names: { '@acme/web': 'web' } });
+  const { host, users, close } = await served({ run: runner });
+  const jo = await as(host, users, 'jo');
+  const installed = await jo.call('x-ahpd/plugins/install', { source: 'github:acme/web' });
+  const id = installed.result.id as string;
+  expect(id).not.toBe('@acme/web');
+  expect(await jo.call('x-ahpd/plugins/remove', { id })).toMatchObject({ result: { id } });
+  expect(calls.at(-1)?.argv).toEqual(['uninstall', '--prefix', join(home, 'ahpd'), '--legacy-peer-deps', '--', '@acme/web']);
+  expect(held().plugins).toEqual([DECLARED, { name: SECRET, options: { apiKey: 'sk-live-1', region: 'eu' } }]);
+  await close();
+});
+
 it('removes a plugin through the channel, and the row leaves the list', async () => {
   const { runner, calls } = fakeNpm({});
   const { host, users, close } = await served({ run: runner });
@@ -763,7 +779,8 @@ it('removes a plugin through the channel, and the row leaves the list', async ()
     result: { id: 'secret', restart: true },
   });
   expect(held().plugins).toEqual([DECLARED]);
-  expect(calls.at(-1)?.argv).toEqual(['uninstall', '--prefix', join(home, 'ahpd'), '--', 'secret']);
+  // The entry names a file, not a package npm installed, so npm is not run.
+  expect(calls.some((one) => one.argv[0] === 'uninstall')).toBe(false);
 
   await wait(50);
   expect(ana.heard(URI)).toEqual(['removed secret']);
@@ -1480,5 +1497,108 @@ it('refuses an update to a role without plugin:install', async () => {
 
   expect(await ha.call('x-ahpd/plugins/update', { id: 'demo' })).toMatchObject({ code: -32009 });
   expect(calls).toEqual([]);
+  await close();
+});
+
+/*
+ * The plugin lists, read by the channel from a configuration folder of the
+ * case's own, so no list is written among the fixtures.
+ */
+
+const OURS = 'https://plugins.example.com/v1/plugins.json';
+const THEIRS = 'https://other.example.com/v1/plugins.json';
+
+/** A listed version of the declared fixture, `deprecated` when a message is given. */
+const declaredVersion = (version: string, deprecated?: string): ListedVersion => ({
+  version,
+  files: { download: `https://registry.example.com/declared-${version}.tgz`, manifest: `https://plugins.example.com/declared/${version}/package.json` },
+  ...(deprecated === undefined ? {} : { deprecated }),
+});
+
+/** A host serving the plugins channel with two plugin lists, kept under the case's home. */
+const listedHost = async () => {
+  const dir = join(home, 'ahpd');
+  const lists = pluginsChannel({
+    configFile: config,
+    where: { configDir: dir, cwd: here },
+    loaded: () => [],
+    alerts: () => ({}),
+    views: () => ({}),
+    restartNeeded: () => {},
+    marketplaces: () => [OURS, THEIRS],
+  });
+  const wire = servedRecords('ahpd', [lists.channel], lists.methods);
+  const users = fileUsers({ path: usersFile });
+  const host = createHost({
+    path: home,
+    agents: [{ ...echo({ path: home, pace: 0 }), provider: 'base', displayName: 'Base' }],
+    resources: fileResources(),
+    channels: wire.channels,
+    methods: wire.methods,
+    users,
+  });
+  const keep = async (url: string, plugins: ListedPlugin[]): Promise<void> => {
+    const fetch: Fetch = async () => Response.json({ version: 1, plugins });
+    expect(await refreshMarketplace({ url, version: '0.15.0', dir, fetch })).toBe('written');
+  };
+  return { host, users, dir, keep, close: async () => { await host.close(); } };
+};
+
+it('answers every listed plugin with its marketplace, two with one id included, and marks the installed one', async () => {
+  const { host, users, dir, keep, close } = await listedHost();
+  await keep(OURS, [{ id: 'declared', source: '@example/declared', versions: [declaredVersion('1.0.0')] }, { id: 'other', source: '@example/other', versions: [declaredVersion('2.0.0')] }]);
+  await keep(THEIRS, [{ id: 'declared', source: '@example/declared', versions: [declaredVersion('1.1.0')] }]);
+  recordInstalled(dir, DECLARED, { marketplace: OURS, source: '@example/declared' });
+  const ana = await as(host, users, 'ana');
+  const answer = await ana.call('x-ahpd/plugins/available', {});
+  expect(answer.result.marketplaces.map((one: Bag) => [one.url, one.state])).toEqual([[OURS, 'on'], [THEIRS, 'on']]);
+  expect(answer.result.plugins.map((one: Bag) => [one.id, one.marketplace, one.installed])).toEqual([
+    ['declared', OURS, { id: 'declared', version: '1.0.0', marketplace: OURS }],
+    ['other', OURS, undefined],
+    ['declared', THEIRS, { id: 'declared', version: '1.0.0', marketplace: OURS }],
+  ]);
+  await close();
+});
+
+it('answers no list and no plugins when none is fetched yet, and refuses a reader without plugin:list', async () => {
+  const { host, users, close } = await listedHost();
+  const ana = await as(host, users, 'ana');
+  expect((await ana.call('x-ahpd/plugins/available', {})).result).toEqual({
+    marketplaces: [{ url: OURS, state: 'missing' }, { url: THEIRS, state: 'missing' }],
+    plugins: [],
+  });
+  const bo = await as(host, users, 'bo');
+  expect(await bo.call('x-ahpd/plugins/available', {})).toMatchObject({ code: -32009 });
+  await close();
+});
+
+it('shows the deprecation its list marks on the version a plugin runs as a warning on its row', async () => {
+  const { host, users, dir, keep, close } = await listedHost();
+  await keep(OURS, [{ id: 'declared', source: '@example/declared', versions: [declaredVersion('1.0.0', 'Use 1.1.0.')] }]);
+  recordInstalled(dir, DECLARED, { marketplace: OURS, source: '@example/declared' });
+  const ana = await as(host, users, 'ana');
+  const rows = await ana.rows();
+  expect(rows['declared']?.alerts).toEqual([{ level: 'warning', text: '1.0.0 is deprecated: Use 1.1.0.', ref: 'deprecated:1.0.0' }]);
+  expect(rows['secret']?.alerts).toEqual([]);
+  await close();
+});
+
+it('answers a listed plugin\'s details, and refuses an id no list has', async () => {
+  const { host, users, keep, close } = await listedHost();
+  await keep(OURS, [{ id: 'declared', source: '@example/declared', versions: [{ ...declaredVersion('1.0.0'), files: { download: 'https://x.example.com/d.tgz', manifest: 'http://not-https.example.com/package.json' } }] }]);
+  const ana = await as(host, users, 'ana');
+  const answer = await ana.call('x-ahpd/plugins/details', { id: 'declared' });
+  expect(answer.result).toMatchObject({ id: 'declared', marketplace: OURS, version: '1.0.0', versions: ['1.0.0'] });
+  expect(answer.result.problems).toEqual([{ part: 'manifest', problem: 'http://not-https.example.com/package.json is not an https: URL' }]);
+  expect(await ana.call('x-ahpd/plugins/details', { id: 'nowhere' })).toMatchObject({ code: -32602, message: 'nowhere is in no plugin list.' });
+  await close();
+});
+
+it('answers an installed plugin\'s own files with installed: true, and refuses an id that is not configured', async () => {
+  const { host, users, close } = await listedHost();
+  const ana = await as(host, users, 'ana');
+  // The fixture's package has no README, changelog or license, so the answer is its id alone.
+  expect(await ana.call('x-ahpd/plugins/details', { id: 'declared', installed: true })).toEqual({ result: { id: 'declared' } });
+  expect(await ana.call('x-ahpd/plugins/details', { id: 'nowhere', installed: true })).toMatchObject({ code: -32602, message: 'nowhere is not a configured plugin' });
   await close();
 });

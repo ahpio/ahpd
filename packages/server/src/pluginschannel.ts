@@ -23,14 +23,18 @@ import type { Alert, Bag, Catalogs, Grant, Loaded, PluginMethod, PluginSpec, Plu
 import type { Applied } from './applyplugins.js';
 import { maskOption, SET, withoutSpecSecrets, withoutUserinfoIn } from './commands/config.js';
 import {
-  enableNames, installPlugins, NpmFailure, oneAtATime, packageOf, pluginRoot, removePlugins, run as runProgram, setPluginEnabled, setPluginOption,
+  enableNames, installPlugins, isPackageName, NpmFailure, oneAtATime, packageOf, pluginRoot, removePlugins, run as runProgram, setPluginEnabled, setPluginOption,
   specsIn, updatePlugins,
 } from './install.js';
 import type { Moved, Runner } from './install.js';
-import { describePlugin, sourceOf, optionsSchemaLoaded, optionsSchemaOf, pluginIdOf, runPlugins, schemaOf } from './plugins.js';
+import { describePlugin, sourceOf, optionsSchemaLoaded, optionsSchemaOf, packageDirOf, pluginIdOf, runPlugins, schemaOf } from './plugins.js';
 import type { Where } from './plugins.js';
 import { redactSecretsInText, redactToken } from './redaction.js';
 import type { Fetch } from './update.js';
+import { availableAnswer } from './commands/plugin.js';
+import { ICON_BOUNDS } from './icons.js';
+import { deprecationOf, installedFiles, listedDetails } from './pluginlist.js';
+import type { ListsAt } from './pluginlist.js';
 import { version } from './version.js';
 
 /** The channel, and the domain its commands are named after. */
@@ -200,13 +204,19 @@ export interface PluginsChannelOptions {
   fetch?: Fetch;
   /** The daemon's own version, which an installed plugin's `@ahpd/sdk` is pinned to; absent is this package's. */
   version?(): string;
+  /**
+   * The plugin lists the daemon reads, in order, kept in `plugin-marketplaces/`
+   * under `where.configDir`. Absent reads none: `available` answers no list, and
+   * an install and an update read npm.
+   */
+  marketplaces?(): readonly string[];
 }
 
 /** The plugin channel and its commands, as the daemon hands them to `servedRecords`. */
 export interface PluginsChannel {
   /** `x-ahpd-plugins`. */
   channel: RecordsChannel;
-  /** `x-ahpd/plugins/install`, `remove`, `write`, `source`, `enable`, `disable`, `options`, `apply`, `reload` and `update`, by name. */
+  /** `x-ahpd/plugins/available`, `details`, `install`, `remove`, `write`, `source`, `enable`, `disable`, `options`, `apply`, `reload` and `update`, by name. */
   methods: Record<string, PluginMethod>;
   /** Refresh the channel. */
   refresh(): Promise<void>;
@@ -227,6 +237,11 @@ export interface PluginsChannel {
  */
 export const pluginsChannel = (options: PluginsChannelOptions): PluginsChannel => {
   const { configFile, where } = options;
+  /** Where the plugin lists are read, or nothing when this channel reads none. */
+  const lists = (): ListsAt | undefined => {
+    const urls = options.marketplaces?.();
+    return urls === undefined ? undefined : { urls, dir: where.configDir };
+  };
 
   /** npm, as the install path runs it: the caller's, or the one this process runs. */
   const npm: Runner = options.run ?? runProgram;
@@ -311,7 +326,16 @@ export const pluginsChannel = (options: PluginsChannelOptions): PluginsChannel =
     // or is switched off, is described from the manifest read without importing.
     const manifest = loaded?.manifest ?? row.manifest;
     // What this plugin's row carries, masked as every other answer is.
-    const alerts = options.alerts()[row.name] ?? [];
+    // What the plugin and its loader raised, and the deprecation its list
+    // marks on the version it runs, which is read from the list each time and
+    // kept in no store: a new list says it, and a list that takes it back
+    // takes it away.
+    const at = lists();
+    const deprecated = at === undefined ? undefined : deprecationOf(packageOf(sourceOf(spec)), row.version, at);
+    const alerts: Alert[] = [
+      ...(options.alerts()[row.name] ?? []),
+      ...(deprecated === undefined ? [] : [{ level: 'warning' as const, text: `${row.version ?? ''} is deprecated: ${deprecated}`, ref: `deprecated:${row.version ?? ''}` }]),
+    ];
     // Only a plugin the daemon runs can show a view, so one that did not load
     // has none to draw even if its id still held one while it went.
     const views = loaded === undefined ? undefined : options.views()[row.name];
@@ -507,6 +531,10 @@ export const pluginsChannel = (options: PluginsChannelOptions): PluginsChannel =
       if (typeof source !== 'string' || source.trim() === '') {
         throw new RpcError(INVALID_PARAMS, `${name} needs source, a package name, a path, a URL or a git spec`);
       }
+      const marketplace = params.marketplace;
+      if (marketplace !== undefined && typeof marketplace !== 'string') {
+        throw new RpcError(INVALID_PARAMS, `${name} takes marketplace as a URL, one of pluginMarketplaces`);
+      }
       // What npm installed, which is the name written into `plugins`; the
       // source may be a URL or a git spec that no row carries.
       let packages: string[] = [];
@@ -520,6 +548,8 @@ export const pluginsChannel = (options: PluginsChannelOptions): PluginsChannel =
             run: npm,
             fetch: registryFetch,
             say,
+            marketplaces: options.marketplaces?.(),
+            marketplace,
           });
         }
         catch (error) {
@@ -555,12 +585,16 @@ export const pluginsChannel = (options: PluginsChannelOptions): PluginsChannel =
       const keep = params.keep === true;
       return changed(async () => {
         const folder = writtenAt(id);
+        // The entry names the package npm installed, which is not the row's id:
+        // `@ahpd/web` is the row `web`. A path names no package, so npm is not run.
+        const spec = specOf(id);
+        const installed = folder === undefined && spec !== undefined && isPackageName(spec);
         try {
-          await removePlugins([folder ?? id], {
+          await removePlugins([folder ?? (spec === undefined ? id : sourceOf(spec))], {
             configDir: where.configDir,
             configFile,
-            // A written plugin is a folder, not a package npm installed.
-            uninstall: folder === undefined && !keep,
+            // A written plugin is a folder, and a path plugin a file, not a package npm installed.
+            uninstall: installed && !keep,
             run: npm,
             say,
           });
@@ -862,6 +896,7 @@ export const pluginsChannel = (options: PluginsChannelOptions): PluginsChannel =
             run: npm,
             fetch: registryFetch,
             say,
+            marketplaces: options.marketplaces?.(),
           });
           moved = all.find((one) => one.name === packageName);
         }
@@ -873,9 +908,76 @@ export const pluginsChannel = (options: PluginsChannelOptions): PluginsChannel =
     },
   };
 
+  /**
+   * Every plugin the lists hold, as `plugin available` answers it: each with
+   * its marketplace, its icons as `data:` URIs and the installed plugin with
+   * its id.
+   */
+  const availableMethod: PluginMethod = {
+    grant: 'plugin:list' as Grant,
+    describe: () => ({
+      title: 'List the plugins the plugin lists hold',
+      description: 'Answers `{ marketplaces, plugins }`: each list in `pluginMarketplaces` with its `state`, `on` or `missing`, and every entry of every list with its `marketplace`, `versions`, icons as `data:` URIs, and `installed` for an id that is installed.',
+    }),
+    handle: async () => {
+      const urls = options.marketplaces?.() ?? [];
+      return availableAnswer({
+        plugins: specs(),
+        pluginMarketplaces: urls,
+        iconLimitBytes: where.icons?.limitBytes ?? ICON_BOUNDS.limitBytes,
+        iconTimeoutMs: where.icons?.timeoutMs ?? ICON_BOUNDS.timeoutMs,
+      }, where) as unknown as Bag;
+    },
+  };
+
+  /**
+   * What a details page shows for one listed plugin before an install: the
+   * README, changelog and license of a version, and what its manifest
+   * declares. The daemon fetches each file once and keeps it.
+   */
+  const detailsMethod: PluginMethod = {
+    grant: 'plugin:list' as Grant,
+    describe: () => ({
+      title: "Read a listed plugin's details",
+      description: 'Takes `id`, and optionally `marketplace` and `version`. Answers the version, every listed version, `readme`, `changelog`, `license`, the manifest\'s `contracts`, `links` and `optionsSchema`, `homepage`, `bugs`, `repository` and the icons, with one `problem` for each part that could not be fetched. With `installed: true`, `id` is an installed plugin\'s row, and the answer is `{ id, readme?, changelog?, license? }` read from its installed package.',
+    }),
+    handle: async (params) => {
+      const name = `${DOMAIN}/details`;
+      const { id, marketplace, version: asked } = params;
+      if (typeof id !== 'string' || id === '') throw new RpcError(INVALID_PARAMS, `${name} needs id, a listed plugin's id`);
+      if (params.installed === true) {
+        // What is installed, read from its own package: a plugin from a list,
+        // a folder or a file shows its own README and not a list's.
+        const spec = specOf(id);
+        if (spec === undefined) throw new RpcError(INVALID_PARAMS, `${id} is not a configured plugin`);
+        const folder = packageDirOf(spec, where);
+        return { id, ...(folder === undefined ? {} : installedFiles(folder)) } as unknown as Bag;
+      }
+      if (marketplace !== undefined && typeof marketplace !== 'string') throw new RpcError(INVALID_PARAMS, `${name} takes marketplace as a URL`);
+      if (asked !== undefined && typeof asked !== 'string') throw new RpcError(INVALID_PARAMS, `${name} takes version as a version string`);
+      try {
+        return await listedDetails({
+          urls: options.marketplaces?.() ?? [],
+          dir: where.configDir,
+          id,
+          marketplace,
+          version: asked,
+          daemonVersion: daemonVersion(),
+          fetch: registryFetch,
+          icons: { problem: () => undefined, bounds: where.icons ?? ICON_BOUNDS },
+        }) as unknown as Bag;
+      }
+      catch (error) {
+        throw new RpcError(INVALID_PARAMS, withoutUserinfoIn(error instanceof Error ? error.message : String(error)));
+      }
+    },
+  };
+
   return {
     channel,
     methods: {
+      [`${DOMAIN}/available`]: availableMethod,
+      [`${DOMAIN}/details`]: detailsMethod,
       [`${DOMAIN}/install`]: installMethod,
       [`${DOMAIN}/remove`]: removeMethod,
       [`${DOMAIN}/write`]: writeMethod,

@@ -38,8 +38,10 @@ const terminal = (...answers: string[]) => {
       said += String(chunk);
       done();
       if (!said.endsWith(': ')) return;
-      const answer = pending.shift();
-      if (answer !== undefined) setImmediate(() => { input.write(`${answer}\n`); });
+      // Past the answers a case gives, each question is answered with Enter,
+      // which keeps what is there: a case is about the answers it names.
+      const answer = pending.shift() ?? '';
+      setImmediate(() => { input.write(`${answer}\n`); });
     },
   }), { isTTY: true });
   // `readline` draws around the cursor and echoes what was typed; a reader of
@@ -229,6 +231,21 @@ it('writes the defaults on Enter at every question, and installs Claude and the 
   expect(calls[0]?.argv).toContain('@ahpd/agent-claude@0.8.0');
   // The web UI is offered on a first run, and Enter takes it.
   expect(calls[0]?.argv).toContain('@ahpd/web');
+});
+
+it('asks for the plugin marketplaces last, and writes them only when the answer changes them', async () => {
+  const first = await asked('', '', '', '', '', '', '', '');
+  expect(first.said).toContain('Plugin marketplaces [https://plugins.ahpio.com/v1/plugins.json]: ');
+  // Enter keeps the default, which stays unwritten so it moves with a release.
+  expect(read().pluginMarketplaces).toBeUndefined();
+  await asked('', '', '', '', '', '', '', '', 'https://a.example.com/v1/plugins.json, https://b.example.com/v1/plugins.json');
+  expect(read().pluginMarketplaces).toEqual(['https://a.example.com/v1/plugins.json', 'https://b.example.com/v1/plugins.json']);
+  const again = await asked('', '', '', '', '', '', '', '', 'none');
+  expect(again.said).toContain('Plugin marketplaces [https://a.example.com/v1/plugins.json, https://b.example.com/v1/plugins.json]: ');
+  expect(read().pluginMarketplaces).toEqual([]);
+  const off = await asked();
+  expect(off.said).toContain('Plugin marketplaces [none]: ');
+  expect(read().pluginMarketplaces).toEqual([]);
 });
 
 it('installs only Claude when the web UI is answered No on a first run', async () => {

@@ -64,7 +64,7 @@ describe('the command registry', () => {
     expect(DAEMON_FLAGS.filter((name) => !names.has(name))).toEqual([]);
     // The repeatable ones collect rather than overwrite.
     const repeatable = new Set(options.filter((option) => option.repeatable === true).map((option) => option.name));
-    expect([...repeatable].sort()).toEqual(['--origin', '--path', '--plugin', '--plugin-option', '--session-tools-providers']);
+    expect([...repeatable].sort()).toEqual(['--origin', '--path', '--plugin', '--plugin-marketplace', '--plugin-option', '--session-tools-providers']);
   });
 
   it('says which grant each command needs', () => {
@@ -907,6 +907,7 @@ describe('what a served command says it does', () => {
       ['paths.list', 'read', { kind: 'folder' }],
       ['paths.remove', 'change', { kind: 'folder', key: 'folder' }],
       ['plugin.apply', 'change', { kind: 'plugin' }],
+      ['plugin.available', 'read', { kind: 'plugin' }],
       ['plugin.config', 'read', { kind: 'plugin', key: 'name' }],
       ['plugin.config.set', 'change', { kind: 'plugin', key: 'name' }],
       ['plugin.config.unset', 'change', { kind: 'plugin', key: 'name' }],

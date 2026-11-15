@@ -29,6 +29,7 @@ import { conflict } from './options.js';
 import { RESTART_DELAY_MS, parkedWords, restartFromTerminal, successorTakes } from './restart.js';
 import { deploymentOnly } from './scopes.js';
 import type { ServedFacts } from './served.js';
+import { configuredMarketplaces } from '../pluginlist.js';
 
 /** What the update reads besides the command's input, so a case can answer it without this machine. */
 export interface UpdateFacts {
@@ -144,7 +145,9 @@ export async function runUpdate(ask: UpdateAsk, served?: ServedFacts, facts: Upd
    * admits the new sdk would be one the daemon that starts next cannot load,
    * and the update is refused while the old daemon still runs.
    */
-  const checked = await checkPlugins({ configDir: where, version: plan.latest, run, fetch, force: ask.force, say: (line) => { said.push(line); } });
+  // The plugin lists the check and the move read, the daemon's own when it serves this.
+  const marketplaces = served === undefined ? configuredMarketplaces() : served.options.pluginMarketplaces;
+  const checked = await checkPlugins({ configDir: where, version: plan.latest, run, fetch, force: ask.force, marketplaces, say: (line) => { said.push(line); } });
   const platform = facts.place?.platform ?? process.platform;
   const daemon = record as Running;
   /*
@@ -193,7 +196,7 @@ export async function runUpdate(ask: UpdateAsk, served?: ServedFacts, facts: Upd
     ...(facts.npmVersion === undefined ? {} : { npmVersion: facts.npmVersion }),
     say: (line) => { said.push(line); },
   });
-  const moved = await movePlugins({ configDir: where, version: plan.latest, run, fetch, force: ask.force, say: (line) => { said.push(line); } });
+  const moved = await movePlugins({ configDir: where, version: plan.latest, run, fetch, force: ask.force, marketplaces, say: (line) => { said.push(line); } });
   /*
    * A terminal's restart is a signal another process answers, so the new
    * binary is asked about the recorded line here, before the answer: the

@@ -651,6 +651,15 @@ export interface Config {
    * where `--no-update-check` is not typed.
    */
   updateCheck?: boolean;
+  /**
+   * The plugin lists the daemon reads, in order, each a URL that serves the
+   * format of `https://plugins.ahpio.com/v1/plugins.json`. That one alone by
+   * default; `[]` reads none. Several, as VS Code's
+   * `chat.plugins.marketplaces` names several.
+   */
+  pluginMarketplaces?: string[];
+  /** How many hours a fetched plugin list is kept before it is fetched again: 12 by default. */
+  pluginCheckHours?: number;
 }
 
 /**
@@ -964,6 +973,18 @@ export const agentPluginsDir = (): string => join(configDir(), 'agentPlugins');
  * one is rewritten four times a day.
  */
 export const updatePath = (): string => join(configDir(), 'update.json');
+
+/**
+ * Where the fetched plugin lists are kept: one file for each marketplace, and
+ * `installed.json`, the marketplace each installed plugin came from.
+ *
+ * Beside `update.json` for the same reason: the daemon rewrites these, and a
+ * person edits `config.json`.
+ */
+export const pluginMarketplacesPath = (dir: string = configDir()): string => join(dir, 'plugin-marketplaces');
+
+/** Where the files of a listed version, and the icons of a listed plugin, are kept once fetched. */
+export const pluginFilesPath = (dir: string = configDir()): string => join(dir, 'plugin-files');
 
 /** Make sure the directory is there, so a write into it can succeed. */
 export const ensureConfigDir = (): void => { mkdirSync(configDir(), { recursive: true }); };
