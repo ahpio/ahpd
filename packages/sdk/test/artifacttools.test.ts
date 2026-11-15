@@ -118,9 +118,9 @@ describe('the three tools', () => {
     });
   });
 
-  it('carries the one wording, and the instruction names the tool it belongs to', () => {
+  it('carries the one wording in the add tool\'s description, and no instruction, as the reference does', () => {
     const add = tool('add_artifact_or_reference');
-    expect(add.instruction).toContain('add_artifact_or_reference');
+    expect(add.instruction).toBeUndefined();
     expect(add.definition.description).toContain('Record one or more artifacts or references so they are surfaced next to the chat input.');
   });
 });

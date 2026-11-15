@@ -60,6 +60,7 @@ vi.mock('@anthropic-ai/claude-agent-sdk', async () => (await import('./support/w
 const { createHost } = await import('../src/host.js');
 const { claude } = await import('../../agent-claude/src/claude.js');
 const { hostTools } = await import('../src/tools/index.js');
+const artifactToolsOn = (): { read(): Record<string, unknown>; write(): void } => ({ read: () => ({ artifactTools: true }), write: () => {} });
 
 const settle = async (times = 8): Promise<void> => {
   for (let i = 0; i < times; i++) await new Promise((r) => { setTimeout(r, 0); });
@@ -69,13 +70,14 @@ function peer(): Peer {
   return { send: () => {}, notify: () => {}, request: async () => ({}), answered: () => {}, close: () => {} };
 }
 
-it('marks the tool the instruction names eager, defers remove and list, and leaves the rest alone', async () => {
+it('marks the add tool eager, defers remove and list, and leaves the rest alone', async () => {
   // The whole set, so a tool with no policy is in the sample beside the three
   // that carry one.
   const host = createHost({
     path: WORK,
     agents: [claude({ paths: [WORK] })],
     tools: hostTools(),
+    rootConfigStore: artifactToolsOn(),
   });
   const client = host.accept(peer());
   await client.handle({ method: 'initialize', params: { clientId: 'probe', protocolVersions: ['0.9.0'] } });

@@ -29,7 +29,7 @@ import { chatUriFor } from '../src/host/channels.js';
 import { gitWorktrees, worktreesOf } from '../src/repo/worktrees.js';
 import {
   startedBySend,
-  resetSdk, actions, builtServer, claude, createHost, defaultChatOf, echo, emit, firstMessage, hello, hostTools,
+  resetSdk, actions, artifactToolsOn, builtServer, claude, createHost, defaultChatOf, echo, emit, firstMessage, hello, hostTools,
   machine, peer, sdk, sendAnswered, serving, sessionQueries, settle, running,
 } from './support/host.js';
 import { WORK, WORK_URI } from './support/work.js';
@@ -73,7 +73,7 @@ describe('tools the host contributes', () => {
   };
 
   it('reports them on the session, and says nothing when it has none', async () => {
-    const { client, uri } = await withTools();
+    const { client, uri } = await withTools(hostTools(), { rootConfigStore: artifactToolsOn() });
     const state = (await client.handle({ method: 'subscribe', params: { channel: uri } }) as {
       snapshot: { state: { serverTools?: { name: string }[] } };
     }).snapshot.state;
@@ -382,7 +382,7 @@ describe('tools the host contributes', () => {
     });
 
     it('gives a session rename_chat without the automatic argument, deferred, and still runs an explicit rename', async () => {
-      const { client, uri } = await withTools();
+      const { client, uri } = await withTools(hostTools(), { rootConfigStore: artifactToolsOn() });
       const state = (await client.handle({ method: 'subscribe', params: { channel: uri } }) as {
         snapshot: { state: { serverTools?: { name: string; description?: string; inputSchema?: { properties?: Record<string, unknown> } }[] } };
       }).snapshot.state;
@@ -1156,9 +1156,13 @@ describe('tools the host contributes', () => {
 describe('the session tools, which an install may switch off', () => {
   type SessionClient = ReturnType<ReturnType<typeof createHost>['accept']>;
 
-  /** The seventeen the option never covers: this host's own, in the order they are offered. */
+  /**
+   * The fourteen the session tools' option never covers: this host's own, in
+   * the order they are offered. The three artifact tools are not among them,
+   * because their own root config key covers them, as the reference's
+   * `artifactTools` answers for the set.
+   */
   const HOST_OWN = [
-    'add_artifact_or_reference', 'remove_artifact_or_reference', 'list_artifacts_and_references',
     'addComment', 'listComments', 'replyToComment', 'deleteComments', 'resolveComments', 'viewUnreviewedComments',
     'setAgentMergeEnabled', 'readAgentMergeCI', 'replyToAgentMergeReviewThread', 'rerunAgentMergeWorkflow',
     'ahp_resource', 'ahp_terminals', 'schedule_wakeup', 'ask_user',

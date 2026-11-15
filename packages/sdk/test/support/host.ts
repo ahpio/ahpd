@@ -209,3 +209,14 @@ export async function sendAnswered(client: { handle(request: { method: string; p
   await emit({ type: 'result', subtype: 'success', is_error: false, duration_ms: 1 });
   await settle(8);
 }
+
+/**
+ * The root config store of a host that asks for the artifact tools, as the
+ * reference's `artifactTools` root config key answers `true`. Cases about the
+ * artifact tools hand this to `createHost` beside `tools: hostTools()`,
+ * because the set is off unless the root config asks for it.
+ */
+export const artifactToolsOn = (): { read(): Record<string, unknown>; write(values: Record<string, unknown>): void } => ({
+  read: () => ({ artifactTools: true }),
+  write: () => {},
+});

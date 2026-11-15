@@ -12,6 +12,7 @@ import { actionTools } from '../connectors/actions.js';
 import { CREATED_BY_META, SEND_REMOTE_MESSAGE } from '../sessions/remotesession.js';
 import { SESSION_TOOL_NAMES } from '../tools/session.js';
 import { ENABLE_CUSTOM_TERMINAL_TOOL, SHELL_TOOL_NAMES } from '../tools/shell.js';
+import { ARTIFACT_TOOL_NAMES, ENABLE_ARTIFACT_TOOLS } from '../tools/artifacts.js';
 import { bag, ownerOfPrincipal, reason, str } from '../utils/values.js';
 import { mayUseAgent, ownershipOf } from '../agents/usable.js';
 import { groupOf } from '../access/users.js';
@@ -533,6 +534,17 @@ export function createTooling(ctx: HostContext): Tooling {
     && process.platform !== 'win32'
     && options.terminals !== undefined;
   /**
+   * Whether this host offers the artifact tools.
+   *
+   * The reference's switch, `artifactTools`, which is off until the root
+   * config turns it on: the reference offers the set on its root config's word
+   * alone (`agentHostSchema.ts`'s mirror in `vscoderootconfig.ts` holds the
+   * key, and the reference's artifact tools contribution reads two keys over
+   * it before it says a word of the instruction). A host that carries no root
+   * config keeps them off, as the reference does by default.
+   */
+  const artifactToolsFor = (): boolean => rootConfig[ENABLE_ARTIFACT_TOOLS] === true;
+  /**
    * The host's tools for one session, less those it did not ask for.
    *
    * Where `permitted` decides once and for every session, `optIn` is asked of
@@ -554,7 +566,8 @@ export function createTooling(ctx: HostContext): Tooling {
     return ctx.contributing.filter((one) =>
       (one.optIn !== true || named.includes(one.definition.name))
       && (sessionToolsFor(uri, provider) || !SESSION_TOOL_NAMES.includes(one.definition.name) || forChat.includes(one.definition.name))
-      && (shellToolsFor() || !SHELL_TOOL_NAMES.includes(one.definition.name)));
+      && (shellToolsFor() || !SHELL_TOOL_NAMES.includes(one.definition.name))
+      && (artifactToolsFor() || !ARTIFACT_TOOL_NAMES.includes(one.definition.name)));
   };
   /**
    * The title strategy every session runs under, which is the deferred one: a
