@@ -55,13 +55,19 @@ THEN the tool is in no session, in `serverTools` or in a bound list.
 WHEN `advancedTools` is set to true
 THEN the tool is offered, and the change takes effect while the daemon runs.
 The computer's three tools set `advancedPermission`, and `advancedTools` is false by default.
+WHEN root config `artifactTools` is not `true`
+THEN no session is offered the three artifact tools.
+`artifactTools` is false by default, as in VS Code's host, and is read when a chat's tools are bound.
 
 ### A tool shapes itself for one session
 
 WHEN a tool has `forSession`
 THEN the session's title strategy can take the tool out of the list or change its definition.
 WHEN a tool has `instruction`
-THEN that text goes into the agent's instructions while the tool is offered.
+THEN that text goes into the agent's instructions only for a chat that is handed the tool.
+agent-acp sends the session's instructions on the first prompt alone, wrapped in `<host_instructions>`.
+agent-claude gives them on the first prompt and on the first prompt after a compaction.
+The artifact tools have no `instruction`: the add tool's description says when to record one.
 WHEN a tool has `deferLoading`
 THEN a harness may put the tool behind tool search, and the published definition does not show it.
 

@@ -94,6 +94,7 @@ export function createSession(options: ClaudeSessionOptions): Session {
     yielded: new Map<string, PendingSdkMessage>(),
     parentSdkUuid: undefined as string | undefined,
     hostInstructions: undefined as { turn: Bag; said: string[] } | undefined,
+    instructionsGiven: options.resume !== undefined,
     appliedAgent: undefined as string | undefined,
     sdkSessionId: options.resume as string | undefined,
     unwritten: false,

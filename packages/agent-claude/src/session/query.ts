@@ -184,6 +184,11 @@ export function createQuery(ctx: SessionContext): Query {
    * turn that ended has already taken its instruction with it.
    * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/claude/claudeSdkOptions.ts#L206
    *
+   * The session's own are given once, on the first prompt, and again on the
+   * first prompt after a compaction, which may have dropped them: the same
+   * text on every turn spends the context on what the conversation holds, and
+   * VS Code's host says its first-turn instruction once per chat.
+   *
    * Nothing when the host said nothing, and the key is left off rather than
    * sent empty, because empty context is a heading with nothing under it.
    */
@@ -191,7 +196,9 @@ export function createQuery(ctx: SessionContext): Query {
     if (input.hook_event_name !== 'UserPromptSubmit') return {};
     const held = ctx.hostInstructions;
     const turns = held !== undefined && held.turn === ctx.active ? held.said : [];
-    const said = [...(ctx.options.instructions ?? []), ...turns].filter((one) => one.trim() !== '');
+    const session = ctx.instructionsGiven ? [] : ctx.options.instructions ?? [];
+    ctx.instructionsGiven = true;
+    const said = [...session, ...turns].filter((one) => one.trim() !== '');
     if (said.length === 0) return {};
     return {
       hookSpecificOutput: {
@@ -1082,6 +1089,8 @@ export function createQuery(ctx: SessionContext): Query {
          * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/claude/claudeReplayMapper.ts#L305-L314
          */
         if (type === 'system' && str(message.subtype) === 'compact_boundary') {
+          // The turn that gave the session's instructions may be gone.
+          ctx.instructionsGiven = false;
           if (ctx.active) {
             ctx.addPart(ctx.mainScope, { kind: 'systemNotification', content: 'Conversation compacted' });
             // The figure from before the compaction is the wrong one.
