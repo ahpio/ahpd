@@ -390,20 +390,20 @@ it('verifies a minted secret as its person, with the token id', async () => {
 it('answers only the grants both the token and its person hold', async () => {
   const users = open();
   await users.add('ana', ['member']);
-  const minted = await users.mintToken!('ana', { grants: ['proxy:write'] });
+  const minted = await users.mintToken!('ana', { grants: ['gateway:write'] });
   const held = await users.verify(minted.secret);
 
   // The token was minted for proxy calls alone, though ana may do more.
-  expect(held?.can('proxy:call')).toBe(true);
+  expect(held?.can('gateway:call')).toBe(true);
   expect(held?.can('session:write')).toBe(false);
 
   // A role taken away takes the token's reach with it.
   await users.add('ana', ['guest']);
-  expect(held?.can('proxy:call')).toBe(false);
+  expect(held?.can('gateway:call')).toBe(false);
 
   // And a role added does not widen the token past the list it was minted for.
   await users.add('ana', ['admin']);
-  expect(held?.can('proxy:call')).toBe(true);
+  expect(held?.can('gateway:call')).toBe(true);
   expect(held?.can('session:write')).toBe(false);
 });
 
@@ -464,7 +464,7 @@ it('answers nothing for a token whose person was removed', async () => {
 it('mints a team key that names its team and no person', async () => {
   const users = open();
   await users.addTeam('backend');
-  const minted = await users.mintToken!(undefined, { team: 'backend', grants: ['proxy:call'], label: 'bot' });
+  const minted = await users.mintToken!(undefined, { team: 'backend', grants: ['gateway:call'], label: 'bot' });
 
   expect(minted.team).toBe('backend');
   expect(minted.user).toBeUndefined();
@@ -473,7 +473,7 @@ it('mints a team key that names its team and no person', async () => {
   const [record] = stored().tokens;
   expect(record?.team).toBe('backend');
   expect(record).not.toHaveProperty('user');
-  expect(record?.grants).toEqual(['proxy:call']);
+  expect(record?.grants).toEqual(['gateway:call']);
   // The listing hands back the same record, with the team on it.
   expect((await users.tokens!())[0]?.team).toBe('backend');
 });
@@ -482,7 +482,7 @@ it('answers nothing for a team key at verify, and its team at verifyTeamKey', as
   const users = open();
   await users.addTeam('backend');
   await users.add('ana', ['member']);
-  const team = await users.mintToken!(undefined, { team: 'backend', grants: ['proxy:call'] });
+  const team = await users.mintToken!(undefined, { team: 'backend', grants: ['gateway:call'] });
   const person = await users.mintToken!('ana');
 
   // The two doors are disjoint: a team key is no person, and a person's key is
@@ -496,8 +496,8 @@ it('answers nothing for a team key at verify, and its team at verifyTeamKey', as
   expect(held?.token).toBe(team.id);
   expect(held?.roles).toEqual([]);
   // Only the proxy's grants, and only the ones the key was minted with.
-  expect(held?.can('proxy:call')).toBe(true);
-  expect(held?.can('proxy:models')).toBe(false);
+  expect(held?.can('gateway:call')).toBe(true);
+  expect(held?.can('gateway:models')).toBe(false);
   expect(held?.can('session:read')).toBe(false);
   expect(held?.can('*:*')).toBe(false);
   // Its scope is the team, and scopeFor resolves a call to it.
@@ -510,8 +510,8 @@ it('removes a team\'s keys with the team, so a team added back has none', async 
   const users = open();
   await users.addTeam('backend');
   await users.addTeam('ops');
-  const gone = await users.mintToken!(undefined, { team: 'backend', grants: ['proxy:call'] });
-  const kept = await users.mintToken!(undefined, { team: 'ops', grants: ['proxy:call'] });
+  const gone = await users.mintToken!(undefined, { team: 'backend', grants: ['gateway:call'] });
+  const kept = await users.mintToken!(undefined, { team: 'ops', grants: ['gateway:call'] });
 
   expect(await users.removeTeam('backend')).toBe(true);
   await users.addTeam('backend');
@@ -524,7 +524,7 @@ it('gives a team key a project of its team as its scope', async () => {
   const users = open();
   await users.addTeam('backend');
   await users.addProject('ahpd');
-  const minted = await users.mintToken!(undefined, { team: 'backend', grants: ['proxy:call'], scope: 'backend:ahpd' });
+  const minted = await users.mintToken!(undefined, { team: 'backend', grants: ['gateway:call'], scope: 'backend:ahpd' });
   const held = await users.verifyTeamKey!(minted.secret);
 
   expect(held?.keyScope).toBe('backend:ahpd');
@@ -539,14 +539,14 @@ it('answers nothing for a team key that expired, or whose team was removed', asy
   const users = open();
   await users.addTeam('backend');
   await users.addTeam('sales');
-  const short = await users.mintToken!(undefined, { team: 'backend', grants: ['proxy:call'], expires: now + 1000 });
-  const gone = await users.mintToken!(undefined, { team: 'sales', grants: ['proxy:call'] });
+  const short = await users.mintToken!(undefined, { team: 'backend', grants: ['gateway:call'], expires: now + 1000 });
+  const gone = await users.mintToken!(undefined, { team: 'sales', grants: ['gateway:call'] });
   const held = await users.verifyTeamKey!(short.secret);
   expect(held?.standing?.()).toBe(true);
 
   vi.setSystemTime(now + 2000);
   expect(held?.standing?.()).toBe(false);
-  expect(held?.can('proxy:call')).toBe(false);
+  expect(held?.can('gateway:call')).toBe(false);
   expect(await users.verifyTeamKey!(short.secret)).toBeUndefined();
 
   expect(await users.removeTeam('sales')).toBe(true);
@@ -560,20 +560,23 @@ it('refuses a team key the host cannot mint', async () => {
   await users.addProject('ahpd');
   await users.add('ana', ['member']);
 
-  await expect(users.mintToken!(undefined, { team: 'nope', grants: ['proxy:call'] }))
+  await expect(users.mintToken!(undefined, { team: 'nope', grants: ['gateway:call'] }))
     .rejects.toThrow('no team called nope');
-  // A team holds neither every grant nor one outside the proxy's two.
+  // A team holds neither every grant nor one outside the model gateway's two.
   await expect(users.mintToken!(undefined, { team: 'backend' }))
     .rejects.toThrow('names none');
-  await expect(users.mintToken!(undefined, { team: 'backend', grants: ['proxy:call', 'session:read'] }))
+  await expect(users.mintToken!(undefined, { team: 'backend', grants: ['gateway:call', 'session:read'] }))
     .rejects.toThrow('session:read is not a grant a team key may hold');
+  // The grants of the model gateway before its rename are not read.
+  await expect(users.mintToken!(undefined, { team: 'backend', grants: ['proxy:call'] }))
+    .rejects.toThrow('proxy:call is not a grant a team key may hold');
   // A person and a team in one mint is a caller that did not say which.
-  await expect(users.mintToken!('ana', { team: 'backend', grants: ['proxy:call'] }))
+  await expect(users.mintToken!('ana', { team: 'backend', grants: ['gateway:call'] }))
     .rejects.toThrow('a token names a user or a team, not both');
   // The scope is its team or a project of it, and nothing else.
-  await expect(users.mintToken!(undefined, { team: 'backend', grants: ['proxy:call'], scope: 'sales:ahpd' }))
+  await expect(users.mintToken!(undefined, { team: 'backend', grants: ['gateway:call'], scope: 'sales:ahpd' }))
     .rejects.toThrow('sales:ahpd names another team');
-  await expect(users.mintToken!(undefined, { team: 'backend', grants: ['proxy:call'], scope: 'backend:web' }))
+  await expect(users.mintToken!(undefined, { team: 'backend', grants: ['gateway:call'], scope: 'backend:web' }))
     .rejects.toThrow('backend:web is not a project this host names');
   expect(await users.tokens!()).toEqual([]);
 });
@@ -581,10 +584,10 @@ it('refuses a team key the host cannot mint', async () => {
 it('counts a team key against the same limit as a person', async () => {
   const users = open({ tokensPerPerson: 2 });
   await users.addTeam('backend');
-  await users.mintToken!(undefined, { team: 'backend', grants: ['proxy:call'] });
-  await users.mintToken!(undefined, { team: 'backend', grants: ['proxy:models'] });
+  await users.mintToken!(undefined, { team: 'backend', grants: ['gateway:call'] });
+  await users.mintToken!(undefined, { team: 'backend', grants: ['gateway:models'] });
 
-  await expect(users.mintToken!(undefined, { team: 'backend', grants: ['proxy:call'] }))
+  await expect(users.mintToken!(undefined, { team: 'backend', grants: ['gateway:call'] }))
     .rejects.toThrow('team backend may hold 2 tokens at most');
   expect((await users.tokens!()).filter((one) => one.team === 'backend')).toHaveLength(2);
 });

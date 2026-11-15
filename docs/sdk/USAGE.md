@@ -17,9 +17,9 @@ Terms, one line each:
 
 ## What a record is
 
-Two kinds share one base and one port. A **model call** is `kind: 'model'`, written by the proxy for a call through `/v1` (`source: 'proxy'`) or by the agent meter for a turn a session's own harness ran (`source: 'agent'`). **Computer time** is `kind: 'computer'`, a stretch a machine was up, written against the machine's owner.
+Two kinds share one base and one port. A **model call** is `kind: 'model'`, written by the model gateway for a call through `/v1` (`source: 'gateway'`) or by the agent meter for a turn a session's own harness ran (`source: 'agent'`). **Computer time** is `kind: 'computer'`, a stretch a machine was up, written against the machine's owner.
 
-Every record carries when it happened, what wrote it, who it belongs to and where it ran: the owner, the team and the project it is charged under, the session, the chat and the turn, the agent provider, and the computer when there was one. The base is the same for both kinds, so a listing by agent or by computer is a filter and never a join. A proxy call also carries `meta`, what the key and the call said about themselves such as `env=prod` or `client=pi`. It carries `token` as well, the id of the key that made it when one did.
+Every record carries when it happened, what wrote it, who it belongs to and where it ran: the owner, the team and the project it is charged under, the session, the chat and the turn, the agent provider, and the computer when there was one. The base is the same for both kinds, so a listing by agent or by computer is a filter and never a join. A gateway call also carries `meta`, what the key and the call said about themselves such as `env=prod` or `client=pi`. It carries `token` as well, the id of the key that made it when one did.
 
 A model record carries the model's `<maker>/<name>`, the provider it ran on, and the tokens in three parts: `input`, `output`, and `cache` split into what was read from and written to the provider's cache. A pool's `tokens` is all three added together, because those are the tokens that were billed, and the three counts are kept apart as well so a report can say what was sent and what came back. A model record also carries `opens: true` when it is the first record the meter wrote for its turn, which is what a pool's `turns` counts. A turn written once and a turn written per report both open once, so `turns` counts one however many records the turn has, while `calls` counts every record.
 
@@ -27,7 +27,7 @@ A model record carries the model's `<maker>/<name>`, the provider it ran on, and
 
 `cost` is what the pools are charged and `providerCost` is what the provider or the harness reported, and they are two fields because they are two different things. A cost carries `from`, which says which of the two worked it out: `price` when this host computed it from a price list, `harness` when the agent or the provider reported it.
 
-A call the proxy priced is charged that price and keeps the provider's figure beside it. An agent's harness calls its model itself, so the figure it reported is both what the pools are charged and what the provider reported. A cost of `0` on a turn that counted no token is a harness saying it spent nothing, which is no cost at all: it is left off rather than written as `0`, because a record of `0` there would charge a pool for a call that never happened.
+A call the model gateway priced is charged that price and keeps the provider's figure beside it. An agent's harness calls its model itself, so the figure it reported is both what the pools are charged and what the provider reported. A cost of `0` on a turn that counted no token is a harness saying it spent nothing, which is no cost at all: it is left off rather than written as `0`, because a record of `0` there would charge a pool for a call that never happened.
 
 A harness that priced what was sent and what was received apart says so beside the amount, and those two parts are the **split**. They are kept as `input` and `output` on the cost, and a pool's `inputUsd` and `outputUsd` add them over the records that have them - a measure nothing was charged in is absent rather than zero, so a total over records that never split says nothing about the split rather than saying it was nothing.
 
@@ -168,7 +168,7 @@ What a person may see is not only the grant. Their own `user:<id>` pool, and the
 | --- | --- |
 | [RESOURCES.md](RESOURCES.md) | What a scheme is, and the grants a resource method asks for |
 | [POLICY.md](POLICY.md) | The limits a pool's total is checked against |
-| [PROXY.md](../server/PROXY.md) | The calls through `/v1` that write the `proxy` records, and the prices they are charged |
+| [GATEWAY.md](../server/GATEWAY.md) | The calls through `/v1` that write the `gateway` records, and the prices they are charged |
 | [SESSIONS.md](SESSIONS.md) | The turns the `agent` records belong to |
 | [USERS.md](USERS.md#roles) | The people, teams and projects a pool is named after |
 | [HOST.md](HOST.md#configuration-keys) | The daemon's keys, `usage` beside the rest |

@@ -32,7 +32,7 @@ const BUILT_IN: Record<string, Grant[]> = {
   admin: ['*:*'],
   // Works on this machine: files, sessions, a shell, the models the proxy
   // serves, and the trust a window answers a folder with. No automations.
-  member: ['file:read', 'file:write', 'session:read', 'session:write', 'terminal:read', 'terminal:write', 'proxy:read', 'proxy:write', 'mcp:call', 'trust:write'],
+  member: ['file:read', 'file:write', 'session:read', 'session:write', 'terminal:read', 'terminal:write', 'gateway:read', 'gateway:write', 'mcp:call', 'trust:write'],
   // Looks and does not touch: what the sessions and the automations are, and
   // neither a file nor a shell nor a session of their own, nor the tools at
   // `/mcp`.
@@ -71,7 +71,7 @@ export const SUBJECTS = [
   'policy',
   // Calling a model through the proxy (write) and listing the names it serves
   // (read), which spends the host's provider keys.
-  'proxy',
+  'gateway',
   // Running the host's tools from a person's MCP client at `/mcp`, which the
   // gate asks for as `mcp:call`; the write group covers it.
   'mcp',
@@ -233,9 +233,9 @@ export const OPERATIONS: Record<string, SubjectOperations> = {
     operations: ['push'],
     groups: { read: [], write: ['push'] },
   },
-  proxy: {
-    title: 'Model proxy',
-    description: 'Calling a model through this host\'s proxy, and listing the names it serves.',
+  gateway: {
+    title: 'Model gateway',
+    description: 'Calling a model through this host\'s model gateway, and listing the names it serves.',
     operations: ['models', 'call'],
     groups: { read: ['models'], write: ['call'] },
   },
@@ -1242,7 +1242,7 @@ export function fileUsers(options: FileUserOptions): Users {
    * The principal a team key answers for, re-read from both files at each question.
    *
    * The team is the principal, and no person is: its id is `team:<team>`, it
-   * holds no role, and it may hold `proxy:call` and `proxy:models` alone. Its
+   * holds no role, and it may hold `gateway:call` and `gateway:models` alone. Its
    * memberships are its team and the key's own scope, so `scopeFor` resolves a
    * call to the team or to one of that team's projects and refuses any other.
    */
@@ -1278,7 +1278,7 @@ export function fileUsers(options: FileUserOptions): Users {
       get keyLimits(): readonly PolicyLimit[] | undefined { return live()?.limits; },
       standing: () => live() !== undefined,
       can: (grant: Grant) => {
-        if (grant !== 'proxy:call' && grant !== 'proxy:models') return false;
+        if (grant !== 'gateway:call' && grant !== 'gateway:models') return false;
         const one = live();
         return one !== undefined && (one.grants ?? []).some((held) => held === grant);
       },
@@ -1768,19 +1768,19 @@ export function fileUsers(options: FileUserOptions): Users {
        *
        * The team is named and the person is not, so a mint that carries both is
        * a caller that did not say which it meant. A team has no roles, so there
-       * is no grant list to copy: what it may do is `proxy:call` and
-       * `proxy:models`, and those are the only two a key may carry.
+       * is no grant list to copy: what it may do is `gateway:call` and
+       * `gateway:models`, and those are the only two a key may carry.
        */
       if (given.team !== undefined) {
         const team = given.team;
         if (user !== undefined) throw new Error('a token names a user or a team, not both');
         if (!(file.teams ?? []).some((one) => one.id === team)) throw new Error(`no team called ${team}`);
         if (given.grants === undefined || given.grants.length === 0) {
-          throw new Error('a team key holds proxy:call or proxy:models, and names none');
+          throw new Error('a team key holds gateway:call or gateway:models, and names none');
         }
         for (const grant of given.grants) {
-          if (grant !== 'proxy:call' && grant !== 'proxy:models') {
-            throw new Error(`${grant} is not a grant a team key may hold; a team key holds proxy:call and proxy:models`);
+          if (grant !== 'gateway:call' && grant !== 'gateway:models') {
+            throw new Error(`${grant} is not a grant a team key may hold; a team key holds gateway:call and gateway:models`);
           }
         }
         /*

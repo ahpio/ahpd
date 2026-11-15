@@ -610,7 +610,7 @@ export interface Config {
   /** Where the plugins' routes are served. Absent is the daemon's own listener. */
   routes?: RoutesSetting;
   /** The model names the model API serves, each mapped to connectors. */
-  modelProxy?: ProxySetting;
+  modelGateway?: ProxySetting;
   /**
    * The MCP servers every session is offered, by the name a person gave them.
    *
@@ -999,7 +999,6 @@ export const ensureConfigDir = (): void => { mkdirSync(configDir(), { recursive:
  */
 export const RENAMED_KEYS = [
   { was: 'http', now: 'httpApi' },
-  { was: 'proxy', now: 'modelProxy' },
 ] as const;
 
 /** The name a setting had before it was renamed, or nothing when it was not. */

@@ -38,7 +38,7 @@ export interface UsageBase {
   /** ISO 8601: when the call was made, or when the computer was taken. */
   at: string;
   /** What wrote the record. */
-  source: 'proxy' | 'agent' | 'computer';
+  source: 'gateway' | 'agent' | 'computer';
   /** Who the work belongs to; absent on a host with no users directory. */
   owner?: Owner;
   /** The team it is charged under. */

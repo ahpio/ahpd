@@ -96,8 +96,8 @@ const run = async (id: string, input: Record<string, unknown>): Promise<Output> 
  */
 const people = async (): Promise<{ directory: Users; ana: string; bob: string; boss: string }> => {
   const directory = fileUsers({ path: usersFile });
-  await directory.addRole('reader', ['proxy:read']);
-  await directory.addRole('writer', ['proxy:write']);
+  await directory.addRole('reader', ['gateway:read']);
+  await directory.addRole('writer', ['gateway:write']);
   await directory.addRole('manager', ['user:write']);
   await directory.addTeam('backend');
   await directory.addProject('ahpd');
@@ -144,21 +144,21 @@ describe('token at the terminal', () => {
   it('mints for the person named with --user, shows the secret once, and lists no hash', async () => {
     const { directory } = await people();
 
-    const said = await run('token.mint', { user: 'ana', label: 'laptop', grants: ['proxy:read'] });
+    const said = await run('token.mint', { user: 'ana', label: 'laptop', grants: ['gateway:read'] });
     const one = minted(said);
-    expect(one).toMatchObject({ user: 'ana', label: 'laptop', grants: ['proxy:read'] });
+    expect(one).toMatchObject({ user: 'ana', label: 'laptop', grants: ['gateway:read'] });
     // stdout is the credential alone, so it can be piped.
     expect(said.plain).toBe(`${one.secret}\n`);
 
     const stored = await directory.tokens!('ana');
-    expect(stored).toEqual([{ id: one.id, user: 'ana', label: 'laptop', grants: ['proxy:read'], created: one.created }]);
+    expect(stored).toEqual([{ id: one.id, user: 'ana', label: 'laptop', grants: ['gateway:read'], created: one.created }]);
     expect(JSON.stringify(stored)).not.toContain(one.secret);
 
     const listed = await run('token.list', { user: 'ana' });
     expect(rows(listed)).toEqual(stored);
     expect(listed.plain).toContain(one.id);
     expect(listed.plain).toContain('laptop');
-    expect(listed.plain).toContain('proxy:read');
+    expect(listed.plain).toContain('gateway:read');
     // Neither reading of the answer carries the secret or the stored hash.
     expect(JSON.stringify(listed.data)).not.toContain(one.secret);
     expect(String(listed.plain)).not.toContain(one.secret);
@@ -267,18 +267,18 @@ describe('token at the terminal', () => {
   it('mints, lists and revokes a team key with --team', async () => {
     const { directory } = await people();
 
-    const one = minted(await run('token.mint', { team: 'backend', grants: ['proxy:call'], label: 'ci' }));
-    expect(one).toMatchObject({ team: 'backend', grants: ['proxy:call'], label: 'ci', scope: 'backend' });
+    const one = minted(await run('token.mint', { team: 'backend', grants: ['gateway:call'], label: 'ci' }));
+    expect(one).toMatchObject({ team: 'backend', grants: ['gateway:call'], label: 'ci', scope: 'backend' });
     expect(one.user).toBeUndefined();
     expect(await directory.tokens!()).toEqual([
-      { id: one.id, team: 'backend', label: 'ci', grants: ['proxy:call'], scope: 'backend', created: one.created },
+      { id: one.id, team: 'backend', label: 'ci', grants: ['gateway:call'], scope: 'backend', created: one.created },
     ]);
 
     const listed = await run('token.list', { team: 'backend' });
     expect(rows(listed)).toHaveLength(1);
-    expect(rows(listed)[0]).toMatchObject({ id: one.id, team: 'backend', grants: ['proxy:call'] });
+    expect(rows(listed)[0]).toMatchObject({ id: one.id, team: 'backend', grants: ['gateway:call'] });
     expect(String(listed.plain)).toContain('team backend');
-    expect(String(listed.plain)).toContain('proxy:call');
+    expect(String(listed.plain)).toContain('gateway:call');
 
     const took = await run('token.rm', { team: 'backend', id: one.id });
     expect(took.data).toEqual({ id: one.id, team: 'backend' });
@@ -290,13 +290,13 @@ describe('token at the terminal', () => {
     await people();
 
     for (const [id, input] of [
-      ['token.mint', { user: 'ana', team: 'backend', grants: ['proxy:call'] }],
+      ['token.mint', { user: 'ana', team: 'backend', grants: ['gateway:call'] }],
       ['token.list', { user: 'ana', team: 'backend' }],
       ['token.rm', { user: 'ana', team: 'backend', id: 'any' }],
     ] as const) {
       await expect(run(id, input)).rejects.toThrow(`token ${id.slice('token.'.length)} takes --user or --team, not both.`);
     }
-    await expect(run('token.mint', { team: 'backend', grants: ['proxy:call'], url: true }))
+    await expect(run('token.mint', { team: 'backend', grants: ['gateway:call'], url: true }))
       .rejects.toThrow('a team key opens the proxy alone');
   });
 });
@@ -305,10 +305,10 @@ describe('token, served', () => {
   it('lets a member mint one of their own with no grant, and refuses a grant they do not hold', async () => {
     const { directory, ana } = await people();
 
-    const said = await call('/token/mint', ana, directory, { label: 'laptop', grants: ['proxy:read'] });
+    const said = await call('/token/mint', ana, directory, { label: 'laptop', grants: ['gateway:read'] });
     expect(said.status).toBe(200);
     const one = await said.json() as Shown;
-    expect(one).toMatchObject({ user: 'ana', label: 'laptop', grants: ['proxy:read'] });
+    expect(one).toMatchObject({ user: 'ana', label: 'laptop', grants: ['gateway:read'] });
     expect(typeof one.secret).toBe('string');
 
     // The secret is the token that signed in for nobody; the minted one signs in
@@ -338,7 +338,7 @@ describe('token, served', () => {
 
   it('revokes its own token, and the next request with it is refused 401', async () => {
     const { directory, ana } = await people();
-    const one = await directory.mintToken!('ana', { label: 'laptop', grants: ['proxy:read'] });
+    const one = await directory.mintToken!('ana', { label: 'laptop', grants: ['gateway:read'] });
 
     const took = await call(`/token/rm/${one.id}`, ana, directory, {});
     expect(took.status).toBe(200);
@@ -373,7 +373,7 @@ describe('token, served', () => {
     const { directory, ana } = await people();
     const bobs = await directory.mintToken!('bob', { label: 'bob-desktop' });
 
-    const mintedForBob = await call('/token/mint', ana, directory, { user: 'bob', grants: ['proxy:read'] });
+    const mintedForBob = await call('/token/mint', ana, directory, { user: 'bob', grants: ['gateway:read'] });
     expect(mintedForBob.status).toBe(403);
     expect(await message(mintedForBob)).toBe('ana may not user:write here');
 
@@ -389,11 +389,11 @@ describe('token, served', () => {
 
   it('lets a manager list and remove a person\'s tokens with --user', async () => {
     const { directory, boss } = await people();
-    const one = await directory.mintToken!('ana', { label: 'laptop', grants: ['proxy:read'] });
+    const one = await directory.mintToken!('ana', { label: 'laptop', grants: ['gateway:read'] });
 
     const listed = await call('/token/list?user=ana', boss, directory);
     expect(listed.status).toBe(200);
-    expect(await listed.json()).toEqual([{ id: one.id, user: 'ana', label: 'laptop', grants: ['proxy:read'], created: one.created }]);
+    expect(await listed.json()).toEqual([{ id: one.id, user: 'ana', label: 'laptop', grants: ['gateway:read'], created: one.created }]);
 
     const took = await call(`/token/rm/${one.id}`, boss, directory, { user: 'ana' });
     expect(took.status).toBe(200);
@@ -404,18 +404,18 @@ describe('token, served', () => {
   it('refuses a manager who lacks a grant of the person they name', async () => {
     const { directory, boss } = await people();
 
-    // bob holds proxy:write, which boss does not, and a mint for him is bounded
+    // bob holds gateway:write, which boss does not, and a mint for him is bounded
     // by everything he holds rather than by what the new token would.
-    const said = await call('/token/mint', boss, directory, { user: 'bob', grants: ['proxy:read'] });
+    const said = await call('/token/mint', boss, directory, { user: 'bob', grants: ['gateway:read'] });
     expect(said.status).toBe(403);
-    expect(await message(said)).toBe('boss may not proxy:write here');
+    expect(await message(said)).toBe('boss may not gateway:write here');
     expect(await directory.tokens!('bob')).toEqual([]);
 
     // The same bound holds the revoke of one of his tokens.
-    const bobs = await directory.mintToken!('bob', { grants: ['proxy:read'] });
+    const bobs = await directory.mintToken!('bob', { grants: ['gateway:read'] });
     const took = await call(`/token/rm/${bobs.id}`, boss, directory, { user: 'bob' });
     expect(took.status).toBe(403);
-    expect(await message(took)).toBe('boss may not proxy:write here');
+    expect(await message(took)).toBe('boss may not gateway:write here');
   });
 
   it('lets a manager mint, list and revoke a team key, and refuses a member who names one', async () => {
@@ -424,14 +424,14 @@ describe('token, served', () => {
     await directory.add('lead', ['manager', 'writer']);
     const lead = await directory.mint('lead');
 
-    const short = await call('/token/mint', boss, directory, { team: 'backend', grants: ['proxy:call'] });
+    const short = await call('/token/mint', boss, directory, { team: 'backend', grants: ['gateway:call'] });
     expect(short.status).toBe(403);
-    expect(await message(short)).toBe('boss may not proxy:call here');
+    expect(await message(short)).toBe('boss may not gateway:call here');
 
-    const mine = await call('/token/mint', lead, directory, { team: 'backend', grants: ['proxy:call'], label: 'ci' });
+    const mine = await call('/token/mint', lead, directory, { team: 'backend', grants: ['gateway:call'], label: 'ci' });
     expect(mine.status).toBe(200);
     const one = await mine.json() as Shown;
-    expect(one).toMatchObject({ team: 'backend', grants: ['proxy:call'], scope: 'backend' });
+    expect(one).toMatchObject({ team: 'backend', grants: ['gateway:call'], scope: 'backend' });
     expect(one.user).toBeUndefined();
 
     const listed = await call('/token/list?team=backend', boss, directory);
@@ -440,7 +440,7 @@ describe('token, served', () => {
 
     // A member holds no `user:write`, so no team key is theirs to manage.
     for (const [path, body] of [
-      ['/token/mint', { team: 'backend', grants: ['proxy:call'] }],
+      ['/token/mint', { team: 'backend', grants: ['gateway:call'] }],
       ['/token/list?team=backend', undefined],
       [`/token/rm/${one.id}`, { team: 'backend' }],
     ] as const) {
@@ -450,7 +450,7 @@ describe('token, served', () => {
     }
 
     // The deployment token reaches a team as it reaches a person.
-    const byRoot = await call('/token/mint', 'root-secret', directory, { team: 'backend', grants: ['proxy:models'] });
+    const byRoot = await call('/token/mint', 'root-secret', directory, { team: 'backend', grants: ['gateway:models'] });
     expect(byRoot.status).toBe(200);
     expect(await byRoot.json()).toMatchObject({ team: 'backend' });
 

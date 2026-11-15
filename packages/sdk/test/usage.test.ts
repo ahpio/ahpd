@@ -31,7 +31,7 @@ afterEach(() => { rmSync(root, { recursive: true, force: true }); });
 const modelUse = (at: string, pools: string[], model: Partial<ModelCall> = {}, rest: Partial<ModelUse> = {}): ModelUse => ({
   at,
   kind: 'model',
-  source: 'proxy',
+  source: 'gateway',
   owner: 'user:maria',
   model: { name: 'anthropic/opus-5', ...model },
   pools,

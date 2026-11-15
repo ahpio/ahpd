@@ -895,6 +895,7 @@ describe('what a served command says it does', () => {
       ['daemon.restart', 'change', null],
       ['daemon.status', 'read', null],
       ['daemon.update', 'change', null],
+      ['gateway.list', 'read', { kind: 'provider' }],
       // A node is added with a token the hub mints, so `add` creates one and
       // `rm` takes the row it names away.
       ['node.add', 'add', { kind: 'node' }],
@@ -921,7 +922,6 @@ describe('what a served command says it does', () => {
       ['project.add', 'add', { kind: 'project' }],
       ['project.list', 'read', { kind: 'project' }],
       ['project.rm', 'remove', { kind: 'project', key: 'id' }],
-      ['proxy.list', 'read', { kind: 'provider' }],
       ['team.add', 'add', { kind: 'team' }],
       ['team.list', 'read', { kind: 'team' }],
       ['team.rm', 'remove', { kind: 'team', key: 'id' }],
@@ -973,7 +973,7 @@ describe('a list answers the key its item commands take', () => {
     await usage.record({
       at: '2026-10-07T12:00:00.000Z',
       kind: 'model',
-      source: 'proxy',
+      source: 'gateway',
       owner: 'user:ana',
       model: { name: 'anthropic/opus-5' },
       pools: ['user:ana'],

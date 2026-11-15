@@ -19,14 +19,14 @@ refs:
   - "[code://packages/sdk/src/usage/usage.ts#L928-L976](../../packages/sdk/src/usage/usage.ts#L928-L976) - `usageMethods`, the `x-ahpd/usage/*` commands"
   - "[code://packages/sdk/src/usage/scopes.ts#L139-L152](../../packages/sdk/src/usage/scopes.ts#L139-L152) - `mayRead`, the pools a person reads with no grant"
   - "[code://packages/server/src/proxy/listener.ts#L233-L244](../../packages/server/src/proxy/listener.ts#L233-L244) - `costOf`, the cost a configured price gives"
-  - "[code://packages/server/src/proxy/listener.ts#L668-L698](../../packages/server/src/proxy/listener.ts#L668-L698) - the record of a proxy call"
+  - "[code://packages/server/src/proxy/listener.ts#L668-L698](../../packages/server/src/proxy/listener.ts#L668-L698) - the record of a gateway call"
   - "[code://packages/computer/src/plugin.ts#L846-L874](../../packages/computer/src/plugin.ts#L846-L874) - `close`, the record of a machine's up time"
   - "[code://packages/server/src/config.ts#L40-L60](../../packages/server/src/config.ts#L40-L60) - `UsageSetting`, `usage.per` and `usage.timezone`"
   - git://d9d4f950^ - the deleted decisions this spec was written from: a-model-record-with-no-model-named-has-an-empty-name, a-record-keeps-the-providers-cost-beside-the-charged-one, agent-usage-is-charged-to-owner-team-and-project-pools, an-agent-says-whose-cost-report-counts, the-agent-meter-writes-per-turn-or-per-report, the-usage-store-answers-live-totals, usage-and-computer-time-are-two-records-behind-one-port, usage-is-grouped-by-the-host, usage-is-read-through-a-usage-scheme, usage-lists-the-charged-pools-a-reader-may-read
 ---
 
 Usage is the record of model use and computer time, so that a person, a team or a project sees what its work cost.
-Three writers send records to one `usage` port: the proxy, the agent meter and the computer plugin.
+Three writers send records to one `usage` port: the model gateway, the agent meter and the computer plugin.
 Each record names the pools it is charged to, and the store keeps a live total per pool.
 The default store `fileUsage` is in [`code://packages/sdk/src/usage/usage.ts`](../../packages/sdk/src/usage/usage.ts), and a plugin can replace it with `registerUsage`.
 Clients read usage through the `usage:` scheme, the `x-ahpd/usage/*` commands, `ahpd usage` and `/api/usage/<pool>`.
@@ -40,12 +40,13 @@ WHEN a writer records usage
 THEN the record is a model record with `kind: model`, or a computer record with `kind: computer`
 AND both have one base: `at`, `source`, `owner`, `team`, `project`, `session`, `chat`, `turn`, `agent`, `computer`, `cost`, `providerCost`, `token`, `meta` and `pools`.
 A model record adds `model` with the name, provider and token counts, and a computer record adds `seconds`.
-A proxy call made with a key adds `token`, the id of the key, and `meta`, the map of names to values the key and the call named.
+A gateway call made with a key adds `token` and `meta`.
+`token` is the id of the key, and `meta` is the map of names to values the key and the call named.
 This is so that a list by agent or by computer is a filter on one record, not a join.
 
 ### The pools a record is charged to
 
-WHEN the meter or the proxy writes a record
+WHEN the meter or the model gateway writes a record
 THEN it charges the owner as written, such as `user:<id>` or `root:<host>`
 AND it adds `team:<team>` and `project:<team>:<project>` from the scope the work is charged under.
 Each pool is named only when the record has it, so work with no owner and no scope is charged to no pool.
@@ -87,9 +88,9 @@ AND it keeps the split into sent and received when the harness gave one.
 A cost of 0 on a turn that counted no token is no cost, so the record has none.
 A cost that is not known is absent, never 0.
 
-### The proxy charges a configured price
+### The model gateway charges a configured price
 
-WHEN a call through the proxy uses a `proxy.models` entry that has a `price`
+WHEN a call through the model gateway uses a `modelGateway.models` entry that has a `price`
 THEN the record's `cost` is that price in dollars per million tokens, with `from: price`
 AND `providerCost` is the provider's own figure, when the provider reported one.
 A call with no price is charged what the provider said it cost.

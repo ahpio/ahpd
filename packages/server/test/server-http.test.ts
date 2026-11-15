@@ -789,10 +789,10 @@ describe('a request signs in', () => {
   }, 30000);
 
   it('lets a proxy-only token reach the proxy, refuses it user list, and ends it on revoke', async () => {
-    writeFileSync(usersFile, JSON.stringify({ roles: { laptop: ['proxy:read'] }, users: [] }));
+    writeFileSync(usersFile, JSON.stringify({ roles: { laptop: ['gateway:read'] }, users: [] }));
     const directory = fileUsers({ path: usersFile });
     await directory.add('ana', ['laptop']);
-    const minted = await directory.mintToken!('ana', { grants: ['proxy:read'], label: 'laptop' });
+    const minted = await directory.mintToken!('ana', { grants: ['gateway:read'], label: 'laptop' });
     const one = await daemon(
       { httpApi: true, modelApi: true, plugins: [BACKEND] },
       ['--connection-token', 'root-secret', '--users', usersFile],
@@ -805,7 +805,7 @@ describe('a request signs in', () => {
     expect(refused.status).toBe(403);
     expect((await refused.json() as { message: string }).message).toBe('ana may not user:read here');
 
-    // The proxy asks for proxy:models, which proxy:read covers. The daemon's
+    // The proxy asks for gateway:models, which gateway:read covers. The daemon's
     // model table is empty here, so the empty list is the proxy's own answer
     // rather than the API's 404: the token got in.
     const models = await get(`${base}/v1/models`, minted.secret);
@@ -821,7 +821,7 @@ describe('a request signs in', () => {
   it('opens the proxy with a team key, and no other door', async () => {
     const directory = fileUsers({ path: usersFile });
     await directory.addTeam('backend');
-    const minted = await directory.mintToken!(undefined, { team: 'backend', grants: ['proxy:call', 'proxy:models'], label: 'ci' });
+    const minted = await directory.mintToken!(undefined, { team: 'backend', grants: ['gateway:call', 'gateway:models'], label: 'ci' });
     const one = await daemon(
       { httpApi: true, modelApi: true, plugins: [BACKEND] },
       ['--connection-token', 'root-secret', '--users', usersFile],

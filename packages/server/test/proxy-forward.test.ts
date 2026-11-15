@@ -403,7 +403,7 @@ describe('a call ends when either side does, and on a timeout', () => {
     expect(served.log.join('\n')).toMatch(/p0 unreachable \(ECONNREFUSED\); p1 answered 200/u);
   });
 
-  // modelProxy.keyRefusal passthrough: VS Code's Claude proxy re-emits an
+  // modelGateway.keyRefusal passthrough: VS Code's Claude proxy re-emits an
   // upstream error verbatim (src/vs/platform/agentHost/node/claude/anthropicErrors.ts
   // L16-L18, L48-L61 at 6b68d3fe).
   it('passes a provider\'s key refusal through as it came under keyRefusal passthrough', async () => {

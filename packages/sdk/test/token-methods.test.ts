@@ -22,12 +22,12 @@ const MINTED = 'A minted token cannot manage tokens; sign in as yourself.';
 
 /** Three roles of this deployment's own: one reads, one writes, one manages people. */
 const ROLES = {
-  reader: ['proxy:read'],
-  writer: ['proxy:read', 'proxy:write'],
+  reader: ['gateway:read'],
+  writer: ['gateway:read', 'gateway:write'],
   // `user:write` and only a read of the proxy, so naming another person is
-  // bounded by that person's `proxy:write`.
-  lister: ['user:write', 'proxy:read'],
-  manager: ['user:write', 'proxy:read', 'proxy:write'],
+  // bounded by that person's `gateway:write`.
+  lister: ['user:write', 'gateway:read'],
+  manager: ['user:write', 'gateway:read', 'gateway:write'],
 };
 
 let people: Users;
@@ -76,8 +76,8 @@ it('lets a person mint, list and revoke their own tokens without user:write', as
   expect(ana.can('user:write')).toBe(false);
 
   const before = Date.now();
-  const minted = await ask('mint', { label: 'laptop', grants: ['proxy:read'] }, ana) as MintedToken;
-  expect(minted).toMatchObject({ user: 'ana', label: 'laptop', grants: ['proxy:read'] });
+  const minted = await ask('mint', { label: 'laptop', grants: ['gateway:read'] }, ana) as MintedToken;
+  expect(minted).toMatchObject({ user: 'ana', label: 'laptop', grants: ['gateway:read'] });
   expect(typeof minted.secret).toBe('string');
   expect(minted.created).toBeGreaterThanOrEqual(before);
   // The answer is what the mint made, and nothing of the stored hash.
@@ -86,7 +86,7 @@ it('lets a person mint, list and revoke their own tokens without user:write', as
   // The listing shows the record and never the secret or the hash.
   const listed = await ask('list', {}, ana) as Record<string, unknown>[];
   expect(listed).toHaveLength(1);
-  expect(listed[0]).toMatchObject({ id: minted.id, user: 'ana', label: 'laptop', grants: ['proxy:read'] });
+  expect(listed[0]).toMatchObject({ id: minted.id, user: 'ana', label: 'laptop', grants: ['gateway:read'] });
   expect(listed[0]).not.toHaveProperty('token');
   expect(JSON.stringify(listed)).not.toContain(minted.secret);
   expect(JSON.stringify(listed)).not.toContain('sha256:');
@@ -143,16 +143,16 @@ it('refuses another person\'s tokens to a caller without user:write, and lets a 
   // A caller who holds `user:write` but not one of bob's grants is refused by
   // that grant, as `user token` refuses the caller.
   await expect(ask('list', { user: 'bob' }, await person('look')))
-    .rejects.toMatchObject({ code: -32009, message: 'look may not proxy:write here' });
+    .rejects.toMatchObject({ code: -32009, message: 'look may not gateway:write here' });
 
   const listed = await ask('list', { user: 'bob' }, boss) as Record<string, unknown>[];
   expect(listed.map((one) => one.id)).toEqual([bobs.id]);
   // The manager mints for ana, and only with a grant ana holds.
-  const forAna = await ask('mint', { user: 'ana', label: 'from boss', grants: ['proxy:read'] }, boss) as MintedToken;
+  const forAna = await ask('mint', { user: 'ana', label: 'from boss', grants: ['gateway:read'] }, boss) as MintedToken;
   expect(forAna.user).toBe('ana');
-  await expect(ask('mint', { user: 'ana', grants: ['proxy:write'] }, boss)).rejects.toMatchObject({
+  await expect(ask('mint', { user: 'ana', grants: ['gateway:write'] }, boss)).rejects.toMatchObject({
     code: -32009,
-    message: 'user ana does not hold proxy:write; a token may not hold what its person does not',
+    message: 'user ana does not hold gateway:write; a token may not hold what its person does not',
   });
 });
 
@@ -190,7 +190,7 @@ it('refuses a param of the wrong shape, and a directory refusal with its sentenc
   const ana = await person('ana');
   await expect(ask('mint', { user: 7 }, ana)).rejects.toMatchObject({ code: -32602, message: 'x-ahpd/tokens/mint takes user as a string' });
   await expect(ask('mint', { label: 7 }, ana)).rejects.toMatchObject({ code: -32602, message: 'x-ahpd/tokens/mint takes label as a string' });
-  await expect(ask('mint', { grants: 'proxy:read' }, ana)).rejects.toMatchObject({ code: -32602, message: 'x-ahpd/tokens/mint takes grants as a list of grant strings' });
+  await expect(ask('mint', { grants: 'gateway:read' }, ana)).rejects.toMatchObject({ code: -32602, message: 'x-ahpd/tokens/mint takes grants as a list of grant strings' });
   await expect(ask('mint', { expires: 'tomorrow' }, ana)).rejects.toMatchObject({ code: -32602, message: 'x-ahpd/tokens/mint takes expires as epoch milliseconds' });
   await expect(ask('mint', { scope: 7 }, ana)).rejects.toMatchObject({ code: -32602, message: 'x-ahpd/tokens/mint takes scope as a string' });
   await expect(ask('mint', { meta: 'env=prod' }, ana)).rejects.toMatchObject({ code: -32602, message: 'x-ahpd/tokens/mint takes meta as an object of names to values' });
@@ -199,9 +199,9 @@ it('refuses a param of the wrong shape, and a directory refusal with its sentenc
   await expect(ask('mint', { meta: { [long]: '1' } }, ana)).rejects.toMatchObject({ code: -32602, message: `A meta's name ${long} is 1 to 64 characters` });
   // The directory refuses a grant the person does not hold and an expiry in the
   // past; its own sentence is the answer.
-  await expect(ask('mint', { grants: ['proxy:write'] }, ana)).rejects.toMatchObject({
+  await expect(ask('mint', { grants: ['gateway:write'] }, ana)).rejects.toMatchObject({
     code: -32009,
-    message: 'user ana does not hold proxy:write; a token may not hold what its person does not',
+    message: 'user ana does not hold gateway:write; a token may not hold what its person does not',
   });
   await expect(ask('mint', { expires: Date.now() - 1000 }, ana))
     .rejects.toMatchObject({ code: -32009, message: expect.stringMatching(/is not in the future$/) });
@@ -223,19 +223,19 @@ it('lets a manager mint, list and revoke a team key, and refuses a reader who ma
   const boss = await person('boss');
   const ana = await person('ana');
 
-  const minted = await ask('mint', { team: 'backend', grants: ['proxy:call'], label: 'ci' }, boss) as MintedToken;
-  expect(minted).toMatchObject({ team: 'backend', grants: ['proxy:call'], label: 'ci', scope: 'backend' });
+  const minted = await ask('mint', { team: 'backend', grants: ['gateway:call'], label: 'ci' }, boss) as MintedToken;
+  expect(minted).toMatchObject({ team: 'backend', grants: ['gateway:call'], label: 'ci', scope: 'backend' });
   expect(minted.user).toBeUndefined();
 
   const listed = await ask('list', { team: 'backend' }, boss) as Record<string, unknown>[];
   expect(listed.map((one) => one.id)).toEqual([minted.id]);
-  expect(listed[0]).toMatchObject({ team: 'backend', grants: ['proxy:call'] });
+  expect(listed[0]).toMatchObject({ team: 'backend', grants: ['gateway:call'] });
   // Another team's keys are not in this listing.
   expect(await ask('list', { team: 'sales' }, boss)).toEqual([]);
 
   // A reader holds no `user:write`, so no team key is theirs.
   for (const [name, params] of [
-    ['mint', { team: 'backend', grants: ['proxy:call'] }],
+    ['mint', { team: 'backend', grants: ['gateway:call'] }],
     ['list', { team: 'backend' }],
     ['revoke', { id: minted.id, team: 'backend' }],
   ] as const) {
@@ -249,12 +249,12 @@ it('lets a manager mint, list and revoke a team key, and refuses a reader who ma
   // A team key opens the proxy, so a reader who may not call it mints none,
   // and still lists and revokes the team's keys.
   const look = await person('look');
-  await expect(ask('mint', { team: 'backend', grants: ['proxy:call'] }, look))
-    .rejects.toMatchObject({ code: -32009, message: 'look may not proxy:call here' });
+  await expect(ask('mint', { team: 'backend', grants: ['gateway:call'] }, look))
+    .rejects.toMatchObject({ code: -32009, message: 'look may not gateway:call here' });
   expect(await ask('list', { team: 'backend' }, look)).toHaveLength(1);
 
   // The root connection has no reader, and reaches a team as it reaches a person.
-  const byRoot = await ask('mint', { team: 'backend', grants: ['proxy:models'] }, undefined) as MintedToken;
+  const byRoot = await ask('mint', { team: 'backend', grants: ['gateway:models'] }, undefined) as MintedToken;
   expect(byRoot.team).toBe('backend');
   expect(await ask('revoke', { id: byRoot.id, team: 'backend' }, undefined)).toEqual({});
 
@@ -268,7 +268,7 @@ it('refuses a team beside a user, and a team that is no name', async () => {
   const boss = await person('boss');
 
   for (const [name, params] of [
-    ['mint', { user: 'ana', team: 'backend', grants: ['proxy:call'] }],
+    ['mint', { user: 'ana', team: 'backend', grants: ['gateway:call'] }],
     ['list', { user: 'ana', team: 'backend' }],
     ['revoke', { id: 'any', user: 'ana', team: 'backend' }],
   ] as const) {
@@ -277,7 +277,7 @@ it('refuses a team beside a user, and a team that is no name', async () => {
       message: `x-ahpd/tokens/${name} takes user or team, not both`,
     });
   }
-  await expect(ask('mint', { team: '', grants: ['proxy:call'] }, boss)).rejects.toMatchObject({
+  await expect(ask('mint', { team: '', grants: ['gateway:call'] }, boss)).rejects.toMatchObject({
     code: -32602,
     message: 'x-ahpd/tokens/mint takes team as a non-empty string',
   });

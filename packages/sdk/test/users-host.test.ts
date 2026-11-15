@@ -345,7 +345,7 @@ it('advertises the operations of every subject it gates, on both blocks', async 
 
   expect(Object.keys(grants)).toEqual([
     'session', 'chat', 'terminal', 'automation', 'file', 'config', 'plugin', 'connector', 'agent', 'diagnostics', 'container', 'node',
-    'trust', 'proxy', 'mcp', 'account',
+    'trust', 'gateway', 'mcp', 'account',
   ]);
   // The root snapshot says the same thing the handshake said, to a client that
   // only ever subscribes.
@@ -377,13 +377,13 @@ it('advertises the operations of every subject it gates, on both blocks', async 
   expect(grants['chat']?.description).toBe(OPERATIONS['chat']?.description);
 });
 
-it('advertises trust and proxy, which the gate asks about through no method', async () => {
+it('advertises trust and gateway, which the gate asks about through no method', async () => {
   const { host } = served({ users: directory() });
   const client = host.accept(peer(), undefined, true);
   const grants = await grantsOf(client);
 
   // Both are asked for outside `GATE.NEEDS`: a `workspaceTrust` push on the
-  // root config, and a call or a model list on the proxy. Neither has a scheme
+  // root config, and a call or a model list on the model gateway. Neither has a scheme
   // of its own, so before these entries a client drawing a role editor had no
   // way to offer either word.
   expect(grants['trust']).toEqual({
@@ -392,8 +392,8 @@ it('advertises trust and proxy, which the gate asks about through no method', as
     operations: ['push'],
     groups: { read: [], write: ['push'] },
   });
-  expect(grants['proxy']).toEqual({
-    title: expect.any(String),
+  expect(grants['gateway']).toEqual({
+    title: 'Model gateway',
     description: expect.any(String),
     operations: ['models', 'call'],
     groups: { read: ['models'], write: ['call'] },
@@ -404,14 +404,14 @@ it('advertises trust and proxy, which the gate asks about through no method', as
   // own name.
   expect(grantProblem('trust:write')).toBeUndefined();
   expect(grantProblem('trust:push')).toBeUndefined();
-  expect(grantProblem('proxy:read')).toBeUndefined();
-  expect(grantProblem('proxy:write')).toBeUndefined();
-  expect(grantProblem('proxy:models')).toBeUndefined();
-  expect(grantProblem('proxy:call')).toBeUndefined();
+  expect(grantProblem('gateway:read')).toBeUndefined();
+  expect(grantProblem('gateway:write')).toBeUndefined();
+  expect(grantProblem('gateway:models')).toBeUndefined();
+  expect(grantProblem('gateway:call')).toBeUndefined();
   // A word the subject does not have is refused, and the refusal names what it
   // does have, which is how a person writing a role learns what to write.
   expect(grantProblem('trust:get')).toBe("trust:get is not one of trust's operations (push), read or write or a *");
-  expect(grantProblem('proxy:list')).toMatch(/^proxy:list is not one of proxy's operations \(models, call\), read or write or a \*$/u);
+  expect(grantProblem('gateway:list')).toMatch(/^gateway:list is not one of gateway's operations \(models, call\), read or write or a \*$/u);
 });
 
 it('advertises the schemes it serves beside the built-ins, so a role editor reads one key', async () => {
@@ -425,7 +425,7 @@ it('advertises the schemes it serves beside the built-ins, so a role editor read
   // `file:put` is.
   expect(Object.keys(grants)).toEqual([
     'session', 'chat', 'terminal', 'automation', 'file', 'config', 'plugin', 'connector', 'agent', 'diagnostics', 'container', 'node',
-    'trust', 'proxy', 'mcp', 'account', 'user', 'team', 'project', 'role',
+    'trust', 'gateway', 'mcp', 'account', 'user', 'team', 'project', 'role',
   ]);
   // The root snapshot says the same thing the handshake said.
   expect(await snapshotGrants(client)).toEqual(grants);

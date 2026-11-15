@@ -3,7 +3,7 @@
  *
  * One function, because the check is four steps whatever was asked and a check
  * that grew a rule per kind would be four sets of steps. The `model` kind a
- * proxy call is checked against is decided here too.
+ * gateway call is checked against is decided here too.
  *
  * Nothing here reads a store's `pool` or `cap`, and nothing asks the `usage`
  * port anything: the one row written here is the key's own, out of what the
@@ -25,8 +25,8 @@ import type { Scope } from '../usage/scopes.js';
 export interface Asked {
   /** `<maker>/<name>`, as a model is named. */
   model?: string;
-  /** The proxy provider the call goes through. */
-  proxy?: string;
+  /** The model gateway's provider the call goes through. */
+  gateway?: string;
   /** The harness, as `claude`, `pi`, `cofold` or `acp:<server>`. */
   agent?: string;
   /** The machine, as the `computers` port names it. */
@@ -56,7 +56,7 @@ export type Decision =
   | { allowed: false; refusal: Refusal; candidates: Policy[] };
 
 /** Every value type there is, in the order a request is read in. */
-const VALUES = ['agent', 'model', 'proxy', 'computer'] as const;
+const VALUES = ['agent', 'model', 'gateway', 'computer'] as const;
 
 /**
  * One value against one written value.
@@ -84,7 +84,7 @@ const askedFor = (kind: PolicyKind, asked: Asked): string => {
     : asked.agent ?? '*'
   }`;
   const rest = [
-    ...(asked.proxy === undefined ? [] : [`through proxy ${asked.proxy}`]),
+    ...(asked.gateway === undefined ? [] : [`through gateway ${asked.gateway}`]),
     ...(kind !== 'model' && asked.model !== undefined ? [`with model ${asked.model}`] : []),
     ...(kind !== 'computer' && asked.computer !== undefined ? [`on ${asked.computer}`] : []),
   ];
@@ -153,7 +153,7 @@ const active = (row: Policy, at: string): boolean =>
  * A value type the row names and the request does not is skipped for an allow
  * and fails the match for a deny: an allow is a candidate on what was asked,
  * while a deny binds only when everything it names was asked. A value type
- * neither names leaves it unconstrained, so a `model` row with no `proxy:`
+ * neither names leaves it unconstrained, so a `model` row with no `gateway:`
  * values allows any provider. A row about nothing the request asked for is not
  * a candidate at all: an `agent` row of `model:` values alone allows no harness.
  */
@@ -197,7 +197,7 @@ export async function decide(
   asked: Asked,
   at: Date = new Date(),
 ): Promise<Decision> {
-  // The key's limits are for the proxy, so they are the `model` kind's row and
+  // The key's limits are for the model gateway, so they are the `model` kind's row and
   // no other kind's: an agent or a machine is not what a key is spent on.
   const key = kind === 'model' ? keyRowOf(principal) : undefined;
   if (principal.can('*:*')) return { allowed: true, candidates: key === undefined ? [] : [key] };

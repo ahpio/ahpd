@@ -64,14 +64,14 @@ export interface HostAdapterOptions {
  * What a connector of a provider adapter does, as a client lists it.
  *
  * The name tells a client that a connector of this adapter can be called by the
- * model proxy; the member that says how is `Adapter.provider`, which only the
+ * model gateway; the member that says how is `Adapter.provider`, which only the
  * host reads.
  */
 const MODELS: Capability = {
   type: 'models',
   name: 'models',
   title: 'Serves models',
-  description: 'The model proxy may call this connector for a model that names its adapter.',
+  description: 'The model gateway may call this connector for a model that names its adapter.',
 };
 
 /** The field every vendor provider needs: the API key, kept in the vault. */

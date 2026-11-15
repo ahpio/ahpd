@@ -220,7 +220,7 @@ describe('/mcp asks who is calling before it reads the call', () => {
   });
 
   it('refuses a team key with 403, because a team key opens the proxy only', async () => {
-    const key = await users.mintToken!(undefined, { team: 'backend', grants: ['proxy:call'] });
+    const key = await users.mintToken!(undefined, { team: 'backend', grants: ['gateway:call'] });
     const answered = await ask(door(), 'tools/list', undefined, key.secret);
     expect(answered.status).toBe(403);
     expect((answered.said.error as { message: string }).message).toContain('mcp:call');

@@ -46,7 +46,7 @@ const rows = async (...given: Policy[]): Promise<Policies> => {
 
 const ALLOW_ALL: Policy = { id: 'everyone', scope: 'all', kind: 'model', effect: 'allow', match: { model: ['*'] } };
 const DENY_OPENAI: Policy = { id: 'no-openai', scope: 'all', kind: 'model', effect: 'deny', match: { model: ['openai/*'] } };
-const LOCAL_ONLY: Policy = { id: 'local-only', scope: 'team:backend', kind: 'model', effect: 'allow', match: { proxy: ['local'] } };
+const LOCAL_ONLY: Policy = { id: 'local-only', scope: 'team:backend', kind: 'model', effect: 'allow', match: { gateway: ['local'] } };
 /** A row everybody's calls may use, for a week's `usd` that the store says how much of is spent. */
 const LIMITED: Policy = {
   id: 'budget',
@@ -167,7 +167,7 @@ describe('a policy decides the model', () => {
     const got = await send(served.port, CHAT, { headers: { 'x-api-key': who.ana }, body: { model: 'openai/gpt-5.5' } });
     expect(got.status).toBe(403);
     expect(isOpenAiError(got.json)).toBe(true);
-    expect(got.json).toMatchObject({ error: { type: 'permission_error', message: 'no-openai refuses model openai/gpt-5.5 through proxy openrouter' } });
+    expect(got.json).toMatchObject({ error: { type: 'permission_error', message: 'no-openai refuses model openai/gpt-5.5 through gateway openrouter' } });
     expect(remote.received).toEqual([]);
     expect((await send(served.port, CHAT, { headers: { 'x-api-key': who.ana }, body: { model: 'local/default' } })).status).toBe(200);
   });
@@ -178,7 +178,7 @@ describe('a policy decides the model', () => {
     expect(local.received).toHaveLength(1);
     const refused = await send(served.port, CHAT, { headers: { 'x-api-key': who.ana }, body: { model: 'openai/gpt-5.5' } });
     expect(refused.status).toBe(403);
-    expect(refused.json).toMatchObject({ error: { message: 'no policy allows model openai/gpt-5.5 through proxy openrouter' } });
+    expect(refused.json).toMatchObject({ error: { message: 'no policy allows model openai/gpt-5.5 through gateway openrouter' } });
     const messages = await send(served.port, MESSAGES, { headers: { 'x-api-key': who.ana }, body: { model: 'anthropic/claude-sonnet-5-5' } });
     expect(messages.status).toBe(403);
     expect(isAnthropicError(messages.json)).toBe(true);
@@ -400,7 +400,7 @@ describe('a key\'s own limit', () => {
 describe('a team key', () => {
   /** A key of the team this host names, and the proxy over two fakes. */
   const teamKey = async (policies?: Policies) => {
-    const minted = await who.users.mintToken!(undefined, { team: 'backend', grants: ['proxy:call', 'proxy:models'], label: 'ci' });
+    const minted = await who.users.mintToken!(undefined, { team: 'backend', grants: ['gateway:call', 'gateway:models'], label: 'ci' });
     const usage = keeping();
     const remote = await fakeProvider(answerJson(200, COMPLETION));
     const local = await fakeProvider(answerJson(200, COMPLETION));
@@ -442,7 +442,7 @@ describe('a team key', () => {
     const got = await send(served.port, CHAT, { headers: { 'x-api-key': secret }, body: { model: 'local/default' } });
     expect(got.status).toBe(403);
     expect(isOpenAiError(got.json)).toBe(true);
-    expect(got.json).toMatchObject({ error: { message: 'no-local refuses model local/default through proxy local' } });
+    expect(got.json).toMatchObject({ error: { message: 'no-local refuses model local/default through gateway local' } });
     expect(local.received).toEqual([]);
   });
 });
@@ -455,7 +455,7 @@ describe('the call is recorded', () => {
     expect(more).toEqual([]);
     expect(entry).toMatchObject({
       kind: 'model',
-      source: 'proxy',
+      source: 'gateway',
       owner: 'user:ana',
       team: 'backend',
       project: 'billing',
@@ -661,13 +661,13 @@ describe('a session\'s call', () => {
       open.push(served);
       const denied = await send(served.port, CHAT, { headers: { 'x-api-key': 'session-token' }, body: { model: 'openai/gpt-5.5' } });
       expect(denied.status).toBe(403);
-      expect(denied.json).toMatchObject({ error: { message: 'no-openai refuses model openai/gpt-5.5 through proxy openrouter' } });
+      expect(denied.json).toMatchObject({ error: { message: 'no-openai refuses model openai/gpt-5.5 through gateway openrouter' } });
 
       expect((await send(served.port, CHAT, { headers: { 'x-api-key': 'session-token' }, body: { model: 'local/default' } })).status).toBe(200);
       const [entry, ...more] = await settled(usage, 1);
       expect(more).toEqual([]);
       expect(entry).toMatchObject({
-        source: 'proxy', session: 's-1', chat: 'c-1', turn: 't-7', owner: 'user:ana', team: 'backend', project: 'billing',
+        source: 'gateway', session: 's-1', chat: 'c-1', turn: 't-7', owner: 'user:ana', team: 'backend', project: 'billing',
         pools: ['user:ana', 'team:backend', 'project:backend:billing'],
       });
     }

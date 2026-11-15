@@ -76,16 +76,25 @@ npm alone moves no plugin. A plugin from an older release that the new daemon ca
 
 ## Renamed keys
 
-`http` is now `httpApi`, and `proxy` is now `modelProxy`. A file written with the old names still starts, and the daemon prints one warning for each:
+`http` is now `httpApi`. A file written with the old name still starts, and the daemon prints one warning:
 
 ```
 http is now httpApi; rename it in /home/you/.config/ahpd/config.json.
-proxy is now modelProxy; rename it in /home/you/.config/ahpd/config.json.
 ```
 
-Rename the keys in `config.json` to stop the warnings. A file that holds both names of one key is refused, because the two name the same setting.
+Rename the key in `config.json` to stop the warning. A file that holds both names is refused, because the two name the same setting.
 
-The `proxy` grant, the `proxy:call` operation and the `proxy` match type of a policy keep their names.
+In 0.15 the model proxy is the model gateway. Each old name below is not read:
+
+| Before 0.15 | From 0.15 |
+| --- | --- |
+| `modelProxy`, and `proxy` before it | `modelGateway` |
+| `ahpd proxy list`, `GET /proxy/list` | `ahpd gateway list`, `GET /gateway/list` |
+| the grants `proxy:call`, `proxy:models`, `proxy:read` and `proxy:write` | `gateway:call`, `gateway:models`, `gateway:read` and `gateway:write` |
+| the policy match type `proxy` | `gateway` |
+| the usage source `proxy` | `gateway` |
+
+The daemon ignores a `modelProxy` or a `proxy` key with a warning, such as `modelProxy is not a setting ahpd knows; ignored`, and serves no model name from it. Rename the key to `modelGateway`. A role, a token or a team key that holds an old grant matches nothing: mint the token again, and edit the role. The daemon skips a policy row that matches `proxy`, and says so in its log. A deny row it skips refuses nothing, so write `gateway` in its place before the update. A usage record written before the update keeps `source: "proxy"`.
 
 ## Update check
 

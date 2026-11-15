@@ -22,7 +22,7 @@ For a person who runs the `ahpd` daemon: its commands, its flags and its configu
 | [USERS.md](server/USERS.md) | A token and a role for each person |
 | [VAULT.md](server/VAULT.md) | Credentials out of `config.json` |
 | [USAGE.md](server/USAGE.md) | What each pool has spent |
-| [PROXY.md](server/PROXY.md) | The model proxy under `/v1` |
+| [GATEWAY.md](server/GATEWAY.md) | The model gateway under `/v1` |
 | [MCP.md](server/MCP.md) | The host's tools for a person's MCP client, at `/mcp` |
 | [REFERENCE.md](server/REFERENCE.md) | Every command and flag, generated from the code |
 

@@ -282,7 +282,7 @@ describe('every schema the host draws names every value', () => {
     expect([
       ...gapsOf('ahpd', 'config', configSchema),
       ...gapsOf('ahpd', 'mcp server', mcpServerSchema),
-      ...gapsOf('ahpd', 'model proxy', proxySchema),
+      ...gapsOf('ahpd', 'model gateway', proxySchema),
     ]).toEqual([]);
   });
 });

@@ -165,7 +165,7 @@ const CLIENT = 'agent-claude';
  * Log each failure of a login, and have the host raise or clear the
  * connector's `call` alert for each call of a login, so its row shows it.
  *
- * The model proxy logs each failed attempt and notes its outcome on the
+ * The model gateway logs each failed attempt and notes its outcome on the
  * connector, in `packages/server/src/proxy/listener.ts`, and runs no
  * check. A plugin notes through the connectors channel's own command, as a
  * client does: the host keeps a call `x-ahpd/connectors/note` names, and sends

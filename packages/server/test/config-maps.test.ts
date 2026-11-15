@@ -24,7 +24,7 @@ const at = (key: string): JsonSchema => propertiesOf(configSchema)[key] as JsonS
 /** A `config.json` that holds a valid value for each map. */
 const VALID = {
   shellEnv: { HOME: '/home/me', PORT: null },
-  modelProxy: {
+  modelGateway: {
     models: { 'acme/one': [{ provider: 'claude', id: 'one' }] },
     sessionCalls: 'record',
   },
@@ -38,7 +38,7 @@ describe('the maps name the values a client draws', () => {
 
   it('names the one server of mcpServers, and the one model value of the proxy', () => {
     expect(at('mcpServers')['additionalProperties']).toEqual(mcpServerSchema);
-    expect(propertiesOf(at('modelProxy'))['models']?.['additionalProperties'])
+    expect(propertiesOf(at('modelGateway'))['models']?.['additionalProperties'])
       .toEqual({ type: 'array', items: modelEntrySchema });
   });
 
@@ -61,7 +61,7 @@ describe('cofold check accepts the maps', () => {
 
   it('copies a map value without holding it, so one bad value does not refuse the file', () => {
     expect(() => check({ shellEnv: { PORT: 5 } }, at('shellEnv'), 'shellEnv')).not.toThrow();
-    expect(() => check({ models: { 'acme/one': 'nope' } }, at('modelProxy'), 'modelProxy')).not.toThrow();
+    expect(() => check({ models: { 'acme/one': 'nope' } }, at('modelGateway'), 'modelGateway')).not.toThrow();
     expect(() => check({ bad: { type: 'nope' } }, at('mcpServers'), 'mcpServers')).not.toThrow();
   });
 });
@@ -76,10 +76,10 @@ describe('the host still checks each value itself', () => {
   it('names a model value that is not a list of entries', () => {
     expect(proxyProblems({ models: { 'acme/one': [{ provider: 'claude', id: 'one' }] } })).toEqual([]);
     expect(proxyProblems({ models: { 'acme/one': 'nope' } })).toEqual([
-      'modelProxy.models.acme/one must be a list',
+      'modelGateway.models.acme/one must be a list',
     ]);
     expect(proxyProblems({ models: { 'acme/one': [{ provider: 'claude' }] } })).toEqual([
-      'modelProxy.models.acme/one[0].id is required',
+      'modelGateway.models.acme/one[0].id is required',
     ]);
   });
 

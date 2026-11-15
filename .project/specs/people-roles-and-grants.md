@@ -54,7 +54,7 @@ The code is in [`code://packages/sdk/src/access/users.ts`](../../packages/sdk/sr
 
 WHEN a role holds a grant
 THEN the grant is `<subject>:<operation>`, and either part may be `*`
-AND the host subjects are `session`, `chat`, `file`, `automation`, `terminal`, `diagnostics`, `container`, `config`, `user`, `team`, `project`, `role`, `usage`, `policy`, `proxy` and `trust`
+AND the host subjects are `session`, `chat`, `file`, `automation`, `terminal`, `diagnostics`, `container`, `config`, `user`, `team`, `project`, `role`, `usage`, `policy`, `gateway` and `trust`
 AND each host subject has its own operations, each in the `read` or the `write` group
 AND a plugin scheme is a subject too, and takes the resource operations `get`, `list`, `resolve`, `watch`, `put`, `delete`, `mkdir`, `move`, `copy` and `request`.
 
@@ -83,7 +83,7 @@ AND the grant covers no team, project or role, because it never named them.
 
 WHEN a person holds `admin`, `member` or `guest` and the file defines no role of that name
 THEN `admin` holds `*:*`
-AND `member` holds the `read` and `write` groups of `file`, `session`, `terminal` and `proxy`, and `trust:write`
+AND `member` holds the `read` and `write` groups of `file`, `session`, `terminal` and `gateway`, and `trust:write`
 AND `guest` holds `session:read` and `automation:read`
 AND a person added with no role is a `guest`.
 
@@ -207,7 +207,7 @@ AND a plugin can replace the store through the `policies` port with `registerPol
 ### The policy checks are switched on in the configuration
 
 WHEN `policies.check` is `true` in the daemon configuration file
-THEN the host checks a new session's agent and computer, a turn's agent with its model, and a proxy call's model and proxy
+THEN the host checks a new session's agent and computer, a turn's agent with its model, and a gateway call's model and provider
 AND when the check is off, which is the default, policies are kept and listed but refuse nothing
 AND a daemon started with the check on and no policy logs one line, because it refuses every session and turn except root's.
 The check has no command line flag, so that one run cannot turn it on or off by accident.

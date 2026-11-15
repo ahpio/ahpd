@@ -34,7 +34,7 @@ refs:
   - "[code://packages/sdk/src/types/agent.ts#L239-L283](../../packages/sdk/src/types/agent.ts#L239-L283) - `Start.resources`, `Start.terminals` and `Start.toolsServer`"
   - "[code://packages/sdk/src/types/terminals.ts#L256](../../packages/sdk/src/types/terminals.ts#L256) - `StartTerminals.open`"
   - "[code://packages/agent-acp/package.json#L66](../../packages/agent-acp/package.json#L66) - the `@agentclientprotocol/sdk` dependency"
-  - "[code://packages/server/src/proxy/providers.ts#L173-L174](../../packages/server/src/proxy/providers.ts#L173-L174) - `MODEL_NAME`, the `<maker>/<name>` rule of the proxy"
+  - "[code://packages/server/src/proxy/providers.ts#L173-L174](../../packages/server/src/proxy/providers.ts#L173-L174) - `MODEL_NAME`, the `<maker>/<name>` rule of the model gateway"
   - git://d9d4f950^ - the deleted decisions this spec was written from: a-live-tool-change-removes-the-ahp-server-then-adds-it-again, a-model-is-named-by-its-maker-and-runs-on-a-provider, a-pi-session-from-disk-is-replayed-through-the-live-mapping, acp-bridge-uses-the-protocol-sdk, acp-ports-come-through-start, an-acp-read-and-the-turn-after-it-load-twice, claude-options-are-declared-once-for-sessions-and-presets, claude-variants-share-one-listing-inside-the-plugin, pi-models-are-probed-from-pis-model-runtime
 ---
 
@@ -139,10 +139,10 @@ THEN the turn ends as it did before.
 WHEN a login fails
 THEN the plugin logs the CLI's words and asks the host to check that connector.
 
-The reason: the model proxy hands a call to its next entry on no connection, a 429 or a 5xx.
+The reason: the model gateway hands a call to its next entry on no connection, a 429 or a 5xx.
 Once a byte has reached the caller, it runs nothing again.
 It tells a key's refusal and tries no other entry, and its caller backs off by the `retry-after` it returns.
-See [`code://packages/agent-claude/src/session/logins.ts`](../../packages/agent-claude/src/session/logins.ts) and [`code://docs/server/PROXY.md`](../../docs/server/PROXY.md).
+See [`code://packages/agent-claude/src/session/logins.ts`](../../packages/agent-claude/src/session/logins.ts) and [`code://docs/server/GATEWAY.md`](../../docs/server/GATEWAY.md).
 
 ### A prompt sent while a new Claude CLI starts
 
@@ -377,10 +377,10 @@ THEN the backend sends `session/load` again on the turn's own connection.
 WHEN the server can do neither
 THEN the turn fails with a message that the session cannot be resumed.
 
-### A model name in the proxy
+### A model name in the model gateway
 
-WHEN the proxy names a model
+WHEN the model gateway names a model
 THEN the name is `<maker>/<name>`, and the provider that runs it is a separate key.
 WHEN a backend names a model
 THEN it uses its own provider reference, such as the pi `<provider>/<id>`.
-See [HTTP API and proxy](http-api-and-proxy.md).
+See [HTTP API and model gateway](http-api-and-proxy.md).

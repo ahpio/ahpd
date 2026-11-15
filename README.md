@@ -120,7 +120,7 @@ See what each person, team, and project has spent on models. Set daily, weekly, 
 
 **🔀 Share your models**
 
-Point your agent or a script at your host and call any model with your ahpd token. The host uses the provider's key, applies your policies, and records the cost. [Model proxy](https://ahpio.github.io/ahpd/server/PROXY)
+Point your agent or a script at your host and call any model with your ahpd token. The host uses the provider's key, applies your policies, and records the cost. [Model gateway](https://ahpio.github.io/ahpd/server/GATEWAY)
 
 ---
 
@@ -366,7 +366,7 @@ The full documentation is at [ahpio.github.io/ahpd](https://ahpio.github.io/ahpd
 | [Users](docs/server/USERS.md) | Users and authorization |
 | [Policy](docs/sdk/POLICY.md) | Who may use which agent, model and computer, and how much |
 | [Usage](docs/server/USAGE.md) | What each person, team and project has spent |
-| [Model proxy](docs/server/PROXY.md) | Call a model through the host with your ahpd token |
+| [Model gateway](docs/server/GATEWAY.md) | Call a model through the host with your ahpd token |
 | [Write a plugin](docs/plugins/PLUGINS.md) | The plugin contract, manifest and events |
 | [Write an agent](docs/sdk/AGENT.md) | The `Agent` and `Session` contracts |
 | [Build your own host](docs/sdk/BUILD-A-HOST.md) | `createHost` and the ports |

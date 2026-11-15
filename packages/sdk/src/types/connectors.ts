@@ -22,7 +22,7 @@ import type { OnWire } from './wire.js';
  *
  * `receive` is a connector that answers calls, `command` is a `/` command it
  * adds, `action` is something a client offers to run, `models` is a connector
- * the model proxy may call, and `view` is a surface a record shows a view on.
+ * the model gateway may call, and `view` is a surface a record shows a view on.
  * A type this version does not know is kept and shown by its title rather than
  * refused.
  */
@@ -177,7 +177,7 @@ export interface ProviderConnector {
  * it to one reader.
  */
 export interface ConnectorModel extends ProviderModel {
-  /** The name a caller sends as `model` to the proxy: `<prefix>/<id>`. */
+  /** The name a caller sends as `model` to the model gateway: `<prefix>/<id>`. */
   model: string;
   /**
    * Whether this reader may call it through the proxy now, after its routes

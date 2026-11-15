@@ -1,5 +1,5 @@
 /**
- * The model names this proxy serves, and the entries that serve each.
+ * The model names the model gateway serves, and the entries that serve each.
  *
  * A model name is `<maker>/<name>` and lists the connectors that serve it, each
  * under that connector's own model id. A provider is a connector, so this file
@@ -43,7 +43,7 @@ export interface ModelEntry {
   price?: ModelPrice;
 }
 
-/** What the `proxy` key holds. */
+/** What the `modelGateway` key holds. */
 export interface ProxySetting {
   /** The model names, by `<maker>/<name>`, and the entries that serve each. */
   models?: Record<string, ModelEntry[]>;
@@ -64,19 +64,19 @@ export interface ProxySetting {
   keyRefusal?: KeyRefusal;
 }
 
-/** What `modelProxy.sessionCalls` may say. */
+/** What `modelGateway.sessionCalls` may say. */
 export const SESSION_CALLS = ['record', 'skip'] as const;
 
 /** One of those. */
 export type SessionCalls = (typeof SESSION_CALLS)[number];
 
-/** What `modelProxy.keyRefusal` may say. */
+/** What `modelGateway.keyRefusal` may say. */
 export const KEY_REFUSALS = ['hostError', 'passthrough'] as const;
 
 /** One of those. */
 export type KeyRefusal = (typeof KEY_REFUSALS)[number];
 
-/** What `modelProxy` reads as. */
+/** What `modelGateway` reads as. */
 export interface ProxyConfiguration {
   /** Every model name, and the entries that serve it. */
   models: Record<string, ModelEntry[]>;
@@ -87,7 +87,7 @@ export interface ProxyConfiguration {
 }
 
 /**
- * What `proxy` reads as: every model name, and how a session's call is treated.
+ * What `modelGateway` reads as: every model name, and how a session's call is treated.
  *
  * Absent is no names, which is a proxy with nothing to route rather than a
  * failure.
@@ -118,7 +118,7 @@ export const modelEntrySchema: JsonSchema = {
 };
 
 /**
- * What `proxy` holds.
+ * What `modelGateway` holds.
  *
  * `models` carries the schema of one model name's entries, which is what a
  * client draws a row from. `check` copies a map value without holding it, so
@@ -146,7 +146,7 @@ export const proxySchema: JsonSchema = {
 };
 
 /** What a file that still writes `providers` is told. */
-export const PROVIDERS_GONE = 'modelProxy.providers is no longer read: add each provider as a connector, see docs/server/PROXY.md';
+export const PROVIDERS_GONE = 'modelGateway.providers is no longer read: add each provider as a connector, see docs/server/GATEWAY.md';
 
 /** A model name as one rule: a maker and a name, each holding no slash. */
 const MODEL_NAME = /^[^/\s]+\/[^/\s]+$/u;
@@ -158,7 +158,7 @@ const held = (value: unknown, schema: JsonSchema, label: string, into: string[])
 };
 
 /**
- * What is wrong with `proxy`, as the sentences a person is shown.
+ * What is wrong with `modelGateway`, as the sentences a person is shown.
  *
  * Three rules are not the schema's: `providers` is refused whole, a model name
  * is `<maker>/<name>`, and each entry names a provider. The rest is checked
@@ -172,15 +172,15 @@ export const proxyProblems = (setting: unknown): string[] => {
   const problems: string[] = [];
   if (setting === undefined) return problems;
   if (isRecord(setting) && Object.hasOwn(setting, 'providers')) problems.push(PROVIDERS_GONE);
-  held(setting, proxySchema, 'modelProxy', problems);
+  held(setting, proxySchema, 'modelGateway', problems);
 
   const named = isRecord(setting) && isRecord(setting['models']) ? setting['models'] : {};
   const served = new Map<string, ModelEntry[]>();
   for (const [name, entries] of Object.entries(named)) {
-    held(entries, { type: 'array' }, `modelProxy.models.${name}`, problems);
+    held(entries, { type: 'array' }, `modelGateway.models.${name}`, problems);
     if (!Array.isArray(entries)) continue;
     // Each entry is held on its own, so the sentence names which one it was.
-    entries.forEach((entry, index) => { held(entry, modelEntrySchema, `modelProxy.models.${name}[${String(index)}]`, problems); });
+    entries.forEach((entry, index) => { held(entry, modelEntrySchema, `modelGateway.models.${name}[${String(index)}]`, problems); });
     served.set(name, entries as ModelEntry[]);
   }
   // A shape the schema has already refused is not read further: a rule that
@@ -188,7 +188,7 @@ export const proxyProblems = (setting: unknown): string[] => {
   if (problems.length > 0) return problems;
 
   for (const name of served.keys()) {
-    if (!MODEL_NAME.test(name)) problems.push(`modelProxy.models.${name} is not a model name: write it as <maker>/<name>`);
+    if (!MODEL_NAME.test(name)) problems.push(`modelGateway.models.${name} is not a model name: write it as <maker>/<name>`);
   }
   return problems;
 };

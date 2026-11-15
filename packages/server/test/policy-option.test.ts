@@ -152,7 +152,7 @@ it('keeps a row written through `policy:` beside the configuration, and reads it
     params: {
       channel: 'ahp-root://',
       uri: 'policy://M1',
-      data: JSON.stringify({ scope: 'all', kind: 'model', effect: 'allow', match: { model: ['deepseek/*'], proxy: ['local-vllm'] } }),
+      data: JSON.stringify({ scope: 'all', kind: 'model', effect: 'allow', match: { model: ['deepseek/*'], gateway: ['local-vllm'] } }),
       encoding: 'utf-8',
     },
   });

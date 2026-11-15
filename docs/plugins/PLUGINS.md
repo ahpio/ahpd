@@ -706,7 +706,7 @@ host.registerAdapter({
   and a `run` that throws is what the model is told, under the alias it named.
 - `check(connector)` is optional, and says whether the connector works with a call that needs its key. `connector` is the row `open` got. It answers `{ result, message? }`: `ok` when the service accepted the key, `denied` when it refused the credentials, `unreachable` when the service did not answer, or `failed` for anything else. The host runs it after each open: a put waits for the answer, so a put says whether the key is right, and a start does not, so a slow service cannot hold it. A check that has not answered in 10 seconds counts as `unreachable`, and one that throws is `failed` with its message. An adapter with no `check` leaves its connectors with no check.
 
-- `provider(connector)` is optional, and is how the model proxy calls a
+- `provider(connector)` is optional, and is how the model gateway calls a
   connector of the adapter. It answers `{ endpoint, accepts, key?, paths?,
   prefix? }`: where the provider answers, the dialects it is called in, the key
   a call goes out with, or nothing when it takes none, an optional `paths` that
@@ -721,22 +721,24 @@ host.registerAdapter({
 - `models(connector)` is optional, and answers what the connector serves: a
   promise of `{ id, name?, context_length?, pricing? }` rows, in OpenRouter's
   field names. `connector` is the row `open` got. The channel reads it on the
-  connector it opened and hands the proxy a `models()` bound to that connector,
-  so the config and the key never leave it. The host reads each list when the
-  connector opens and again each hour, and every model in it is callable as
-  `<prefix>/<id>`: `prefix` is the adapter's name, or what `provider` answers
-  there. An `openai-compatible` connector has no vendor name, so it answers the
-  connector's id and a local server's models are `local/llama-3`. A list that
-  cannot be read keeps the one it had, and one line is written to the log. An
-  adapter with no `models` serves only the names a person writes in the file.
+  connector it opened and hands the model gateway a `models()` bound to that
+  connector, so the config and the key never leave it. The host reads each list
+  when the connector opens and again each hour, and every model in it is
+  callable as `<prefix>/<id>`: `prefix` is the adapter's name, or what
+  `provider` answers there. An `openai-compatible` connector has no vendor name,
+  so it answers the connector's id and a local server's models are
+  `local/llama-3`. A list that cannot be read keeps the one it had, and one
+  line is written to the log. An adapter with no `models` serves only the names
+  a person writes in the file.
 - `signIn` is optional, and says how a person signs in to the provider in place of typing its key. `title` is the label a client prints. `field` is the `secret` field the sign-in fills; a field the schema does not keep is refused at registration. With no `flow`, or `flow: 'code'`, it is the pasted code: `url(challenge, state)` is where a person signs in, and `exchange(code, verifier)` answers the value for `field`. The host makes the PKCE verifier and the S256 challenge, so a plugin never sees a verifier. An exchange that refuses with `HTTP <status>` alone is shown to the caller with that status, and any other message is hidden.
 - With `flow: 'device'`, the host shows a code and waits for the approval on another device. `start()` answers `{ code, url, expires, interval, handle }`, with `expires` and `interval` in seconds, and `poll(handle)` answers `{ values }` with every field the approval fills, or `{ wait }` with the next interval in seconds. A refusal throws. The handle is a credential of the pending sign-in: the host keeps it and sends it to nothing else, so no answer, row, error or log line carries it. `account` names a plain field of the schema the account is written to, and a second sign-in that answers a different account is refused with `signed in as <new>, this connector is <old>` unless the adapter sets `switchAccount: true`. A `field` or an `account` the schema does not keep is refused at registration, and so is an `account` the schema marks secret. A device flow fills several fields: the secret ones go to the vault as a pasted code's does, and the rest stay in the record.
 - An adapter whose connectors serve models declares a `models` capability. The
-  capability tells a client that the proxy may call a connector of it; the
-  `provider` member says where. The host lists the open connectors whose adapter
-  has `provider` to the proxy, with the owner of each, and the proxy chooses
-  among them. The host itself ships four: `openrouter`, `anthropic`, `openai`
-  and `openai-compatible` - [The model proxy](../server/PROXY.md#adding-a-provider).
+  capability tells a client that the model gateway may call a connector of it;
+  the `provider` member says where. The host lists the open connectors whose
+  adapter has `provider` to the model gateway, with the owner of each, and the
+  model gateway chooses among them. The host itself ships four: `openrouter`,
+  `anthropic`, `openai` and `openai-compatible` - [The model
+  gateway](../server/GATEWAY.md#adding-a-provider).
 
 `openrouter` is the one the host ships with a `signIn`. A person signs in on OpenRouter's page, pastes the code, and the host exchanges it for the key. Both URLs are OpenRouter's public ones, so a connector's `endpoint` moves neither the sign-in nor the exchange.
 

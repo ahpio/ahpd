@@ -26,7 +26,7 @@ const DAY = (amount: number, measure: PolicyLimit['measure'], period: PolicyLimi
 
 /** The draft's store, with the limits it writes and the windows it gives. */
 const ROWS: Policy[] = [
-  { id: 'M1', scope: 'all', kind: 'model', effect: 'allow', match: { model: ['deepseek/*', 'qwen/*'], proxy: ['local-vllm'] } },
+  { id: 'M1', scope: 'all', kind: 'model', effect: 'allow', match: { model: ['deepseek/*', 'qwen/*'], gateway: ['local-vllm'] } },
   { id: 'M2', scope: 'team:backend', kind: 'model', effect: 'allow', match: { model: ['anthropic/*'] }, limits: DAY(500, 'usd', 'week') },
   { id: 'M3', scope: 'user:bob', kind: 'model', effect: 'deny', match: { model: ['anthropic/fable-5'] } },
   { id: 'M4', scope: 'project:backend:billing', kind: 'model', effect: 'allow', match: { model: ['anthropic/*'] }, limits: DAY(300, 'usd', 'week') },

@@ -24,7 +24,7 @@ const DAY = (amount: number, measure: PolicyLimit['measure'], period: PolicyLimi
 
 /** The draft's store, with the limits it writes and the windows it gives. */
 const ROWS: Policy[] = [
-  { id: 'M1', scope: 'all', kind: 'model', effect: 'allow', match: { model: ['deepseek/*', 'qwen/*'], proxy: ['local-vllm'] } },
+  { id: 'M1', scope: 'all', kind: 'model', effect: 'allow', match: { model: ['deepseek/*', 'qwen/*'], gateway: ['local-vllm'] } },
   { id: 'M2', scope: 'team:backend', kind: 'model', effect: 'allow', match: { model: ['anthropic/*'] }, limits: DAY(500, 'usd', 'week') },
   { id: 'M3', scope: 'user:bob', kind: 'model', effect: 'deny', match: { model: ['anthropic/fable-5'] } },
   { id: 'M4', scope: 'project:backend:billing', kind: 'model', effect: 'allow', match: { model: ['anthropic/*'] }, limits: DAY(300, 'usd', 'week') },
@@ -109,15 +109,15 @@ describe('the model kind, which is the proxy', () => {
 
   it('refuses example 35 through openrouter where the same call through local-vllm is allowed', async () => {
     // M1 is the only row that matches the model, and it names one provider.
-    const allowed = await decide(policies, alice, BILLING, 'model', { model: 'deepseek/deepseek-v4.1-flash', proxy: 'local-vllm' }, TODAY);
+    const allowed = await decide(policies, alice, BILLING, 'model', { model: 'deepseek/deepseek-v4.1-flash', gateway: 'local-vllm' }, TODAY);
     expect(allowed.allowed).toBe(true);
-    const refused = await decide(policies, alice, BILLING, 'model', { model: 'deepseek/deepseek-v4.1-flash', proxy: 'openrouter' }, TODAY);
+    const refused = await decide(policies, alice, BILLING, 'model', { model: 'deepseek/deepseek-v4.1-flash', gateway: 'openrouter' }, TODAY);
     expect(ids(refused)).toEqual([]);
     expect(refusalOf(refused).message).toContain('no policy allows');
   });
 
   it('allows example 37: a row naming no provider leaves the provider unconstrained', async () => {
-    const decision = await decide(policies, alice, BILLING, 'model', { model: 'anthropic/sonnet-5', proxy: 'openrouter' }, TODAY);
+    const decision = await decide(policies, alice, BILLING, 'model', { model: 'anthropic/sonnet-5', gateway: 'openrouter' }, TODAY);
     expect(decision.allowed).toBe(true);
     expect(ids(decision)).toEqual(['M2', 'M4']);
   });

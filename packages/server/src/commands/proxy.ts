@@ -1,11 +1,12 @@
 /**
- * `ahpd proxy list`: the model names this daemon would serve, and the
+ * `ahpd gateway list`: the model names this daemon would serve, and the
  * providers that serve each.
  *
  * Nothing is called and no key is read: the listing answers what the file says
- * the proxy knows, which is the table the routing will be by. A provider is a
- * connector now, so its endpoint and key are the connectors store's and are
- * listed there; an entry only names the adapter or the connector id.
+ * the model gateway knows, which is the table the routing will be by. A
+ * provider is a connector now, so its endpoint and key are the connectors
+ * store's and are listed there; an entry only names the adapter or the
+ * connector id.
  */
 
 import { output } from '@cofold/commands';
@@ -39,10 +40,10 @@ const entryLine = (entry: ModelEntry): string => {
 };
 
 export const declareProxy = (registry: Registry<object>, served?: ServedFacts): Command => registry.action({
-  id: 'proxy.list',
-  summary: 'The model names this proxy would serve, and the providers that serve each',
+  id: 'gateway.list',
+  summary: 'The model names this model gateway would serve, and the providers that serve each',
   description: 'Every model name with the providers serving it. A provider is a connector, so its endpoint and key are listed with the connectors rather than here.',
-  surfaces: { cli: { pattern: ['proxy', 'list'] }, http: { method: 'GET', path: '/proxy/list' } },
+  surfaces: { cli: { pattern: ['gateway', 'list'] }, http: { method: 'GET', path: '/gateway/list' } },
   // No key: this is the listing, and each row names the provider an entry calls.
   effect: 'read',
   resource: { kind: 'provider' },
@@ -51,8 +52,8 @@ export const declareProxy = (registry: Registry<object>, served?: ServedFacts): 
   ...(served === undefined ? { input: flagFields } : {}),
   run: (context) => {
     const proxy: ProxyConfiguration = served === undefined
-      ? optionsFrom(context.input as Readonly<Record<string, unknown>>).modelProxy
-      : served.options.modelProxy;
+      ? optionsFrom(context.input as Readonly<Record<string, unknown>>).modelGateway
+      : served.options.modelGateway;
     const models: ModelRow[] = Object.entries(proxy.models).map(([name, providers]) => ({ name, providers }));
 
     const text = models.length === 0

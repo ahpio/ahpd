@@ -1,5 +1,5 @@
 /**
- * The model proxy, under `/v1` on the listener that carries `/api`.
+ * The model gateway, under `/v1` on the listener that carries `/api`.
  *
  * A person's own tool posts a chat completion or a message here with its ahpd
  * token, naming a model `<maker>/<name>`. The call is checked (the guard, the
@@ -561,7 +561,7 @@ const policyFor = (options: ProxyOptions, charged: Charged, name: string, zone: 
     try {
       let decision: Awaited<ReturnType<typeof decide>>;
       if (checking && store !== undefined) {
-        decision = await decide(store, principal, charged.scope, 'model', { model: name, proxy: entry.provider });
+        decision = await decide(store, principal, charged.scope, 'model', { model: name, gateway: entry.provider });
       }
       else if (alone !== undefined) {
         decision = { allowed: true, candidates: [alone] };
@@ -753,7 +753,7 @@ export function proxyHandler(options: ProxyOptions): RequestHandler {
     const refuse = (refusal: Refusal, headers?: Record<string, string>): Response => refusalBody(dialect, refusal, headers);
     if (request.method !== 'POST') return refuse({ status: 405, message: `${new URL(request.url).pathname} takes POST` }, { allow: 'POST' });
 
-    const called = await callerOf(request, options, 'proxy:call');
+    const called = await callerOf(request, options, 'gateway:call');
     if ('refusal' in called) return refuse(called.refusal);
     const caller = called.caller;
 
@@ -885,7 +885,7 @@ export function proxyHandler(options: ProxyOptions): RequestHandler {
        * sent to another provider to be refused again - the loop retries only
        * a connection that never arrived, a 429 and a 5xx.
        *
-       * That is `modelProxy.keyRefusal` at `hostError`, the default. At
+       * That is `modelGateway.keyRefusal` at `hostError`, the default. At
        * `passthrough` the provider's status and error reach the caller as they
        * came, as VS Code's Claude proxy re-emits an upstream error verbatim
        * (src/vs/platform/agentHost/node/claude/anthropicErrors.ts L16-L18,
@@ -1041,7 +1041,7 @@ export function proxyHandler(options: ProxyOptions): RequestHandler {
       return refuse({ status: 405, message: `${new URL(request.url).pathname} takes ${allow}` }, { allow });
     }
 
-    const called = await callerOf(request, options, 'proxy:call');
+    const called = await callerOf(request, options, 'gateway:call');
     if ('refusal' in called) return refuse(called.refusal);
     const decoded = decodeResponseId(followUp.id);
     if (decoded === undefined) return refuse(NO_SUCH_RESPONSE);
@@ -1089,7 +1089,7 @@ export function proxyHandler(options: ProxyOptions): RequestHandler {
   const models = async (request: Request, path: string): Promise<Response> => {
     const dialect = dialectOfHeaders(request.headers);
     if (request.method !== 'GET') return refusalBody(dialect, { status: 405, message: `${path} takes GET` }, { allow: 'GET' });
-    const called = await callerOf(request, options, 'proxy:models');
+    const called = await callerOf(request, options, 'gateway:models');
     if ('refusal' in called) return refusalBody(dialect, called.refusal);
     const proxy = options.proxy();
     const charged = chargedAs(called.caller, options, proxy);
@@ -1179,7 +1179,7 @@ interface Answered {
 }
 
 /**
- * One `ModelUse` with `source: 'proxy'`, charged to the caller's pools.
+ * One `ModelUse` with `source: 'gateway'`, charged to the caller's pools.
  *
  * A store that fails is a line in the log, never the caller's error: the
  * answer has already gone.
@@ -1199,7 +1199,7 @@ const record = (options: ProxyOptions, charged: Charged, call: Answered): void =
   const entry: ModelUse = {
     at: call.at,
     kind: 'model',
-    source: 'proxy',
+    source: 'gateway',
     ...(charged.owner === undefined ? {} : { owner: charged.owner }),
     ...(charged.token === undefined ? {} : { token: charged.token }),
     ...(charged.meta === undefined ? {} : { meta: charged.meta }),

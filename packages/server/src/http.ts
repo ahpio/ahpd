@@ -128,7 +128,7 @@ export function apiHandler(options: ApiOptions): RequestHandler {
   });
 }
 
-/** The path the model proxy is served under, beside the API. */
+/** The path the model gateway is served under, beside the API. */
 export const PROXY_PREFIX = '/v1';
 
 /** Whether a path is `prefix` or under it. */

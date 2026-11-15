@@ -1,5 +1,5 @@
 /*
- * `ahpd proxy list`, run in this process.
+ * `ahpd gateway list`, run in this process.
  *
  * The configuration is a temporary directory, so every case writes the file it
  * reads and no case sees the configuration of whoever runs the suite. A
@@ -24,7 +24,7 @@ const AUTHORITY = '127.0.0.1:9351';
 let home: string;
 let config: string;
 beforeEach(() => {
-  home = mkdtempSync(join(tmpdir(), 'ahpd-proxy-list-'));
+  home = mkdtempSync(join(tmpdir(), 'ahpd-gateway-list-'));
   config = join(home, 'config.json');
 });
 afterEach(() => { rmSync(home, { recursive: true, force: true }); });
@@ -41,14 +41,14 @@ const putConnector = (held: unknown): void => {
 /** What the terminal command answered. */
 const run = async (): Promise<Output> => {
   const registry = cliRegistry();
-  const command = registry.find('proxy.list');
-  if (command === undefined) throw new Error('no proxy.list');
+  const command = registry.find('gateway.list');
+  if (command === undefined) throw new Error('no gateway.list');
   const output = await registry.execute(command, { surface: 'cli', input: { configFile: config } });
-  if (output === null) throw new Error('proxy.list answered nothing');
+  if (output === null) throw new Error('gateway.list answered nothing');
   return output;
 };
 
-describe('proxy list at the terminal', () => {
+describe('gateway list at the terminal', () => {
   it('lists no model name with no configuration at all', async () => {
     put({});
     const said = await run();
@@ -58,7 +58,7 @@ describe('proxy list at the terminal', () => {
 
   it('lists each model name with the providers its entries name', async () => {
     put({
-      modelProxy: {
+      modelGateway: {
         models: {
           'anthropic/fable-5': [
             { provider: 'anthropic', id: 'fable-5', price: { input: 3, output: 15 } },
@@ -78,7 +78,7 @@ describe('proxy list at the terminal', () => {
   });
 
   it('says nothing about a connector: no endpoint and no key', async () => {
-    put({ modelProxy: { models: { 'anthropic/fable-5': [{ provider: 'anthropic', id: 'fable-5' }] } } });
+    put({ modelGateway: { models: { 'anthropic/fable-5': [{ provider: 'anthropic', id: 'fable-5' }] } } });
     putConnector({
       id: 'anthropic', adapter: 'anthropic', owner: 'host',
       config: { endpoint: 'https://gateway.test', key: { fromEnv: 'ANTHROPIC_API_KEY' } },
@@ -101,7 +101,7 @@ describe('proxy list at the terminal', () => {
   });
 });
 
-describe('proxy list, served', () => {
+describe('gateway list, served', () => {
   /** The daemon's own answer to a path under the API. */
   const get = async (path: string): Promise<Response> => {
     const facts: ServedFacts = {
@@ -124,11 +124,11 @@ describe('proxy list, served', () => {
 
   it('answers the daemon\'s own model names', async () => {
     put({
-      modelProxy: {
+      modelGateway: {
         models: { 'deepseek/deepseek-v4.1-flash': [{ provider: 'local-vllm', id: 'deepseek-v4.1-flash' }] },
       },
     });
-    const answered = await get('/proxy/list');
+    const answered = await get('/gateway/list');
     expect(answered.status).toBe(200);
     const body = await answered.json() as { models: { name: string }[] };
     expect(body.models).toEqual([{ name: 'deepseek/deepseek-v4.1-flash', providers: [

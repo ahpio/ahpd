@@ -71,7 +71,7 @@ ahpd plugin config <name> <key> <value>   set one of them
 ahpd plugin config unset <name> <key>     take one of them away
 ahpd plugin enable <name>   turn a configured plugin on
 ahpd plugin disable <name>  turn it off, keeping its entry and its options
-ahpd proxy list             the built-in providers, and every model they serve
+ahpd gateway list           the built-in providers, and every model they serve
 ahpd usage                  every pool a record was charged to
 ahpd usage <pool>           what one pool spent, over three periods
 ahpd vault set <name>       keep a value under a name, read from standard input
@@ -102,7 +102,7 @@ Every verb and every flag is one declaration under [`src/commands`](https://gith
 | [user.ts](https://github.com/ahpio/ahpd/blob/main/packages/server/src/commands/user.ts) | `ahpd user list`, `add`, `rm`, `token`, `member`, `primary` |
 | [teams.ts](https://github.com/ahpio/ahpd/blob/main/packages/server/src/commands/teams.ts) | `ahpd team list`, `add`, `rm` and the same three for `project` |
 | [plugin.ts](https://github.com/ahpio/ahpd/blob/main/packages/server/src/commands/plugin.ts) | `ahpd plugin list`, `install`, `remove`, `update`, `config`, `config set`, `config unset`, `enable`, `disable` |
-| [proxy.ts](https://github.com/ahpio/ahpd/blob/main/packages/server/src/commands/proxy.ts) | `ahpd proxy list` |
+| [proxy.ts](https://github.com/ahpio/ahpd/blob/main/packages/server/src/commands/proxy.ts) | `ahpd gateway list` |
 | [usage.ts](https://github.com/ahpio/ahpd/blob/main/packages/server/src/commands/usage.ts) | `ahpd usage` and `ahpd usage <pool>` |
 | [vault.ts](https://github.com/ahpio/ahpd/blob/main/packages/server/src/commands/vault.ts) | `ahpd vault set`, `delete`, `list` |
 | [automation.ts](https://github.com/ahpio/ahpd/blob/main/packages/server/src/commands/automation.ts) | `ahpd automation export`, `import` |

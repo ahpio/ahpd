@@ -240,7 +240,7 @@ describe('a captured answer', () => {
       const { answers, sent } = await replay(one);
       expect(sent).toBe(1);
       const [entry] = answers;
-      expect(entry?.source).toBe('proxy');
+      expect(entry?.source).toBe('gateway');
       // The adapter that answered, the connector whose key paid, and the
       // tokens the answer reported, with the cache counted once.
       expect(entry?.model).toEqual({ name: one.name, provider: 'openai-compatible', connector: one.provider, ...one.tokens });

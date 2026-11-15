@@ -79,7 +79,7 @@ The door asks for `mcp:call`. It is in `member`, and `admin` holds it through ev
 | The deployment token | Root: every sessionless tool |
 | A person's token holding `mcp:call` | The tools their grants allow |
 | A person's token without it | 403 |
-| A team's key | 403: a team key opens the proxy and nothing else |
+| A team's key | 403: a team key opens the model gateway and nothing else |
 | A session's own token | 401: a session has its own tools endpoint |
 | No token, or one this host does not know | 401 |
 
