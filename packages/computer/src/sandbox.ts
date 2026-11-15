@@ -13,12 +13,26 @@ import type { ProviderConfiguration, SandboxConfigValue, Spawn, SpawnOptions } f
  * `@vscode/sandbox-runtime`, the runtime VS Code's terminal sandbox runs.
  */
 
+/** One platform's filesystem lists, the fields of `SandboxFileSystemSetting`. */
+const FILE_SYSTEM_PROPERTIES = {
+  allowRead: { type: 'array', title: 'Allow Read', items: { type: 'string', title: 'Path' } },
+  allowWrite: { type: 'array', title: 'Allow Write', items: { type: 'string', title: 'Path' } },
+  denyRead: { type: 'array', title: 'Deny Read', items: { type: 'string', title: 'Path' } },
+  denyWrite: { type: 'array', title: 'Deny Write', items: { type: 'string', title: 'Path' } },
+} as const;
+
 /**
  * VS Code's root `sandbox` property, by its own schema: one object of
  * prefix-free keys, which VS Code's window forwards only to a host whose root
  * config declares it.
  * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/common/sandboxConfigSchema.ts#L71-L184
  * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/workbench/contrib/terminalContrib/chatAgentTools/browser/agentHostSandboxForwarder.ts#L118-L136
+ *
+ * Each object names its values, so a client draws a form for it: the
+ * `envVars` entry as VS Code names it since 07225c7a78b1, each platform's
+ * filesystem lists as `SandboxFileSystemSetting` types them, and the advanced
+ * runtime settings as keys whose values are any JSON.
+ * https://github.com/microsoft/vscode/blob/07225c7a78b1da3589f1426e4ecf153f0d2d0aaf/src/vs/platform/agentHost/common/sandboxConfigSchema.ts#L120-L136
  */
 export const SANDBOX_PROPERTY = {
   type: 'object',
@@ -39,13 +53,21 @@ export const SANDBOX_PROPERTY = {
         envVars: {
           type: 'object',
           title: 'Environment Variables',
-          description: 'Maps environment variable names to objects with an injectHosts array of HTTPS destinations. Credential entries are validated by the runtime.',
+          description: 'Maps environment variable names to objects with an injectHosts array of HTTPS destinations. Destination patterns are validated by the runtime.',
+          additionalProperties: {
+            type: 'object',
+            title: 'Environment Variable',
+            properties: {
+              injectHosts: { type: 'array', title: 'Injection Hosts', items: { type: 'string', title: 'Host' } },
+            },
+            required: ['injectHosts'],
+          },
         },
       },
     },
     allowDevToolAccess: { type: 'boolean', title: 'Allow Dev Tool Access' },
     addCurrentWorkingDirectory: { type: 'boolean', title: 'Add Current Working Directory' },
-    'fileSystem.linux': { type: 'object', title: 'Linux Sandbox Filesystem' },
+    'fileSystem.linux': { type: 'object', title: 'Linux Sandbox Filesystem', properties: FILE_SYSTEM_PROPERTIES },
     'fileSystem.userConfiguredPaths': {
       type: 'object',
       title: 'User-Configured Paths',
@@ -55,9 +77,9 @@ export const SANDBOX_PROPERTY = {
         deniedPaths: { type: 'array', title: 'Denied', items: { type: 'string', title: 'Path' } },
       },
     },
-    'fileSystem.mac': { type: 'object', title: 'macOS Sandbox Filesystem' },
-    'fileSystem.windows': { type: 'object', title: 'Windows Sandbox Filesystem' },
-    'advanced.runtime': { type: 'object', title: 'Advanced Sandbox Runtime' },
+    'fileSystem.mac': { type: 'object', title: 'macOS Sandbox Filesystem', properties: FILE_SYSTEM_PROPERTIES },
+    'fileSystem.windows': { type: 'object', title: 'Windows Sandbox Filesystem', properties: FILE_SYSTEM_PROPERTIES },
+    'advanced.runtime': { type: 'object', title: 'Advanced Sandbox Runtime', additionalProperties: {} },
     allowedNetworkDomains: { type: 'array', title: 'Allowed Network Domains', items: { type: 'string', title: 'Domain' } },
     deniedNetworkDomains: { type: 'array', title: 'Denied Network Domains', items: { type: 'string', title: 'Domain' } },
   },
