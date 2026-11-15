@@ -14,14 +14,20 @@ Current progress and pending items only, as of 2026-11-14. *Outside this reposit
 - plugin/20261114-1455 waits for Softov's review to close.
 - [claude/20261114-1816-the-context-figure-follows-a-long-turn](../plans/claude/20261114-1816-the-context-figure-follows-a-long-turn/plan.md) is merged in #331, and closes on Softov's word. #331 also fixes the plugin turn case that waited a fixed 20 ms.
 - The brief [vs-code-shows-the-claude-context-figure.md](../briefs/vs-code-shows-the-claude-context-figure.md) waits for "plan it".
+- Problems found on 2026-11-14, none with a fix chosen:
+  - [a-claude-history-starts-at-its-last-compaction-after-a-restart.md](../problems/a-claude-history-starts-at-its-last-compaction-after-a-restart.md), major: after a restart, a Claude session shows only the turns from its last compaction on.
+  - [stop-refuses-a-run-whose-sessions-run-no-turn.md](../problems/stop-refuses-a-run-whose-sessions-run-no-turn.md): Softov asked for a problem file, not a fix.
+  - In ahpw, `the-automation-form-hides-a-model-its-agent-does-not-offer.md` on ahpw main (`7ffec74`).
 - Briefs of 2026-11-14 wait: [a-plugin-asks-for-its-grants.md](../briefs/a-plugin-asks-for-its-grants.md), with no plan for now, [a-bot-session-is-made-where-the-bot-is-offered.md](../briefs/a-bot-session-is-made-where-the-bot-is-offered.md) and [plugin-runtimes-external.md](../briefs/plugin-runtimes-external.md).
-- The steps after the rc.3 release run are in *rc.3, after its release run* of [pending/release.md](../pending/release.md#left). The run, the digest check, the approval and the ghcr check of the parts of #318 are done: 17 of 17 digests match. Softov makes `compclau` again, and the parts bump PR waits for his word.
+- The steps after the rc.3 release run are in *rc.3, after its release run* of [pending/release.md](../pending/release.md#left). The run, the digest check, the approval and the ghcr check of the parts of #318 are done: 17 of 17 digests match. Softov makes `compclau` again.
 - The staged `@ahpd/computer@0.15.0-rc.3` holds `images/digests.json` with 17 entries, `ahpd-agents` and 16 parts, the first tag run of #315. Its step logs `tar: stdout: write error`, from `grep -q` closing the pipe. That is harmless now, and it turns the check over if the step ever runs under `pipefail`.
 - #318 (`de1924b99`) is the parts bump of 2026-11-13, ten parts, the ahpd part to `0.15.0-rc.2`. Actions may not open a PR in `ahpio/ahpd`, so the workflow pushes the branch and the PR is opened by hand.
 - #317 (`e338a1c98`): a piece shows its host mark again. Softov accepted the icons and marks on 2026-11-13, the Postgres mark among them.
 - #319 (`9b17317d7`): plan container/20261113-0721, a part on a prerelease takes a newer prerelease. The next run of `parts-bump.yml` proposes dsh 0.2.2-rc.1.
 - The dev config's `claude` profile names `agents: ["claude"]` since 2026-11-13, in place of its three hand mounts. A machine from it carries the `claude` part.
-- The machine `compclau` was made again from it on 2026-11-13, without the `claude` part. PR #318 pins `claude` 0.106.0, and ghcr has it only after a release pushes it. This host has no earlier image. Softov makes `compclau` again once rc.3 has pushed the parts.
+- The machine `compclau` was made again from it on 2026-11-13, without the `claude` part. rc.3 pushed `claude` 0.106.0 to ghcr. Softov makes `compclau` again.
+- #335 moves the computer image's pi part to pi-coding-agent 1.5.2. `parts-bump.mjs` never moves that package, because `versions.json` pins it. The parts bump of 2026-11-13 is #336: ahpd rc.3, claude 0.107.0, copilot 1.0.111, opencode 2.3.0 and dsh 0.2.2-rc.1. Both reach ghcr only when a release pushes the parts.
+- The branch `parts-bump-20261113` of #318 is still on origin. While it is there, a second run of `parts-bump.yml` on a 13th fails to push. Deleting it is Softov's call.
 - After a parts bump merges, a checkout loads a moved part only after a release pushes it. `parts-publish.mjs --local` builds every part on this host in its place.
 - The repository is `ahpio/ahpd` since 2026-11-11 (#290). MayCXC's fork has no work missing from main.
 - Code goes through a PR on `ahpio/ahpd`; plan-only commits go to main. Show a PR's text in chat before opening it. Merge with `gh pr merge <n> -R ahpio/ahpd --admin --merge`, only on Softov's word.
@@ -34,7 +40,9 @@ Current progress and pending items only, as of 2026-11-14. *Outside this reposit
 - Softov restarted it on 2026-11-13 after #317. Since then, #321, #322, #323, #326, #329, #331, #333 and #337 change the daemon. #324, #325, #327 and #328 change tests only.
 - #329 lets a bot talk run with no grants on the bot plugin's entry.
 - #331 updates a Claude session's context figure during a turn and after a compaction.
-- #333 moves Claude to SDK 0.3.325 and pi to 1.5.2. A Claude session with `sandbox: on` still runs sandboxed Bash without a prompt.
+- #333 moves Claude to SDK 0.3.325 and pi to 1.5.2. A Claude session with `sandbox: on` still runs sandboxed Bash without a prompt. [ideas/sandboxed-bash-asks-as-the-sdk-default.md](../ideas/sandboxed-bash-asks-as-the-sdk-default.md) checks that default in 0.16.
+- #337 settles an automation run when the host ends its session's first turn, such as on a model the agent does not offer.
+- Softov's automation "Test automation" has a run stuck at `running` since 2026-11-14, on the model `opus[1m]`, which Claude no longer offers. A restart fails that run as interrupted. Its model is fixed by a pick in ahpw's form.
 - A restart brings the bot talk, bots on a host with no users, and the operations in the client's language.
 - It also writes plugin warnings to the daemon's log with a time and a level.
 - `/github/ahpd` is a shared checkout. Work in a worktree from `origin/main` under `/github/ahpd.worktrees/`.
@@ -69,6 +77,7 @@ Current progress and pending items only, as of 2026-11-14. *Outside this reposit
 - Builders run as ahpd sessions over the MCP tools, on `claude-deepseek-build`, with a worktree each. The MCP token is uclau's `claude-code-mcp`, in `~/.claude.json`.
 - The build preset denies `flock`, `git add`, `git checkout --` and `pnpm typecheck`. A builder runs `pnpm exec tsc -p tsconfig.json --noEmit` and writes tests; the reviewer runs the suites and commits.
 - DeepSeek can stop a builder with `402 Insufficient Balance`. The session's jsonl under `~/.claude/projects/-github-ahpd-worktrees-build-agents-<id>/` shows it.
+- On 2026-11-14 the ahpd MCP server did not connect (ECONNREFUSED), and Softov chose ahpc for the builds. Session URIs start with `ahp-session:/`.
 - `list_agents` drops an agent that failed to open with no reason. `get_session_context` once answered an empty transcript for a session with a finished turn.
 
 ## Worktrees and branches
@@ -76,7 +85,9 @@ Current progress and pending items only, as of 2026-11-14. *Outside this reposit
 Remove each only on Softov's word.
 
 - On 2026-11-14, Softov had the merged worktrees removed. Only `/github/ahpd` on `main` is left.
-- About 60 local branches have no worktree, from plans built before 2026-11-12. `git branch` lists them.
+- About 60 local branches have no worktree, from plans built before 2026-11-12. `git branch` lists them, and deleting them waits for Softov's word.
+- Another session left changes in `/github/ahpd` that are not committed: the brief `a-cloudflare-tunnel-publishes-the-daemon.md`, the brief `the-agents-are-listed-by-provider.md` and the plan folder `plugin/20261113-2029-the-daemon-reads-the-plugin-list/`. Leave them.
+- `/github/ahpw` is on `host-refine-ui`, from another session. Its local main is fast-forwarded with `git fetch origin main:main`.
 - Loose files in `/github/ahpd.worktrees/` wait for Softov: `test-tmp`, the `union-*.log` files, the `.patch` files, `review-host62.md` and `acp-server.orig.mjs`.
 
 ## Plans waiting to close
