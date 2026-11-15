@@ -1,6 +1,6 @@
 ---
 title: The file on disk
-status: todo
+status: implemented
 depends: [task-02-changes-and-carets.md]
 layer: "sdk"
 refs:
@@ -23,7 +23,7 @@ A write from outside never undoes an edit the host holds and has not written yet
 
 1. Write the text through `options.resources.write` 2 s after the last change.
 2. While changes go on, write it at least every 10 s.
-3. After each write, keep the text written and its version, and emit `x-ahpd-document/saved` with that version.
+3. After each write, keep the text written and its version, and emit `x-ahpd-shared/saved` with that version.
 4. At the first subscribe, watch the file through `options.resources.watch`.
 5. When the watch reports the file changed, read it.
 6. Compare the new text with the text last written; cut the same start and the same end.
@@ -44,3 +44,8 @@ A write from outside never undoes an edit the host holds and has not written yet
 - `pnpm test test/host-documents.test.ts` passes.
 
 ## Resume
+
+Built on 2026-11-15.
+- The watch is on the file's folder, filtered to the file's name, so an editor's atomic save does not end it.
+- Before each write the host reads the file again, so a write from outside since the last one is taken first and never overwritten.
+- After a write from outside, the host writes its own text back at once. A second write from outside before that write lands is taken against the first one. Its positions are exact unless people had unsaved edits from before the first write.

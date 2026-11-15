@@ -4,7 +4,7 @@ import { idOf, uriFor } from '../sessions/catalog.js';
 import type { Connection } from '../types/host.js';
 import type { Bag } from '../types/common.js';
 import {
-  ROOT, isRootChannel, isAutomations, automationsChannel, schemeOf, spaceOf, ownerUriOf,
+  ROOT, SHARED_SCHEME, isRootChannel, isAutomations, automationsChannel, schemeOf, spaceOf, ownerUriOf,
   chatOfCanvas, chatUriFor, nonPtyShellTerminalOf, toolCallOfSubagentChat, shapedSession,
 } from './channels.js';
 import type { ChannelKind, Space } from './channels.js';
@@ -348,6 +348,7 @@ export function createRouting(ctx: HostContext): Routing {
     if (channel.startsWith('ahp-automation')) return 'automations';
     const kind = channelKind(channel);
     if (kind !== 'other') return kind;
+    if (schemeOf(channel) === SHARED_SCHEME) return 'shared';
     return claims.get(channel)?.kind === 'watch' || schemeOf(channel) === 'ahp-resource-watch' ? 'watch' : undefined;
   };
 
