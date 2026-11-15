@@ -1,6 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, expect, it } from 'vitest';
 import { loadPlugins } from '../../server/src/plugins.js';
 import { echo } from '../../../examples/echo/agent.js';
@@ -19,6 +20,8 @@ import manifest from '../package.json' with { type: 'json' };
 const REPO = join(import.meta.dirname, '../../..');
 const SOURCE = './packages/computer/src/index.ts';
 const NAME = 'computer';
+/** The scripted Docker, which every load runs in place of the runner's own. */
+const FIXTURE = fileURLToPath(new URL('./fixtures/docker.mjs', import.meta.url));
 
 /** The schema the manifest declares, which a listing reads without importing. */
 const optionsSchema = manifest.ahpd.optionsSchema;
@@ -60,8 +63,15 @@ afterEach(async () => {
 
 const stateDir = (): string => (home ??= mkdtempSync(join(tmpdir(), 'ahpd-computer-options-')));
 
+/*
+ * Each load runs the scripted Docker unless the case names a runtime: a load
+ * reads the machines out there at once, and the close waits for that read. A
+ * runner's own `docker` that was slow to answer held the close past the hook's
+ * 10 s on Windows.
+ */
 const load = async (options: Record<string, unknown>) => {
-  const result = await loadPlugins([{ name: SOURCE, options }], {
+  const runtime = { command: process.execPath, args: [FIXTURE], env: { DOCKER_FAKE_STATE: join(stateDir(), 'docker.json') } };
+  const result = await loadPlugins([{ name: SOURCE, options: { ...runtime, ...options } }], {
     base: { path: '/tmp/computer-options', agents: [echo({ path: '/tmp/computer-options' })] },
     configDir: stateDir(),
     cwd: REPO,
