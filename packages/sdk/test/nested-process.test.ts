@@ -1,3 +1,4 @@
+import { endHolders } from '../../../tools/holders.ts';
 import { posix } from '../../../tools/posix.ts';
 import { spawn as startProcess } from 'node:child_process';
 import type { ChildProcessWithoutNullStreams } from 'node:child_process';
@@ -62,15 +63,17 @@ afterEach(async () => {
   /*
    * Each inner host is killed and its exit waited for before its folder goes:
    * a host still writing its state while the folder is removed failed the
-   * removal with ENOTEMPTY. A process the host started can outlive it, so the
-   * removal also tries again.
+   * removal with ENOTEMPTY. So is every other process that names the case's
+   * home: a host the port started, and a `git` a host started.
    */
   const killed = children.splice(0);
   for (const child of killed) {
     if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
   }
   await Promise.all(killed.map((child) => exited(child)));
-  for (const dir of made.splice(0)) rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  const homes = made.splice(0);
+  await endHolders(homes);
+  for (const dir of homes) rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   expect(escaped).toEqual([]);
 });
 

@@ -547,10 +547,13 @@ it('keeps the chat going when the store cannot truncate the conversation', async
     method: 'dispatchAction',
     params: { channel: through.chatUri, action: { type: 'chat/truncated', turnId: 't1' } },
   });
-  // The stopped run lets go of the writer once it ends.
+  // The stopped run lets go of the writer once it ends. A run's end is written
+  // before its claim is released, so the claim is waited for too: a turn that
+  // starts while it is held ends with `writer_busy`.
   release();
   const store = createFileStore({ root });
-  await untilAsync(async () => (await store.runs.list({ sessionId: 'one' })).every((run) => run.status !== 'running'));
+  await untilAsync(async () => (await store.runs.list({ sessionId: 'one' })).every((run) => run.status !== 'running')
+    && (await store.sessions.get({ sessionId: 'one' }))?.activeWriterRunId === undefined);
   await say(through, through.chatUri, 't3', 'question three');
   // How t3 ended comes first, with an error's own words, so a failure says which end it was.
   const ends = told(through.notes, through.chatUri)

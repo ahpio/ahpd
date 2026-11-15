@@ -41,6 +41,13 @@ if (state === undefined) {
  */
 const lock = `${state}.lock`;
 const STALE = 10_000;
+/*
+ * How long a `mkdir` refused with EPERM or EACCES is tried again. Windows
+ * answers so while another call's `rmdir` of the lock is still pending, which
+ * is the lock being let go rather than a folder this call may not write.
+ */
+const REFUSED_FOR = 5_000;
+const refusedUntil = Date.now() + REFUSED_FOR;
 const pause = new Int32Array(new SharedArrayBuffer(4));
 for (;;) {
   try {
@@ -48,6 +55,11 @@ for (;;) {
     break;
   }
   catch (error) {
+    if (error.code === 'EPERM' || error.code === 'EACCES') {
+      if (Date.now() > refusedUntil) throw error;
+      Atomics.wait(pause, 0, 0, 2);
+      continue;
+    }
     if (error.code !== 'EEXIST') throw error;
     try {
       if (Date.now() - statSync(lock).mtimeMs > STALE) rmdirSync(lock);

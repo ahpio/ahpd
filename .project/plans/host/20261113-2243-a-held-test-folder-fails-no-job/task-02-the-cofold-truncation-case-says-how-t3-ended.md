@@ -5,7 +5,7 @@ depends: []
 layer: "agent-cofold tests"
 refs:
   - "[code://packages/agent-cofold/test/agent-cofold-fork.test.ts#L522-L556](../../../../packages/agent-cofold/test/agent-cofold-fork.test.ts#L522-L556) - the case"
-  - "[code://.project/problems/a-cofold-truncation-case-ends-its-third-turn-without-completing.md](../../../problems/a-cofold-truncation-case-ends-its-third-turn-without-completing.md) - its problem"
+  - git://fd532a871 - the last commit that holds its problem, `a-cofold-truncation-case-ends-its-third-turn-without-completing.md`
 ---
 
 ## Objective

@@ -12,7 +12,7 @@ refs:
   - git://970d952e7 - the commit of ahpd this plan was checked at
   - "[code://tools/test-tmpdir.ts](../../../../tools/test-tmpdir.ts) - the run's temporary folder, removed by the global teardown"
   - "[code://packages/agent-cofold/test/agent-cofold-fork.test.ts#L522-L556](../../../../packages/agent-cofold/test/agent-cofold-fork.test.ts#L522-L556) - \"keeps the chat going when the store cannot truncate the conversation\""
-  - "[code://.project/problems/a-cofold-truncation-case-ends-its-third-turn-without-completing.md](../../../problems/a-cofold-truncation-case-ends-its-third-turn-without-completing.md) - the cofold case's problem, which stays open"
+  - git://fd532a871 - the last commit that holds the cofold case's problem, `a-cofold-truncation-case-ends-its-third-turn-without-completing.md`
 ---
 
 ## Goal

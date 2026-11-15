@@ -1,5 +1,6 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
 import { machinePathOf } from '@ahpd/sdk';
+import { endHolders } from '../../../tools/holders.ts';
 import { posix } from '../../../tools/posix.ts';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -45,8 +46,10 @@ afterEach(async () => {
   // removal refused for that reason arms a timer all over again.
   vi.useRealTimers();
   await closeAll();
-  // A process a machine started can still be writing for a moment after the
-  // close, which failed a removal with ENOTEMPTY, so each removal tries again.
+  // A fake `docker` a machine started can still be writing its state for a
+  // moment after the close, which failed a removal with ENOTEMPTY, so each one
+  // that names the folder is ended first, and each removal tries again.
+  await endHolders([loose, state].filter((one): one is string => one !== undefined));
   if (loose !== undefined) rmSync(loose, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   loose = undefined;
   if (state !== undefined) rmSync(state, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
