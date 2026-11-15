@@ -13,6 +13,7 @@ refs:
 
 In run 43026502133, `windows (1/4)` failed the case "offers the session folder's dev container, and not once one exists" with `the scripted docker never finished 3 calls ... 2 recorded`.
 It passes on Linux.
+In run 43707396066, for ahpio/ahpd#341, `windows (1/4)` failed the same case another way: `expected [ '', …(1) ] to include 'computer://existing'`, after the second load. The case passed on Linux in that run and on main's runs before it.
 
 ## Cause
 
