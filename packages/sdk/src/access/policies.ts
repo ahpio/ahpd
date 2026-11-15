@@ -35,13 +35,13 @@ export const MEASURES: Record<PolicyKind, readonly Measure[]> = {
 
 /** The value types a row's `match` may name, by the kind the row is about. */
 export const MATCHES: Record<PolicyKind, readonly PolicyValueType[]> = {
-  model: ['model', 'proxy'],
+  model: ['model', 'gateway'],
   agent: ['agent', 'model', 'computer'],
   computer: ['computer'],
 };
 
 /** Every value type there is, in the order a refusal names them. */
-const VALUES = ['model', 'proxy', 'agent', 'computer'] as const;
+const VALUES = ['model', 'gateway', 'agent', 'computer'] as const;
 
 /** Every window a limit may name, the shortest first: a form offers them in this order. */
 export const PERIODS = ['minute', 'day', 'week', 'month', 'total'] as const;

@@ -84,17 +84,17 @@ it('gives admin every area, member the two it works in, and guest only what it m
   expect(member?.can('terminal:write')).toBe(true);
   expect(member?.can('automation:read')).toBe(false);
   expect(member?.can('diagnostics:read')).toBe(false);
-  // Calling a model through the proxy, and listing the names it serves.
-  expect(member?.can('proxy:write')).toBe(true);
-  expect(member?.can('proxy:read')).toBe(true);
-  expect(guest?.can('proxy:write')).toBe(false);
-  expect(guest?.can('proxy:read')).toBe(false);
+  // Calling a model through the model gateway, and listing the names it serves.
+  expect(member?.can('gateway:write')).toBe(true);
+  expect(member?.can('gateway:read')).toBe(true);
+  expect(guest?.can('gateway:write')).toBe(false);
+  expect(guest?.can('gateway:read')).toBe(false);
   // The gate asks each act, and the two groups above are what cover them, as
   // `trust:write` covers the trust push.
-  expect(member?.can('proxy:call')).toBe(true);
-  expect(member?.can('proxy:models')).toBe(true);
+  expect(member?.can('gateway:call')).toBe(true);
+  expect(member?.can('gateway:models')).toBe(true);
   expect(member?.can('trust:push')).toBe(true);
-  expect(guest?.can('proxy:call')).toBe(false);
+  expect(guest?.can('gateway:call')).toBe(false);
   expect(guest?.can('trust:push')).toBe(false);
 
   // The point of the verb: guest may look at the sessions and the automations

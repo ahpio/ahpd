@@ -12,7 +12,7 @@ Every policy is one row in one store, and every row has the same fields.
 | --- | --- |
 | `id` | A name for the row. `policy://<id>` is one address, and the id is the address rather than anything the body says. |
 | `scope` | Who the row is about: `all`, `user:<id>`, `team:<id>` or `project:<team>:<project>`. `all` is everybody and behaves like any other scope. |
-| `kind` | What the row is about: `model` (the proxy's calls), `agent` (the harnesses ahpd runs) or `computer` (the machines sessions run in). |
+| `kind` | What the row is about: `model` (the model gateway's calls), `agent` (the harnesses ahpd runs) or `computer` (the machines sessions run in). |
 | `effect` | `allow` or `deny`. **A deny wins over any allow**, so one `deny` that matches is the whole answer. |
 | `match` | What the row applies to, as typed values with globs. |
 | `limits` | How much may be used. Absent or empty means unlimited. A row with limits is charged for its work and refused when a counted one is out - see [How a limit is counted](#how-a-limit-is-counted). |
@@ -27,13 +27,13 @@ Values are lists, one list per type. **Values of one type are alternatives; valu
 | Type | Written as | Which kinds may name it |
 | --- | --- | --- |
 | `model` | `<maker>/<name>`, as a model is named on the wire | `model`, `agent` |
-| `proxy` | The proxy provider the call goes through | `model` |
+| `gateway` | The model gateway's provider the call goes through | `model` |
 | `agent` | The harness: `claude`, `pi`, `cofold`, `acp:<server>` | `agent` |
 | `computer` | The machine, as the `computers` port names it | `agent`, `computer` |
 
 `*` stands for any run of characters within one value, the value is matched whole, and no other character is special. So `deepseek/*` matches `deepseek/deepseek-v4.1-flash` and not `anthropic/fable-5`, `agent:*` matches `claude` and `acp:something`, and `model:*` matches any model.
 
-A type left out is unconstrained, so a `model` row naming no `proxy` allows any provider.
+A type left out is unconstrained, so a `model` row naming no `gateway` allows any provider.
 
 A type the request did not ask for is skipped by an `allow` and fails the match by a `deny`. An allow is a candidate on what was asked; a deny binds only when everything it names was asked. So a session, which is created before anybody names a model, is checked on the harness and the machine, and a deny meant to refuse a session outright names only those two.
 
@@ -107,7 +107,7 @@ The store and the switch are separate. A daemon that is switched off, or that ha
 | --- | --- | --- |
 | A session is created | `agent`, for the harness and the machine asked for; then `computer`, for that machine | The users gate's `-32009`, naming the policy |
 | A turn starts | `agent`, for the harness, the session's machine and the model the turn named; then the agent limits | A client's start is said, then ended in `chat/error` with the same words or the limit sentence below, as VS Code's host ends a turn its admission refuses; a queued message is said, and the turn the host starts for it is ended the same way |
-| A proxy call ([PROXY.md](../server/PROXY.md)) | `model`, for the name called and each provider entry that serves it, and the model limits; the first entry allowed is called | 403 in the caller's dialect, naming the row; a session's call is checked as the person it runs for unless `modelProxy.sessionCalls` is `skip` |
+| A gateway call ([GATEWAY.md](../server/GATEWAY.md)) | `model`, for the name called and each provider entry that serves it, and the model limits; the first entry allowed is called | 403 in the caller's dialect, naming the row; a session's call is checked as the person it runs for unless `modelGateway.sessionCalls` is `skip` |
 
 The session's checks run **before** the machine is made, so a refused session leaves nothing behind.
 
@@ -118,7 +118,7 @@ Each check runs the same four steps:
 3. Any candidate that denies refuses it, and the refusal names that row's id.
 4. No candidate at all refuses it, and the refusal names the kind and what was asked.
 
-A session's check stops at those four steps, because a session spends nothing until its first turn. A turn and a proxy call go on to [the limit walk](#how-a-limit-is-counted).
+A session's check stops at those four steps, because a session spends nothing until its first turn. A turn and a gateway call go on to [the limit walk](#how-a-limit-is-counted).
 
 A model at its limit stays in `/v1/models`, which asks only whether a policy allows it. The call to it is the one that is refused.
 
@@ -148,7 +148,7 @@ no policy allows computer kvm-shared
 
 ## How a limit is counted
 
-A turn and a proxy call walk their rows for room after the four steps allowed them. Each measure is walked on its own, in the person's order: the key's own row first, then their own rows, the project, the team and `all` last. Within one scope, `policies.payOrder` says which row goes first.
+A turn and a gateway call walk their rows for room after the four steps allowed them. Each measure is walked on its own, in the person's order: the key's own row first, then their own rows, the project, the team and `all` last. Within one scope, `policies.payOrder` says which row goes first.
 
 1. A row with no limits takes the measure and adds no key.
 2. A row with no limit in this measure is skipped, and the measure walks on.
@@ -262,5 +262,5 @@ Two reads answer a limit, both with the same figure: the amount, what the period
 | The switch and the charge settings, in the host | `policies`, `policiesCheck`, `policiesPayOrder` and `usageTimezone` on `HostOptions`, `packages/sdk/src/types/host.ts` |
 | The switch and the charge settings, in the daemon | `PoliciesSetting` and `UsageSetting` in `packages/server/src/config.ts`, and the wiring in `packages/server/src/commands/run.ts` |
 | The `ownLimits` switch, in the usage scheme | `ownLimits` on `UsageProviderOptions`, `packages/sdk/src/usage/usage.ts` |
-| The proxy's check and its record | `policyFor` and `record` in `packages/server/src/proxy/listener.ts` |
+| The model gateway's check and its record | `policyFor` and `record` in `packages/server/src/proxy/listener.ts` |
 | The reads | `policy://<id>/limits` in `packages/sdk/src/access/policy.ts`, and `usage://limits` in `packages/sdk/src/usage/usage.ts` |

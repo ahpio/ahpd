@@ -2,8 +2,8 @@
  * What a policy says: which agents, models and computers each person, team,
  * project or everyone may use, and how much of each.
  *
- * One row, one store, three kinds. `model` is the proxy - a model call from
- * somebody's own tool - and the models an agent may use are part of the
+ * One row, one store, three kinds. `model` is the model gateway - a model call
+ * from somebody's own tool - and the models an agent may use are part of the
  * `agent` policy, because an agent is a harness ahpd runs rather than a call
  * somebody made - decision `an-agent-is-not-a-proxy`.
  *
@@ -16,7 +16,7 @@
  * `charge.ts` is the walk that reads them, and nothing in there changes a row.
  */
 
-/** What a row is about: the proxy's model calls, a harness, or a machine. */
+/** What a row is about: the model gateway's calls, a harness, or a machine. */
 export type PolicyKind = 'model' | 'agent' | 'computer';
 
 /** Whether a row allows or refuses. Any matching deny wins over any allow. */
@@ -38,7 +38,7 @@ export type PolicyScope =
   | `token:${string}`;
 
 /** One value type a `match` may hold. */
-export type PolicyValueType = 'model' | 'proxy' | 'agent' | 'computer';
+export type PolicyValueType = 'model' | 'gateway' | 'agent' | 'computer';
 
 /**
  * What a row applies to, as one list per value type.
@@ -46,13 +46,13 @@ export type PolicyValueType = 'model' | 'proxy' | 'agent' | 'computer';
  * Values of one type are alternatives and values of different types must all
  * hold, which is what a record of lists says without a reader parsing
  * prefixes. A type left out is unconstrained, so a `model` row naming no
- * `proxy` allows any provider.
+ * `gateway` allows any provider.
  */
 export interface PolicyMatch {
   /** `<maker>/<name>`, as a model is named. */
   model?: string[];
-  /** Which proxy provider the model may be called through. */
-  proxy?: string[];
+  /** Which of the model gateway's providers the model may be called through. */
+  gateway?: string[];
   /** The harness, as `claude`, `pi`, `cofold` or `acp:<server>`. */
   agent?: string[];
   /** The machine, as the `computers` port names it. */

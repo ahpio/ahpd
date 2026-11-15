@@ -152,12 +152,12 @@ export const tokenMethods = (directory: Users): Record<string, PluginMethod> => 
    *
    * The root connection is not held to it, as it is not for another person's
    * key. A team has no grants to be bounded by, and its key opens the proxy, so
-   * a reader who mints one must hold `proxy:call` too. Listing and revoking a
+   * a reader who mints one must hold `gateway:call` too. Listing and revoking a
    * team's keys give no new credential, and ask `user:write` alone.
    */
   const boundTeam = async (reader: Principal | undefined, minting = false): Promise<void> => {
     if (reader === undefined) return;
-    for (const grant of minting ? ['user:write', 'proxy:call'] as const : ['user:write'] as const) {
+    for (const grant of minting ? ['user:write', 'gateway:call'] as const : ['user:write'] as const) {
       if (!reader.can(grant)) throw new RpcError(-32009, refusalReason(reader.id, grant));
     }
   };

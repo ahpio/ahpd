@@ -48,7 +48,7 @@ export interface Principal {
    * The team this principal is, when it is a team key's.
    *
    * A team key's principal stands for the team and for no person: its id is
-   * `team:<team>`, and it holds only `proxy:call` and `proxy:models`. `can`
+   * `team:<team>`, and it holds only `gateway:call` and `gateway:models`. `can`
    * answers for the team, so a role the team was never given confers nothing.
    * Absent for a person, a plugin and the root connection.
    */
@@ -606,8 +606,8 @@ export interface Users {
    * it adds its own entries to those. Optional, like `watch`, because a
    * directory that is not a file may keep no tokens.
    *
-   * A team key names `team` and no `user`. It holds only `proxy:call` and
-   * `proxy:models`, its scope is its team or a project of it, and its calls are
+   * A team key names `team` and no `user`. It holds only `gateway:call` and
+   * `gateway:models`, its scope is its team or a project of it, and its calls are
    * charged to its team. A team may hold as many keys as a person may.
    */
   mintToken?(

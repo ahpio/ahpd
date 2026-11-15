@@ -18,7 +18,7 @@ import type { Issuer, Me, MintedToken, Principal, Users } from '../src/types/use
 /** A role that reads sessions, and one that adds the proxy, for the claim to name. */
 const ROLES = {
   member: ['session:list', 'session:read'],
-  operators: ['proxy:read'],
+  operators: ['gateway:read'],
 };
 
 let path: string;
@@ -73,7 +73,7 @@ it('answers the roles a sign-in added apart, and their grants with the rest', as
   const me = await ask(ana);
   expect(me.roles).toEqual(['member', 'operators']);
   expect(me.rolesFromSignIn).toEqual(['operators']);
-  expect(me.grants).toEqual(expect.arrayContaining(['session:list', 'session:read', 'proxy:read']));
+  expect(me.grants).toEqual(expect.arrayContaining(['session:list', 'session:read', 'gateway:read']));
   expect(me).toMatchObject({ issuer: 'https://idp.test', rolesFrom: 'groups' });
   expect(me).not.toHaveProperty('token');
 });

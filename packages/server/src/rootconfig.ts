@@ -35,7 +35,7 @@ import { optionsSchemaLoaded } from './plugins.js';
  * left out on purpose: a form that could change them would be a form that could
  * take the door off its hinges and leave nothing behind that would open it.
  */
-const DAEMON_KEYS = ['paths', 'port', 'host', 'httpApi', 'modelApi', 'routes', 'modelProxy', 'updateCheck', 'advancedTools', 'sessionTools', 'sessionToolsProviders', 'closedChats', 'unofferedModel', 'workspacelessFolder', 'rootOwner', 'turnSenders', 'steerReadBack', 'backendBackgroundWork', 'agentOrchestrationLimitsScope', 'archiveDirtyWorktree', 'pullRequestLookup', 'wire', 'mcpServers'] as const;
+const DAEMON_KEYS = ['paths', 'port', 'host', 'httpApi', 'modelApi', 'routes', 'modelGateway', 'updateCheck', 'advancedTools', 'sessionTools', 'sessionToolsProviders', 'closedChats', 'unofferedModel', 'workspacelessFolder', 'rootOwner', 'turnSenders', 'steerReadBack', 'backendBackgroundWork', 'agentOrchestrationLimitsScope', 'archiveDirtyWorktree', 'pullRequestLookup', 'wire', 'mcpServers'] as const;
 
 /**
  * The keys this daemon can apply while it runs.

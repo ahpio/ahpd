@@ -716,7 +716,7 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
    * `x-ahpd/connectors/models`, whether or not the model API is served.
    */
   const proxied: ProxyOptions = {
-    proxy: () => options.modelProxy,
+    proxy: () => options.modelGateway,
     providers: () => connectorLists.providers(),
     // The provider lists are kept below, once the channel they read exists.
     catalog: () => catalogue,

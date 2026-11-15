@@ -1,25 +1,25 @@
 ---
-title: Proxy - what exists today
+title: Model gateway - what exists today
 domain: proxy
 revalidated: 2026-10-24
 ---
 
-The proxy forwards model calls from people's own tools (Claude Code, scripts) to a model provider. It carries them under their ahpd identity, so the calls can be routed, recorded and limited.
+The model gateway forwards model calls from people's own tools (Claude Code, scripts) to a model provider. It carries them under their ahpd identity, so the calls can be routed, recorded and limited.
 It is not an agent: it holds no session and runs nothing.
 It is served under `/v1` while `modelApi` is on, on the HTTP API's listener or on its own.
-Each call is in the caller's dialect and streamed back unchanged; see [`docs/server/PROXY.md`](../../../docs/server/PROXY.md).
+Each call is in the caller's dialect and streamed back unchanged; see [`docs/server/GATEWAY.md`](../../../docs/server/GATEWAY.md).
 The OpenAI endpoints answer at the root as well, so `http://host:port` is one base URL for both SDKs.
 A provider is a connector, made from one of the four provider adapters the host ships. Its key is a vault secret, or a daemon variable that a host connector names.
-Each model a connector lists is callable as `<provider>/<id>`, and the `modelProxy` table holds the aliases over one or more providers.
+Each model a connector lists is callable as `<provider>/<id>`, and the `modelGateway` table holds the aliases over one or more providers.
 
 ## Packages
 
-- [`code://packages/server`](../../../packages/server) - config, commands and listeners; the proxy lives here.
+- [`code://packages/server`](../../../packages/server) - config, commands and listeners; the model gateway lives here.
 
 ## Contracts
 
-- [`code://packages/server/src/config.ts`](../../../packages/server/src/config.ts) - `Config`, where the proxy's settings go.
-- [`code://packages/server/src/proxy/providers.ts`](../../../packages/server/src/proxy/providers.ts) - the model names, the entries that serve each, and `modelProxy.sessionCalls`.
+- [`code://packages/server/src/config.ts`](../../../packages/server/src/config.ts) - `Config`, where the model gateway's settings go.
+- [`code://packages/server/src/proxy/providers.ts`](../../../packages/server/src/proxy/providers.ts) - the model names, the entries that serve each, and `modelGateway.sessionCalls`.
 - [`code://packages/server/src/proxy/adapters.ts`](../../../packages/server/src/proxy/adapters.ts) - the four provider adapters the host ships, with their forms, checks, icons, `provider`, `models` and `prefix`.
 - [`code://packages/server/src/proxy/catalog.ts`](../../../packages/server/src/proxy/catalog.ts) - `modelCatalog`, each open connector's own list, read at first sight and each hour.
 - [`code://packages/server/src/proxy/listener.ts`](../../../packages/server/src/proxy/listener.ts) - `proxyHandler` and `ProxyOptions`, whose `whose` hook answers a session's own token and whose `catalog` hook is the provider lists.
@@ -33,7 +33,7 @@ Each model a connector lists is callable as `<provider>/<id>`, and the `modelPro
 
 ```
 tool -> POST /v1/chat/completions | /chat/completions | /v1/messages | /v1/messages/count_tokens | /responses | /responses/input_tokens | /embeddings | /images/* | /audio/* | /rerank, and the root twins, on the listener `modelApi` names
-  -> guard (Host, loopback at any port, Origin) -> caller: deployment token | whose | users.verify + proxy:write
+  -> guard (Host, loopback at any port, Origin) -> caller: deployment token | whose | users.verify + gateway:write
   -> scope: X-AHP-Scope | ?scope= | primary -> body (32 MiB, JSON, model)
   -> connectors channel: the open provider connectors, with each one's owner
   -> catalog: each open connector's own model list, bound to the open connector, read at first sight and each hour
@@ -44,7 +44,7 @@ tool -> POST /v1/chat/completions | /chat/completions | /v1/messages | /v1/messa
 
 ## Tests
 
-- [`code://packages/server/test/config-check.test.ts`](../../../packages/server/test/config-check.test.ts) - config checking, `modelProxy.sessionCalls` and the refusal of `providers` included.
+- [`code://packages/server/test/config-check.test.ts`](../../../packages/server/test/config-check.test.ts) - config checking, `modelGateway.sessionCalls` and the refusal of `providers` included.
 - [`code://packages/server/test/proxy-adapters.test.ts`](../../../packages/server/test/proxy-adapters.test.ts) - the four host adapters: forms, `provider`, `models`, `prefix`, checks and icons.
 - [`code://packages/server/test/proxy-catalog.test.ts`](../../../packages/server/test/proxy-catalog.test.ts) - the catalog: the first read, the hourly read, a failed read and a closed connector.
 - [`code://packages/server/test/proxy-route.test.ts`](../../../packages/server/test/proxy-route.test.ts) - routing over Softov's table, and a fetched `<prefix>/<id>`.

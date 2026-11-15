@@ -45,7 +45,7 @@ refs:
 
 The daemon is the `ahpd` binary in `packages/server`.
 Its verbs and flags are declared once with `@cofold/commands` and run at the terminal through `@cofold/terminal`.
-The same declarations are served over HTTP, as [HTTP API and proxy](http-api-and-proxy.md) says, and each command names the grant pairs it needs.
+The same declarations are served over HTTP, as [HTTP API and model gateway](http-api-and-proxy.md) says, and each command names the grant pairs it needs.
 A detached daemon keeps a record, `daemon.json`, in the config folder, so that `stop`, `restart` and `status` can find it.
 The daemon also checks npm for a newer release in the background, and can write a capture of its traffic.
 The code is in [`code://packages/server/src/main.ts`](../../packages/server/src/main.ts), [`code://packages/server/src/daemon.ts`](../../packages/server/src/daemon.ts) and the files under `commands/`.

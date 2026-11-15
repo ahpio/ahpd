@@ -56,7 +56,7 @@ const put = (held: unknown): void => { writeFileSync(config, `${JSON.stringify(h
 const modelUse = (at: string, pools: string[], usd: number): ModelUse => ({
   at,
   kind: 'model',
-  source: 'proxy',
+  source: 'gateway',
   owner: 'user:ana',
   model: { name: 'anthropic/opus-5' },
   pools,

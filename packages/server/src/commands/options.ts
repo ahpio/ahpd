@@ -261,7 +261,7 @@ export interface Options {
    */
   routes?: RoutesSetting;
   /** The providers this proxy calls and the model names that point at them. */
-  modelProxy: ProxyConfiguration;
+  modelGateway: ProxyConfiguration;
   /**
    * The MCP servers every session is offered, and the ones that were skipped.
    *
@@ -987,9 +987,9 @@ export const serverFields = {
     },
     description: "Where the plugins' routes are served. Absent is the daemon's own port. A port gives them a listener of their own that serves nothing else, and a host binds that listener. Set in the configuration file only.",
   },
-  modelProxy: {
+  modelGateway: {
     ...proxySchema,
-    title: 'Model proxy',
+    title: 'Model gateway',
     description: 'The model names the model API serves, each mapped to connectors.',
   },
   mcpServers: asJsonSchema(mcpServersField),
@@ -1033,7 +1033,7 @@ export const serverFields = {
 } satisfies Record<string, Field>;
 
 /** The fields only the configuration file sets, which have no flag. */
-const FILE_ONLY = ['httpApi', 'modelApi', 'mcpTools', 'routes', 'usage', 'modelProxy', 'policies', 'service', 'mcpServers', 'shellEnv', 'commandParser', 'tunnelHosts', 'onPath', 'daemonRecord', 'stopWaitMs'] as const;
+const FILE_ONLY = ['httpApi', 'modelApi', 'mcpTools', 'routes', 'usage', 'modelGateway', 'policies', 'service', 'mcpServers', 'shellEnv', 'commandParser', 'tunnelHosts', 'onPath', 'daemonRecord', 'stopWaitMs'] as const;
 
 /** The flags that mean something only when typed, which the file does not set. */
 const TYPED_ONLY = ['stdio', 'configFile', 'noPlugins', 'noCwd', 'pluginOptions'] as const;
@@ -1271,7 +1271,7 @@ export const servedPluginWriteFields = {
  * `<file>: <key> must be ...`, naming the file `source` says set it. A key it
  * does not name answers one line, and the caller carries on without it.
  *
- * `modelProxy` is checked further than the schema reaches, because a model name
+ * `modelGateway` is checked further than the schema reaches, because a model name
  * is `<maker>/<name>` and the entries under it are held one by one; a file that
  * still writes `providers` is refused too. That is a bad value rather than an
  * unknown key, so it stops the start the same way one does. `shellEnv` is checked the same way for
@@ -1296,8 +1296,8 @@ export function checkConfig(file: object, source: (key: string) => string): stri
       stop(`${source(key)}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
-  const problems = proxyProblems((file as Config).modelProxy);
-  if (problems.length > 0) stop(problems.map((one) => `${source('modelProxy')}: ${one}`).join('\n'));
+  const problems = proxyProblems((file as Config).modelGateway);
+  if (problems.length > 0) stop(problems.map((one) => `${source('modelGateway')}: ${one}`).join('\n'));
   const pluginsNamed = pluginProblems((file as Config).plugins);
   if (pluginsNamed.length > 0) stop(pluginsNamed.map((one) => `${source('plugins')}: ${one}`).join('\n'));
   const shellEnvBad = shellEnvProblems((file as Config).shellEnv);
@@ -1515,7 +1515,7 @@ const noCwd = input['noCwd'] === true;
   const modelApi = httpOf('modelApi', file.modelApi, source('modelApi'));
   const mcpTools = given('mcpTools') ?? 'none';
   const routes = routesOf(file.routes, source('routes'));
-  const modelProxy = proxyConfiguration(given('modelProxy'));
+  const modelGateway = proxyConfiguration(given('modelGateway'));
 
   return {
     port: given('port') ?? 9187,
@@ -1588,7 +1588,7 @@ const noCwd = input['noCwd'] === true;
     ...(modelApi === undefined ? {} : { modelApi }),
     mcpTools,
     ...(routes === undefined ? {} : { routes }),
-    modelProxy,
+    modelGateway,
     mcpServers: mcp.servers,
     plugins,
     typedPlugins,

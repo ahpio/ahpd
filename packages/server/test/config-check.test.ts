@@ -530,14 +530,14 @@ describe('the managedRules key', () => {
   });
 });
 
-describe('the modelProxy key', () => {
+describe('the modelGateway key', () => {
   it('is the model names and nothing else, with no providers of its own', () => {
-    expect(folded({}).modelProxy).toEqual({ models: {}, sessionCalls: 'record', keyRefusal: 'hostError' });
+    expect(folded({}).modelGateway).toEqual({ models: {}, sessionCalls: 'record', keyRefusal: 'hostError' });
   });
 
   it('reads the names and the entries that serve each, naming a connector or an adapter', () => {
     const options = folded({
-      modelProxy: {
+      modelGateway: {
         models: {
           'deepseek/deepseek-v4.1-flash': [{ provider: 'local-vllm', id: 'deepseek-v4.1-flash', price: { input: 0.2, output: 0.8 } }],
           'anthropic/fable-5': [{ provider: 'anthropic', id: 'fable-5' }],
@@ -545,40 +545,40 @@ describe('the modelProxy key', () => {
       },
     });
     expect(options.warnings).toEqual([]);
-    expect(options.modelProxy.models).toEqual({
+    expect(options.modelGateway.models).toEqual({
       'deepseek/deepseek-v4.1-flash': [{ provider: 'local-vllm', id: 'deepseek-v4.1-flash', price: { input: 0.2, output: 0.8 } }],
       'anthropic/fable-5': [{ provider: 'anthropic', id: 'fable-5' }],
     });
   });
 
   it('refuses a file that still writes providers, and says where a provider goes now', () => {
-    expect(refusal({ modelProxy: { providers: { 'local-vllm': { endpoint: 'http://localhost:8000/v1' } }, models: {} } }))
-      .toBe(`${config}: modelProxy.providers is no longer read: add each provider as a connector, see docs/server/PROXY.md`);
+    expect(refusal({ modelGateway: { providers: { 'local-vllm': { endpoint: 'http://localhost:8000/v1' } }, models: {} } }))
+      .toBe(`${config}: modelGateway.providers is no longer read: add each provider as a connector, see docs/server/GATEWAY.md`);
   });
 
   it('refuses a model name that is not <maker>/<name>', () => {
     for (const name of ['fable-5', 'anthropic/', '/fable-5', 'a/b/c']) {
-      expect(refusal({ modelProxy: { models: { [name]: [{ provider: 'anthropic', id: 'fable-5' }] } } }))
-        .toBe(`${config}: modelProxy.models.${name} is not a model name: write it as <maker>/<name>`);
+      expect(refusal({ modelGateway: { models: { [name]: [{ provider: 'anthropic', id: 'fable-5' }] } } }))
+        .toBe(`${config}: modelGateway.models.${name} is not a model name: write it as <maker>/<name>`);
     }
   });
 
   it('refuses a model entry with no provider, or with a provider that is not text', () => {
-    expect(refusal({ modelProxy: { models: { 'anthropic/fable-5': [{ id: 'fable-5' }] } } }))
-      .toBe(`${config}: modelProxy.models.anthropic/fable-5[0].provider is required`);
-    expect(refusal({ modelProxy: { models: { 'anthropic/fable-5': { provider: 'anthropic', id: 'fable-5' } } } }))
-      .toBe(`${config}: modelProxy.models.anthropic/fable-5 must be a list`);
+    expect(refusal({ modelGateway: { models: { 'anthropic/fable-5': [{ id: 'fable-5' }] } } }))
+      .toBe(`${config}: modelGateway.models.anthropic/fable-5[0].provider is required`);
+    expect(refusal({ modelGateway: { models: { 'anthropic/fable-5': { provider: 'anthropic', id: 'fable-5' } } } }))
+      .toBe(`${config}: modelGateway.models.anthropic/fable-5 must be a list`);
   });
 
   it('reads sessionCalls as record when absent, takes skip, and refuses another value by name', () => {
-    expect(folded({}).modelProxy.sessionCalls).toBe('record');
-    expect(folded({ modelProxy: { sessionCalls: 'skip' } }).modelProxy.sessionCalls).toBe('skip');
-    expect(refusal({ modelProxy: { sessionCalls: 'always' } })).toBe(`${config}: modelProxy.sessionCalls must be one of record, skip`);
+    expect(folded({}).modelGateway.sessionCalls).toBe('record');
+    expect(folded({ modelGateway: { sessionCalls: 'skip' } }).modelGateway.sessionCalls).toBe('skip');
+    expect(refusal({ modelGateway: { sessionCalls: 'always' } })).toBe(`${config}: modelGateway.sessionCalls must be one of record, skip`);
   });
 
-  it('refuses a modelProxy that is not an object', () => {
-    expect(refusal({ modelProxy: 'on' })).toBe(`${config}: modelProxy must be an object`);
-    expect(refusal({ modelProxy: [] })).toBe(`${config}: modelProxy must be an object`);
+  it('refuses a modelGateway that is not an object', () => {
+    expect(refusal({ modelGateway: 'on' })).toBe(`${config}: modelGateway must be an object`);
+    expect(refusal({ modelGateway: [] })).toBe(`${config}: modelGateway must be an object`);
   });
 });
 
@@ -603,29 +603,39 @@ const run = (value: unknown): Promise<{ code: number | null; stderr: string }> =
 
 describe('a key that was renamed', () => {
   it('is read under its new name, with a warning naming the file to change', () => {
-    const options = folded({ http: true, proxy: { sessionCalls: 'skip' } });
-    expect(options.warnings).toEqual([
-      `http is now httpApi; rename it in ${config}.`,
-      `proxy is now modelProxy; rename it in ${config}.`,
-    ]);
+    const options = folded({ http: true });
+    expect(options.warnings).toEqual([`http is now httpApi; rename it in ${config}.`]);
     expect(options.httpApi).toEqual({});
-    expect(options.modelProxy.sessionCalls).toBe('skip');
   });
 
   it('warns about nothing when the file already uses the new names', () => {
-    expect(folded({ httpApi: true, modelProxy: { sessionCalls: 'skip' } }).warnings).toEqual([]);
+    expect(folded({ httpApi: true, modelGateway: { sessionCalls: 'skip' } }).warnings).toEqual([]);
   });
 
   it('stops the start when the file holds both names for one key', () => {
     expect(refusal({ http: true, httpApi: true }))
       .toBe(`${config} holds both http and httpApi, and they name the same setting: remove http, the old name of httpApi.`);
-    expect(refusal({ proxy: {}, modelProxy: {} }))
-      .toBe(`${config} holds both proxy and modelProxy, and they name the same setting: remove proxy, the old name of modelProxy.`);
   });
 
   it('names the new key in every message about it', () => {
     expect(refusal({ httpApi: { port: 70000 } })).toContain('httpApi.port');
-    expect(refusal({ modelProxy: { sessionCalls: 'always' } })).toContain('modelProxy.sessionCalls');
+    expect(refusal({ modelGateway: { sessionCalls: 'always' } })).toContain('modelGateway.sessionCalls');
+  });
+});
+
+describe('the names the model gateway had before', () => {
+  const models = { 'anthropic/fable-5': [{ provider: 'anthropic', id: 'fable-5' }] };
+
+  it('ignores modelProxy with a warning, and reads no model from it', () => {
+    const options = folded({ modelProxy: { models } });
+    expect(options.warnings).toEqual([`${config}: modelProxy is not a setting ahpd knows; ignored`]);
+    expect(options.modelGateway.models).toEqual({});
+  });
+
+  it('ignores proxy with a warning, and reads no model from it', () => {
+    const options = folded({ proxy: { models } });
+    expect(options.warnings).toEqual([`${config}: proxy is not a setting ahpd knows; ignored`]);
+    expect(options.modelGateway.models).toEqual({});
   });
 });
 
@@ -659,9 +669,9 @@ describe('the daemon', () => {
     expect(said.stderr).toContain(`${config}: port must be an integer`);
   }, 20000);
 
-  it('starts with a modelProxy that names a model', async () => {
+  it('starts with a modelGateway that names a model', async () => {
     const said = await run({
-      modelProxy: {
+      modelGateway: {
         models: { 'deepseek/deepseek-v4.1-flash': [{ provider: 'local-vllm', id: 'deepseek-v4.1-flash' }] },
       },
     });
@@ -670,8 +680,8 @@ describe('the daemon', () => {
   }, 20000);
 
   it('refuses to start when the file still writes providers', async () => {
-    const said = await run({ modelProxy: { providers: { 'local-vllm': { endpoint: 'http://localhost:8000/v1' } } } });
+    const said = await run({ modelGateway: { providers: { 'local-vllm': { endpoint: 'http://localhost:8000/v1' } } } });
     expect(said.code).toBe(2);
-    expect(said.stderr).toContain(`${config}: modelProxy.providers is no longer read: add each provider as a connector, see docs/server/PROXY.md`);
+    expect(said.stderr).toContain(`${config}: modelGateway.providers is no longer read: add each provider as a connector, see docs/server/GATEWAY.md`);
   }, 20000);
 });

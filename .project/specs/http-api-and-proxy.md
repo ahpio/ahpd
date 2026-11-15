@@ -1,5 +1,5 @@
 ---
-title: HTTP API and proxy
+title: HTTP API and model gateway
 status: current
 covers:
   - packages/server/src/http.ts
@@ -21,7 +21,7 @@ refs:
   - "[code://packages/server/src/commands/options.ts#L884-L926](../../packages/server/src/commands/options.ts#L884-L926) - `httpOf` and `originOf`"
   - "[code://packages/server/src/commands/run.ts#L82-L98](../../packages/server/src/commands/run.ts#L82-L98) - `apiOrigins`, the names and origins the API answers to"
   - "[code://packages/server/src/commands/run.ts#L314-L339](../../packages/server/src/commands/run.ts#L314-L339) - the refusals of `http` without a port or a credential, and `apiHost`"
-  - "[code://packages/server/src/commands/run.ts#L456-L488](../../packages/server/src/commands/run.ts#L456-L488) - the proxy in front of the API, and the API's own listener"
+  - "[code://packages/server/src/commands/run.ts#L456-L488](../../packages/server/src/commands/run.ts#L456-L488) - the model gateway in front of the API, and the API's own listener"
   - "[code://packages/server/src/proxy/dialects.ts#L16-L50](../../packages/server/src/proxy/dialects.ts#L16-L50) - the caller paths, `MODELS_PATH` and `dialectOfHeaders`"
   - "[code://packages/server/src/proxy/dialects.ts#L303-L322](../../packages/server/src/proxy/dialects.ts#L303-L322) - `modelList`, names only, in the caller's dialect"
   - "[code://packages/server/src/proxy/listener.ts#L416-L421](../../packages/server/src/proxy/listener.ts#L416-L421) - `refusedGuard`, a loopback `Host` at any port"
@@ -33,7 +33,7 @@ refs:
 
 The daemon serves its commands as an HTTP API under `/api`, through `serve()` of `@cofold/remote`.
 These are the same declarations the terminal runs, as [Daemon](daemon.md) says, so the API and the CLI cannot drift apart.
-The model proxy answers under `/v1` on the same listener, in front of the API.
+The model gateway answers under `/v1` on the same listener, in front of the API.
 Both are off until the `http` key turns them on.
 Both refuse a request from a foreign host or origin before a credential is read.
 `serve()` is a fetch-style handler, and the daemon adapts it to `node:http` with `toNodeListener`.
@@ -51,12 +51,12 @@ AND it answers 426 for each other plain request, because the listener speaks AHP
 
 WHEN `http` is true
 THEN the API answers under `/api` on the daemon's own port, beside the WebSocket
-AND the proxy answers under `/v1` on that port.
+AND the model gateway answers under `/v1` on that port.
 
 ### The API on its own listener
 
 WHEN `http` holds a `port`
-THEN the API and the proxy answer on that port, at `http.host` or at the daemon's host
+THEN the API and the model gateway answer on that port, at `http.host` or at the daemon's host
 AND the daemon's own port answers 404 under `/api` and `/v1`.
 The daemon binds that port before it announces itself, so a port that is in use stops the start.
 
@@ -124,28 +124,28 @@ THEN it hands `listen` the handler and the handler as a `node:http` listener.
 Bun and Deno serve the fetch handler as it is.
 The SDK has no adapter of its own and depends on no cofold package, so the server builds the listener with `toNodeListener`.
 
-### The proxy guard
+### The model gateway guard
 
 WHEN a request under `/v1` has a loopback `Host` at any port
-THEN the proxy checks only its `Origin`.
+THEN the model gateway checks only its `Origin`.
 The reason: a forward from another machine lands on a loopback port that is not the daemon's port.
 
 WHEN the `Host` is not loopback
-THEN the proxy holds it to the API's names and origins.
+THEN the model gateway holds it to the API's names and origins.
 
 ### The models list
 
 WHEN a caller sends `GET /v1/models`
-THEN the proxy answers with the names of the models this caller can call now
+THEN the model gateway answers with the names of the models this caller can call now
 AND it uses the Anthropic shape when the request has `anthropic-version`, and the OpenAI shape when it does not.
 The list holds only names, never a provider, a price or a variable.
 
 ### A provider refuses the key
 
 WHEN a provider answers 401 or 403 to a call
-THEN the proxy answers 502 with `model <name> on <provider> refused this host's key`
+THEN the model gateway answers 502 with `model <name> on <provider> refused this host's key`
 AND it logs the provider's words with key-shaped text removed, and tries no other provider.
 The reason: the key is this host's configuration, so another provider cannot fix it.
 
 WHEN a provider answers 429 or 5xx, or the connection never arrived
-THEN the proxy tries the next candidate.
+THEN the model gateway tries the next candidate.

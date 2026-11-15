@@ -136,8 +136,8 @@ const VIEWS = {
       <span class="h">secret</span><span class="h">value</span><span class="h">used by</span>
       <span class="mono hl">host:github</span><span>••••••</span><span class="tool">${ico('github')}GitHub</span>
       <span class="mono">host:slack-work</span><span>••••••</span><span class="tool">${ico('slack')}Slack</span>
-      <span class="mono">host:anthropic</span><span>••••••</span><span class="tool">${ico('anthropic')}proxy</span>
-      <span class="mono">host:openrouter</span><span>••••••</span><span class="tool">${ico('openrouter')}proxy</span>
+      <span class="mono">host:anthropic</span><span>••••••</span><span class="tool">${ico('anthropic')}gateway</span>
+      <span class="mono">host:openrouter</span><span>••••••</span><span class="tool">${ico('openrouter')}gateway</span>
     </div>
     <div class="dim" style="margin-top:auto">Saved once. Used by name.</div>`,
   vaultUse: () => `
@@ -145,8 +145,8 @@ const VIEWS = {
     <div class="card"><span class="k">app id</span><span>184213</span></div>
     <div class="card"><span class="k">private key</span><span><span class="pill lock">🔒 host:github</span></span></div>
     <div class="dim" style="margin-top:auto">The setting names the secret. The host reads the value from the vault.</div>`,
-  proxy: () => `
-    <div class="bar"><b>Model proxy</b></div>
+  gateway: () => `
+    <div class="bar"><b>Model gateway</b></div>
     <div class="flow">
       <div class="col">
         <span class="box tool">${ico('claude')}Claude Code</span><span class="box tool">${ico('pi')}pi</span><span class="box">your app</span>
@@ -232,9 +232,9 @@ const STOPS: Stop[] = [
     title: 'Connect your services', text: 'A connector is one account: a Slack workspace, a GitHub App. A session binds it, and its actions become tools.',
     docs: [['activepieces', '/plugins/activepieces']] },
   { id: 'b2', ch: 'b', scene: 'solo', focus: ['desktop'], send: ['desktop'],
-    views: { desktop: 'proxy' }, chips: ['proxy'], lanes: { models: ['anthropic', 'openrouter', 'local'] },
+    views: { desktop: 'gateway' }, chips: ['gateway'], lanes: { models: ['anthropic', 'openrouter', 'local'] },
     title: 'Share models, keep the keys', text: 'Anything that talks to a model can go through ahpd. Each person signs in with their own token, the provider keys stay on the host, and you decide who may use which model.',
-    docs: [['Proxy', '/server/PROXY']] },
+    docs: [['Model gateway', '/server/GATEWAY']] },
   { id: 'b3', ch: 'b', scene: 'pair', focus: ['tablet'], send: ['tablet', 'desktop'],
     views: { desktop: 'vaultUse', tablet: 'vault' }, chips: ['vault'],
     title: 'Secrets by name', text: 'Provider and connector keys live in the vault, not in the config file. A setting names the secret, and the host reads the value when it needs it. Nobody sees it again.',
@@ -431,7 +431,7 @@ const placed = (kind: Kind) => Boolean(SCENES[at(active.value).scene][kind]);
               <div class="lane" :class="{ on: at(active).lanes?.[lane] }" :style="{ left: `${20 + l * 304}px` }">
                 <span v-for="id in ids" :key="id" class="node" :class="{ lit: at(active).lanes?.[lane]?.includes(id) }"><span v-html="ico(id)"></span>{{ ICONS[id][0] }}</span>
               </div>
-              <div class="lane-name" :style="{ left: `${20 + l * 304}px` }">{{ lane === 'models' ? 'Models, through the proxy' : 'Connectors' }}</div>
+              <div class="lane-name" :style="{ left: `${20 + l * 304}px` }">{{ lane === 'models' ? 'Models, through the model gateway' : 'Connectors' }}</div>
             </template>
           </div>
         </div>

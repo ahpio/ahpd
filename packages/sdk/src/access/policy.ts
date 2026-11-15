@@ -124,7 +124,7 @@ const manifest: Record<string, unknown> = {
   type: 'object',
   properties: {
     scope: line('Scope', 'Who the row is about: `all`, `user:<id>`, `team:<id>` or `project:<team>:<project>`.'),
-    kind: choice('Kind', 'What it is about: a proxy call, a harness this host runs, or a machine.', KINDS),
+    kind: choice('Kind', 'What it is about: a model gateway call, a harness this host runs, or a machine.', KINDS),
     effect: choice('Effect', 'Any matching deny wins over any allow.', EFFECTS),
     match: {
       title: 'Match',
@@ -132,7 +132,7 @@ const manifest: Record<string, unknown> = {
       type: 'object',
       properties: {
         model: nullable(lines('Models', '`<maker>/<name>`, where `*` stands for any run of characters within the value.')),
-        proxy: nullable(lines('Proxies', 'Which provider the model may be called through. `model` rows only.')),
+        gateway: nullable(lines('Gateway providers', 'Which of the model gateway\'s providers the model may be called through. `model` rows only.')),
         agent: nullable(lines('Agents', 'The harness, as `claude`, `pi`, `cofold` or `acp:<server>`.')),
         computer: nullable(lines('Computers', 'The machine, as the `computers` port names it.')),
       },

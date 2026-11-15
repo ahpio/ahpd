@@ -3,7 +3,7 @@ layout: home
 
 hero:
   name: ahpd
-  tagline: An open-source, plugin-driven AHP server with native Claude and pi agents, ACP agents (Codex, Copilot, Gemini), model proxying, tools and MCP servers, sandboxed computers and terminals, automations, conversational bots, and a web UI (ahpw). Users, permissions and usage tracking are built in. Build your own host and plugins with @ahpd/sdk.
+  tagline: An open-source, plugin-driven AHP server with native Claude and pi agents, ACP agents (Codex, Copilot, Gemini), a model gateway, tools and MCP servers, sandboxed computers and terminals, automations, conversational bots, and a web UI (ahpw). Users, permissions and usage tracking are built in. Build your own host and plugins with @ahpd/sdk.
   image:
     src: /logo.svg
     alt: ahpd

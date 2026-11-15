@@ -77,7 +77,7 @@
  * answers the row, and no answer, error or log carries a value.
  *
  * `x-ahpd/connectors/models` takes `{ id }` and answers the models one open
- * provider connector serves, as the model proxy's catalog last read them, with
+ * provider connector serves, as the model gateway's catalog last read them, with
  * the name a caller sends and whether this reader may call each one. It is
  * served on a host that hands the channel a `models` reader.
  *
@@ -323,7 +323,7 @@ export interface ConnectorsChannel {
   /**
    * Every open connector whose adapter serves models, and how to call it.
    *
-   * The answer is what the model proxy routes over: each open connector of an
+   * The answer is what the model gateway routes over: each open connector of an
    * adapter with a `provider`, with its id, adapter, owner and the
    * `ModelProvider` the adapter answers from the resolved config. A provider
    * that throws leaves its connector out, and the problem is said once.
@@ -1475,7 +1475,7 @@ export function connectorsChannel(options: ConnectorsChannelOptions): Connectors
    * The note command keeps one call's outcome, as `note` keeps a host part's.
    *
    * Only the plugin whose adapter the connector is notes: it is the one that
-   * makes the connector's calls outside `run`, as the model proxy makes a
+   * makes the connector's calls outside `run`, as the model gateway makes a
    * provider's. A reader of nothing is the daemon itself. That plugin needs no
    * grant, as for a check and a secret.
    */

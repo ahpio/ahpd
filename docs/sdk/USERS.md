@@ -113,16 +113,16 @@ The subjects the host decides are these nineteen:
 | `diagnostics` | `logs`, `network`, `fetch` | - | Logs and network details for troubleshooting |
 | `container` | - | `connect`, `disconnect`, `relay`, `stop`, `remove` | Connecting to dev containers, and stopping or removing one |
 | `node` | `list` | `add`, `remove` | The hosts that joined this one. `node:read` lists them; `node:write` adds a node and mints its token, which is shown once, and takes one away, which refuses its token and drops its connection |
-| `proxy` | `models` | `call` | The model proxy under `/v1` ([PROXY.md](../server/PROXY.md)). `proxy:call` calls a model, which spends this host's provider keys; `proxy:models` lists the model names |
+| `gateway` | `models` | `call` | The model gateway under `/v1` ([GATEWAY.md](../server/GATEWAY.md)). `gateway:call` calls a model, which spends this host's provider keys; `gateway:models` lists the model names |
 | `mcp` | - | `call` | Running the host's tools from a person's MCP client at `/mcp` ([MCP.md](../server/MCP.md)). `mcp:call` is what the door asks; each tool checks its own grants again |
 | `trust` | - | `push` | Pushing the host's answer about the folders sessions load their projects from, which a window sends. A push answers for every folder at once ([Trusted folders](AUTHENTICATION.md#trusted-folders)) |
 | `account` | `status` | - | The account each agent's harness is signed in as, published on the root config under `vscode.codexAccount` for Codex and `ahpd.<provider>Account` for the rest. The email is the operator's own, so under a people directory a connection that does not hold `account:read` is shown no account value at all ([Agent accounts](AUTHENTICATION.md#agent-accounts)) |
 
-`proxy`, `mcp` and `trust` have no scheme of their own: a client never reads a
-`proxy://`, an `mcp://` or a `trust://` URI, so nothing asks for a resource
+`gateway`, `mcp` and `trust` have no scheme of their own: a client never reads a
+`gateway://`, an `mcp://` or a `trust://` URI, so nothing asks for a resource
 operation on any of them. The gate behind them is on other surfaces - the root
-config, where a push asks for `trust:push`, the proxy's `/v1`, where a call
-asks for `proxy:call` and a model list asks for `proxy:models`, and `/mcp`,
+config, where a push asks for `trust:push`, the model gateway's `/v1`, where a call
+asks for `gateway:call` and a model list asks for `gateway:models`, and `/mcp`,
 where a call asks for `mcp:call`. The gate asks the operation, and each
 subject's group in the table above covers it. `operation` has no scheme either:
 its gate is `x-ahpd/invokeOperation`, where a call asks for `operation:invoke`.
@@ -160,7 +160,7 @@ member of. Every other pool is refused until a role names the grant.
 | Role | Has |
 | --- | --- |
 | `admin` | `*:*` |
-| `member` | `file:read`, `file:write`, `session:read`, `session:write`, `terminal:read`, `terminal:write`, `proxy:read`, `proxy:write`, `mcp:call`, `trust:write` |
+| `member` | `file:read`, `file:write`, `session:read`, `session:write`, `terminal:read`, `terminal:write`, `gateway:read`, `gateway:write`, `mcp:call`, `trust:write` |
 | `guest` | `session:read`, `automation:read` |
 
 `guest` is the default for `ahpd user add` with no `--role`, and it is the one
@@ -217,7 +217,7 @@ when their credential comes from one:
 
 ```
 normal (guest) session:read automation:read sign-in http://127.0.0.1:9310
-sam (member) file:read file:write session:read session:write terminal:read terminal:write proxy:read proxy:write trusted
+sam (member) file:read file:write session:read session:write terminal:read terminal:write gateway:read gateway:write trusted
 ```
 
 ## People as resources

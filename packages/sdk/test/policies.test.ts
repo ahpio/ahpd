@@ -43,7 +43,7 @@ const rows = (): Policy[] => [
     scope: 'all',
     kind: 'model',
     effect: 'allow',
-    match: { model: ['deepseek/*', 'qwen/*'], proxy: ['local-vllm'] },
+    match: { model: ['deepseek/*', 'qwen/*'], gateway: ['local-vllm'] },
     limits: [{ amount: 500, measure: 'usd', period: 'week', pool: 'shared' }],
     pool: 'shared-llm',
     cap: true,
@@ -160,7 +160,9 @@ describe('what a policy that is not one is refused with', () => {
 
   it('refuses a value type the kind does not take', async () => {
     await refused({ ...base(), match: { model: ['*'], agent: ['claude'] } }, 'match');
-    await refused({ ...base(), kind: 'agent', match: { agent: ['claude'], proxy: ['openrouter'] } }, 'match');
+    await refused({ ...base(), kind: 'agent', match: { agent: ['claude'], gateway: ['openrouter'] } }, 'match');
+    // The match type before the model gateway's rename is not read.
+    await refused({ ...base(), kind: 'model', match: { proxy: ['openrouter'] } }, 'match');
     await refused({ ...base(), kind: 'computer', match: { computer: ['host'], model: ['*'] } }, 'match');
     // A type nobody knows is refused whichever kind it is written on.
     await refused({ ...base(), match: { gpu: ['a100'] } }, 'match');

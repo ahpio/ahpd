@@ -36,10 +36,10 @@ ahpd user token ana --url
 
 ## Tokens of their own
 
-A person signs in and mints tokens for their own use, or an operator mints one for them. Each token may be limited to some of the person's grants, so a laptop can carry `proxy:write` and nothing else:
+A person signs in and mints tokens for their own use, or an operator mints one for them. Each token may be limited to some of the person's grants, so a laptop can carry `gateway:write` and nothing else:
 
 ```bash
-ahpd token mint --user ana --grant proxy:write --label laptop
+ahpd token mint --user ana --grant gateway:write --label laptop
 ```
 
 ```
@@ -59,19 +59,19 @@ A token also carries spend and call limits of its own, written `amount:measure:p
 ahpd token mint --user ana --limit 5:usd:day --limit 100:calls:day --label laptop
 ```
 
-A proxy call made with the key is refused once one of its limits has no room, with the key's sentence rather than a row's: `token:<id> has no room: 2 / 2 calls this day`. A key's limits only narrow what the policies allow: they never allow a model no policy allows, they never stop the charge to a person's or a team's limits, and they hold for a person who holds `*:*`, and with `policies.check` off. They need a usage store to be counted, because the means of counting is the same one policy limits use.
+A gateway call made with the key is refused once one of its limits has no room, with the key's sentence rather than a row's: `token:<id> has no room: 2 / 2 calls this day`. A key's limits only narrow what the policies allow: they never allow a model no policy allows, they never stop the charge to a person's or a team's limits, and they hold for a person who holds `*:*`, and with `policies.check` off. They need a usage store to be counted, because the means of counting is the same one policy limits use.
 
-A token also carries meta of its own, written `--meta name=value` once per entry, cut at the first `=`. A name is 1 to 64 characters and a value at most 256, and a token holds 32 entries at most. A call made with the key writes the key's entries on its usage record, and adds the call's own, as LiteLLM's `spend_logs_metadata`: a name the key holds keeps the key's value. See [The model proxy](PROXY.md).
+A token also carries meta of its own, written `--meta name=value` once per entry, cut at the first `=`. A name is 1 to 64 characters and a value at most 256, and a token holds 32 entries at most. A call made with the key writes the key's entries on its usage record, and adds the call's own, as LiteLLM's `spend_logs_metadata`: a name the key holds keeps the key's value. See [The model gateway](GATEWAY.md).
 
 A minted token cannot mint, list or revoke tokens. Sign in with the person's full token for that. `ahpd user token <id>` still mints that one full token, and the tokens a person minted stay.
 
 A team holds a key of its own, minted with `--team` in place of `--user`. It belongs to no person, so no person's departure takes it away, and every call made with it is charged to `team:<team>`:
 
 ```bash
-ahpd token mint --team backend --grant proxy:call --label ci
+ahpd token mint --team backend --grant gateway:call --label ci
 ```
 
-A team key opens the proxy and no other door: the websocket, `/api` and the daemon's own port refuse it. It holds `proxy:call` or `proxy:models`, or both, and nothing else. Its scope is its team unless `--scope` names one of that team's projects. Each call is checked against the team, and a `user:` policy row never holds it. It works while its team is in the users file. Removing a team removes its keys too, so a team added back with the same name has none. Root and a caller who holds `user:write` list and revoke one. To mint one, a caller who is not root also needs `proxy:call`. `--team` with `--user` is refused.
+A team key opens the model gateway and no other door: the websocket, `/api` and the daemon's own port refuse it. It holds `gateway:call` or `gateway:models`, or both, and nothing else. Its scope is its team unless `--scope` names one of that team's projects. Each call is checked against the team, and a `user:` policy row never holds it. It works while its team is in the users file. Removing a team removes its keys too, so a team added back with the same name has none. Root and a caller who holds `user:write` list and revoke one. To mint one, a caller who is not root also needs `gateway:call`. `--team` with `--user` is refused.
 
 At a terminal `--user <id>` names whose tokens they are, and `--team <team>` names a team's keys instead. `token list` without either lists everybody's; `token mint` and `token rm` need one of them, because a terminal has nobody signed in. Over `/api` a person's token acts for that person, and `--user` needs `user:write` and is bounded by that person's grants; `--team` needs `user:write` too. The host mints at most `tokensPerPerson` live tokens per person or team, ten unless configured otherwise; an expired token does not count.
 
@@ -82,7 +82,7 @@ At a terminal `--user <id>` names whose tokens they are, and `--team <team>` nam
 | Role | Can |
 | --- | --- |
 | `admin` | Everything |
-| `member` | Read and write files, sessions and terminals; use the proxy; run the host's tools at `/mcp`; trust a folder |
+| `member` | Read and write files, sessions and terminals; use the model gateway; run the host's tools at `/mcp`; trust a folder |
 | `guest` | Read sessions and automations |
 
 `mcp:call` is the door at `/mcp`, which serves the host's tools that need no session to a person's MCP client. `member` holds it, and `admin` holds everything, which includes it. Each tool checks its own grants again, so a caller may list only what they may run. A team key cannot hold it. See [MCP](MCP.md).

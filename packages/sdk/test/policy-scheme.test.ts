@@ -77,7 +77,7 @@ const row = (more: Partial<Policy> = {}): Policy => ({
   scope: 'all',
   kind: 'model',
   effect: 'allow',
-  match: { model: ['deepseek/*'], proxy: ['local-vllm'] },
+  match: { model: ['deepseek/*'], gateway: ['local-vllm'] },
   ...more,
 });
 
@@ -109,7 +109,7 @@ it('reads a row as JSON, and measures the body a write would make', async () => 
   await policy.write('policy://M1', body(row({ limits: [{ amount: 500, measure: 'usd', period: 'week', pool: 'shared' }] })));
 
   expect(await read('M1')).toMatchObject({
-    id: 'M1', scope: 'all', kind: 'model', effect: 'allow', match: { model: ['deepseek/*'], proxy: ['local-vllm'] },
+    id: 'M1', scope: 'all', kind: 'model', effect: 'allow', match: { model: ['deepseek/*'], gateway: ['local-vllm'] },
     limits: [{ amount: 500, measure: 'usd', period: 'week', pool: 'shared' }],
   });
   const held = await policy.resolve('policy://M1');
@@ -222,7 +222,7 @@ it('keeps what a body does not name, so a read and a write back changes nothing'
   await policy.write('policy://M1', body({ from: '2026-10-22' }));
   const held = await read('M1');
   expect(held).toMatchObject({
-    effect: 'allow', match: { model: ['deepseek/*'], proxy: ['local-vllm'] },
+    effect: 'allow', match: { model: ['deepseek/*'], gateway: ['local-vllm'] },
     limits: [{ amount: 500, measure: 'usd', period: 'week', pool: 'shared' }],
     from: '2026-10-22T00:00:00.000Z',
   });
@@ -325,7 +325,7 @@ it('advertises the manifest a client draws the form from', async () => {
   const properties = described.manifest?.['properties'] as Record<string, Record<string, unknown>>;
   expect(Object.keys(properties)).toEqual(['scope', 'kind', 'effect', 'match', 'limits', 'pool', 'cap', 'from', 'until']);
   expect(properties['match']?.['type']).toBe('object');
-  expect(Object.keys(properties['match']?.['properties'] as object)).toEqual(['model', 'proxy', 'agent', 'computer']);
+  expect(Object.keys(properties['match']?.['properties'] as object)).toEqual(['model', 'gateway', 'agent', 'computer']);
   expect((properties['limits']?.['items'] as Record<string, unknown>)['type']).toBe('object');
 });
 
@@ -393,7 +393,7 @@ it('accepts each kind\'s own body and refuses a choice the kind does not take', 
       scope: 'all',
       kind: 'model',
       effect: 'allow',
-      match: { model: ['deepseek/*'], proxy: ['local-vllm'] },
+      match: { model: ['deepseek/*'], gateway: ['local-vllm'] },
       limits: [{ amount: 500, measure: 'usd', period: 'week', pool: 'shared' }],
     },
     {

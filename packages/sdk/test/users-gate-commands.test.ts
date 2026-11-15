@@ -500,7 +500,7 @@ it('lets a person read their own usage pools, and refuses them another person\'s
       await usage.record({
         at: '2026-10-02T10:00:00.000Z',
         kind: 'model',
-        source: 'proxy',
+        source: 'gateway',
         owner: `user:${who}`,
         model: { name: 'anthropic/opus-5' },
         pools: [pool, 'team:backend'],

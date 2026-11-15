@@ -110,9 +110,9 @@ export function createLogins(ctx: SessionContext): Logins {
    * The logins a turn may run on, in the record's order: the usable ones that
    * are not resting.
    *
-   * The model proxy's route, which sends a name to the first entry in the
+   * The model gateway's route, which sends a name to the first entry in the
    * file's order with a connector the caller may use, and keeps the rest in
-   * order, as `docs/server/PROXY.md` says under *How a name is routed*. A record
+   * order, as `docs/server/GATEWAY.md` says under *How a name is routed*. A record
    * that names no login runs on the agent's own credential.
    */
   const ready = (values: Bag): Login[] => usable(values).filter((one) => restOf(one.id) === undefined);
@@ -133,7 +133,7 @@ export function createLogins(ctx: SessionContext): Logins {
    * The refusal of a turn whose record names logins, none of them ready.
    *
    * The proxy's answer to a call no open connector serves, which names each
-   * provider it looked for, as *What a refusal means* in `docs/server/PROXY.md`
+   * provider it looked for, as *What a refusal means* in `docs/server/GATEWAY.md`
    * says. With every open login resting, it names the first back instead.
    */
   const unready = (values: Bag): string | undefined => {
@@ -215,12 +215,12 @@ export function createLogins(ctx: SessionContext): Logins {
   };
 
   /*
-   * The model proxy's loop over its entries, in
+   * The model gateway's loop over its entries, in
    * `packages/server/src/proxy/listener.ts`, with a login for an entry: each
    * outcome is noted for the connector, a refused credential is told and sent
    * to no other entry, and no connection, a 429 or a 5xx goes to the next entry
    * while nothing has reached the caller. Once a byte has, nothing is run
-   * again, as `docs/server/PROXY.md` says under *When a provider fails*.
+   * again, as `docs/server/GATEWAY.md` says under *When a provider fails*.
    */
   const refused = (message: Bag): boolean => {
     const error = str(message.error);

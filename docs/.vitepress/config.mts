@@ -35,7 +35,7 @@ const sidebar: DefaultTheme.SidebarItem[] = [
       page('Users', '/server/USERS'),
       page('Vault', '/server/VAULT'),
       page('Usage', '/server/USAGE'),
-      page('Proxy', '/server/PROXY'),
+      page('Model gateway', '/server/GATEWAY'),
       page('MCP', '/server/MCP'),
       page('Reference', '/server/REFERENCE'),
     ],

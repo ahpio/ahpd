@@ -6,7 +6,7 @@
  * `CLAUDE_CODE_OAUTH_TOKEN`.
  * https://code.claude.com/docs/en/authentication#generate-a-long-lived-token
  *
- * A turn uses them as the model proxy uses its entries, in
+ * A turn uses them as the model gateway uses its entries, in
  * `packages/server/src/proxy/listener.ts`: a request that fails with no
  * connection, a 429 or a 5xx goes to the next one, a refused credential is
  * told and tried nowhere else, and a retry time a failure names is the one
@@ -101,7 +101,7 @@ export const isClaudeAccountSetUp = (account: unknown): boolean => {
 
 /**
  * The SDK's kinds of a request that failed with a 429 or a 5xx: the failures
- * the model proxy hands to its next entry, as `docs/server/PROXY.md` says
+ * the model gateway hands to its next entry, as `docs/server/GATEWAY.md` says
  * under *When a provider fails*.
  *
  * Each kind is placed by its HTTP status, as the CLI 2.1.301 that the SDK runs
@@ -333,7 +333,7 @@ export class OpenLogins {
 
   /**
    * Say how one call of an open login went, which the plugin has the host keep
-   * as the connector's `call` alert, as the model proxy notes each call of an entry.
+   * as the connector's `call` alert, as the model gateway notes each call of an entry.
    *
    * A call of a token the login no longer holds was the old token's, as a rest
    * for it is, and says nothing of the login.

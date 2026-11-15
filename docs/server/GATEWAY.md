@@ -1,12 +1,12 @@
-# The model proxy
+# The model gateway
 
-The proxy lets a person point their own tool, Claude Code or a script, at this host and call a model by its `<maker>/<name>` with their ahpd token. The host picks the provider, calls it with the provider's own key, and streams the answer back unchanged. Policies say who may call which model, and each call is recorded against the caller's pools.
+The model gateway lets a person point their own tool, Claude Code or a script, at this host and call a model by its `<maker>/<name>` with their ahpd token. The host picks the provider, calls it with the provider's own key, and streams the answer back unchanged. Policies say who may call which model, and each call is recorded against the caller's pools.
 
-A provider is a connector of one of the four adapters the host ships. Its key is in the vault or in a daemon variable. Every model a provider lists is callable as `<provider>/<id>`, with no line in the file. An OpenRouter connector serves `openrouter/anthropic/claude-sonnet-5.5`, and a local endpoint serves `local/llama-3`. The `modelProxy` key holds the aliases: a `<maker>/<name>` of your own over one or more providers, and `ahpd proxy list` shows them. This page is about adding a provider and calling a model through one.
+A provider is a connector of one of the four adapters the host ships. Its key is in the vault or in a daemon variable. Every model a provider lists is callable as `<provider>/<id>`, with no line in the file. An OpenRouter connector serves `openrouter/anthropic/claude-sonnet-5.5`, and a local endpoint serves `local/llama-3`. The `modelGateway` key holds the aliases: a `<maker>/<name>` of your own over one or more providers, and `ahpd gateway list` shows them. This page is about adding a provider and calling a model through one.
 
 ## Turning it on
 
-The proxy is the model API. It is served under `/v1` and at the root paths only while `modelApi` is on:
+The model gateway is the model API. It is served under `/v1` and at the root paths only while `modelApi` is on:
 
 ```bash
 ahpd config set modelApi true
@@ -56,9 +56,9 @@ ANTHROPIC_BASE_URL=http://127.0.0.1:9187 ANTHROPIC_API_KEY=$AHPD_TOKEN claude
 | `POST /rerank`, `POST /v1/rerank`, `POST /v2/rerank` | `rerank` | yes | `openrouter` |
 | `GET /v1/models`, `GET /models` | the models list | no | - |
 
-Any other path under `/v1` is 404. `/messages` at the root is not the proxy, and neither is a path under `/models` or `/chat/completions`. An `openai-compatible` connector serves the dialects its `accepts` names, and chat alone by default.
+Any other path under `/v1` is 404. `/messages` at the root is not the model gateway, and neither is a path under `/models` or `/chat/completions`. An `openai-compatible` connector serves the dialects its `accepts` names, and chat alone by default.
 
-A Responses id holds the connector that made it, so a follow-up goes to that connector and nowhere else, with no fallback. The id is the proxy's, not the provider's. A token count costs nothing, so it writes no usage record.
+A Responses id holds the connector that made it, so a follow-up goes to that connector and nowhere else, with no fallback. The id is the model gateway's, not the provider's. A token count costs nothing, so it writes no usage record.
 
 The `Host` may be one of the API's own names, or `127.0.0.1`, `localhost` or `[::1]` at any port, so a tunnel or an SSH forward that lands on another loopback port still reaches it. A browser `Origin` that is not the daemon's own is refused, as it is on `/api`.
 
@@ -66,23 +66,23 @@ The `Host` may be one of the API's own names, or `127.0.0.1`, `localhost` or `[:
 
 The token is the deployment token, which is root, a person's token from `ahpd user token` or `ahpd token mint`, or a team's key. `Authorization: Bearer` and `x-api-key` are both read; sending both with different values is refused.
 
-To call the proxy from another computer, sign in once and mint a token that holds nothing else:
+To call the model gateway from another computer, sign in once and mint a token that holds nothing else:
 
 ```bash
-ahpd token mint --user ana --grant proxy:write --label laptop
+ahpd token mint --user ana --grant gateway:write --label laptop
 ```
 
 It reaches `/v1`, and is refused at the rest of `/api`. See [Users](USERS.md#tokens-of-their-own).
 
-A team's key opens the proxy and no other door:
+A team's key opens the model gateway and no other door:
 
 ```bash
-ahpd token mint --team backend --grant proxy:call --grant proxy:models --label ci
+ahpd token mint --team backend --grant gateway:call --grant gateway:models --label ci
 ```
 
 A call made with it is charged to `team:<team>`, and to one of the team's projects when the key's scope names one. No person stands behind it, so no `user:` policy row holds it: the team's rows and the host-wide ones do. See [Users](USERS.md#tokens-of-their-own).
 
-A person needs `proxy:call` to call and `proxy:models` to list the models; a team key holds the same two and nothing else. The `proxy:write` and `proxy:read` groups cover the two. The built-in `member` role holds both groups; `guest` holds neither. See [USERS.md](../sdk/USERS.md).
+A person needs `gateway:call` to call and `gateway:models` to list the models; a team key holds the same two and nothing else. The `gateway:write` and `gateway:read` groups cover the two. The built-in `member` role holds both groups; `guest` holds neither. See [USERS.md](../sdk/USERS.md).
 
 A person's call is charged to a team and project, named in an `X-AHP-Scope` header or a `?scope=` query (`backend` or `backend:billing`), and to their primary otherwise. Neither the header nor the query goes to the provider.
 
@@ -91,12 +91,12 @@ A call adds meta to what its key holds as LiteLLM takes a call's `spend_logs_met
 A key can carry its own scope, so a client that is handed nothing but a base URL and a key is charged where the key says. That is what pi needs:
 
 ```bash
-ahpd token mint --user ana --grant proxy:call --grant proxy:models --scope backend:billing --label pi
+ahpd token mint --user ana --grant gateway:call --grant gateway:models --scope backend:billing --label pi
 ```
 
 A call made with such a key is charged to its scope when it names none, and refused with 403 when it names another. The scope is checked at every call, so a membership taken away stops the key without a revoke. See [Users](USERS.md#tokens-of-their-own).
 
-A session's own token is answered as that session, when the host hands sessions a token for the proxy.
+A session's own token is answered as that session, when the host hands sessions a token for the model gateway.
 
 ## Adding a provider
 
@@ -129,7 +129,7 @@ A host connector may name a daemon variable instead of a value for the vault, wh
 { "id": "openrouter-main", "adapter": "openrouter", "owner": "host", "config": { "key": { "fromEnv": "OPENROUTER_API_KEY" } } }
 ```
 
-Only a host connector may name one: a team's or a person's connector is refused. The variable is read when the connector opens, so one that is not set leaves it closed. A connector that is put or removed takes effect on the next call, because the proxy reads the open connectors each time. `x-ahpd-adapters` lists the four adapters with the form and the icon of each.
+Only a host connector may name one: a team's or a person's connector is refused. The variable is read when the connector opens, so one that is not set leaves it closed. A connector that is put or removed takes effect on the next call, because the model gateway reads the open connectors each time. `x-ahpd-adapters` lists the four adapters with the form and the icon of each.
 
 ### Whose connector serves a call
 
@@ -141,9 +141,9 @@ A model entry names a provider, which is an adapter's name or one connector's id
 
 Two connectors of one tier are tried in id order, and each one after the first is a fallback. A team connector serves a call only when the call's scope is that team, and a person's connector serves only that person. To choose one endpoint among several, name the connector's id in the entry. The usage record says which connector's key paid.
 
-### Moving from `modelProxy.providers`
+### Moving from `modelGateway.providers`
 
-A file that still writes `modelProxy.providers` stops the daemon at start, with a message that names this page. Make one connector for each entry, then remove the key from the file.
+A file that still writes `modelGateway.providers` stops the daemon at start, with a message that names this page. Make one connector for each entry, then remove the key from the file.
 
 | Entry | Connector |
 | --- | --- |
@@ -156,7 +156,7 @@ An entry that named a provider now names the connector's id, or the adapter's na
 
 ## How a name is routed
 
-The body's `model` is a name from the `modelProxy.models` table, or a name a provider lists.
+The body's `model` is a name from the `modelGateway.models` table, or a name a provider lists.
 
 A name in the table goes to the first entry of that name, in the file's order, whose provider:
 
@@ -177,7 +177,7 @@ The answer comes back with the provider's status, headers and body as they came,
 
 ## Account headers
 
-The provider's key is the host's account, so nothing that picks or describes that account crosses the proxy:
+The provider's key is the host's account, so nothing that picks or describes that account crosses the model gateway:
 
 | Header | Not sent | Not returned |
 | --- | --- | --- |
@@ -202,7 +202,7 @@ Every refusal is the dialect's own error body, so the tool shows the message: An
 | --- | --- | --- |
 | 400 | `invalid_request_error` | The body is not JSON or has no `model`; two different credentials |
 | 401 | `authentication_error` | No credential, or one this host does not know; its `WWW-Authenticate` is `Bearer realm="ahpd"`, with `error="invalid_token"` beside it when a credential came |
-| 403 | `permission_error` | No `proxy:call`; a scope you are not in; a policy refuses every entry; a policy limit or the key's own limit has no room; a foreign `Host` or `Origin` |
+| 403 | `permission_error` | No `gateway:call`; a scope you are not in; a policy refuses every entry; a policy limit or the key's own limit has no room; a foreign `Host` or `Origin` |
 | 404 | `not_found_error` | `model <name> is not served here`, or it is served only in the other dialect, and the message names the path to call |
 | 405 | `invalid_request_error` | A method other than `POST` (or `GET` on `/v1/models`) |
 | 413 | `request_too_large` | A body over 128 MiB, the request size Anthropic documents for its Messages API |
@@ -218,7 +218,7 @@ burst has no room: 60 / 60 calls this minute
 
 A minute limit is read from the daemon's own totals, kept in memory beside the usage store.
 A call is counted when it is allowed, so a burst of calls cannot pass one.
-A request is one call: it counts once, on the keys of the candidate it is sent to, so a model a proxy serves from two connectors is not two calls and a fallback to the next candidate is the same call.
+A request is one call: it counts once, on the keys of the candidate it is sent to, so a model the model gateway serves from two connectors is not two calls and a fallback to the next candidate is the same call.
 A restart starts every minute count at zero, which is the most a minute limit can lose.
 
 ## The models list
@@ -240,13 +240,13 @@ It answers in Anthropic's list shape when `anthropic-version` is sent, and OpenA
 }
 ```
 
-A ready connector's list is read the first time the proxy sees the connector, and again each hour. A read that fails keeps the list the connector had.
+A ready connector's list is read the first time the model gateway sees the connector, and again each hour. A read that fails keeps the list the connector had.
 
 A client reads one connector's list with `x-ahpd/connectors/models`, as [PLUGINS.md](../plugins/PLUGINS.md) says. Each model carries `model`, the name a caller sends, and `callable`, whether that caller may call it now, as this list decides it. A connector whose list was never read is read first, so a client sees the models of a connector it just made.
 
 ## What is recorded
 
-Each answered call writes one usage record with `source: "proxy"`: the model name, the adapter that answered, the connector whose key paid, the tokens the answer reported, the owner (`user:<id>`, or `root:<host>` for the deployment token), the id of the key that made the call when there was one, what the key and the call said about themselves in `meta`, the team and project, and the pools those give. A record is written when the stream ends, is cut, or fails. `ahpd usage` shows them.
+Each answered call writes one usage record with `source: "gateway"`: the model name, the adapter that answered, the connector whose key paid, the tokens the answer reported, the owner (`user:<id>`, or `root:<host>` for the deployment token), the id of the key that made the call when there was one, what the key and the call said about themselves in `meta`, the team and project, and the pools those give. A record is written when the stream ends, is cut, or fails. `ahpd usage` shows them.
 
 A record carries two costs. `providerCost` is what the provider reported, when it reported one: OpenRouter sends `usage.cost` with `cost_details`, which give the amount and what was sent and what came back. `cost` is what the pools are charged. A `price` on the entry, or a fetched `pricing` for a model the table does not hold, is the price of the call (`from: "price"`). Cache tokens are charged at the input price. A speech call is charged by `characters` and a transcription by `minutes`. Without a price, the cost is the provider's own figure (`from: "harness"`), so a call nobody priced is charged what it cost. A price that names one side and not the other gives no cost at all when the unnamed side has tokens, because an absent price is not a price of zero; a side priced at 0 is free.
 
@@ -254,10 +254,10 @@ A record carries two costs. `providerCost` is what the provider reported, when i
 
 ## Session calls
 
-A session whose harness calls the proxy is recorded twice: once by the session meter (`source: "agent"`) and once here (`source: "proxy"`), linked by session, chat and turn. A session's call is also policy-checked here as its owner. To turn the proxy's half off:
+A session whose harness calls the model gateway is recorded twice: once by the session meter (`source: "agent"`) and once here (`source: "gateway"`), linked by session, chat and turn. A session's call is also policy-checked here as its owner. To turn the model gateway's half off:
 
 ```json
-{ "modelProxy": { "sessionCalls": "skip" } }
+{ "modelGateway": { "sessionCalls": "skip" } }
 ```
 
 `record` is the default.
@@ -267,7 +267,7 @@ A session whose harness calls the proxy is recorded twice: once by the session m
 A provider's 401 or 403 is about the key this host called it with, not the caller's. By default the caller gets this host's 502, `model <name> on <provider> refused this host's key`, and the provider's status and words go to the log: a client that read a 401 would ask its person to sign in again, and the provider's body can name the host's account. `passthrough` sends the provider's status and error to the caller as they came, as VS Code's Claude proxy re-emits an upstream error:
 
 ```json
-{ "modelProxy": { "keyRefusal": "passthrough" } }
+{ "modelGateway": { "keyRefusal": "passthrough" } }
 ```
 
 `hostError` is the default.

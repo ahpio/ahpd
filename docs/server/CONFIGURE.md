@@ -124,7 +124,7 @@ An unknown key is logged and ignored:
 | `managedRules` | (file only) | `checked` | Who checks `managedSettingsPermissions` and `eligibleForAutoApproval` on a tool question. `checked` is this host's own check: each managed family on every question of its kind from every backend, a `deny` refusing the call and an `ask`, or a tool set `false`, putting the question with Allow Once and Skip alone, and `/mcp` refusing a host tool set `false`. `handed` is VS Code's: the host checks no managed rule and marks nothing, hands the rules to the backends for the runtimes that take them, and puts a question a backend marked managed with Allow Once and Skip, never a grant or Allow All; `/mcp`, which has no runtime to hand a rule to, runs a host tool set `false`. The start's check of the managed document and the Allow All lock hold under both |
 | `wire` | `--wire` | | Log every frame to this file, for debugging |
 
-Keys with no flag: `httpApi`, `modelApi`, `mcpTools`, `modelProxy`, `usage`, `policies`, `service`, `mcpServers`, `commandParser`, `tunnelHosts`, `onPath`, `daemonRecord`. Flags with no key: `--no-plugins`, `--no-cwd`, `--plugin-option`, `--stdio`, `--config-file`.
+Keys with no flag: `httpApi`, `modelApi`, `mcpTools`, `modelGateway`, `usage`, `policies`, `service`, `mcpServers`, `commandParser`, `tunnelHosts`, `onPath`, `daemonRecord`. Flags with no key: `--no-plugins`, `--no-cwd`, `--plugin-option`, `--stdio`, `--config-file`.
 
 `daemonRecord` is how `ahpd stop`, `ahpd status` and the other verbs read `daemon.json`, the record of the running daemon. `fields`, the default, reads each field as it is there, so a record an older daemon wrote still names its daemon in the middle of an upgrade. `schemaVersion` ignores a record of another `schemaVersion` and leaves it where it is, as VS Code's CLI ignores a registry entry of another version.
 
@@ -134,9 +134,9 @@ Keys with no flag: `httpApi`, `modelApi`, `mcpTools`, `modelProxy`, `usage`, `po
 
 `service.name` names the service a daemon runs under beside another on the same machine. See [More than one daemon](RUN.md#more-than-one-daemon).
 
-`modelProxy` holds the model names only: a provider is a connector now, added as [The model proxy](PROXY.md#adding-a-provider) says. A file that still writes `modelProxy.providers` stops the start.
+`modelGateway` holds the model names only: a provider is a connector now, added as [The model gateway](GATEWAY.md#adding-a-provider) says. A file that still writes `modelGateway.providers` stops the start.
 
-`httpApi` serves the HTTP API under `/api`, on the daemon's own listener or on a listener of its own with a `port`. `modelApi` serves the [model proxy](PROXY.md#turning-it-on) the same way, on the HTTP API's listener or on its own. `mcpTools` says what `/mcp` serves on that same listener: `none`, the default, answers 404, and `all` serves the host's tools that need no session to a person's MCP client. See [MCP](MCP.md).
+`httpApi` serves the HTTP API under `/api`, on the daemon's own listener or on a listener of its own with a `port`. `modelApi` serves the [model gateway](GATEWAY.md#turning-it-on) the same way, on the HTTP API's listener or on its own. `mcpTools` says what `/mcp` serves on that same listener: `none`, the default, answers 404, and `all` serves the host's tools that need no session to a person's MCP client. See [MCP](MCP.md).
 
 `tunnelHosts` lets the HTTP API answer to the host name of each tunnel on the list. The plugin routes answer to those names either way, because a webhook usually arrives through a tunnel. Off, the API takes only the names the deployment configured. A tunnel's name is fresh on every start, so there is nothing to write but `true`.
 

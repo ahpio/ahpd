@@ -85,10 +85,10 @@ describe('the layers', () => {
   });
 
   it('names both files when one holds a key by its old name and the other by its new one', () => {
-    write(user, { proxy: {} });
-    write(environment, { modelProxy: {} });
+    write(user, { http: true });
+    write(environment, { httpApi: true });
     process.env['AHPD_CONFIG'] = environment;
-    expect(() => loadConfig()).toThrow(`${user} holds proxy and ${environment} holds modelProxy, and they name the same setting: remove proxy, the old name of modelProxy.`);
+    expect(() => loadConfig()).toThrow(`${user} holds http and ${environment} holds httpApi, and they name the same setting: remove http, the old name of httpApi.`);
   });
 
   it('refuses a $AHPD_CONFIG that names no file', () => {

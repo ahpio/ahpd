@@ -252,7 +252,7 @@ export const declareToken = (registry: Registry<object>, served?: ServedFacts): 
         // A team key opens the proxy alone, so root, or a caller with
         // `user:write` that may call the proxy itself, is the only one that
         // reaches this.
-        bounded(context, ['user:write', 'proxy:call']);
+        bounded(context, ['user:write', 'gateway:call']);
       }
       else {
         if (target === undefined) needsUser('mint');

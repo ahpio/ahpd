@@ -74,7 +74,7 @@ HTTP/1.1 403 Forbidden
 { "message": "ada may not config:read here" }
 ```
 
-`GET /api/cli-manifest` lists every command, with no token. The [model proxy](PROXY.md) is served at `/v1` while `modelApi` is on.
+`GET /api/cli-manifest` lists every command, with no token. The [model gateway](GATEWAY.md) is served at `/v1` while `modelApi` is on.
 
 ### Who may run what
 

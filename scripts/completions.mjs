@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * Calls through the model proxy, the way a tool would, and says what came back.
+ * Calls through the model gateway, the way a tool would, and says what came
+ * back.
  *
- * Lists the models, then calls one in each dialect the proxy reads: OpenAI's
- * chat completions and Anthropic's messages, whole and streamed. Then the
- * refusals a client meets: no token, a model nobody serves, a wrong method.
- * See docs/server/PROXY.md for what each answer should be.
+ * Lists the models, then calls one in each dialect the model gateway reads:
+ * OpenAI's chat completions and Anthropic's messages, whole and streamed. Then
+ * the refusals a client meets: no token, a model nobody serves, a wrong method.
+ * See docs/server/GATEWAY.md for what each answer should be.
  *
  *   AHPD_TOKEN=<token> node scripts/completions.mjs
  *   node scripts/completions.mjs --base http://127.0.0.1:9187 --model local/default --token <token>
@@ -21,7 +22,8 @@
  *   --only <part>      models, chat, messages or refusals; repeatable
  *   --fake-upstream    answer as the provider on 127.0.0.1:1234, where the
  *                      `local` provider points, so a call succeeds without a
- *                      model server; it also checks what the proxy forwarded
+ *                      model server; it also checks what the model gateway
+ *                      forwarded
  *   --fake-port <n>    the fake provider's port, default 1234
  *
  * Exit status is 0 when every check got the answer it expects.
@@ -92,7 +94,7 @@ const events = (text) => text.split('\n')
  * Listens where a provider's endpoint points (the `local` one is
  * http://127.0.0.1:1234/v1) and answers OpenAI's chat completions, whole and
  * streamed. It keeps what each call carried, so the checks can say whether the
- * proxy renamed the model and kept the caller's token to itself.
+ * gateway renamed the model and kept the caller's token to itself.
  */
 const fakePort = argv.includes('--fake-upstream') ? Number(arg('fake-port', 1234)) : undefined;
 const seen = [];
@@ -148,13 +150,13 @@ let model = arg('model');
       `GET /v1/models (Anthropic shape) -> ${anthropic.status}`, (listed?.data ?? []).map((one) => one.id).join(', ') || short(anthropic.text));
   }
   if (model !== undefined && names.length > 0 && !names.includes(model)) {
-    console.log(`\nThe proxy does not list ${model}. It lists: ${names.join(', ')}`);
+    console.log(`\nThe model gateway does not list ${model}. It lists: ${names.join(', ')}`);
     leave(1);
   }
   model ??= names[0];
 }
 if (model === undefined) {
-  console.log('The proxy lists no model to call. Pass --model.');
+  console.log('The model gateway lists no model to call. Pass --model.');
   leave(1);
 }
 console.log(`\nmodel ${model}\n`);
@@ -195,7 +197,7 @@ if (runs('chat')) {
     const last = seen.at(-1);
     report(last !== undefined, `the provider was called ${seen.length} time${seen.length === 1 ? '' : 's'}`, last ? `at ${last.path}` : 'never');
     if (last) {
-      report(last.body.model !== model, 'the proxy sent the provider its own model id', `${model} -> ${last.body.model}`);
+      report(last.body.model !== model, 'the model gateway sent the provider its own model id', `${model} -> ${last.body.model}`);
       const carried = Object.entries(last.headers).filter(([, value]) => String(value).includes(token)).map(([key]) => key);
       report(carried.length === 0, 'the caller\'s token did not reach the provider', carried.length === 0 ? '' : `found in ${carried.join(', ')}`);
       report(last.headers['x-ahp-scope'] === undefined, 'X-AHP-Scope did not reach the provider');
@@ -230,7 +232,7 @@ if (runs('refusals')) {
   await expect('a body that is not JSON', '/v1/chat/completions',
     { method: 'POST', headers: headers('openai'), body: 'not json' }, 400, 'invalid_request_error');
   await expect('GET on a POST path', '/v1/chat/completions', { headers: headers('openai') }, 405, 'invalid_request_error');
-  await expect('a path the proxy does not serve', '/v1/embeddings',
+  await expect('a path the model gateway does not serve', '/v1/embeddings',
     { method: 'POST', headers: headers('openai'), body }, 404);
 }
 

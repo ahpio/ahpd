@@ -8,7 +8,7 @@ How a client proves who it is. Two layers, and they are separate: the door decid
 | connection token | the deployment's secret, presented as `?tkn=` on the WebSocket URL or as `Authorization: Bearer` |
 | deployment token | the connection token that is the host itself |
 | a person's token | a per-person secret `ahpd user token` mints; it opens the door and names its person, unless the issuer is required |
-| a team's key | a per-team secret `ahpd token mint --team` mints; it opens the proxy and no other door, and names no person |
+| a team's key | a per-team secret `ahpd token mint --team` mints; it opens the model gateway and no other door, and names no person |
 | `authenticate` | the protocol command that says who is on the other end |
 | resource | the https identifier this host advertises for its own sign-in, which `authenticate` names |
 | issuer | an authorization server whose tokens this host also accepts |
@@ -27,7 +27,7 @@ How a client proves who it is. Two layers, and they are separate: the door decid
 
 The deployment's token is root only when a directory is configured: with no `users` key there is nobody to be, so the token admits the socket and neither credential names anybody.
 
-A team's key is not a door. It opens the proxy alone, and the websocket, `/api` and the daemon's own port refuse it, because each of them asks for a person. See [server/USERS.md](../server/USERS.md#tokens-of-their-own).
+A team's key is not a door. It opens the model gateway alone, and the websocket, `/api` and the daemon's own port refuse it, because each of them asks for a person. See [server/USERS.md](../server/USERS.md#tokens-of-their-own).
 
 ## The door
 

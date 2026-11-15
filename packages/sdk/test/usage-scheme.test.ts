@@ -41,7 +41,7 @@ afterEach(() => {
 const modelUse = (at: string, pools: string[], rest: Partial<ModelCall & ModelUse> = {}): ModelUse => ({
   at,
   kind: 'model',
-  source: 'proxy',
+  source: 'gateway',
   owner: 'user:ana',
   model: { name: 'anthropic/opus-5' },
   pools,

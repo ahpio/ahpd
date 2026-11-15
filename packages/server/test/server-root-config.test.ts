@@ -68,7 +68,7 @@ describe('the daemon keys root config carries', () => {
   it('are the twenty-three of them, and none of the others', () => {
     const { schema } = port();
     const properties = (schema() as { properties: Record<string, unknown> }).properties;
-    expect(Object.keys(properties)).toEqual(['paths', 'port', 'host', 'httpApi', 'modelApi', 'routes', 'modelProxy', 'updateCheck', 'advancedTools', 'sessionTools', 'sessionToolsProviders', 'closedChats', 'unofferedModel', 'workspacelessFolder', 'rootOwner', 'turnSenders', 'steerReadBack', 'backendBackgroundWork', 'agentOrchestrationLimitsScope', 'archiveDirtyWorktree', 'pullRequestLookup', 'wire', 'mcpServers']);
+    expect(Object.keys(properties)).toEqual(['paths', 'port', 'host', 'httpApi', 'modelApi', 'routes', 'modelGateway', 'updateCheck', 'advancedTools', 'sessionTools', 'sessionToolsProviders', 'closedChats', 'unofferedModel', 'workspacelessFolder', 'rootOwner', 'turnSenders', 'steerReadBack', 'backendBackgroundWork', 'agentOrchestrationLimitsScope', 'archiveDirtyWorktree', 'pullRequestLookup', 'wire', 'mcpServers']);
     for (const key of ['stdio', 'configFile', 'connectionToken', 'connectionTokenFile', 'requireIssuer', 'issuer', 'resource', 'users', 'automations', 'sessions']) {
       expect(Object.keys(properties)).not.toContain(key);
     }
@@ -174,41 +174,27 @@ describe('the httpApi key', () => {
     expect(held()).toEqual({ port: 9187, host: '127.0.0.1', paths: ['/from-file'] });
   });
 
-  it('answers an old name under the new one, and a write removes the old name', async () => {
-    put({ http: true });
+  it('answers no modelProxy, the name before the rename', async () => {
+    put({ modelProxy: { sessionCalls: 'skip' } });
     const root = daemonRootConfig(optionsFrom({ configFile: config }));
-    expect(await root.values()).toEqual({ httpApi: {} });
-    await root.write({ httpApi: { port: 8081 } });
-    expect(held()).toEqual({ httpApi: { port: 8081 } });
-  });
-
-  it('takes the old name back with the key when the client sends a null', async () => {
-    put({ http: true });
-    const root = daemonRootConfig(optionsFrom({ configFile: config }));
-    await root.write({ httpApi: null });
-    expect(held()).toEqual({});
+    expect(await root.values()).not.toHaveProperty('modelGateway');
+    expect(await root.values()).not.toHaveProperty('modelProxy');
   });
 });
 
-describe('the modelProxy key', () => {
-  it('answers the model proxy the file holds, under its new name', async () => {
-    put({ modelProxy: { sessionCalls: 'skip' } });
-    const root = daemonRootConfig(optionsFrom({ configFile: config }));
-    expect(await root.values()).toEqual({ modelProxy: { sessionCalls: 'skip' } });
-  });
-
+describe('a key that was renamed', () => {
   it('answers an old name under the new one, and a write removes the old name', async () => {
-    put({ proxy: { sessionCalls: 'skip' } });
+    put({ http: { port: 9300 } });
     const root = daemonRootConfig(optionsFrom({ configFile: config }));
-    expect(await root.values()).toEqual({ modelProxy: { sessionCalls: 'skip' } });
-    expect(await root.write({ modelProxy: { sessionCalls: 'record' } })).toEqual({ restartNeeded: true });
-    expect(held()).toEqual({ modelProxy: { sessionCalls: 'record' } });
+    expect(await root.values()).toEqual({ httpApi: { port: 9300 } });
+    expect(await root.write({ httpApi: { port: 9301 } })).toEqual({ restartNeeded: true });
+    expect(held()).toEqual({ httpApi: { port: 9301 } });
   });
 
   it('takes the old name back with the key when the client sends a null', async () => {
-    put({ proxy: { sessionCalls: 'skip' } });
+    put({ http: { port: 9300 } });
     const root = daemonRootConfig(optionsFrom({ configFile: config }));
-    await root.write({ modelProxy: null });
+    await root.write({ httpApi: null });
     expect(held()).toEqual({});
   });
 });

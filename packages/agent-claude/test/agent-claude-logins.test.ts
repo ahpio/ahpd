@@ -9,7 +9,7 @@ import type { Adapter, AgentView, Bag, Connector, ConnectorOwner, Engine, Messag
 import { startedNow } from '../../sdk/test/support/started.js';
 
 /*
- * One Claude agent on several logins, as the model proxy routes a name over
+ * One Claude agent on several logins, as the model gateway routes a name over
  * its entries.
  *
  * A record's `logins` names connectors of `claude-login`, each one account's
@@ -412,7 +412,7 @@ describe("a turn's login", () => {
 });
 
 /*
- * A failed login hands the turn on, as the model proxy hands a call to its
+ * A failed login hands the turn on, as the model gateway hands a call to its
  * next entry.
  *
  * The frames below are the ones a real CLI on SDK 0.3.301 sent once it gave up
@@ -990,7 +990,7 @@ describe('the plugin', () => {
   const connectorOf = (id: string, token: string): Connector => ({ id, adapter: 'claude-login', owner: 'host', config: { token } });
 
   /*
-   * A failed call noted and logged, and no check run, as the model proxy
+   * A failed call noted and logged, and no check run, as the model gateway
    * keeps a failed attempt; the connection offers every version the protocol
    * package speaks, as ahpd's own nested client does.
    */

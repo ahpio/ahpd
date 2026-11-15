@@ -233,7 +233,7 @@ describe('a caller is a person, root or a session, and may call', () => {
     const fake = await okProvider();
     const usage = memoryUsage();
     const served = await proxy({ ...table(fake.endpoint), usage: () => usage });
-    const key = await who.users.mintToken!(undefined, { team: 'backend', grants: ['proxy:call'], label: 'ci' });
+    const key = await who.users.mintToken!(undefined, { team: 'backend', grants: ['gateway:call'], label: 'ci' });
     expect((await send(served.port, CHAT, { headers: { 'x-api-key': key.secret }, body: CALL })).status).toBe(200);
     await pause(20);
     expect(usage.entries).toHaveLength(1);
@@ -245,7 +245,7 @@ describe('a caller is a person, root or a session, and may call', () => {
     // A grant the key does not hold is refused as a person's is.
     const listed = await send(served.port, '/v1/models', { headers: { 'x-api-key': key.secret } });
     expect(listed.status).toBe(403);
-    expect(listed.json).toMatchObject({ error: { message: 'team:backend may not proxy:models here' } });
+    expect(listed.json).toMatchObject({ error: { message: 'team:backend may not gateway:models here' } });
   });
 
   it('lists for a team key what the team\'s policies allow, and no name a user: row denies', async () => {
@@ -256,23 +256,23 @@ describe('a caller is a person, root or a session, and may call', () => {
     await policies.put({ id: 'no-person', scope: 'user:team:backend', kind: 'model', effect: 'deny', match: { model: ['*'] } });
     const fake = await okProvider();
     const served = await proxy({ ...table(fake.endpoint), policies, policiesCheck: true });
-    const key = await who.users.mintToken!(undefined, { team: 'backend', grants: ['proxy:call', 'proxy:models'] });
+    const key = await who.users.mintToken!(undefined, { team: 'backend', grants: ['gateway:call', 'gateway:models'] });
     const listed = await send(served.port, '/v1/models', { headers: { authorization: `Bearer ${key.secret}` } });
     expect(listed.status).toBe(200);
     expect((listed.json as { data: { id: string }[] }).data.map((one) => one.id)).toEqual(['fake/model']);
   });
 
-  it('refuses a person without proxy:call with 403 naming the grant', async () => {
+  it('refuses a person without gateway:call with 403 naming the grant', async () => {
     const fake = await okProvider();
     const served = await proxy({ ...table(fake.endpoint) });
     const fay = await send(served.port, CHAT, { headers: { authorization: `Bearer ${who.fay}` }, body: CALL });
     expect(fay.status).toBe(403);
     expect(isOpenAiError(fay.json)).toBe(true);
-    expect(fay.json).toMatchObject({ error: { type: 'permission_error', message: 'fay may not proxy:call here' } });
+    expect(fay.json).toMatchObject({ error: { type: 'permission_error', message: 'fay may not gateway:call here' } });
     const gus = await send(served.port, MESSAGES, { headers: { 'x-api-key': who.gus }, body: CALL });
     expect(gus.status).toBe(403);
     expect(isAnthropicError(gus.json)).toBe(true);
-    expect(gus.json).toMatchObject({ error: { message: 'gus may not proxy:call here' } });
+    expect(gus.json).toMatchObject({ error: { message: 'gus may not gateway:call here' } });
     expect(fake.received).toEqual([]);
     // The built-in member holds the call through the write group, and admin
     // through `*:*`.
@@ -280,14 +280,23 @@ describe('a caller is a person, root or a session, and may call', () => {
     expect((await send(served.port, CHAT, { headers: { 'x-api-key': who.dee }, body: CALL })).status).toBe(200);
   });
 
-  it('calls for a role holding only proxy:call, and refuses a list to it', async () => {
+  it('refuses a role holding only proxy:call, the grant before the rename', async () => {
     const fake = await okProvider();
     const served = await proxy({ ...table(fake.endpoint) });
-    const caller = await personOf('cal', ['proxy:call']);
+    const caller = await personOf('old', ['proxy:call' as Grant]);
+    const called = await send(served.port, CHAT, { headers: { authorization: `Bearer ${caller}` }, body: CALL });
+    expect(called.status).toBe(403);
+    expect(called.json).toMatchObject({ error: { message: 'old may not gateway:call here' } });
+  });
+
+  it('calls for a role holding only gateway:call, and refuses a list to it', async () => {
+    const fake = await okProvider();
+    const served = await proxy({ ...table(fake.endpoint) });
+    const caller = await personOf('cal', ['gateway:call']);
     expect((await send(served.port, CHAT, { headers: { authorization: `Bearer ${caller}` }, body: CALL })).status).toBe(200);
     const listed = await send(served.port, '/v1/models', { headers: { 'x-api-key': caller } });
     expect(listed.status).toBe(403);
-    expect(listed.json).toMatchObject({ error: { message: 'cal may not proxy:models here' } });
+    expect(listed.json).toMatchObject({ error: { message: 'cal may not gateway:models here' } });
   });
 
   it('refuses a person in no team on a host that names teams, as a session is refused', async () => {
@@ -369,7 +378,7 @@ describe('a caller is a person, root or a session, and may call', () => {
     const usage = memoryUsage();
     const served = await proxy({ ...table(fake.endpoint), usage: () => usage });
     // ana's primary is `backend:billing`; the key is minted for `backend:ahpd`.
-    const one = await who.users.mintToken!('ana', { grants: ['proxy:call'], scope: 'backend:ahpd' });
+    const one = await who.users.mintToken!('ana', { grants: ['gateway:call'], scope: 'backend:ahpd' });
     const key = { 'x-api-key': one.secret };
 
     expect((await send(served.port, CHAT, { headers: key, body: CALL })).status).toBe(200);
@@ -489,7 +498,7 @@ describe('GET /v1/models lists the names a caller may use', () => {
     expect((root.json as { data: { id: string }[] }).data.map((one) => one.id)).toContain('openai/gpt-5.5');
   });
 
-  it('needs proxy:models, and refuses no credential with 401 in OpenAI\'s body', async () => {
+  it('needs gateway:models, and refuses no credential with 401 in OpenAI\'s body', async () => {
     const served = await proxy({ ...SOFTOV });
     const none = await send(served.port, '/v1/models');
     expect(none.status).toBe(401);
@@ -497,21 +506,21 @@ describe('GET /v1/models lists the names a caller may use', () => {
     const fay = await send(served.port, '/v1/models', { headers: { 'x-api-key': who.fay, 'anthropic-version': '2023-06-01' } });
     expect(fay.status).toBe(403);
     expect(isAnthropicError(fay.json)).toBe(true);
-    expect(fay.json).toMatchObject({ error: { message: 'fay may not proxy:models here' } });
+    expect(fay.json).toMatchObject({ error: { message: 'fay may not gateway:models here' } });
     const post = await send(served.port, '/v1/models', { headers: asRoot, body: {} });
     expect(post.status).toBe(405);
     expect(post.headers['allow']).toBe('GET');
   });
 
-  it('lists for a role holding only proxy:models, and refuses a call to it', async () => {
+  it('lists for a role holding only gateway:models, and refuses a call to it', async () => {
     const served = await proxy({ ...SOFTOV });
-    const lister = await personOf('lis', ['proxy:models']);
+    const lister = await personOf('lis', ['gateway:models']);
     const listed = await send(served.port, '/v1/models', { headers: { 'x-api-key': lister } });
     expect(listed.status).toBe(200);
     expect((listed.json as { data: { id: string }[] }).data.length).toBeGreaterThan(0);
     const called = await send(served.port, CHAT, { headers: { 'x-api-key': lister }, body: CALL });
     expect(called.status).toBe(403);
-    expect(called.json).toMatchObject({ error: { message: 'lis may not proxy:call here' } });
+    expect(called.json).toMatchObject({ error: { message: 'lis may not gateway:call here' } });
   });
 });
 
@@ -910,7 +919,7 @@ describe('the daemon serves the model API while modelApi is on, beside or apart 
       httpApi: true,
       modelApi: true,
       plugins: [BACKEND],
-      modelProxy: { models: { 'fake/model': [{ provider: 'fake', id: 'fake-model' }] } },
+      modelGateway: { models: { 'fake/model': [{ provider: 'fake', id: 'fake-model' }] } },
     }, { FAKE_PROVIDER_KEY: MARKER });
     const got = await send(one.port, CHAT, { headers: asRoot, body: CALL });
     expect(got.status).toBe(200);
@@ -937,7 +946,7 @@ describe('the daemon serves the model API while modelApi is on, beside or apart 
       httpApi: true,
       modelApi: true,
       plugins: [BACKEND, ROUTE],
-      modelProxy: { models: { 'fake/model': [{ provider: 'fake', id: 'fake-model' }] } },
+      modelGateway: { models: { 'fake/model': [{ provider: 'fake', id: 'fake-model' }] } },
     });
     expect((await send(one.port, '/chat/completions', { headers: asRoot, body: CALL })).status).toBe(200);
     const listed = await send(one.port, '/models', { headers: asRoot });
@@ -952,7 +961,7 @@ describe('the daemon serves the model API while modelApi is on, beside or apart 
   it('moves /v1 with /api to the API\'s own port', async () => {
     const fake = await okProvider();
     writeConnector(fake.endpoint);
-    const one = await daemon({ httpApi: { port: 0 }, modelApi: true, plugins: [BACKEND], modelProxy: table(fake.endpoint).proxy });
+    const one = await daemon({ httpApi: { port: 0 }, modelApi: true, plugins: [BACKEND], modelGateway: table(fake.endpoint).proxy });
     expect(one.apiPort).toBeGreaterThan(0);
     expect((await send(one.apiPort, CHAT, { headers: asRoot, body: CALL })).status).toBe(200);
     expect((await send(one.apiPort, '/models', { headers: asRoot })).status).toBe(200);
@@ -964,7 +973,7 @@ describe('the daemon serves the model API while modelApi is on, beside or apart 
   it('gives 404 at the model paths while modelApi is off, and still answers /api', async () => {
     const fake = await okProvider();
     writeConnector(fake.endpoint);
-    const one = await daemon({ httpApi: true, plugins: [BACKEND], modelProxy: table(fake.endpoint).proxy });
+    const one = await daemon({ httpApi: true, plugins: [BACKEND], modelGateway: table(fake.endpoint).proxy });
     for (const path of [CHAT, '/chat/completions', MESSAGES]) {
       const got = await send(one.port, path, { headers: asRoot, body: CALL });
       expect(got.status).toBe(404);
@@ -980,7 +989,7 @@ describe('the daemon serves the model API while modelApi is on, beside or apart 
   it('serves the model API on the daemon\'s port while httpApi is off, and 404 at /api', async () => {
     const fake = await okProvider();
     writeConnector(fake.endpoint);
-    const one = await daemon({ modelApi: true, plugins: [BACKEND], modelProxy: table(fake.endpoint).proxy });
+    const one = await daemon({ modelApi: true, plugins: [BACKEND], modelGateway: table(fake.endpoint).proxy });
     expect((await send(one.port, CHAT, { headers: asRoot, body: CALL })).status).toBe(200);
     expect((await send(one.port, '/v1/models', { headers: asRoot })).status).toBe(200);
     expect((await send(one.port, '/api/config', { headers: asRoot })).status).toBe(404);
@@ -990,7 +999,7 @@ describe('the daemon serves the model API while modelApi is on, beside or apart 
   it('gives the model API a listener of its own for modelApi.port, with the same token', async () => {
     const fake = await okProvider();
     writeConnector(fake.endpoint);
-    const one = await daemon({ httpApi: true, modelApi: { port: 0 }, plugins: [BACKEND], modelProxy: table(fake.endpoint).proxy });
+    const one = await daemon({ httpApi: true, modelApi: { port: 0 }, plugins: [BACKEND], modelGateway: table(fake.endpoint).proxy });
     expect(one.modelPort).toBeGreaterThan(0);
     expect(one.modelPort).not.toBe(one.port);
     expect((await send(one.modelPort, CHAT, { headers: asRoot, body: CALL })).status).toBe(200);
@@ -1004,7 +1013,7 @@ describe('the daemon serves the model API while modelApi is on, beside or apart 
   it('shares the API\'s own listener for a modelApi.port equal to httpApi.port', async () => {
     const fake = await okProvider();
     writeConnector(fake.endpoint);
-    const one = await daemon({ httpApi: { port: 0 }, modelApi: { port: 0 }, plugins: [BACKEND], modelProxy: table(fake.endpoint).proxy });
+    const one = await daemon({ httpApi: { port: 0 }, modelApi: { port: 0 }, plugins: [BACKEND], modelGateway: table(fake.endpoint).proxy });
     expect(one.modelPort).toBe(-1);
     expect((await send(one.apiPort, CHAT, { headers: asRoot, body: CALL })).status).toBe(200);
     expect((await send(one.apiPort, '/api/config', { headers: asRoot })).status).toBe(200);

@@ -38,7 +38,7 @@ import type { Grant, Principal, Users } from '../src/types/users.js';
 
 /** The draft's store, as far as the cases below reach it. */
 const ROWS: Policy[] = [
-  { id: 'M1', scope: 'all', kind: 'model', effect: 'allow', match: { model: ['deepseek/*', 'qwen/*'], proxy: ['local-vllm'] } },
+  { id: 'M1', scope: 'all', kind: 'model', effect: 'allow', match: { model: ['deepseek/*', 'qwen/*'], gateway: ['local-vllm'] } },
   { id: 'A1', scope: 'all', kind: 'agent', effect: 'allow', match: { agent: ['*'], model: ['deepseek/*', 'qwen/*'] } },
   { id: 'A2', scope: 'team:backend', kind: 'agent', effect: 'allow', match: { agent: ['claude', 'pi'], model: ['anthropic/*'] } },
   { id: 'A5', scope: 'user:bob', kind: 'agent', effect: 'deny', match: { agent: ['*'], model: ['anthropic/fable-5'] } },

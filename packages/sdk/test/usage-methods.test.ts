@@ -34,7 +34,7 @@ afterEach(() => {
 const modelUse = (at: string, pools: string[], amount: number, owner: Owner = 'user:ana'): ModelUse => ({
   at,
   kind: 'model',
-  source: 'proxy',
+  source: 'gateway',
   owner,
   model: { name: 'anthropic/opus-5' },
   pools,

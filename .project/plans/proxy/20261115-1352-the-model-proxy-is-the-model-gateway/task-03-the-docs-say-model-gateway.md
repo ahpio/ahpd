@@ -1,6 +1,6 @@
 ---
 title: The docs say model gateway
-status: todo
+status: implemented
 depends:
   - task-01-the-daemon-reads-model-gateway.md
   - task-02-grants-policy-and-usage-say-gateway.md
