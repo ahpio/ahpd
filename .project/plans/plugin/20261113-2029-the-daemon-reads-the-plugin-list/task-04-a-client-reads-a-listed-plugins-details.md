@@ -1,6 +1,6 @@
 ---
 title: A client reads a listed plugin's details
-status: todo
+status: implemented
 depends: [task-02-a-client-reads-the-list.md]
 layer: "server"
 refs:
@@ -33,6 +33,7 @@ The daemon fetches each file from the version's `files` once, keeps it on disk, 
 7. Answer each icon of `files.icons` through `fetchIcons`, with the icon rules of an installed plugin.
 8. Answer the parts it could fetch, with one `problem` for each part it could not.
 9. Add `x-ahpd/plugins/details` with `plugin:list`, and document it in `PLUGINS.md`.
+10. With `installed: true`, answer the `readme`, `changelog` and `license` of the package the configured plugin loads. Use no list for this. Refuse an id that is not configured.
 
 ## Validation
 
@@ -43,3 +44,8 @@ The daemon fetches each file from the version's `files` once, keeps it on disk, 
 - `pnpm exec tsc -p tsconfig.json --noEmit` in `packages/server` passes.
 
 ## Resume
+
+Built on 2026-11-15; awaits review.
+`listedDetails` in `pluginlist.ts` answers each part it could not fetch as `{ part, problem }` in `problems`.
+`x-ahpd/plugins/details {id: "agent-acp"}` on the test daemon answered 0.14.0 with its README, license, contracts, links and icons, and kept the files under `plugin-files/<list>/agent-acp/0.14.0/`.
+After Softov's test, `details` with `{ id, installed: true }` reads the files of the installed package through `packageDirOf` and `installedFiles`. It works for a plugin from a list, a folder or a file. ahpw's installed page shows this README, not the list's.

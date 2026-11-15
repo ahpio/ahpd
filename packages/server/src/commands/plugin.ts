@@ -18,6 +18,10 @@ import {
 } from '../install.js';
 import type { Moved } from '../install.js';
 import { describePlugin, sourceOf, optionsSchemaOf, pluginIdOf, pluginIdsOf, pluginLine } from '../plugins.js';
+import { availablePlugins, configuredMarketplaces } from '../pluginlist.js';
+import type { Available, InstalledRow } from '../pluginlist.js';
+import type { Where } from '../plugins.js';
+import type { PluginSpec } from '@ahpd/sdk';
 import { version } from '../version.js';
 import { keyed, maskOption, schemasFor, withoutSpecSecrets, withoutUserinfoIn } from './config.js';
 import { namedOptionsFrom, pluginWriteFields, flagFields, serverFields, servedPluginWriteFields, splitPluginOption, stop, typedValue } from './options.js';
@@ -128,6 +132,42 @@ export const declarePlugin = (registry: Registry<object>, served?: ServedFacts):
         });
       }
       return output(rows, `${rows.map(pluginLine).join('\n')}\n`);
+    },
+  });
+
+  /*
+   * `plugin available`: every plugin the configured lists hold, with the
+   * marketplace each came from and the installed plugin with its id. Read from
+   * the lists the daemon fetched and keeps on disk, never from the network,
+   * except for an icon not yet kept, which the daemon fetches once.
+   */
+  const available = registry.action({
+    id: 'plugin.available',
+    summary: 'The plugins the configured plugin lists hold, and which are installed',
+    description: 'Every entry of every list in pluginMarketplaces, in their order, two with the same id included, each with its marketplace, its versions, its icons as data: URIs, and the installed plugin with its id.',
+    surfaces: { cli: { pattern: ['plugin', 'available'] }, http: { method: 'GET', path: '/plugin/available' } },
+    effect: 'read',
+    resource: { kind: 'plugin' },
+    scopes: ['plugin:list'],
+    ...(served === undefined ? { input: flagFields } : {}),
+    run: async (context) => {
+      const options = served === undefined
+        ? await namedOptionsFrom(context.input as Readonly<Record<string, unknown>>)
+        : served.options;
+      const where = { configDir: configDir(), cwd: process.cwd() };
+      // A daemon named its plugins as it loaded them; the terminal names them here.
+      if (served === undefined) await pluginIdsOf(options.plugins, where);
+      const answer = await availableAnswer(options, where);
+      const lines = answer.plugins.map((entry) => [
+        entry.id,
+        entry.versions[0]?.version ?? '-',
+        entry.marketplace,
+        ...(entry.installed === undefined ? [] : [`installed ${entry.installed.version ?? '?'}`]),
+        ...(entry.description === undefined ? [] : [entry.description]),
+      ].join('  '));
+      const missing = answer.marketplaces.filter((one) => one.state === 'missing').map((one) => `${one.url}: not fetched yet`);
+      const text = answer.marketplaces.length === 0 ? 'pluginMarketplaces: none\n' : `${[...lines, ...missing].join('\n')}\n`;
+      return output(answer, text);
     },
   });
 
@@ -261,6 +301,8 @@ export const declarePlugin = (registry: Registry<object>, served?: ServedFacts):
           await installPlugins(names, {
             configDir: configDir(), configFile: configFile ?? configPath(),
             version: version(), enable: !context.flag('noEnable'), run: runProgram, fetch, say,
+            marketplaces: served === undefined ? configuredMarketplaces(namedFile) : served.options.pluginMarketplaces,
+            marketplace: context.optional<string>('marketplace'),
           });
         }
         else {
@@ -313,6 +355,7 @@ export const declarePlugin = (registry: Registry<object>, served?: ServedFacts):
       try {
         moved = await updatePlugins(asked.length === 1 && asked[0] === 'all' ? 'all' : asked, {
           configDir: configDir(), version: version(), run: runProgram, fetch, say,
+          marketplaces: served === undefined ? configuredMarketplaces() : served.options.pluginMarketplaces,
         });
       }
       catch (error) {
@@ -614,5 +657,28 @@ export const declarePlugin = (registry: Registry<object>, served?: ServedFacts):
     }),
   });
 
-  return [list, write('install'), write('remove'), update, apply, reload, config, set, unset, toggle('enable'), toggle('disable')];
+  return [list, available, write('install'), write('remove'), update, apply, reload, config, set, unset, toggle('enable'), toggle('disable')];
 };
+
+/**
+ * What `plugin available` answers for the plugins `options` names, matched by
+ * the id each is listed under, as a plugin's row matches it. `pluginIdOf` is
+ * given `where`, so a plugin no import has named yet is matched by its
+ * manifest's id and not by its spec.
+ */
+export async function availableAnswer(
+  options: { plugins: readonly PluginSpec[]; pluginMarketplaces: readonly string[]; iconLimitBytes: number; iconTimeoutMs: number },
+  where: Where,
+): Promise<Available> {
+  const installed: InstalledRow[] = [];
+  for (const spec of options.plugins) {
+    const row = await describePlugin(spec, where);
+    installed.push({ id: pluginIdOf(spec, where), name: sourceOf(spec), ...(row.version === undefined ? {} : { version: row.version }) });
+  }
+  return availablePlugins({
+    urls: options.pluginMarketplaces,
+    dir: where.configDir,
+    installed,
+    icons: { problem: () => undefined, bounds: { limitBytes: options.iconLimitBytes, timeoutMs: options.iconTimeoutMs } },
+  });
+}

@@ -1,6 +1,6 @@
 ---
 title: A client reads the list
-status: todo
+status: implemented
 depends: [task-01-the-daemon-keeps-the-list-on-disk.md]
 layer: "server"
 refs:
@@ -52,3 +52,11 @@ Each icon is a `data:` URI, so a client never contacts the host the list names.
 - `pnpm exec tsc -p tsconfig.json --noEmit` in `packages/server` passes.
 
 ## Resume
+
+Built on 2026-11-15; awaits review.
+`plugin.available` and `x-ahpd/plugins/available` share `availableAnswer` in `commands/plugin.ts`.
+An entry is installed when an installed package is its source, and else when an installed plugin has its id. A `github:` package is matched through `installed.json`. The list names `agent-acp` where ahpd names the installed plugin `ahpd-agent-acp`, so a match by id alone marked nothing.
+The deprecation alert's `ref` is `deprecated:<version>`, as an alert's `ref` is `<kind>:<id>`.
+`installed` also names the installed row's `id`, since the list's id need not be the row's.
+ahpw's plan plugins/20261115-0746 reads that id to give an installed plugin its list tabs.
+The channel suite passes 54 cases. Against the live list in a scratch home, `ahpd plugin available` printed 12 plugins, with agent-acp marked `installed 0.14.0`, and every icon as a `data:` URI.

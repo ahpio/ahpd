@@ -394,6 +394,21 @@ function rootsOf(configDir: string): string[] {
  * bare name is resolved from the configuration directory. Nothing here is
  * awaited, nothing here touches the network, and nothing here runs plugin code.
  */
+/**
+ * The folder of the package a spec loads from: the package a name resolves
+ * to, or the nearest `package.json` above a path. Nothing when the spec does
+ * not resolve, or a path has no package around it.
+ */
+export const packageDirOf = (spec: PluginSpec, where: Where): string | undefined => {
+  try {
+    const resolved = resolvePlugin(spec, where);
+    return resolved.packageDir ?? (resolved.path === undefined ? undefined : nearestManifest(resolved.path));
+  }
+  catch {
+    return undefined;
+  }
+};
+
 export function resolvePlugin(spec: PluginSpec, options: Where): Resolved {
   const name = sourceOf(spec);
   const { configDir, cwd } = options;

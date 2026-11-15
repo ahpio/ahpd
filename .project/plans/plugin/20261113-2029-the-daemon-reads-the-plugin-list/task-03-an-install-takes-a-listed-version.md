@@ -1,6 +1,6 @@
 ---
 title: An install takes a listed version
-status: todo
+status: implemented
 depends: [task-01-the-daemon-keeps-the-list-on-disk.md]
 layer: "server"
 refs:
@@ -63,3 +63,9 @@ A listed `github:` plugin installs at its version's commit and does not update i
 - `pnpm exec tsc -p tsconfig.json --noEmit` in `packages/server` passes.
 
 ## Resume
+
+Built on 2026-11-15; awaits review.
+`ahpd plugin install` takes `--marketplace <url>`, and `x-ahpd/plugins/install` takes `marketplace`.
+`newestFitting` in `compat.ts` is the one rule for npm's versions and a list's. `listedMismatch` reads `node_modules/.package-lock.json` after npm runs.
+`checkPlugins` and `movePlugins` in `selfupdate.ts` read the lists through `fittingVersion`, and `ahpd update` passes them.
+`plugin-install.test.ts` passes 78 cases. A real `ahpd plugin install @ahpd/agent-acp` in a scratch home took 0.14.0 from the live list, matched npm's integrity, and wrote `installed.json`.

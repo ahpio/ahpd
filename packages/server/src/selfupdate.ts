@@ -28,6 +28,7 @@ import { FOREGROUND, busy, notRestartable } from './commands/restart.js';
 import type { Running } from './daemon.js';
 import { fittingVersion, launch, npmFailed, pluginRoot, registryPluginsIn, updatePlugins } from './install.js';
 import type { Launch, Moved, Ran, Runner } from './install.js';
+import { installedListing } from './pluginlist.js';
 import { askRegistry, newer, parse, registryPath } from './update.js';
 import type { Fetch } from './update.js';
 import type { HelperManifest } from './updater.js';
@@ -445,6 +446,8 @@ export interface PluginOptions {
   fetch: Fetch;
   /** Whether a plugin no version admits is said and left rather than refusing the update. */
   force?: boolean | undefined;
+  /** The plugin lists a listed plugin takes its versions from, in order; absent reads none, and npm decides. */
+  marketplaces?: readonly string[] | undefined;
   /** One line of the update's own output. */
   say(line: string): void;
 }
@@ -475,7 +478,9 @@ export async function checkPlugins(options: PluginOptions): Promise<PluginCheck>
   const names = registryPluginsIn(pluginRoot(options.configDir));
   const checked = await Promise.all(names.map(async (name): Promise<{ name: string; why: string } | undefined> => {
     try {
-      await fittingVersion(name, options.version, { fetch: options.fetch });
+      // The list the plugin was installed from, as the move after the update reads it.
+      const listing = options.marketplaces === undefined ? undefined : installedListing(name, { urls: options.marketplaces, dir: options.configDir });
+      await fittingVersion(name, options.version, { fetch: options.fetch, listing });
       return undefined;
     }
     catch (error) {
@@ -506,5 +511,6 @@ export async function movePlugins(options: PluginOptions): Promise<Moved[]> {
     run: options.run,
     fetch: options.fetch,
     say: options.say,
+    marketplaces: options.marketplaces,
   });
 }

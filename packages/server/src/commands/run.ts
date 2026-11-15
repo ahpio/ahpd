@@ -105,6 +105,7 @@ import type { ScheduledStore } from '../scheduled.js';
 import { fileEnablement } from '../enablement.js';
 import { filesOf, lineFor, writerFor } from '../wire.js';
 import { MAX_AGE_MS, checkingUpdates, readUpdate, refreshUpdate, registry as npmRegistry, stale, updateLine } from '../update.js';
+import { refreshMarketplaces } from '../pluginlist.js';
 import { manifest, version } from '../version.js';
 import { conflict, namedOptionsFrom, secret, flagFields, stop } from './options.js';
 import {
@@ -955,6 +956,7 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
     restartNeeded: () => markRestart(),
     apply: (reload) => appliedAfterWrite(reload),
     onProblem: listProblem,
+    marketplaces: () => options.pluginMarketplaces,
   });
   /*
    * Where each plugin keeps its own records: a folder per collection beside the
@@ -2381,6 +2383,33 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
     const ask = (): void => { void refreshUpdate({ name: manifest().name, registry: npmRegistry() }); };
     if (stale(readUpdate())) ask();
     setInterval(ask, MAX_AGE_MS).unref();
+  }
+
+  /*
+   * Fetch the plugin lists, later and in the background.
+   *
+   * Each list older than `pluginCheckHours` is fetched now, then again each
+   * period, on a timer let go of so a stopping daemon does not wait for it.
+   * A new list refreshes the plugin rows, which carry the deprecation a list
+   * marks. Under `CI` nothing is fetched, as the npm check fetches nothing: a
+   * build machine, and every test daemon, has no person to show a list to.
+   */
+  if (process.env.CI === undefined && options.pluginMarketplaces.length > 0) {
+    const periodMs = options.pluginCheckHours * 60 * 60 * 1000;
+    const fetchLists = (): void => {
+      void refreshMarketplaces({
+        urls: options.pluginMarketplaces,
+        dir: configDir(),
+        version: version(),
+        maxAgeMs: periodMs,
+        log: (line) => stamp(line, 'debug'),
+      }).then((changed) => (changed ? pluginLists.refresh() : undefined)).catch((error: unknown) => {
+        stamp(`plugin lists: ${error instanceof Error ? error.message : String(error)}`, 'debug');
+      });
+    };
+    fetchLists();
+    // A timer longer than 2^31 - 1 ms fires at once, so a period past it waits that long.
+    setInterval(fetchLists, Math.min(periodMs, 2 ** 31 - 1)).unref();
   }
 
   /*

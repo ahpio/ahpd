@@ -235,7 +235,7 @@ describe('plugin', () => {
     for (const args of [['plugin'], ['plugin', 'toy', '--config-file', config]]) {
       const said = await cli(args);
       expect(said.code).toBe(2);
-      expect(said.stderr).toBe('ahpd: plugin takes list, update, apply, reload, config, install, remove, enable or disable.\n');
+      expect(said.stderr).toBe('ahpd: plugin takes list, available, update, apply, reload, config, install, remove, enable or disable.\n');
       expect(said.stdout).toBe('');
     }
   }, 20000);
