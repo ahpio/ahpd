@@ -1077,8 +1077,8 @@ export function createQuery(ctx: SessionContext): Query {
          * watching an answer change character halfway through deserves to
          * know why, in the CLI's own words for the boundary, the text its
          * transcript keeps for it, which VS Code's Claude draws as a notice.
-         * The frame carries no text of its own, and a turn read back shows
-         * none, since the SDK reads the boundary's entry with no message.
+         * The frame carries no text of its own. A turn read back draws the
+         * same notice, from the `content` of the boundary's entry.
          * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/claude/claudeReplayMapper.ts#L305-L314
          */
         if (type === 'system' && str(message.subtype) === 'compact_boundary') {

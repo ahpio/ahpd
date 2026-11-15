@@ -1,4 +1,7 @@
-import { expect, it, vi } from 'vitest';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterAll, beforeEach, expect, it, vi } from 'vitest';
 import type { Bag } from '@ahpd/sdk';
 
 /*
@@ -9,11 +12,57 @@ import type { Bag } from '@ahpd/sdk';
  * all of that is one turn; read back, it is one turn too.
  */
 
-const sdk = vi.hoisted(() => ({ messages: [] as Record<string, unknown>[], asked: [] as unknown[] }));
+type Entry = Record<string, unknown>;
+
+const sdk = vi.hoisted(() => ({
+  messages: [] as Record<string, unknown>[],
+  asked: [] as unknown[],
+  /** Whether a read through a `sessionStore` throws. */
+  storeFails: false,
+  /**
+   * The messages the SDK gives for transcript entries: from the last main-chain
+   * `compact_boundary` on, and each entry's own `message`, which a system entry
+   * has none of.
+   */
+  read: (entries: Record<string, unknown>[]): Record<string, unknown>[] => {
+    const start = entries.findLastIndex((one) => one.type === 'system' && one.subtype === 'compact_boundary' && one.isSidechain !== true);
+    return entries.slice(Math.max(start, 0))
+      .filter((one) => ['user', 'assistant', 'system'].includes(String(one.type)) && typeof one.uuid === 'string' && one.isSidechain !== true)
+      .map(({ type, uuid, timestamp, message, isCompactSummary }) => ({ type, uuid, timestamp, message, ...(isCompactSummary === true ? { isCompactSummary } : {}) }));
+  },
+}));
 
 vi.mock('@anthropic-ai/claude-agent-sdk', () => ({
-  getSessionMessages: async (_id: string, options?: unknown) => { sdk.asked.push(options); return sdk.messages; },
+  getSessionMessages: async (_id: string, options?: { sessionStore?: { load: (key: unknown) => Promise<Record<string, unknown>[] | null> } }) => {
+    sdk.asked.push(options);
+    if (options?.sessionStore === undefined) return sdk.messages;
+    if (sdk.storeFails) throw new Error('the store read failed');
+    return sdk.read(await options.sessionStore.load({ projectKey: 'project', sessionId: 'session' }) ?? []);
+  },
 }));
+
+/** A Claude config folder of this file's own, where `written` puts the session's transcript. */
+const CONFIG = mkdtempSync(join(tmpdir(), 'ahpd-transcript-'));
+const configBefore = process.env.CLAUDE_CONFIG_DIR;
+process.env.CLAUDE_CONFIG_DIR = CONFIG;
+afterAll(() => {
+  if (configBefore === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+  else process.env.CLAUDE_CONFIG_DIR = configBefore;
+  rmSync(CONFIG, { recursive: true, force: true });
+});
+
+beforeEach(() => {
+  sdk.asked = [];
+  sdk.storeFails = false;
+  rmSync(join(CONFIG, 'projects'), { recursive: true, force: true });
+});
+
+/** Writes `entries` as the transcript file of session `session`. */
+function written(entries: Entry[]): void {
+  const project = join(CONFIG, 'projects', '-work');
+  mkdirSync(project, { recursive: true });
+  writeFileSync(join(project, 'session.jsonl'), entries.map((one) => `${JSON.stringify(one)}\n`).join(''));
+}
 
 const { turnsOf } = await import('../src/transcript.js');
 
@@ -36,28 +85,129 @@ async function read(messages: Record<string, unknown>[]): Promise<Bag[]> {
   return await turnsOf('session') as unknown as Bag[];
 }
 
+/** A system entry as the CLI writes it, with its `subtype` and `content` at the top level and no `message`. */
+const system = (uuid: string, subtype: string, extra: Bag = {}): Entry => ({ type: 'system', subtype, uuid, timestamp: '2020-01-01T00:00:00.000Z', ...extra });
+
+/** A compaction as the CLI writes it: no `parentUuid`, and the entry before it as its `logicalParentUuid`. */
+const boundary = (uuid: string, before: string): Entry => system(uuid, 'compact_boundary', {
+  parentUuid: null, logicalParentUuid: before, content: 'Conversation compacted', compactMetadata: { trigger: 'auto', preTokens: 100 },
+});
+
+/** What the CLI writes after a compaction: the summary the model goes on from, which is no prompt. */
+const summary = (uuid: string): Entry => frame('user', uuid, { role: 'user', content: 'This session is being continued from a previous conversation.' }, { isCompactSummary: true });
+
+const notices = (turn: Bag | undefined): Bag[] => ((turn?.responseParts ?? []) as Bag[]).filter((one) => one.kind === 'systemNotification');
+const texts = (turns: Bag[]): unknown[] => turns.flatMap((turn) => (turn.responseParts as Bag[]).filter((one) => one.kind === 'markdown').map((one) => one.content));
+
 /*
  * The transcript is read once, with its system entries, and a compaction
  * boundary or a notification is drawn on its turn as a notification part,
- * other system entries dropped, as VS Code's replay keeps them.
+ * other system entries dropped, as VS Code's replay keeps them. The SDK gives
+ * a system entry with no `message`, so its subtype and text come from the
+ * file.
  * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/claude/claudeReplayMapper.ts#L186-L208
  */
 it('draws a compaction boundary and a notification on their turn, read with the system entries', async () => {
-  const system = (uuid: string, message: Bag): Record<string, unknown> => ({ type: 'system', uuid, timestamp: '2020-01-01T00:00:00.000Z', message });
-  sdk.asked = [];
-  const turns = await read([
+  const entries = [
     prompt('u1', 'look around'),
     said('a1', 'm1', [{ type: 'text', text: 'Looking.' }]),
-    system('s1', { subtype: 'compact_boundary' }),
-    system('s2', { subtype: 'notification', text: 'Context was compacted.' }),
-    system('s3', { subtype: 'api_retry' }),
-  ]);
+    system('s1', 'compact_boundary'),
+    system('s2', 'notification', { content: 'Context was compacted.' }),
+    system('s3', 'api_retry'),
+    system('s4', 'api_error', { content: 'Overloaded' }),
+  ];
+  written(entries);
+  const turns = await read(entries.map(({ subtype: _subtype, content: _content, ...kept }) => kept));
 
   expect(sdk.asked).toEqual([{ includeSystemMessages: true }]);
-  expect((turns[0]?.responseParts as Bag[]).filter((one) => one.kind === 'systemNotification')).toEqual([
+  expect(notices(turns[0])).toEqual([
     { kind: 'systemNotification', content: '[compact_boundary]' },
     { kind: 'systemNotification', content: 'Context was compacted.' },
   ]);
+});
+
+/*
+ * The turns before a compaction.
+ *
+ * The SDK starts its read at the last boundary, and each segment before it is
+ * read through a `sessionStore` holding the file's entries before its
+ * boundary, so the session reads back every turn it ran.
+ */
+const compacted = (): Entry[] => [
+  prompt('u1', 'look around'),
+  said('a1', 'm1', [{ type: 'text', text: 'Looking.' }]),
+  boundary('b1', 'a1'),
+  summary('c1'),
+  said('a2', 'm2', [{ type: 'text', text: 'Still looking.' }]),
+  prompt('u2', 'next'),
+  said('a3', 'm3', [{ type: 'text', text: 'Next.' }]),
+];
+
+it('reads a session with no compaction with one SDK call', async () => {
+  const entries = [prompt('u1', 'first'), said('a1', 'm1', [{ type: 'text', text: 'One.' }])];
+  written(entries);
+  const turns = await read(sdk.read(entries));
+  expect(sdk.asked).toEqual([{ includeSystemMessages: true }]);
+  expect(turns.map((turn) => (turn.message as Bag).text)).toEqual(['first']);
+});
+
+it('reads the turns before a compaction first, with the compaction drawn as a live turn draws it', async () => {
+  written(compacted());
+  const turns = await read(sdk.read(compacted()));
+  expect(sdk.asked).toHaveLength(2);
+  expect(turns.map((turn) => (turn.message as Bag).text)).toEqual(['look around', 'next']);
+  expect(texts(turns)).toEqual(['Looking.', 'Still looking.', 'Next.']);
+  expect(notices(turns[0])).toEqual([{ kind: 'systemNotification', content: 'Conversation compacted' }]);
+});
+
+it('reads every turn of a session that compacted twice, in order', async () => {
+  const entries = [
+    ...compacted(),
+    boundary('b2', 'a3'),
+    summary('c2'),
+    prompt('u3', 'last'),
+    said('a4', 'm4', [{ type: 'text', text: 'Last.' }]),
+  ];
+  written(entries);
+  const turns = await read(sdk.read(entries));
+  expect(sdk.asked).toHaveLength(3);
+  expect(turns.map((turn) => (turn.message as Bag).text)).toEqual(['look around', 'next', 'last']);
+  expect(notices(turns[0])).toHaveLength(1);
+  expect(notices(turns[1])).toHaveLength(1);
+});
+
+it('draws a message two reads give once, at its first place', async () => {
+  written(compacted());
+  // A boundary's preserved segment: the SDK gives the reply before the boundary after it too.
+  const [first, ...after] = sdk.read(compacted());
+  const turns = await read([first!, said('a1', 'm1', [{ type: 'text', text: 'Looking.' }]), ...after]);
+  expect(turns.map((turn) => (turn.message as Bag).text)).toEqual(['look around', 'next']);
+  expect(texts(turns)).toEqual(['Looking.', 'Still looking.', 'Next.']);
+});
+
+it('reads the turns from the last compaction when a read before it fails', async () => {
+  written(compacted());
+  sdk.storeFails = true;
+  const turns = await read(sdk.read(compacted()));
+  expect(texts(turns)).toEqual(['Still looking.', 'Next.']);
+  expect(turns.at(-1)?.message).toMatchObject({ text: 'next' });
+});
+
+it('keeps the answers of a question asked before a compaction', async () => {
+  const questions = [{ question: 'Which one?', header: 'Pick', options: [{ label: 'A', description: 'The first' }, { label: 'B', description: 'The second' }], multiSelect: false }];
+  const entries = [
+    prompt('u1', 'ask me'),
+    said('a1', 'm1', [{ type: 'tool_use', id: 'toolu_ask', name: 'AskUserQuestion', input: { questions } }]),
+    { ...results('r1', 'toolu_ask', 'User has answered.'), toolUseResult: { questions, answers: { 'Which one?': 'A' } } },
+    said('a2', 'm2', [{ type: 'text', text: 'A it is.' }]),
+    boundary('b1', 'a2'),
+    summary('c1'),
+    prompt('u2', 'next'),
+  ];
+  written(entries);
+  const turns = await read(sdk.read(entries));
+  expect(turns.map((turn) => (turn.message as Bag).text)).toEqual(['ask me', 'next']);
+  expect((turns[0]?.responseParts as Bag[]).filter((one) => one.kind === 'inputRequest')).toHaveLength(1);
 });
 
 it('reads a prompt and every round that answered it as one turn', async () => {

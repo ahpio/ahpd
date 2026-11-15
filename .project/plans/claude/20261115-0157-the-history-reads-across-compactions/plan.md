@@ -81,8 +81,8 @@ session history after a restart -> claude.ts transcript -> turnsOf -> getSession
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - the turns before a compaction read back](task-01-the-turns-before-a-compaction-read-back.md) | todo | - |
-| [02 - a read-back turn draws its notices](task-02-a-read-back-turn-draws-its-notices.md) | todo | 01 |
+| [01 - the turns before a compaction read back](task-01-the-turns-before-a-compaction-read-back.md) | implemented | - |
+| [02 - a read-back turn draws its notices](task-02-a-read-back-turn-draws-its-notices.md) | implemented | 01 |
 
 ## Risks and tradeoffs
 
@@ -94,7 +94,8 @@ session history after a restart -> claude.ts transcript -> turnsOf -> getSession
 ## Resume state
 
 - **Done so far:** plan written, 2026-11-15. Task 02 added the same day, after the build of task 01 found that the SDK gives a system entry with no subtype.
-- **Next action:** [task-01-the-turns-before-a-compaction-read-back.md](task-01-the-turns-before-a-compaction-read-back.md).
+- **Done so far, build:** tasks 01 and 02 implemented, 2026-11-15, not committed. The agent-claude suite passes, 679 of 679. Session `8cf0f145` reads back 13 turns with the branch, and 3 with main.
+- **Next action:** the PR, on Softov's word, then check and check-windows. The test daemon check runs after the merge. The plan closes as `built` on Softov's word.
 - **Open questions:** none.
 - **Watch out for:** a turn before a compaction now has a fork anchor after a restart. A live session already has one for such a turn, so a fork or a rewind there behaves as it does live.
 

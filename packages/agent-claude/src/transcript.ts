@@ -1,4 +1,5 @@
 import { getSessionMessages, getSubagentMessages, listSubagents } from '@anthropic-ai/claude-agent-sdk';
+import type { SessionStore, SessionStoreEntry } from '@anthropic-ai/claude-agent-sdk';
 import type { ResponsePart, ToolCallCompletedState, ToolResultContent, Turn } from '@microsoft/agent-host-protocol';
 import type { Bag, OnWire, RestoredSubagent, WireTurn } from '@ahpd/sdk';
 import { bag, steerPart, str, toolCallDurationMs, withToolCallDuration } from '@ahpd/sdk';
@@ -45,6 +46,11 @@ function resultText(content: unknown): string | undefined {
  * compaction boundaries and notifications are drawn on their turns.
  * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/claude/claudeSavedChatReader.ts#L67-L68
  *
+ * That read starts at the session's last compaction, and the turns before it
+ * are read as `withEarlierSegments` says, so a session reads back every turn
+ * it ran. The SDK gives a system entry with no `message`, and its subtype and
+ * text come from the file, as `withSystemText` says.
+ *
  * `forkAnchorUuids`, when given, is filled with each turn's fork anchor, by
  * turn id: the entry a fork of that turn copies through and a rewind to it
  * keeps.
@@ -62,9 +68,20 @@ export async function turnsOf(sessionId: string, forkAnchorUuids?: Map<string, s
     }
   }
 
+  let found: string | null | undefined;
+  /** The session's transcript file, looked up once and only when a read needs it. */
+  const file = (): string | undefined => {
+    if (found === undefined) {
+      const files = sessionFiles(sessionId);
+      found = files === undefined ? null : join(files.project, `${files.session}.jsonl`);
+    }
+    return found ?? undefined;
+  };
+  messages = await withSystemText(await withEarlierSegments(sessionId, messages, file), file);
+
   const asked = askedIn(messages);
-  const files = asked.size === 0 ? undefined : sessionFiles(sessionId);
-  const answered = files === undefined ? new Map<string, unknown>() : await answeredIn(join(files.project, `${files.session}.jsonl`), asked);
+  const path = asked.size === 0 ? undefined : file();
+  const answered = path === undefined ? new Map<string, unknown>() : await answeredIn(path, asked);
   return buildTurns(answered.size === 0 ? messages : messages.map((message) => {
     const result = answered.get(str(bag(message).uuid) ?? '');
     return result === undefined ? message : { ...bag(message), toolUseResult: result };
@@ -127,6 +144,166 @@ async function answeredIn(file: string, wanted: Set<string>): Promise<Map<string
     input.destroy();
   }
   return answered;
+}
+
+/** A transcript line that is a compaction of the session's own chain, not of a worker's. */
+function isBoundary(entry: Bag): boolean {
+  return str(entry.type) === 'system' && str(entry.subtype) === 'compact_boundary' && entry.isSidechain !== true;
+}
+
+/**
+ * The messages of the turns before each compaction, put before `messages`.
+ *
+ * `getSessionMessages` starts at the last `compact_boundary`, whatever its
+ * links say: the CLI writes a boundary with no `parentUuid`, and only its
+ * `logicalParentUuid` names the entry before it. The entries before it are
+ * still in the file. The SDK reads each segment itself, through a
+ * `sessionStore` whose `load` gives the file's entries before that segment's
+ * boundary, so a turn before a compaction is built from the same messages as
+ * a turn after it. The store is `@alpha` in the SDK, and the case with the
+ * real SDK in `agent-claude-compacted-history.test.ts` pins how it reads.
+ *
+ * Only a read whose first message is a system entry can start at a boundary,
+ * and the file says whether it does, as the SDK's message names no subtype.
+ * A message two reads give, as a boundary's preserved segment is, keeps its
+ * first place, where the live session had it. A read that fails leaves the
+ * history from the last boundary, which is what the SDK gave.
+ */
+async function withEarlierSegments(sessionId: string, messages: unknown[], file: () => string | undefined): Promise<unknown[]> {
+  const first = bag(messages[0]);
+  const last = str(first.uuid);
+  if (str(first.type) !== 'system' || last === undefined) return messages;
+  const path = file();
+  if (path === undefined) return messages;
+  const { entries, boundaries } = await entriesBefore(path, last);
+  if (boundaries.length === 0) return messages;
+
+  const joined: unknown[] = [];
+  const seen = new Set<string>();
+  const keep = (read: unknown[]): void => {
+    for (const message of read) {
+      const uuid = str(bag(message).uuid);
+      if (uuid !== undefined && seen.has(uuid)) continue;
+      if (uuid !== undefined) seen.add(uuid);
+      joined.push(message);
+    }
+  };
+  try {
+    for (const boundary of boundaries) {
+      const before = entries.slice(0, boundary);
+      const store: SessionStore = { append: async () => {}, load: async () => before };
+      keep(await getSessionMessages(sessionId, { includeSystemMessages: true, sessionStore: store }));
+    }
+  }
+  catch {
+    return messages;
+  }
+  keep(messages);
+  return joined;
+}
+
+/**
+ * A transcript's entries before the boundary `last` names, and where each
+ * boundary before it is among them.
+ *
+ * Line by line, as `answeredIn` reads, because the file of a long session can
+ * be longer than one string can be; and only as far as `last`, because the
+ * entries after it are what the SDK already read. A line that does not parse
+ * is skipped. A file that does not read, or holds no boundary under `last`,
+ * gives no boundaries, so the history stays as the SDK read it.
+ */
+async function entriesBefore(file: string, last: string): Promise<{ entries: SessionStoreEntry[]; boundaries: number[] }> {
+  const entries: SessionStoreEntry[] = [];
+  const boundaries: number[] = [];
+  if (!existsSync(file)) return { entries, boundaries };
+  const input = createReadStream(file);
+  const lines = createInterface({ input, crlfDelay: Infinity });
+  try {
+    for await (const line of lines) {
+      if (line.trim() === '') continue;
+      let entry: Bag;
+      try { entry = bag(JSON.parse(line)); }
+      catch { continue; }
+      if (typeof entry.type !== 'string') continue;
+      if (isBoundary(entry)) boundaries.push(entries.length);
+      if (str(entry.uuid) === last) {
+        return isBoundary(entry) ? { entries, boundaries } : { entries: [], boundaries: [] };
+      }
+      entries.push(entry as SessionStoreEntry);
+    }
+  }
+  catch {
+    // A file that cannot be read leaves the history the SDK read.
+  }
+  finally {
+    input.destroy();
+  }
+  return { entries: [], boundaries: [] };
+}
+
+/**
+ * Each system message with the subtype and text its transcript entry holds.
+ *
+ * The SDK copies an entry's `message` onto the message it gives, and a
+ * system entry has none: the CLI writes its `subtype` and its `content` at
+ * the top level. `buildTurns` draws a system message by `message.subtype`, so
+ * the two are read from the file and put there, as `text`, which is what a
+ * live turn draws for the same entry. A message the SDK gives with a
+ * `message`, or with no entry in the file, stays as it is.
+ */
+async function withSystemText(messages: unknown[], file: () => string | undefined): Promise<unknown[]> {
+  const wanted = new Set<string>();
+  for (const message of messages) {
+    const frame = bag(message);
+    const uuid = str(frame.uuid);
+    if (str(frame.type) === 'system' && frame.message == null && uuid !== undefined) wanted.add(uuid);
+  }
+  if (wanted.size === 0) return messages;
+  const path = file();
+  if (path === undefined) return messages;
+  const texts = await systemIn(path, wanted);
+  if (texts.size === 0) return messages;
+  return messages.map((message) => {
+    const text = texts.get(str(bag(message).uuid) ?? '');
+    return text === undefined ? message : { ...bag(message), message: text };
+  });
+}
+
+/**
+ * The `subtype` and `content` of each system entry asked for, by uuid.
+ *
+ * Line by line, as `answeredIn` reads, as far as the last of the entries asked
+ * for; and a line is parsed only when it names `"system"`, because most lines
+ * are not system entries.
+ */
+async function systemIn(file: string, wanted: Set<string>): Promise<Map<string, Bag>> {
+  const texts = new Map<string, Bag>();
+  if (!existsSync(file)) return texts;
+  const input = createReadStream(file);
+  const lines = createInterface({ input, crlfDelay: Infinity });
+  const seen = new Set<string>();
+  try {
+    for await (const line of lines) {
+      if (!line.includes('"system"')) continue;
+      let entry: Bag;
+      try { entry = bag(JSON.parse(line)); }
+      catch { continue; }
+      const uuid = str(entry.uuid);
+      if (uuid === undefined || str(entry.type) !== 'system' || !wanted.has(uuid)) continue;
+      seen.add(uuid);
+      const subtype = str(entry.subtype);
+      const text = str(entry.content);
+      if (subtype !== undefined) texts.set(uuid, { subtype, ...(text === undefined ? {} : { text }) });
+      if (seen.size === wanted.size) break;
+    }
+  }
+  catch {
+    // A file that cannot be read leaves the system messages as the SDK gave them.
+  }
+  finally {
+    input.destroy();
+  }
+  return texts;
 }
 
 /**
