@@ -132,6 +132,8 @@ Each plan here has every task `implemented`, and closes as `built` on Softov's w
 
 ## Open findings with no brief yet
 
+- `@ahpd/agent-acp` 0.14.0 declares `@ahpd/sdk >=0.10 <1`, and does not import beside sdk 0.15.0-rc.3, which no longer exports `callTimes`. A daemon on rc.3 installs 0.14.0, since the version rule skips a prerelease. Seen on 2026-11-15.
+- ahpw's brief `a-person-finds-a-plugin-to-install.md` is in `/github/ahpw.worktrees/plugin-browse`, not committed, with its mockups in `.scratch/mockups/plugin-list/`. It waits for Softov's review.
 - The plugin list names first-party plugins without their scope, such as `agent-acp`. ahpd names them `ahpd-agent-acp`, since none exports a `name`. The plugins repository's check (`scripts/check.mjs`, `unscoped`) holds the list to the first rule. The build of plugin/20261113-2029 matches by source first.
 - Each read of the session list starts one server per ACP preset that has `session/list`, 8 on Softov's box. A fix would answer from the record and ask the servers only on a refresh.
 - A restored ACP session shows the host's added first-prompt text as the person's own words, in Codex and Gemini.
