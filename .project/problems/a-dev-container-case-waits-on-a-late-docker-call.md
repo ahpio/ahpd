@@ -18,6 +18,10 @@ In run 43707396066, for ahpio/ahpd#341, `windows (1/4)` failed the same case ano
 ## Cause
 
 Unknown. The case waited the whole `WAIT_MS` for its third Docker call.
+On 2026-11-15, in job 132930589390 on main, another case of the file failed because a scripted `docker ps` exited 1.
+Its `mkdir` of the lock got EPERM on Windows.
+The scripted Docker took only EEXIST as a held lock, and it now waits on both.
+A call that fails there records nothing, which fits both symptoms of this case, but their logs do not show the error.
 Three other cases of the same file asked for a machine before the first listing had answered. Plan container/20261113-2134 fixed those, and this case is not one of them.
 
 ## Impact
