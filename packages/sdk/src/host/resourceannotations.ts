@@ -40,7 +40,7 @@ export interface ResourceAnnotationsPorts {
   /** Whether the connection may change a comment kept in this session. */
   writesSession?(connection: Connection, session: string): boolean;
   /** Change a comment kept in this session's record, and say it where the session's comments are said. */
-  markSession?(session: string, action: AnnotationsAction, origin: Origin): void;
+  markSession?(session: string, action: AnnotationsAction, origin?: Origin): void;
 }
 
 export interface ResourceAnnotations {
@@ -111,6 +111,27 @@ const stamped = (entry: AnnotationEntry, writer: Writer, at: string): Annotation
   ...entry,
   _meta: { ...entry._meta, ahpd: { by: writer.by, name: writer.name, at } },
 });
+
+/**
+ * What a change does to a comment's range: the range moved, or a point where
+ * its words were, marked outdated with its thread kept. Nothing for a comment
+ * the change leaves where it was, a resolved one, or one with no range.
+ */
+const movedBy = (annotation: Annotation, change: TextChange, before: string, after: string): AnnotationsAction | undefined => {
+  const range = annotation.range;
+  if (range === undefined || annotation.resolved) return undefined;
+  const from = offsetOf(before, range.start.line, range.start.character);
+  const to = offsetOf(before, range.end.line, range.end.character);
+  const start = mapPosition(from, change, 1);
+  const end = Math.max(start, mapPosition(to, change, -1));
+  const gone = from < to && start === end;
+  const next: TextRange = { start: positionOf(after, start), end: positionOf(after, end) };
+  if (!gone && next.start.line === range.start.line && next.start.character === range.start.character
+    && next.end.line === range.end.line && next.end.character === range.end.character) return undefined;
+  if (!gone) return { type: 'annotations/updated', annotationId: annotation.id, range: next } as unknown as AnnotationsAction;
+  const ahpd = { ...(annotation._meta?.ahpd as Record<string, unknown> | undefined), outdated: true };
+  return { type: 'annotations/set', annotation: { ...annotation, range: next, _meta: { ...annotation._meta, ahpd } } } as unknown as AnnotationsAction;
+};
 
 export function createResourceAnnotations(ports: ResourceAnnotationsPorts): ResourceAnnotations {
   const held = new Map<string, AnnotationsState>();
@@ -220,25 +241,14 @@ export function createResourceAnnotations(ports: ResourceAnnotationsPorts): Reso
 
     moved(resource, change, before, after) {
       const state = held.get(resource) ?? (ports.store() === undefined ? undefined : stateOf(resource));
-      if (state === undefined || state.annotations.length === 0) return;
-      for (const annotation of state.annotations) {
-        const range = annotation.range;
-        if (range === undefined || annotation.resolved) continue;
-        const from = offsetOf(before, range.start.line, range.start.character);
-        const to = offsetOf(before, range.end.line, range.end.character);
-        const start = mapPosition(from, change, 1);
-        const end = Math.max(start, mapPosition(to, change, -1));
-        const gone = from < to && start === end;
-        const next: TextRange = { start: positionOf(after, start), end: positionOf(after, end) };
-        if (next.start.line === range.start.line && next.start.character === range.start.character
-          && next.end.line === range.end.line && next.end.character === range.end.character && !gone) continue;
-        if (!gone) {
-          apply(resource, { type: 'annotations/updated', annotationId: annotation.id, range: next } as unknown as AnnotationsAction);
-          continue;
-        }
-        // Its words are gone: a point where they were, marked outdated, and the thread kept.
-        const ahpd = { ...(annotation._meta?.ahpd as Record<string, unknown> | undefined), outdated: true };
-        apply(resource, { type: 'annotations/set', annotation: { ...annotation, range: next, _meta: { ...annotation._meta, ahpd } } } as unknown as AnnotationsAction);
+      for (const annotation of state?.annotations ?? []) {
+        const action = movedBy(annotation, change, before, after);
+        if (action !== undefined) apply(resource, action);
+      }
+      // A session's comments on the resource move too, kept in the session's record.
+      for (const { session, annotation } of ports.sessionCommentsOn?.(resource) ?? []) {
+        const action = movedBy(annotation, change, before, after);
+        if (action !== undefined) ports.markSession?.(session, action);
       }
     },
   };

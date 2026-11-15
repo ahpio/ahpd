@@ -1,6 +1,6 @@
 ---
 title: A session's comments move with the edits
-status: todo
+status: implemented
 depends: [task-02-ranges-move-with-the-edits.md, task-05-a-session-shows-the-file-comments.md]
 layer: "sdk"
 refs:
@@ -15,7 +15,7 @@ A session's comment on a file stays on its words while people edit the file live
 ## Files
 
 - `UPDATE: packages/sdk/src/host/resourceannotations.ts` - `moved` also moves each session's comments on the resource.
-- `UPDATE: packages/sdk/src/host.ts` - write each moved session comment through `markAnnotation`.
+- `UPDATE: packages/sdk/src/host.ts` - write each moved session comment through `markAnnotation`, by the `markSession` port.
 - `UPDATE: packages/sdk/test/resource-annotations.test.ts` - a session's comment moves with a live edit above it, and becomes an outdated point when its words go.
 
 ## Steps
@@ -32,4 +32,7 @@ A session's comment on a file stays on its words while people edit the file live
 
 ## Resume
 
-Not started.
+Built on 2026-11-15.
+- One function, `movedBy`, gives the action for a file's comment and for a session's.
+- A moved session comment goes out on the session's channel and on the file's channel, as any session comment does.
+- Not checked in VS Code yet.

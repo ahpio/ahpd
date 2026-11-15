@@ -98,7 +98,7 @@ addComment { resource } -> the same writer
 | [03 - The comment tools take a resource](task-03-the-tools-take-a-resource.md) | implemented | 01 |
 | [04 - The comments in the docs](task-04-the-comments-in-the-docs.md) | implemented | 03 |
 | [05 - A session and a file show each other's comments](task-05-a-session-shows-the-file-comments.md) | implemented | 01, 03 |
-| [06 - A session's comments move with the edits](task-06-session-comments-move-with-edits.md) | todo | 02, 05 |
+| [06 - A session's comments move with the edits](task-06-session-comments-move-with-edits.md) | implemented | 02, 05 |
 
 ## Risks and tradeoffs
 
@@ -108,8 +108,8 @@ addComment { resource } -> the same writer
 
 ## Resume state
 
-- **Done so far:** tasks 01 to 05 built on 2026-11-15, on branch `host/20261115-1038-comments-on-a-resource`, stacked on the shared resource branch.
-- **Next action:** Softov checks the comments both ways, in ahpw and in VS Code; then [task-06-session-comments-move-with-edits.md](task-06-session-comments-move-with-edits.md).
+- **Done so far:** tasks 01 to 06 built on 2026-11-15, on branch `host/20261115-1038-comments-on-a-resource`, stacked on the shared resource branch.
+- **Next action:** the PR, then Softov merges on green CI.
 - **Open questions:** none.
 - **Watch out for:** `ACTION_HOMES` refuses an `annotations/*` action on any channel that is not a session's; task 01 opens it for the resource channel. Plan `host/20261115-0829` is merged into main.
 

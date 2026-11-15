@@ -291,3 +291,38 @@ it('shows a session the comments outside any session on its artifacts, outside i
     rmSync(elsewhere, { recursive: true, force: true });
   }
 });
+
+/*
+ * A session's comment on a file moves with the file's live edits, as the
+ * file's own comments do, and is written back to its session's record.
+ */
+it('moves a session comment with a live edit, and makes it an outdated point when its words go', async () => {
+  const fileUri = pathToFileURL(file).href;
+  const sharedOf = `x-ahpd-shared:${fileUri}`;
+  const host = makeHost();
+  const window = peer();
+  const client = host.accept(window);
+  await client.handle({ method: 'initialize', params: { clientId: 'window', protocolVersions: ['0.9.0'], initialSubscriptions: ['ahp-root://'] } });
+  const session = 'ahp-session:/one';
+  await client.handle({ method: 'createSession', params: { channel: session, provider: 'echo', workingDirectories: [pathToFileURL(root).href] } });
+  const notes = `${session}/annotations`;
+  await client.handle({ method: 'subscribe', params: { channel: notes } });
+  // On line 1, "- one": characters 2 to 5 are "one".
+  void client.handle({ method: 'dispatchAction', params: { channel: notes, clientSeq: 1, action: { type: 'annotations/set', annotation: { id: 's1', origin: { session }, resource: fileUri, resolved: false, range: { start: { line: 1, character: 2 }, end: { line: 1, character: 5 } }, entries: [{ id: 's1-1', text: 'On one.' }] } } } });
+  await until(() => seen(window, notes).some((one) => one.action.type === 'annotations/set'), 'the session comment');
+
+  const ana = await join_(host, 'ana', [sharedOf]);
+  ana.send({ type: 'x-ahpd-shared/changed', version: 0, changes: [{ from: 0, to: 0, insert: '# Plan\n' }], ranges: [] }, sharedOf);
+  await until(() => seen(window, notes).some((one) => one.action.type === 'annotations/updated'), 'the move in the session');
+  const moved = await client.handle({ method: 'subscribe', params: { channel: notes } }) as { snapshot: { state: AnnotationsState } };
+  expect(moved.snapshot.state.annotations.find((one) => one.id === 's1')!.range).toEqual({ start: { line: 2, character: 2 }, end: { line: 2, character: 5 } });
+
+  // "one" is now at offsets 18 to 21 in "# Plan\n## Tasks\n- one\n- two\n".
+  ana.send({ type: 'x-ahpd-shared/changed', version: 1, changes: [{ from: 18, to: 21, insert: '' }], ranges: [] }, sharedOf);
+  await until(() => seen(window, notes).filter((one) => one.action.type === 'annotations/set').length === 2, 'the outdated mark in the session');
+  const gone = await client.handle({ method: 'subscribe', params: { channel: notes } }) as { snapshot: { state: AnnotationsState } };
+  const kept = gone.snapshot.state.annotations.find((one) => one.id === 's1')!;
+  expect(kept.range).toEqual({ start: { line: 2, character: 2 }, end: { line: 2, character: 2 } });
+  expect(kept._meta?.ahpd).toMatchObject({ outdated: true });
+  await host.close();
+});
