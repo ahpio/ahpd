@@ -1,6 +1,6 @@
 ---
 title: The instructions follow the bound tools
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:
@@ -37,3 +37,4 @@ The filters for both live in one place, so a later gate cannot apply to one and 
 
 ## Resume
 
+Done 2026-11-15. `handedTools` in `tooling.ts` is the one list; `offeredTools` and `instructions` both read it. `BoundTool` needed no `instruction`: `handedTools` returns the `HostTool` beside its definition. A bare session now gets no tool instructions, as it gets no tools. The test in `artifact-gate.test.ts` gives an artifact tool an instruction and checks it follows `artifactTools`.

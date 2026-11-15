@@ -1265,7 +1265,7 @@ export function createSpawn(ctx: HostContext): Spawn {
      * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/copilot/prompts/promptRegistry.ts#L220-L229
      * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/codex/codexAgent.ts#L2159-L2162
      */
-    const told = [...ctx.instructions(uri), ...(askedInstructions ?? []), ...(workspaceless ? [AGENT_HOST_WORKSPACELESS_INSTRUCTIONS] : [])];
+    const told = [...ctx.instructions(uri, chatUri, agent.provider), ...(askedInstructions ?? []), ...(workspaceless ? [AGENT_HOST_WORKSPACELESS_INSTRUCTIONS] : [])];
     /*
      * Whether the backend loads the person's own settings, read off the store
      * rather than off a request: a restart has no request, and what the session

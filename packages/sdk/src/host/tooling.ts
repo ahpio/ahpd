@@ -378,10 +378,11 @@ export interface Tooling {
   /**
    * What the model is told when a chat of this session begins.
    *
-   * The host's tools' own wording, in the order the tools are offered, and
-   * then the bodies of the session's client rules that always apply.
+   * The wording of the host's tools this chat is handed, in the order they
+   * are offered, and then the bodies of the session's client rules that
+   * always apply.
    */
-  instructions(uri: string): string[];
+  instructions(uri: string, chatUri: string, provider?: string): string[];
   /**
    * What one turn of a session is given, for the backend to read when it begins.
    *
@@ -2864,9 +2865,16 @@ export function createTooling(ctx: HostContext): Tooling {
    * rather than off the held session, because at a session's start there is no
    * held session to ask yet.
    */
-  const offeredTools = (uri: string, chatUri: string, provider?: string): BoundTool[] => [
-    ...clientTools(uri),
-    ...contributingTo(uri, provider, chatUri).flatMap((one): BoundTool[] => {
+  /**
+   * The host's own tools one chat is handed, each with the definition it is
+   * handed under, in the order they are offered.
+   *
+   * One list for what a chat holds and for what it is told about it: a gate
+   * that withholds a tool withholds its instruction with it, so the model is
+   * never told about a tool it cannot call.
+   */
+  const handedTools = (uri: string, chatUri: string, provider?: string): { one: HostTool; definition: ToolDefinition }[] =>
+    ctx.bareSessions.has(uri) ? [] : contributingTo(uri, provider, chatUri).flatMap((one) => {
       /*
        * A tool for the session's own chats alone, as VS Code's
        * `topLevelChatOnly`: a worker chat a call spawned is not a chat a
@@ -2874,10 +2882,16 @@ export function createTooling(ctx: HostContext): Tooling {
        */
       if (one.topLevelChatOnly === true && ctx.subagents.has(chatUri)) return [];
       const definition = shapedDefinition(one, uri, provider);
+      return definition === undefined ? [] : [{ one, definition }];
+    });
+
+  const offeredTools = (uri: string, chatUri: string, provider?: string): BoundTool[] => [
+    ...clientTools(uri),
+    ...handedTools(uri, chatUri, provider).map(({ one, definition }): BoundTool => {
       // Deferred as the session asks, where it asks, as VS Code's
       // `getDefinitionForSession` answers a definition's `deferLoading`.
       const deferLoading = one.forSession?.(toolSession(uri, provider))?.deferLoading ?? one.deferLoading;
-      return definition === undefined ? [] : [{
+      return {
         /*
          * A frozen copy: this one leaves the host with the backend, and a
          * backend that changed the wording would be changing what the host
@@ -2909,7 +2923,7 @@ export function createTooling(ctx: HostContext): Tooling {
         ...(one.confirm !== undefined ? { confirm: one.confirm } : {}),
         ...(deferLoading !== undefined ? { deferLoading } : {}),
         ...(one.overridesBuiltInTool !== undefined ? { overridesBuiltInTool: one.overridesBuiltInTool } : {}),
-      }];
+      };
     }),
   ];
   /**
@@ -2952,21 +2966,15 @@ export function createTooling(ctx: HostContext): Tooling {
    * The host's tools first, in the order the tools are offered, and the
    * session's client rules after them: what a tool wants said about itself is
    * this host's own wording, and a rule is a client's standing instruction
-   * that holds whatever the tools happen to be. An opt-in tool this session
-   * did not name is not among them: an instruction about a tool the model has
-   * not been offered is an instruction it cannot follow.
+   * that holds whatever the tools happen to be. Only the tools this chat is
+   * handed speak, read off `handedTools`, which `boundTools` reads too: an
+   * instruction about a tool the model has not been offered is an instruction
+   * it cannot follow, and two lists kept apart drift.
    */
-  const instructions = (uri: string): string[] => {
-    const named = namedBy(uri);
-    return [
-      ...ctx.contributing.flatMap((one) => {
-        if (one.optIn === true && !named.includes(one.definition.name)) return [];
-        if (one.isEnabledForSession?.(toolSession(uri)) === false) return [];
-        return one.instruction === undefined ? [] : [one.instruction];
-      }),
-      ...rulesTold(uri),
-    ];
-  };
+  const instructions = (uri: string, chatUri: string, provider?: string): string[] => [
+    ...handedTools(uri, chatUri, provider).flatMap(({ one }) => (one.instruction === undefined ? [] : [one.instruction])),
+    ...rulesTold(uri),
+  ];
 
   /**
    * What a turn of a session is told.

@@ -50,7 +50,7 @@ const rootConfig = (held: Record<string, unknown>): NonNullable<HostOptions['roo
  * One host with the SDK's own tool set as its contribution, one plugin that
  * asks for sessions, and the starts its sessions made.
  */
-function starting(root: Record<string, unknown> = {}) {
+function starting(root: Record<string, unknown> = {}, tools: HostTool[] = hostTools()) {
   const sessions = memorySessions();
   const base = echo({ path: DIR, pace: 0 });
   const seen: Start[] = [];
@@ -68,7 +68,7 @@ function starting(root: Record<string, unknown> = {}) {
     ...machine(),
     sessions,
     users: directory({ soft: ['session:*'] }),
-    tools: hostTools(),
+    tools,
     rootConfigStore: rootConfig(root),
   } as HostOptions, [contribution]);
   const host = createHost(options);
@@ -115,3 +115,21 @@ it('binds the artifact tools once the config asks for them, and still says nothi
   expect(told.filter((one) => one.includes(ARTIFACT_INSTRUCTION_MARK))).toEqual([]);
 });
 
+/*
+ * What a chat is told is read off the tools it is handed, so a gate that
+ * withholds a tool withholds its instruction too, with no second gate on the
+ * instructions to keep in step. An artifact tool given an instruction of its
+ * own is the probe: the root config key is the only gate it passes.
+ */
+it('tells a chat a tool\'s instruction only when the chat is handed the tool', async () => {
+  const PROBE = 'Probe: call add_artifact_or_reference for the report.';
+  const told = async (root: Record<string, unknown>): Promise<string[]> => {
+    const tools = hostTools().map((one) => (one.definition.name === 'add_artifact_or_reference' ? { ...one, instruction: PROBE } : one));
+    const { plugin, host, seen } = starting(root, tools);
+    await open(host);
+    await plugin.startSession({ owner: 'user:soft', prompt: 'Say hello' });
+    return seen[0]?.instructions ?? [];
+  };
+  expect(await told({})).not.toContain(PROBE);
+  expect(await told({ artifactTools: true })).toContain(PROBE);
+});
