@@ -4,7 +4,7 @@ title: "Handoff: where ahpd stands, and what is pending"
 
 # Handoff: where `ahpd` stands, and what is pending
 
-Current progress and pending items only, as of 2026-11-14. *Outside this repository* was last checked on 2026-11-04.
+Current progress and pending items only, as of 2026-11-15. *Outside this repository* was last checked on 2026-11-04.
 `node ~/.claude/skills/do-spec/scripts/plans.mjs` lists the backlog, and each plan's Resume state is its detail. What merged is in `git log`, and what was released is in [docs/updates/](../../docs/updates/).
 
 ## Main
@@ -15,6 +15,7 @@ Current progress and pending items only, as of 2026-11-14. *Outside this reposit
 - [claude/20261114-1816-the-context-figure-follows-a-long-turn](../plans/claude/20261114-1816-the-context-figure-follows-a-long-turn/plan.md) is merged in #331, and closes on Softov's word. #331 also fixes the plugin turn case that waited a fixed 20 ms.
 - The brief [vs-code-shows-the-claude-context-figure.md](../briefs/vs-code-shows-the-claude-context-figure.md) waits for "plan it".
 - [claude/20261115-0157-the-history-reads-across-compactions](../plans/claude/20261115-0157-the-history-reads-across-compactions/plan.md) is merged in #338, and closes on Softov's word. After a restart, a Claude session shows its turns before each compaction again, and draws each compaction notice. The test daemon check passed at `9863785ca`.
+- [plugin/20261113-2029-the-daemon-reads-the-plugin-list](../plans/plugin/20261113-2029-the-daemon-reads-the-plugin-list/plan.md) is on main since `38301b166`, `planned`, with four tasks `todo`. Softov reviews it before a build. The list it reads, `https://plugins.ahpio.com/v1/plugins.json`, answers 200 with JSON on 2026-11-15.
 - Problems found on 2026-11-14, none with a fix chosen:
   - [stop-refuses-a-run-whose-sessions-run-no-turn.md](../problems/stop-refuses-a-run-whose-sessions-run-no-turn.md): Softov asked for a problem file, not a fix.
   - In ahpw, `the-automation-form-hides-a-model-its-agent-does-not-offer.md` on ahpw main (`7ffec74`).
@@ -87,7 +88,7 @@ Remove each only on Softov's word.
 
 - On 2026-11-14, Softov had the merged worktrees removed. On 2026-11-15, `/github/ahpd.worktrees/claude-history` (merged in #338) and `/github/ahpd.worktrees/handoff` (detached, for HANDOFF commits on main) were added.
 - About 60 local branches have no worktree, from plans built before 2026-11-12. `git branch` lists them, and deleting them waits for Softov's word.
-- Another session left changes in `/github/ahpd` that are not committed: the brief `a-cloudflare-tunnel-publishes-the-daemon.md`, the brief `the-agents-are-listed-by-provider.md` and the plan folder `plugin/20261113-2029-the-daemon-reads-the-plugin-list/`. Leave them.
+- Another session left changes in `/github/ahpd` that are not committed: the brief `a-cloudflare-tunnel-publishes-the-daemon.md`, the new brief `the-agents-are-listed-by-provider.md`, and a `deprecated` answer in plugin/20261113-2029's `plan.md`, task 02 and task 03. Leave them.
 - `/github/ahpw` is on `host-refine-ui`, from another session. Its local main is fast-forwarded with `git fetch origin main:main`.
 - Loose files in `/github/ahpd.worktrees/` wait for Softov: `test-tmp`, the `union-*.log` files, the `.patch` files, `review-host62.md` and `acp-server.orig.mjs`.
 
