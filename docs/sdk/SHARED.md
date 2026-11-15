@@ -79,3 +79,27 @@ The host writes the text 2 s after the last change, and at least every 10 s whil
 ## Reconnecting
 
 A shared resource's actions are not kept for replay. A `reconnect` lists its channel in `missing`, and the client subscribes again.
+
+## Comments
+
+People comment on a resource and reply on its own channel, `x-ahpd-annotations:<resource URI>`, apart from the edits. The state, the actions and the reducer are AHP's annotations: `annotations/set`, `annotations/updated`, `annotations/removed`, `annotations/entrySet` and `annotations/entryRemoved`.
+
+Reading the channel needs the resource's `get`, such as `file:get`. Each action on it needs the resource's `comment`, which the read group holds, so whoever may read a file may comment on it unless a role drops `comment`.
+
+The host stamps each new entry with who wrote it and when, whatever the client put there:
+
+```json
+{ "type": "annotations/entrySet", "annotationId": "c1",
+  "entry": { "id": "c1-2", "text": "The resource kind.",
+    "_meta": { "ahpd": { "by": "user:rafael", "name": "rafael", "at": "2026-11-15T14:02:11Z" } } } }
+```
+
+A comment's `origin.session` is a session of the writer, or the channel itself for a comment made outside any session. While the resource is open as a shared resource, each comment's range moves with the edits. A comment whose words are deleted becomes a point where they were, with `_meta.ahpd.outdated` set, and its thread stays. The comments are kept between restarts.
+
+A session's comments stay in the session's record, as VS Code keeps them. The two channels show each other's comments:
+
+- A resource's channel shows its own comments and every session's comments on that resource. A reply, a resolve or a delete there on a session's comment is kept in that session, and needs the session's `review`.
+- A session's channel shows its own comments and the comments outside any session on files under its folder or listed as its artifacts. VS Code draws both on the file. A reply, a resolve or a delete there on a file's comment is kept on the file, and needs the file's `comment`.
+
+The host stamps a session's new entries as it stamps a resource's, so each channel says who wrote each entry and when.
+

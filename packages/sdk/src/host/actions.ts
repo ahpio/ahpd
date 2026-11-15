@@ -12,6 +12,7 @@ import { HOSTS_OWN } from './common.js';
 import { AUTO_ARCHIVE_KEY, AUTO_DELETE_KEY } from './sessionlifecycle.js';
 import { accountKey, RESTART_KEY } from './root.js';
 import { claimOf } from './terminals.js';
+import { writerOf } from './resourceannotations.js';
 import { SANDBOX_ROOT_KEY } from '../types/sandbox.js';
 import type { HeldCopies, TemplatePlugin } from '../types/clientplugins.js';
 import type { Bag } from '../types/common.js';
@@ -131,7 +132,8 @@ export function createActions(ctx: HostContext, conn: ConnectionContext): Action
      */
     const family = ownIn(ACTION_HOMES, type.slice(0, type.indexOf('/')));
     if (family !== undefined) {
-      const wrong = [asked, channel].find((one) => homeOf(one) !== family.home);
+      // A resource's comments take the `annotations` family as a session's channel does.
+      const wrong = [asked, channel].find((one) => homeOf(one) !== family.home && !(family.home === 'session' && ctx.resourceAnnotations.isChannel(one)));
       if (wrong !== undefined) {
         no(`${wrong} is not ${HOME_WORDS[family.home]} here`);
         return;
@@ -169,7 +171,9 @@ export function createActions(ctx: HostContext, conn: ConnectionContext): Action
        * A plugin's own connection is excused a session or chat grant on a
        * session of an agent it registered, as a bot's plugin writes its talks.
        */
-      const all = [...new Set([onRoot ? undefined : ownIn(ACTION_NEEDS, type), dispatchNeeds(asked, channelKind(asked), action), dispatchNeeds(channel, channelKind(channel), action), computerNeeds(action)])]
+      // On a resource's comments, an action needs the resource's `comment`, not a session's review.
+      const own = ctx.resourceAnnotations.isChannel(channel) ? ctx.resourceAnnotations.commentGrant(channel) : ownIn(ACTION_NEEDS, type);
+      const all = [...new Set([onRoot ? undefined : own, dispatchNeeds(asked, channelKind(asked), action), dispatchNeeds(channel, channelKind(channel), action), computerNeeds(action)])]
         .filter((one): one is Grant => one !== undefined)
         .filter((one) => onRoot || !ownAgentExcused(ctx, connection.principal, channel, one));
       const needed = all.find((one) => connection.principal !== undefined && !connection.principal.can(one)) ?? all[0];
@@ -225,6 +229,11 @@ export function createActions(ctx: HostContext, conn: ConnectionContext): Action
      * What the documents answer is a reason to refuse the action, said back
      * to the client with its own `origin`.
      */
+    if (ctx.resourceAnnotations.isChannel(channel)) {
+      const refused = ctx.resourceAnnotations.dispatch(channel, action, origin, connection);
+      if (refused !== undefined) no(refused);
+      return;
+    }
     if (ctx.shared.isDocument(channel)) {
       const refused = ctx.shared.dispatch(channel, action, origin, connection);
       if (refused !== undefined) no(refused);
@@ -257,7 +266,27 @@ export function createActions(ctx: HostContext, conn: ConnectionContext): Action
       }
       const owning = channel.slice(0, -ANNOTATIONS_PATH_SEGMENT.length);
       const id = idOf(owning);
-      const mark = (): void => { ctx.markAnnotation(owning, action as unknown as AnnotationsAction, origin); };
+      const mark = (): void => {
+        /*
+         * A comment written outside any session, shown here beside the
+         * session's own, is changed where it is kept: on its file, with the
+         * file's `comment` grant, as on the file's own channel.
+         */
+        const target = typeof action.annotationId === 'string' ? action.annotationId : undefined;
+        const holder = target === undefined || ctx.marksOf(id).annotations.some((one) => one.id === target)
+          ? undefined : ctx.resourceAnnotations.holderOf(ctx.placesOf(owning), target);
+        if (holder === undefined) {
+          // Stamped as a file's comments are, so a file's channel says who wrote each entry and when.
+          ctx.markAnnotation(owning, ctx.resourceAnnotations.stamped(action as unknown as AnnotationsAction, writerOf(connection)), origin);
+          return;
+        }
+        const grant = ctx.resourceAnnotations.commentGrant(ctx.resourceAnnotations.channelOf(holder));
+        if (connection.principal !== undefined && !connection.principal.can(grant)) {
+          no(`${connection.principal.id} may not ${grant} here`);
+          return;
+        }
+        ctx.resourceAnnotations.write(holder, action as unknown as AnnotationsAction, writerOf(connection), origin);
+      };
       const found = (): boolean => (sessions.has(owning) || owners.has(owning) || unavailableProvider(id) !== undefined)
         && ctx.nameOf(id) === owning;
       if (found()) {

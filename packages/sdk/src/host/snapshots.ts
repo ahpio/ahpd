@@ -415,6 +415,11 @@ export function createSnapshots(ctx: HostContext): Snapshots {
      * A shared resource, opened for the client that subscribes: its text,
      * its version and the people in it, the subscriber among them.
      */
+    // A resource's comments: its own, and every session's on it.
+    if (ctx.resourceAnnotations.isChannel(channel)) {
+      const resource = channel.slice(channel.indexOf(':') + 1);
+      return value({ resource: channel, state: ctx.resourceAnnotations.shownOn(resource), fromSeq: ctx.serverSeq });
+    }
     if (ctx.shared.isDocument(channel)) {
       if (connection === undefined) throw new RpcError(AhpErrorCodes.NotFound, `A shared resource is opened by a client: ${channel}`);
       const state = await ctx.shared.open(channel, connection);
@@ -451,7 +456,8 @@ export function createSnapshots(ctx: HostContext): Snapshots {
        */
       if (sessions.has(owning) || (unavailableProvider(id) !== undefined && nameOf(id) === owning)
         || ((await restoreSession(id)) !== undefined && nameOf(id) === owning))
-        return value({ resource: channel, state: marksOf(id), fromSeq: ctx.serverSeq });
+        // Its own marks, and the comments people wrote outside any session on files under its folders.
+        return value({ resource: channel, state: { annotations: [...marksOf(id).annotations, ...ctx.resourceAnnotations.outsideUnder(ctx.placesOf(owning))] }, fromSeq: ctx.serverSeq });
     }
     /*
      * A watch, attached at its channel's first subscribe. The state is what

@@ -1,6 +1,6 @@
 ---
 title: The comments in the docs
-status: todo
+status: implemented
 depends: [task-03-the-tools-take-a-resource.md]
 layer: "docs"
 refs:
@@ -29,3 +29,5 @@ A client author reads how to show and write comments on a resource, and an agent
 - The docs build passes.
 
 ## Resume
+
+Built on 2026-11-15: a *Comments* section in `docs/sdk/SHARED.md`, a paragraph in `docs/sdk/TOOLS.md`, and `comment` in the `file` row of `docs/sdk/USERS.md`.

@@ -21,7 +21,7 @@ import { resolve } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { ACTION_INTRODUCED_IN, annotationsReducer, chatReducer, isActionKnownToVersion, rootReducer, sessionReducer } from '@microsoft/agent-host-protocol';
 import type {
-  AnnotationsAction, AnnotationsState, ChatAction, ChatState, RootAction, RootState, SessionAction, SessionInputRequestKind, SessionState, StateAction,
+  Annotation, AnnotationsAction, AnnotationsState, ChatAction, ChatState, RootAction, RootState, SessionAction, SessionInputRequestKind, SessionState, StateAction,
   SubscribeView, ToolDefinition,
 } from '@microsoft/agent-host-protocol';
 import type { WireTurn } from './types/wire.js';
@@ -40,7 +40,7 @@ import type { Terminal } from './types/terminals.js';
 import type { SessionConfigAnswerer, SessionConfigAsk } from './types/completions.js';
 import type { MessageAttachment, MessageFrom } from './types/session.js';
 import type { ClientChange, Connection, ConnectedClient, Credential, Host, HostOptions, HostTool, TitleStrategy, ToolCall } from './types/host.js';
-import type { Principal } from './types/users.js';
+import type { Grant, Principal } from './types/users.js';
 import type { Summary } from './types/catalog.js';
 import type { Agent, BoundTool, Listed, McpServer } from './types/agent.js';
 import type { ToolsEndpoint } from './tools/server.js';
@@ -63,11 +63,12 @@ import type { Space } from './host/channels.js';
 import { DELTA_WINDOW_MS, merger } from './host/deltas.js';
 import { Claiming } from './host/state.js';
 import type { Claimed, Held, HeldState, Learned, LiveSubagent, NameKind, Origin } from './host/state.js';
-import { GREETINGS, UNGATED, seesAccount, seesConfig, DECLARED, ownIn } from './host/gate.js';
+import { GREETINGS, UNGATED, seesAccount, seesConfig, DECLARED, ownIn, ACTION_NEEDS } from './host/gate.js';
 import type { Home } from './host/gate.js';
 import { createChatRecord } from './host/chatrecord.js';
 import { createRouting } from './host/routing.js';
 import { createSharedResources } from './host/shared.js';
+import { createResourceAnnotations } from './host/resourceannotations.js';
 import { createRelay } from './host/relay.js';
 import { AGENT_CLIENT_SCHEME } from './host/clienturi.js';
 import { createChangesets } from './host/changesets.js';
@@ -82,6 +83,7 @@ import { createBackground } from './host/background.js';
 import { createCanvases } from './host/canvases.js';
 import { createSandbox } from './host/sandbox.js';
 import { TOOL_RESULT_RESOURCE_LIMIT, toolResultResources } from './resources/toolresults.js';
+import { localPath, uriOf } from './resources/fileuri.js';
 import { createLifecycle } from './host/lifecycle.js';
 import { createTooling } from './host/tooling.js';
 import { createAsking } from './host/asking.js';
@@ -645,10 +647,14 @@ export function createHost(options: HostOptions): Host {
    */
   const markAnnotation = (uri: string, action: AnnotationsAction, origin?: Origin): void => {
     const id = idOf(uri);
+    const asked = action as unknown as { annotation?: Annotation; annotationId?: unknown };
+    const resource = (asked.annotation ?? marksOf(id).annotations.find((one) => one.id === asked.annotationId))?.resource;
     const next = annotationsReducer(marksOf(id), action);
     marks.set(id, next);
     kept.setAnnotations?.(id, next as unknown as Bag);
     dispatch(`${uri}${ANNOTATIONS_PATH_SEGMENT}`, action as unknown as Record<string, unknown>, origin);
+    // The file's channel shows every session's comments on it.
+    if (typeof resource === 'string' && resource !== '') emit(resourceAnnotations.channelOf(resource), action as unknown as Record<string, unknown>, origin);
   };
 
   /**
@@ -1592,11 +1598,46 @@ export function createHost(options: HostOptions): Host {
    * The shared documents: a file's text held while anyone has it open, its
    * changes put in order, and the file written behind them.
    */
+  /**
+   * Where a session works, as file URIs: its folder and the files it lists as
+   * artifacts. A session shows the comments outside any session on files
+   * under its folder, and on its artifacts wherever they are.
+   */
+  const placesOf = (uri: string): string[] => {
+    const folder = sessions.get(uri)?.workingDirectory ?? kept.workingDirectory?.(idOf(uri));
+    const path = folder === undefined ? '' : localPath(folder);
+    const artifacts = (kept.artifacts(idOf(uri)) ?? []).map((one) => one.uri).filter((one): one is string => typeof one === 'string' && one.startsWith('file:'));
+    return [...(path === '' ? [] : [uriOf(path)]), ...artifacts];
+  };
+  /** The comments on resources outside any session; their ranges move with the shared resources' changes. */
+  const resourceAnnotations = createResourceAnnotations({
+    store: () => options.resourceAnnotations,
+    // A session's channel goes through the session's own path, as its marks do.
+    emit: (channel, action, origin) => { (channel.endsWith(ANNOTATIONS_PATH_SEGMENT) ? dispatch : emit)(channel, action, origin); },
+    hasSession: (connection, session) => (sessions.has(session) || owners.has(session)) && visible(connection, session),
+    sessionCommentsOn: (resource) => [...new Set([...kept.sessions(), ...marks.keys()])]
+      .flatMap((id) => marksOf(id).annotations.filter((one) => one.resource === resource).map((annotation) => ({ session: ctx.nameOf(id), annotation }))),
+    writesSession: (connection, session) => visible(connection, session)
+      && (connection.principal === undefined || connection.principal.can(ACTION_NEEDS['annotations/entrySet'] as Grant)),
+    markSession: (session, action, origin) => { markAnnotation(session, action, origin); },
+    // The sessions open on some connection whose folder or artifacts hold the resource.
+    alsoOn: (resource) => {
+      const open = new Set<string>();
+      for (const connection of connections) {
+        for (const channel of connection.activeSubscriptions) {
+          if (!channel.endsWith(ANNOTATIONS_PATH_SEGMENT) || !sessionChannel(channel)) continue;
+          if (resourceAnnotations.within(resource, placesOf(channel.slice(0, -ANNOTATIONS_PATH_SEGMENT.length)))) open.add(channel);
+        }
+      }
+      return [...open];
+    },
+  });
   const shared = createSharedResources({
     resources: () => options.resources,
     emit: (channel, action, origin) => emit(channel, action, origin),
     watching: (client, channel) => [...connections].some((one) => one.clientId === client && one.activeSubscriptions.has(channel)),
     log: { warn: (message) => { log.warn(message); }, error: (message) => { log.error(message); } },
+    taken: (resource, change, before, after) => { resourceAnnotations.moved(resource, change, before, after); },
   });
   const ctx = {
     options, dir, known, lastSeen, baselineDebt, clearBaselineDebt, waitsOver, locales, clientNames, clientVersions, clientInfos, localeOf: (clientId: string) => locales.get(clientId),
@@ -1612,7 +1653,7 @@ export function createHost(options: HostOptions): Host {
     logs, detached, refuse,
     serverSeq: 0,
     closed: false, shutdown: () => host.close(), refusing: undefined, bareSessions: new Set<string>(), startedWorkspaceless: new Set<string>(), commandTurns: new Set<string>(), described, links,
-    watches, marksOf, restoredSessions, activeClientsOf, markAnnotation, shared,
+    watches, marksOf, placesOf, restoredSessions, activeClientsOf, markAnnotation, shared, resourceAnnotations,
     restartNeeded: false,
     markRestart: () => {
       if (ctx.restartNeeded) return;

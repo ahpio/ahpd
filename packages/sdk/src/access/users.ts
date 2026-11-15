@@ -109,9 +109,10 @@ export interface SubjectOperations {
 const RESOURCE: SubjectOperations = {
   title: 'Files and resources',
   description: 'Files and other resources on this host.',
-  operations: ['get', 'list', 'resolve', 'watch', 'put', 'delete', 'mkdir', 'move', 'copy', 'request'],
+  operations: ['get', 'list', 'resolve', 'watch', 'comment', 'put', 'delete', 'mkdir', 'move', 'copy', 'request'],
   groups: {
-    read: ['get', 'list', 'resolve', 'watch'],
+    // A comment is a reader's: who may read a resource may comment on it, unless a role drops `comment`.
+    read: ['get', 'list', 'resolve', 'watch', 'comment'],
     write: ['put', 'delete', 'mkdir', 'move', 'copy', 'request'],
   },
 };

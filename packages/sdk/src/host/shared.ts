@@ -69,6 +69,8 @@ export interface SharedPorts {
   /** Whether any connection of this client still watches the channel. */
   watching(client: string, channel: string): boolean;
   log: { warn(message: string): void; error(message: string): void };
+  /** A change was taken on a resource, with its text before and after it: the comments' ranges move with it. */
+  taken?(resource: string, change: TextChange, before: string, after: string): void;
 }
 
 interface Document {
@@ -112,7 +114,7 @@ export interface SharedResources {
 }
 
 /** The start of a client id, to tell two people of one kind apart. */
-const shortId = (connection: Connection): string => connection.clientId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 4) || 'x';
+export const shortId = (connection: Connection): string => connection.clientId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 4) || 'x';
 
 /**
  * Who a connection is, and the name others see: a user's id; `root` and the
@@ -121,7 +123,7 @@ const shortId = (connection: Connection): string => connection.clientId.replace(
  * because a client takes a colour from a name's first letters and two guests
  * must differ.
  */
-const personOf = (connection: Connection): { name: string; kind: SharedPersonKind } => {
+export const personOf = (connection: Connection): { name: string; kind: SharedPersonKind } => {
   if (connection.root === true) return { name: `root ${shortId(connection)}`, kind: 'root' };
   if (connection.principal !== undefined) return { name: connection.principal.id, kind: 'user' };
   return { name: `${shortId(connection)} guest`, kind: 'guest' };
@@ -204,17 +206,23 @@ export function createSharedResources(ports: SharedPorts): SharedResources {
     return doc.log.filter((one) => one.version >= version).map((one) => one.change);
   };
 
-  /** Apply a change made on `version`, moved past what was taken since; the answer is the change as applied. */
-  const take = (doc: Document, change: TextChange, version: number): TextChange | undefined => {
+  /**
+   * Apply a change made on `version`, moved past what was taken since; the
+   * answer is the change as applied, and the text before it. The caller tells
+   * `ports.taken` after it sends the change, so a client has the new text
+   * before the comments that moved with it.
+   */
+  const take = (doc: Document, change: TextChange, version: number): { change: TextChange; before: string } | undefined => {
     const later = since(doc, version);
     if (later === undefined) return undefined;
     const moved = later.reduce((one, through) => mapChange(one, through), change);
+    const before = doc.text;
     doc.text = applyChange(doc.text, moved);
     doc.log.push({ version: doc.version, change: moved });
     if (doc.log.length > SHARED_LOG) doc.log.splice(0, doc.log.length - SHARED_LOG);
     doc.version += 1;
     for (const person of doc.people.values()) person.ranges = person.ranges.map((one) => mapCaret(one, moved));
-    return moved;
+    return { change: moved, before };
   };
 
   /**
@@ -236,20 +244,21 @@ export function createSharedResources(ports: SharedPorts): SharedResources {
     if (disk === doc.savedText || disk === doc.writing) return;
     const change = differenceOf(doc.savedText, disk);
     const base = doc.saved;
-    const moved = take(doc, change, base) ?? take(doc, differenceOf(doc.text, disk), doc.version);
+    const taken = take(doc, change, base) ?? take(doc, differenceOf(doc.text, disk), doc.version);
     // The file now holds what was read; the next comparison starts there.
     doc.savedText = disk;
     doc.saved = doc.version;
-    if (moved === undefined) return;
+    if (taken === undefined) return;
     const by = doc.writer !== undefined && Date.now() - doc.writer.at < WRITE_AT_MOST_MS ? doc.writer.owner : undefined;
     doc.writer = undefined;
     ports.emit(doc.channel, {
       type: `${SHARED_SCHEME}/changed`,
       version: doc.version - 1,
-      changes: moved,
+      changes: taken.change,
       ranges: [],
       ...(by === undefined ? {} : { by }),
     });
+    ports.taken?.(doc.file, taken.change, taken.before, doc.text);
     // What the host holds beside it goes back to the file at once.
     if (doc.text !== disk) scheduleWrite(doc, true);
   };
@@ -366,8 +375,8 @@ export function createSharedResources(ports: SharedPorts): SharedResources {
         const moved = later.reduce((one, through) => mapChange(one, through), checked.change);
         const fits = checkChange(moved, doc.text.length);
         if ('problem' in fits) return fits.problem;
-        const applied = take(doc, checked.change, made);
-        if (applied === undefined) return `stale: the document is at version ${doc.version}; subscribe again`;
+        const taken = take(doc, checked.change, made);
+        if (taken === undefined) return `stale: the document is at version ${doc.version}; subscribe again`;
         // The sender's carets are counted on its text after its own change; the changes it had not seen move them.
         let own = checked.change;
         let carets = checkCarets(action.ranges, Number.MAX_SAFE_INTEGER) ?? [];
@@ -380,7 +389,8 @@ export function createSharedResources(ports: SharedPorts): SharedResources {
         person.ranges = carets;
         // A client's own id for the change comes back with it, so a client whose id two tabs share knows its own.
         const id = typeof action.id === 'string' && action.id.length <= 64 ? { id: action.id } : {};
-        ports.emit(channel, { type, version: doc.version - 1, changes: applied, ranges: carets, ...id }, origin);
+        ports.emit(channel, { type, version: doc.version - 1, changes: taken.change, ranges: carets, ...id }, origin);
+        ports.taken?.(doc.file, taken.change, taken.before, doc.text);
         scheduleWrite(doc);
         return undefined;
       }

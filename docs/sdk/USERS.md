@@ -102,7 +102,7 @@ The subjects the host decides are these nineteen:
 | `chat` | `turns` | `create`, `fork`, `dispose`, `move`, `send`, `cancel`, `answer`, `tool`, `draft`, `folders`, `mark`, `truncate` | The conversations inside a session. A `session:` grant covers them too |
 | `terminal` | `output` | `create`, `dispose`, `input`, `resize`, `claim`, `rename`, `clear` | Shells on this machine |
 | `automation` | `list` | `create`, `update`, `remove`, `run`, `cancel` | Agent runs that start on a schedule or a trigger |
-| `file` | `get`, `list`, `resolve`, `watch` | `put`, `delete`, `mkdir`, `move`, `copy`, `request` | Files and other resources on this host. Every other scheme has the same operations under its own name |
+| `file` | `get`, `list`, `resolve`, `watch`, `comment` | `put`, `delete`, `mkdir`, `move`, `copy`, `request` | Files and other resources on this host. Every other scheme has the same operations under its own name |
 | `config` | `settings` | `change` | This host's settings |
 | `plugin` | `list` | `enable`, `disable`, `options`, `apply`, `reload` | The plugins the configuration names: listing them, turning them on and off, editing their options, and applying or reloading a running one. `plugin:install` installs, removes or writes a plugin and is in neither group, so `plugin:write` does not hold it |
 | `client` | - | - | The clients this host is serving, and the connection each one holds. `client:read` lists them and `client:drop` closes a connection; `drop` is in neither group, so a role must name it |

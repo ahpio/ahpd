@@ -52,6 +52,13 @@ export const SHARED_SCHEME = 'x-ahpd-shared';
 export const sharedUriOf = (channel: string): string | undefined =>
   (schemeOf(channel) === SHARED_SCHEME ? channel.slice(SHARED_SCHEME.length + 1) : undefined);
 
+/** The scheme of a resource's comments: `x-ahpd-annotations:<resource URI>`. */
+export const ANNOTATIONS_SCHEME = 'x-ahpd-annotations';
+
+/** The resource a comments channel names, or nothing for any other channel. */
+export const annotatedResourceOf = (channel: string): string | undefined =>
+  (schemeOf(channel) === ANNOTATIONS_SCHEME ? channel.slice(ANNOTATIONS_SCHEME.length + 1) : undefined);
+
 /** The kinds of name this host keeps a space of schemes for. */
 export type Space = 'session' | 'chat' | 'terminal' | 'own' | 'plugin';
 /**
@@ -65,7 +72,7 @@ export type Space = 'session' | 'chat' | 'terminal' | 'own' | 'plugin';
 export const spaceOf = (uri: string): Space | undefined => {
   const scheme = schemeOf(uri);
   // A shared resource is the host's own channel, though its scheme is an extension's.
-  if (scheme === SHARED_SCHEME) return 'own';
+  if (scheme === SHARED_SCHEME || scheme === ANNOTATIONS_SCHEME) return 'own';
   if (scheme === 'ahp-session') return 'session';
   if (scheme === 'ahp-chat') return 'chat';
   if (scheme === 'ahp-terminal') return 'terminal';

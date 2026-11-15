@@ -1,6 +1,6 @@
 ---
 title: The annotations channel of a resource
-status: todo
+status: implemented
 depends: []
 layer: "sdk, server"
 refs:
@@ -53,3 +53,8 @@ It adds, replies, resolves and removes them with AHP's own `annotations/*` actio
 - `pnpm test packages/sdk/test/resource-annotations.test.ts` passes.
 
 ## Resume
+
+Built on 2026-11-15, on branch `host/20261115-1038-comments-on-a-resource`, stacked on the shared resource branch.
+- The store port is synchronous: `read`, `write` and an optional `list`, which `listComments` needs to find the files under a session's folders.
+- The stamp takes the person from `personOf` in `shared.ts`: `by` is `user:<id>`, `root:<client>` or `guest:<client>`, and a tool's is `session:<uri>` with the name `agent`.
+- The home check and the grant check each take the channel by name, since `ACTION_HOMES` and `ACTION_NEEDS` are keyed by the action alone.

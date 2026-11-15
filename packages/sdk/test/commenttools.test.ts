@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { annotationsReducer } from '@microsoft/agent-host-protocol';
 import type { Annotation, AnnotationsAction, AnnotationsState } from '@microsoft/agent-host-protocol';
@@ -458,4 +459,78 @@ it('keeps a comment a tool wrote, and says it on the annotations channel', async
   const listed = applyCommentTool(state, session, LIST_COMMENTS, {}, ORIGIN);
   expect(JSON.parse(listed.result).comments).toEqual([]);
   host.close();
+});
+
+describe('comments on a resource, outside the session', () => {
+  const FILE = 'file:///repo/PLAN.md';
+  /** A call whose host keeps resource comments, with one person's comment on PLAN.md. */
+  const withFile = () => {
+    const base = toolAt();
+    let fileState: AnnotationsState = { annotations: [{
+      id: 'p1', origin: { session: `x-ahpd-annotations:${FILE}` }, resource: FILE, resolved: false,
+      range: { start: { line: 0, character: 0 }, end: { line: 0, character: 4 } },
+      entries: [{ id: 'p1-1', text: 'Split this task.', _meta: { [FEEDBACK_META]: { author: 'user' } } }],
+      _meta: { [FEEDBACK_META]: { kind: 'user', state: 'submitted', sessionResource: `x-ahpd-annotations:${FILE}` } },
+    }] };
+    const fileWrites: AnnotationsAction[] = [];
+    const at = Object.assign(base.at, {
+      workingDirectories: () => ['file:///repo'],
+      resourceComments: {
+        stateOf: (resource: string) => (resource === FILE ? fileState : { annotations: [] }),
+        mark: (resource: string, action: AnnotationsAction) => {
+          expect(resource).toBe(FILE);
+          fileWrites.push(action);
+          fileState = annotationsReducer(fileState, action);
+        },
+        under: (folders: readonly string[]) => (folders.some((one) => FILE.startsWith(`${one}/`)) ? [FILE] : []),
+      },
+    }) as ToolCall;
+    return { ...base, at, fileWrites, fileState: () => fileState };
+  };
+
+  it('lists a person comment on a file under the session folders, marked onFile', () => {
+    const { at } = withFile();
+    const listed = JSON.parse(String(tool(LIST_COMMENTS).run({}, at))) as { comments: { id: string; onFile?: boolean }[] };
+    expect(listed.comments).toEqual([expect.objectContaining({ id: 'p1', onFile: true })]);
+  });
+
+  it('replies and resolves on the file a comment is on, with no resource named', () => {
+    const { at, writes, fileWrites } = withFile();
+    tool(REPLY_TO_COMMENT).run({ commentId: 'p1', text: 'Split in two.' }, at);
+    tool(RESOLVE_COMMENTS).run({ commentIds: ['p1'] }, at);
+    expect(writes).toEqual([]);
+    expect(fileWrites.map((one) => one.type)).toEqual(['annotations/entrySet', 'annotations/set']);
+  });
+
+  it('adds a comment on a resource own channel, and refuses a resourceUri that is another file', () => {
+    const { at, writes, fileWrites } = withFile();
+    tool(ADD_COMMENT).run({ resource: FILE, resourceUri: FILE, range: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 3 }, text: 'Seen.' }, at);
+    expect(writes).toEqual([]);
+    expect(fileWrites).toHaveLength(1);
+    expect(() => tool(ADD_COMMENT).run({ resource: FILE, resourceUri: 'file:///repo/other.md', range: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 3 }, text: 'x' }, at))
+      .toThrow(/resourceUri must be/);
+  });
+
+  it('takes an absolute path as the file URI, and refuses a name no comment is kept under', () => {
+    const base = toolAt();
+    const path = join(tmpdir(), 'repo', 'PLAN.md');
+    const asked: string[] = [];
+    const at = Object.assign(base.at, {
+      resourceComments: { stateOf: (resource: string) => { asked.push(resource); return { annotations: [] }; }, mark: () => {}, under: () => [] },
+    }) as ToolCall;
+    tool(LIST_COMMENTS).run({ resource: path }, at);
+    expect(asked).toEqual([pathToFileURL(path).href]);
+    // A relative path or another scheme would answer "no comments" for a file that has some.
+    expect(() => tool(LIST_COMMENTS).run({ resource: 'repo/PLAN.md' }, at)).toThrow(/resource must be a file URI, such as file:\/\/\/work\/PLAN.md, or an absolute path/);
+    expect(() => tool(LIST_COMMENTS).run({ resource: 'computer://box/PLAN.md' }, at)).toThrow(/resource must be a file URI/);
+    // The new comment's resourceUri may be the same file as a path.
+    tool(ADD_COMMENT).run({ resource: pathToFileURL(path).href, resourceUri: path, range: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 1 }, text: 'x' }, at);
+  });
+
+  it('keeps the session comments where they were without a resource', () => {
+    const { at, writes, fileWrites } = withFile();
+    tool(ADD_COMMENT).run({ resourceUri: FILE, range: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 3 }, text: 'Mine.' }, at);
+    expect(writes).toHaveLength(1);
+    expect(fileWrites).toEqual([]);
+  });
 });
