@@ -5,12 +5,13 @@ depends: [task-02-a-client-reads-the-list.md]
 layer: "server"
 refs:
   - "[code://packages/server/src/pluginschannel.ts#L878-L889](../../../../packages/server/src/pluginschannel.ts#L878-L889) - where the command joins the others"
-  - "[code://packages/server/src/plugins.ts#L393-L438](../../../../packages/server/src/plugins.ts#L393-L438) - `readManifest`, the fields read from an installed `package.json`, which the details read from a listed one"
+  - "[code://packages/server/src/plugins.ts#L561-L607](../../../../packages/server/src/plugins.ts#L561-L607) - `readManifest`, the fields read from an installed `package.json`, which the details read from a listed one"
+  - "[code://packages/server/src/icons.ts#L333](../../../../packages/server/src/icons.ts#L333) - `fetchIcons`, which turns each icon into a `data:` URI"
 ---
 
 ## Objective
 
-`x-ahpd/plugins/details {id, version?}` answers what a details page shows for a listed plugin, before an install.
+`x-ahpd/plugins/details {id, marketplace?, version?}` answers what a details page shows for a listed plugin, before an install.
 The daemon fetches each file from the version's `files` once, keeps it on disk, and never sends a client to plugins.ahpio.com.
 
 ## Files
@@ -23,19 +24,22 @@ The daemon fetches each file from the version's `files` once, keeps it on disk, 
 
 ## Steps
 
-1. Pick the version: the one named, or the newest listed version that fits the daemon.
-2. Fetch `manifest`, `readme`, `changelog` and `license` from `files`, each when the version has it.
-3. Keep each file at `plugin-files/<id>/<version>/<name>`, and read it from there the next time.
-4. Refuse a file larger than 1 MB, and a URL that is not `https:`.
-5. Answer `id`, `version`, `versions`, `readme`, `changelog`, `license`, and from the manifest `contracts`, `links`, `optionsSchema`, `homepage`, `bugs` and `repository`.
-6. Answer each icon of `files.icons` as a `data:` URI, with the icon rules of an installed plugin.
-7. Answer the parts it could fetch, with one `problem` for each part it could not.
-8. Add `x-ahpd/plugins/details` with `plugin:list`, and document it in `PLUGINS.md`.
+1. Pick the entry: the named marketplace's entry for the id, or the first marketplace's.
+2. Pick the version: the one named, or the newest listed version that fits the daemon.
+3. Fetch `manifest`, `readme`, `changelog` and `license` from `files`, each when the version has it.
+4. Keep each file at `plugin-files/<hash>/<id>/<version>/<name>`, and read it from there the next time. `<hash>` is the name of the marketplace's list file.
+5. Refuse a file larger than 1 MB, and a URL that is not `https:`.
+6. Answer `id`, `marketplace`, `version`, `versions`, `readme`, `changelog`, `license`, and from the manifest `contracts`, `links`, `optionsSchema`, `homepage`, `bugs` and `repository`.
+7. Answer each icon of `files.icons` through `fetchIcons`, with the icon rules of an installed plugin.
+8. Answer the parts it could fetch, with one `problem` for each part it could not.
+9. Add `x-ahpd/plugins/details` with `plugin:list`, and document it in `PLUGINS.md`.
 
 ## Validation
 
 - The test answers the README and the contracts of a stubbed version, and a second call makes no request.
+- Two marketplaces with one id keep their files apart.
 - A version with no `changelog` answers no `changelog` and no problem.
-- `pnpm typecheck` and the server tests pass.
+- `TMPDIR=/home/softov/tmp/ahpd-test flock /home/softov/tmp/ahpd-test/vitest.lock npx vitest run packages/server/test/pluginlist.test.ts` passes.
+- `pnpm exec tsc -p tsconfig.json --noEmit` in `packages/server` passes.
 
 ## Resume
