@@ -28,6 +28,21 @@ const ADD = 'add_artifact_or_reference';
 const REMOVE = 'remove_artifact_or_reference';
 const LIST = 'list_artifacts_and_references';
 
+/**
+ * The three names together, for the hosts that gate the set as one: the
+ * reference host offers artifact tools on its root config's word alone, so a
+ * host that mirrors it needs the set as one list, as `session.ts' names of
+ * the session tools and `shell.ts' names of the shell tools are.
+ */
+export const ARTIFACT_TOOL_NAMES: readonly string[] = [ADD, REMOVE, LIST];
+
+/**
+ * The root config key the reference host answers for this set, `false` unless
+ * the installation asks for the tools: what the mirror in
+ * `vscoderootconfig.ts` declares on this host's behalf.
+ */
+export const ENABLE_ARTIFACT_TOOLS = 'artifactTools';
+
 /** One entry, as the tool takes it and as it is kept. */
 export interface Artifact {
   id: string;
