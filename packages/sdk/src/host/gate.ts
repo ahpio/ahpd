@@ -2,7 +2,7 @@ import { computerSource } from '../machines/computers.js';
 import type { Connection } from '../types/host.js';
 import { idOf } from '../sessions/catalog.js';
 import type { Grant, Principal } from '../types/users.js';
-import { ROOT, AUTOMATIONS, isRootChannel, spaceOf } from './channels.js';
+import { ROOT, AUTOMATIONS, DOCUMENT_SCHEME, isRootChannel, schemeOf, spaceOf } from './channels.js';
 import type { HostContext } from './context.js';
 import type { ChannelKind } from './channels.js';
 
@@ -195,6 +195,10 @@ export const ACTION_NEEDS: Record<string, Grant> = {
   'annotations/entrySet': 'session:review',
   'annotations/entryRemoved': 'session:review',
 
+  // a shared document: carets are a read of the file, a change a write to it.
+  'x-ahpd-document/selected': 'file:get',
+  'x-ahpd-document/changed': 'file:put',
+
   // terminal
   'terminal/input': 'terminal:input',
   'terminal/resized': 'terminal:resize',
@@ -266,6 +270,8 @@ export const UNGATED = new Set([
 export const channelRead = (channel: string, kind: ChannelKind, served?: Grant): Grant => {
   if (served !== undefined) return served;
   if (channel.startsWith('ahp-automation')) return 'automation:list';
+  // A shared document hands over the file's text, so it is a read of the file.
+  if (schemeOf(channel) === DOCUMENT_SCHEME) return 'file:get';
   const space = spaceOf(channel);
   if (space === 'chat') return 'chat:turns';
   if (space === 'terminal' || kind === 'terminal') return 'terminal:output';
@@ -307,6 +313,8 @@ export const dispatchNeeds = (channel: string, kind: ChannelKind, action?: Recor
     if (keys.length === 0) return undefined;
     return keys.every((key) => key === 'workspaceTrust') ? 'trust:push' : 'config:change';
   }
+  // A shared document's actions say what they need in `ACTION_NEEDS`.
+  if (schemeOf(channel) === DOCUMENT_SCHEME) return undefined;
   return kind === 'other' && !channel.startsWith('ahp-automation') ? 'file:watch' : undefined;
 };
 
@@ -368,7 +376,7 @@ export const seesAccount = (connection: Connection | undefined, directory: boole
   !directory || connection?.root === true || connection?.principal?.can('account:status') === true;
 
 /** The kinds of channel a family of client action can belong on. */
-export type Home = 'session' | 'terminal' | 'automations' | 'root' | 'watch';
+export type Home = 'session' | 'terminal' | 'automations' | 'root' | 'watch' | 'document';
 
 /**
  * Each family of client action, by the part of its type before the slash:
@@ -389,11 +397,12 @@ export const ACTION_HOMES: Record<string, { home: Home }> = {
   automationRun: { home: 'automations' },
   root: { home: 'root' },
   resourceWatch: { home: 'watch' },
+  'x-ahpd-document': { home: 'document' },
 };
 
 /** A kind of channel, as a refusal names it. */
 export const HOME_WORDS: Record<Home, string> = {
-  session: 'a session', terminal: 'a terminal', automations: 'an automation channel', root: 'the root', watch: 'a resource watch',
+  session: 'a session', terminal: 'a terminal', automations: 'an automation channel', root: 'the root', watch: 'a resource watch', document: 'a shared document',
 };
 
 /**

@@ -1,6 +1,6 @@
 ---
 title: Changes and carets
-status: todo
+status: implemented
 depends: [task-01-the-document-channel.md]
 layer: "sdk"
 refs:
@@ -54,3 +54,8 @@ It sends each change and each caret to every subscriber.
 - `pnpm test test/textchanges.test.ts test/host-documents.test.ts` passes.
 
 ## Resume
+
+Built on 2026-11-15.
+- `mapChange` keeps text the earlier change inserted inside a span the later one deletes, and splits the span around it. This is what CodeMirror's `ChangeSet.map` does, so a client on CodeMirror reaches the same text.
+- A `selected` on a version older than the log is dropped, not refused: the next carets come soon.
+- A refused change goes to every subscriber with `rejectionReason`, as every refused action does on this host.

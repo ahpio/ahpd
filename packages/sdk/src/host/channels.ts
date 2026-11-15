@@ -45,6 +45,13 @@ export const ANNOTATIONS_PATH_SEGMENT = '/annotations';
 /** The scheme a URI names, lowercased, or the empty string when it names none. */
 export const schemeOf = (uri: string): string => (/^([a-zA-Z][\w+.-]*):/.exec(uri)?.[1] ?? '').toLowerCase();
 
+/** The scheme of a shared document's channel: `x-ahpd-document:<file URI>`. */
+export const DOCUMENT_SCHEME = 'x-ahpd-document';
+
+/** The file a shared document's channel names, or nothing for any other channel. */
+export const documentFileOf = (channel: string): string | undefined =>
+  (schemeOf(channel) === DOCUMENT_SCHEME ? channel.slice(DOCUMENT_SCHEME.length + 1) : undefined);
+
 /** The kinds of name this host keeps a space of schemes for. */
 export type Space = 'session' | 'chat' | 'terminal' | 'own' | 'plugin';
 /**
@@ -57,6 +64,8 @@ export type Space = 'session' | 'chat' | 'terminal' | 'own' | 'plugin';
  */
 export const spaceOf = (uri: string): Space | undefined => {
   const scheme = schemeOf(uri);
+  // A shared document is the host's own channel, though its scheme is an extension's.
+  if (scheme === DOCUMENT_SCHEME) return 'own';
   if (scheme === 'ahp-session') return 'session';
   if (scheme === 'ahp-chat') return 'chat';
   if (scheme === 'ahp-terminal') return 'terminal';

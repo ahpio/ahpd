@@ -708,6 +708,8 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
           const held = conn.admit('subscribe', { channel });
           if (held !== undefined) await held;
           const meant = meantBy(channel);
+          // A shared document keeps nothing to replay: the client subscribes again for its whole state.
+          if (ctx.documents.isDocument(meant)) throw new RpcError(-32001, `Subscribe again to ${channel}`);
           if (!visible(connection, meant)) throw new RpcError(-32001, `Resource not available to this client: ${channel}`);
           await snapshotOf(meant, connection);
           resumed.set(meant, channel);

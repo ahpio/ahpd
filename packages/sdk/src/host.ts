@@ -57,7 +57,7 @@ import { clientQueueBytes, replayBytes } from './host/limits.js';
 import {
   ROOT, RESTART_NEEDED, isRootChannel, AUTOMATIONS, AUTOMATIONS_ME, spaceOf, servedIn, methodIn, named,
   chatUriFor, subagentChatUri, WORKER_ACTIONS, toolCallOfSubagentChat, isAutomations, automationOwner,
-  parseResourceWatchChannelUri, schemeOf, ANNOTATIONS_PATH_SEGMENT,
+  parseResourceWatchChannelUri, schemeOf, ANNOTATIONS_PATH_SEGMENT, DOCUMENT_SCHEME,
 } from './host/channels.js';
 import type { Space } from './host/channels.js';
 import { DELTA_WINDOW_MS, merger } from './host/deltas.js';
@@ -67,6 +67,7 @@ import { GREETINGS, UNGATED, seesAccount, seesConfig, DECLARED, ownIn } from './
 import type { Home } from './host/gate.js';
 import { createChatRecord } from './host/chatrecord.js';
 import { createRouting } from './host/routing.js';
+import { createDocuments } from './host/documents.js';
 import { createRelay } from './host/relay.js';
 import { AGENT_CLIENT_SCHEME } from './host/clienturi.js';
 import { createChangesets } from './host/changesets.js';
@@ -900,6 +901,15 @@ export function createHost(options: HostOptions): Host {
       ctx.links.observe(channel, action);
       ctx.sessionEvents.observe(channel, action);
     }
+    /*
+     * A shared document's actions are not kept: a client that comes back
+     * subscribes again and its snapshot holds the whole document, while a
+     * document's keystrokes would push every other channel out of the buffer.
+     */
+    if (schemeOf(channel) === DOCUMENT_SCHEME) {
+      broadcast(channel, 'action', envelope, (connection) => (connection.peer === refused?.by ? undefined : projectActionForClient(connection, envelope)));
+      return;
+    }
     replayable.push(held);
     // Measured once, here, as the text this envelope will go out as.
     const size = JSON.stringify(held).length;
@@ -1217,6 +1227,8 @@ export function createHost(options: HostOptions): Host {
    * `left` that throws is logged against its plugin.
    */
   const leftChannel = (client: string, channel: string): void => {
+    // A shared document forgets the person once none of their connections has it open.
+    documents.left(client, channel);
     const served = servedIn(options.channels, channel);
     if (served?.channel.left === undefined) return;
     for (const one of connections) {
@@ -1576,6 +1588,16 @@ export function createHost(options: HostOptions): Host {
    * One object every area of the host reaches for, built once from the maps
    * and the helpers declared above it.
    */
+  /**
+   * The shared documents: a file's text held while anyone has it open, its
+   * changes put in order, and the file written behind them.
+   */
+  const documents = createDocuments({
+    resources: () => options.resources,
+    emit: (channel, action, origin) => emit(channel, action, origin),
+    watching: (client, channel) => [...connections].some((one) => one.clientId === client && one.activeSubscriptions.has(channel)),
+    log: { warn: (message) => { log.warn(message); }, error: (message) => { log.error(message); } },
+  });
   const ctx = {
     options, dir, known, lastSeen, baselineDebt, clearBaselineDebt, waitsOver, locales, clientNames, clientVersions, clientInfos, localeOf: (clientId: string) => locales.get(clientId),
     catalogsOf: (key: string, provider: string): readonly (Catalogs | undefined)[] => [
@@ -1590,7 +1612,7 @@ export function createHost(options: HostOptions): Host {
     logs, detached, refuse,
     serverSeq: 0,
     closed: false, shutdown: () => host.close(), refusing: undefined, bareSessions: new Set<string>(), startedWorkspaceless: new Set<string>(), commandTurns: new Set<string>(), described, links,
-    watches, marksOf, restoredSessions, activeClientsOf, markAnnotation,
+    watches, marksOf, restoredSessions, activeClientsOf, markAnnotation, documents,
     restartNeeded: false,
     markRestart: () => {
       if (ctx.restartNeeded) return;
@@ -2207,6 +2229,8 @@ export function createHost(options: HostOptions): Host {
         for (const { by, close } of options.closers ?? []) {
           await step(`the plugin ${by}`, close);
         }
+        // The shared documents are written before the store they write through closes.
+        await step('the shared documents', () => documents.close());
         await step('the users watch', () => usersWatch?.close());
         /*
          * And what reads what sessions do, before the stores it reads.

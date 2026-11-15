@@ -1,7 +1,7 @@
 ---
 title: A file is a shared document
 domain: host
-status: planned
+status: active
 priority: medium
 created: 2026-11-15
 revalidated: 2026-11-15
@@ -76,7 +76,7 @@ the file changes on disk -> watch -> one change on the version last written -> r
 | Only `file:` URIs are documents | `(defaulted: the other schemes have no watch to keep the text in step)` | 01 |
 | A file that is not UTF-8 text, or is over 5,000,000 characters, is refused | `(defaulted: ahpw's file page stops at 5,000,000 characters)` | 01 |
 | Subscribe and `selected` need `file:get`; `changed` needs `file:put` | `(defaulted: the grants a read and a write of the file need now)` | 01, 02 |
-| A person's name is the principal's `id`, and `guest` on a host with no users directory | `(defaulted: a principal has no other name)` | 01 |
+| A person's name is the principal's `id`; on a host with no users directory, the first four letters or digits of the client id and ` guest`, such as `ab12 guest` | `(defaulted: a principal has no other name, and two guests must differ)` | 01 |
 | The log keeps the last 500 changes | `(defaulted: minutes of typing for one person)` | 02 |
 | When two inserts are at the same place, the one the host took first goes first | `(defaulted: the rule a client needs to reach the same text)` | 02 |
 | The host writes the file 2 s after the last change, and at least every 10 s while changes go on | `(defaulted: short enough that a stop loses little, long enough to batch typing)` | 03 |
@@ -118,10 +118,10 @@ In the host's action, `version` is the version the positions are in now; after a
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - The document channel](task-01-the-document-channel.md) | todo | - |
-| [02 - Changes and carets](task-02-changes-and-carets.md) | todo | 01 |
-| [03 - The file on disk](task-03-the-file-on-disk.md) | todo | 02 |
-| [04 - The documents page](task-04-the-documents-page.md) | todo | 03 |
+| [01 - The document channel](task-01-the-document-channel.md) | implemented | - |
+| [02 - Changes and carets](task-02-changes-and-carets.md) | implemented | 01 |
+| [03 - The file on disk](task-03-the-file-on-disk.md) | implemented | 02 |
+| [04 - The documents page](task-04-the-documents-page.md) | implemented | 03 |
 
 ## Risks and tradeoffs
 
@@ -133,8 +133,8 @@ In the host's action, `version` is the version the positions are in now; after a
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-the-document-channel.md](task-01-the-document-channel.md).
+- **Done so far:** tasks 01 to 04 built on 2026-11-15, on branch `host/20261115-0829-a-file-is-a-shared-document`; waiting for Softov's test.
+- **Next action:** Softov runs the daemon from the branch with ahpw's plan; then review, `implemented.md`, and a PR.
 - **Open questions:** none.
 - **Watch out for:** `emit` keeps every action for replay unless told not to. The tie rule in task 02 is what ahpw's client must match.
 

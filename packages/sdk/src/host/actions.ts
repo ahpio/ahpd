@@ -33,6 +33,9 @@ import type { ConnectionContext, HostContext } from './context.js';
 const dispatchable: Record<string, boolean | undefined> = {
   ...(IS_CLIENT_DISPATCHABLE as Record<string, boolean | undefined>),
   'chat/configChanged': true,
+  // A shared document's carets and changes, which are this host's own extension.
+  'x-ahpd-document/selected': true,
+  'x-ahpd-document/changed': true,
 };
 
 /**
@@ -214,6 +217,16 @@ export function createActions(ctx: HostContext, conn: ConnectionContext): Action
      */
     if (ownIn(dispatchable, type) === true && ownIn(ACTION_NEEDS, type) === undefined) {
       no(`${type} is not one this host serves`);
+      return;
+    }
+    /*
+     * A shared document's carets and changes, which the host puts in order.
+     * What the documents answer is a reason to refuse the action, said back
+     * to the client with its own `origin`.
+     */
+    if (ctx.documents.isDocument(channel)) {
+      const refused = ctx.documents.dispatch(channel, action, origin, connection);
+      if (refused !== undefined) no(refused);
       return;
     }
     /*

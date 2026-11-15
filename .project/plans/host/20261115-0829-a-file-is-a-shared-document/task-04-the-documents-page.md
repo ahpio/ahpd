@@ -1,6 +1,6 @@
 ---
 title: The documents page
-status: todo
+status: implemented
 depends: [task-03-the-file-on-disk.md]
 layer: "docs"
 refs:
@@ -30,3 +30,7 @@ A client author reads how to open a shared document, send changes and carets, an
 - The docs build passes.
 
 ## Resume
+
+Built on 2026-11-15.
+- `docs/sdk/DOCUMENTS.md` is in the docs sidebar, and `RESOURCES.md` links it.
+- No entry in `docs/updates/v0_15.md`: the release notes are written when a release is cut.

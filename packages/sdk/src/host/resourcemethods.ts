@@ -191,6 +191,8 @@ const CONFLICT = -32011;
       void fire({ type: 'resource_write', uri });
       log.debug(`${connection.clientId} wrote ${uri}`);
       wroteThrough(uri);
+      // A shared document of the file says who made the change this write becomes.
+      ctx.documents.wroteBy(uri, owner === undefined ? undefined : String(owner));
       return {};
     },
     resourceDelete: async (params) => {

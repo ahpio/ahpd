@@ -1,6 +1,6 @@
 ---
 title: The document channel
-status: todo
+status: implemented
 depends: []
 layer: "sdk"
 refs:
@@ -36,7 +36,7 @@ The other subscribers see it join and leave, and the channel's actions never ent
 5. Set the limit to 5,000,000 characters.
 6. Answer the snapshot with `resource`, `text`, `version`, `saved` and `people`.
 7. At each subscribe, add the person and emit `x-ahpd-document/joined` with `client`, `name` and `agent`.
-8. Take `name` from the principal's `id`, and use `guest` when the host has no users directory.
+8. Take `name` from the principal's `id`, and use the client id's start and ` guest` when the host has no users directory.
 9. At each unsubscribe and disconnect, remove the person and emit `x-ahpd-document/left`.
 10. Add a `replay: false` option to `emit`, and emit every document action with it.
 11. Make `channelRead` answer `file:get` for the scheme, and add `x-ahpd-document` to `ACTION_HOMES`.
@@ -52,3 +52,9 @@ The other subscribers see it join and leave, and the channel's actions never ent
 - `pnpm test test/host-documents.test.ts` passes.
 
 ## Resume
+
+Built on 2026-11-15.
+- The tests are in `packages/sdk/test/documents.test.ts` and `packages/sdk/test/documents-gate.test.ts`, not `test/`: the sdk keeps its tests there.
+- `emit` keeps a document's actions out of the replay buffer by the channel's scheme, with no new option. The host's own refusals on a document are kept out too.
+- `spaceOf` answers `own` for `x-ahpd-document:`, so the host does not take it for a plugin's channel.
+- `agent` is always `false`: in this plan an agent takes part through the file only.

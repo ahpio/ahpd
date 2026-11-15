@@ -13,6 +13,7 @@ Terms, one line each:
 | a client's resource | One a connected client answers for, at `vscode-agent-client://<clientId>/<scheme>/<authority>/<path>` |
 | kept content | Bytes a tool result or an agent's message carried inline, kept in the session's folder and read back at `session-db-resource:/<name>?<identity>` |
 | the resource watch | A channel that names what it watches, `ahp-resource-watch://r/<descriptor>` |
+| a shared document | A file several clients edit at once, at `x-ahpd-document:<file URI>`; see [Shared documents](DOCUMENTS.md) |
 | a scheme's manifest | The JSON Schema a scheme publishes for the form a create is drawn from |
 
 ## What `file:` serves
