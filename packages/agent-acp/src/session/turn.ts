@@ -295,6 +295,19 @@ export function createTurn(ctx: SessionContext): Turn {
   let told = false;
 
   /**
+   * Instructions as the block that carries them: wrapped in a tag, and ended
+   * with a blank line.
+   *
+   * Each goes as its own text block, but a server decides how blocks reach its
+   * model, and one that joins them with no break - opencode does - hands the
+   * model the host's last sentence run into the person's first word, as one
+   * message the person seems to have typed. The tag says whose the words are
+   * whichever way the server joins them, in the shape the reference host gives
+   * its own context, `<remote_session_origin>`.
+   */
+  const wrapped = (said: string[]): string => `<host_instructions>\n${said.join('\n\n')}\n</host_instructions>\n\n`;
+
+  /**
    * The blocks one turn is prompted with: what was said, then the message's
    * attachments as the parts the shared helper made of them.
    *
@@ -322,9 +335,9 @@ export function createTurn(ctx: SessionContext): Turn {
     const parts = await partsOf(text, attachments, { images: ctx.promptCapabilities?.image === true });
     const blocks: ContentBlock[] = [];
     if (!told && start.instructions !== undefined && start.instructions.length > 0) {
-      blocks.push({ type: 'text', text: start.instructions.join('\n\n') });
+      blocks.push({ type: 'text', text: wrapped(start.instructions) });
     }
-    if (instructions.length > 0) blocks.push({ type: 'text', text: instructions.join('\n\n') });
+    if (instructions.length > 0) blocks.push({ type: 'text', text: wrapped(instructions) });
     for (const part of parts) {
       /*
        * An image goes as its bytes and its type, the two fields ACP requires of

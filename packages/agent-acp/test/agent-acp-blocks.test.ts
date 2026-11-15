@@ -329,7 +329,23 @@ it('puts the send\'s instructions in that turn\'s prompt, ahead of what was said
   session.sendMessage('t1', 'what are these blocks?', undefined, undefined, { instructions: () => ['Report back to the chat this came from.', ' '] });
   await until(() => watch.ended() > 0);
   const said = watch.prose();
-  expect(said.slice(said.indexOf('blocks='))).toBe('blocks=text:Report back to the chat this came from.|text:what are these blocks?');
+  expect(said.slice(said.indexOf('blocks='))).toBe('blocks=text:<host_instructions>\nReport back to the chat this came from.\n</host_instructions>\n\n|text:what are these blocks?');
+});
+
+/*
+ * The session's instructions open its first prompt and no other, wrapped as
+ * the host's: a server that joins the blocks with no break, as opencode does,
+ * would otherwise hand the model the host's words run into the person's.
+ */
+it('opens the first prompt alone with the session\'s instructions, wrapped as the host\'s', async () => {
+  const { agent } = backend();
+  const { session, watch } = await start(agent, 'session-told', { instructions: ['Record what you make.'] });
+  await turn(session, watch, 'what are these blocks?');
+  const first = watch.prose();
+  expect(first.slice(first.indexOf('blocks='))).toBe('blocks=text:<host_instructions>\nRecord what you make.\n</host_instructions>\n\n|text:what are these blocks?');
+  await turn(session, watch, 'what are these blocks?');
+  const both = watch.prose();
+  expect(both.slice(both.lastIndexOf('blocks='))).toBe('blocks=text:what are these blocks?');
 });
 
 it('sends a turn handed while another runs with its attachments when its turn starts', async () => {

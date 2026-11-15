@@ -1,6 +1,6 @@
 ---
 title: An ACP prompt wraps the host's instructions
-status: todo
+status: done
 depends: []
 layer: "agent-acp"
 refs:
@@ -33,3 +33,4 @@ A server that joins the blocks still gives the model a clear break before the pe
 
 ## Resume
 
+Done 2026-11-15. `wrapped` in `turn.ts` wraps both blocks. The fixture echoes blocks only for the text `what are these blocks?`, so the new case sends that text twice.
