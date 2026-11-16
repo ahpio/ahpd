@@ -33,5 +33,5 @@ A file and a session show each other's comments, each comment's range moves with
 
 ## Left for later
 
-- A session's channel showed a file's comments without checking that the reader may read the file. The fix is on the branch `host/session-comments-need-file-read`, not merged yet.
+- A session's channel showed a file's comments without checking that the reader may read the file. ahpio/ahpd#356 fixed it.
 - A file's channel shows every session's comments on the file to any reader of the file, also comments from sessions that reader cannot see. Nobody has decided whether that is wanted.
