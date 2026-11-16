@@ -48,7 +48,7 @@ export type { HeldShell, ManagedShell, ShellClaim, ShellCommandResult, ShellComm
 export type { BackgroundTask, BackgroundTaskKind, BackgroundTasks, ChatBackgroundTasks } from './background.js';
 export type { GitDir, Worktree, Worktrees } from './worktrees.js';
 export type {
-  NewPullRequest, PullRequest, PullRequestCheck, PullRequestChecks, PullRequestComment, PullRequestCore, PullRequestDetail,
+  NewPullRequest, PullRequest, PullRequestAuthor, PullRequestCheck, PullRequestChecks, PullRequestComment, PullRequestCore, PullRequestDetail,
   PullRequestFeedbackComment, PullRequestJob, PullRequestJobLog, PullRequestJobStep, PullRequestMergeability, PullRequestReview,
   PullRequestReviewThread, PullRequests,
 } from './github.js';

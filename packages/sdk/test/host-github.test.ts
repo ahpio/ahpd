@@ -863,3 +863,194 @@ describe('the pull request a create-pr recorded', () => {
     expect(commit?.confirmation).toContain("'Fix the build'");
   });
 });
+
+describe('what GitHub says of each pull request a session shows', () => {
+  /*
+   * `_meta['ahpd.pullRequests']`: the details of the branch's pull request and
+   * of each one the session recorded or associated, read with automatic
+   * attachment on or off, and read again each minute while a client watches.
+   * A real repository, because a client watches a directory by subscribing to
+   * one of its changesets, which is git.
+   */
+  const KEY = 'ahpd.pullRequests';
+  const BRANCHS = 'https://github.com/softov/ahpd/pull/7';
+  const OTHER = 'https://github.com/softov/ahpd/pull/349';
+  const here: string[] = [];
+  afterEach(async () => {
+    vi.useRealTimers();
+    for (const dir of here) await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    here.length = 0;
+  });
+
+  type Pr = { url: string; state: 'open' | 'closed' | 'merged'; title?: string; body?: string; author?: { login: string }; baseRef?: string; headRef?: string };
+
+  /** A repository with one commit, which the host serves. */
+  const repository = (): string => {
+    const root = mkdtempSync(join(tmpdir(), 'ahpd-host-pr-details-'));
+    here.push(root);
+    const dir = join(root, 'work');
+    execFileSync('git', ['init', '-q', '-b', 'main', dir]);
+    execFileSync('git', ['-C', dir, 'config', 'user.email', 'test@example.com']);
+    execFileSync('git', ['-C', dir, 'config', 'user.name', 'Test']);
+    writeFileSync(join(dir, 'tracked.txt'), 'one\n');
+    execFileSync('git', ['-C', dir, 'add', '-A']);
+    execFileSync('git', ['-C', dir, 'commit', '-q', '-m', 'first']);
+    return dir;
+  };
+
+  /**
+   * A host on a repository whose facts name branch `fix/a` on GitHub, the
+   * branch's pull requests `branch`, and each page's answer in `pages`. Each
+   * session named in `associated` holds those pull requests as associated.
+   */
+  const world = async (options: { branch?: Pr[]; pages?: Record<string, Pr>; associated?: Record<string, string[]>; autoAttach?: boolean }) => {
+    const dir = repository();
+    const pages = new Map(Object.entries(options.pages ?? {}));
+    const failing = new Set<string>();
+    const read: string[] = [];
+    const listed: string[] = [];
+    const store = memorySessions();
+    for (const [id, urls] of Object.entries(options.associated ?? {})) store.setPullRequests(id, { initialPullRequestUrls: [], associatedPullRequestUrls: urls });
+    const host = createHost({
+      path: dir,
+      agents: [claude({ paths: [dir] })],
+      ...machine(),
+      directories: { meta: () => ({ git: { branchName: 'fix/a', hasGitHubRemote: true, githubOwner: 'softov', githubRepo: 'ahpd' } }), refresh: async () => false },
+      github: {
+        resource: { resource: 'https://api.github.com/repos', resource_name: 'GitHub Repository', authorization_servers: ['https://github.com/login/oauth'], required: false },
+        forBranch: async (_repo: unknown, branch: string) => { listed.push(branch); return options.branch ?? []; },
+        byUrl: async (url: string) => {
+          read.push(url);
+          if (failing.has(url)) throw new Error('offline');
+          return pages.get(url);
+        },
+        create: async () => { throw new Error('not here'); },
+      },
+      changes: gitChanges(),
+      sessions: store,
+    });
+    const p = peer();
+    const client = host.accept(p);
+    await client.handle(hello(['0.9.0']));
+    if (options.autoAttach === false) {
+      await client.handle({ method: 'dispatchAction', params: { channel: 'ahp-root://', action: { type: 'root/configChanged', config: { autoAttachPullRequests: false } } } });
+    }
+    const open = async (uri: string): Promise<void> => {
+      await client.handle({ method: 'createSession', params: { channel: uri, provider: 'claude' } });
+      await settle();
+      await client.handle({ method: 'subscribe', params: { channel: uri } });
+    };
+    /** Read the folder again, as a client opening a changeset does, and answer the session's details. */
+    const details = async (uri: string): Promise<Record<string, Record<string, unknown>> | undefined> => {
+      await client.handle({ method: 'unsubscribe', params: { channel: `${uri}/changeset/uncommitted` } });
+      await client.handle({ method: 'subscribe', params: { channel: `${uri}/changeset/uncommitted` } });
+      return meta(uri);
+    };
+    /** The session's details as its state holds them now. */
+    const meta = async (uri: string): Promise<Record<string, Record<string, unknown>> | undefined> => {
+      const state = (await client.handle({ method: 'subscribe', params: { channel: uri } }) as { snapshot: { state: { _meta?: Record<string, unknown> } } }).snapshot.state;
+      return state._meta?.[KEY] as Record<string, Record<string, unknown>> | undefined;
+    };
+    return { client, pages, failing, read, listed, store, open, details, meta };
+  };
+
+  it('sends the branch\'s pull request with what GitHub says of it', async () => {
+    const pr: Pr = { url: BRANCHS, state: 'open', title: 'Port the kqueue build', body: 'It builds.', author: { login: 'softov' }, baseRef: 'main', headRef: 'fix/a' };
+    const { open, details } = await world({ branch: [pr] });
+    await open('ahp-session:/a');
+    expect(await details('ahp-session:/a')).toEqual({ [BRANCHS]: pr });
+  });
+
+  it('reads a recorded pull request of another branch, and shows it merged once GitHub says so', async () => {
+    const { open, details, pages } = await world({ pages: { [OTHER]: { url: OTHER, state: 'open', title: 'Fix the build' } }, associated: { a: [OTHER] } });
+    await open('ahp-session:/a');
+    expect((await details('ahp-session:/a'))?.[OTHER]).toMatchObject({ state: 'open', title: 'Fix the build' });
+    pages.set(OTHER, { url: OTHER, state: 'merged', title: 'Fix the build' });
+    expect((await details('ahp-session:/a'))?.[OTHER]).toMatchObject({ state: 'merged' });
+  });
+
+  it('reads the recorded and associated ones with automatic attachment off, and associates nothing new', async () => {
+    const { open, details, listed, store } = await world({
+      autoAttach: false,
+      branch: [{ url: BRANCHS, state: 'open' }],
+      pages: { [OTHER]: { url: OTHER, state: 'merged', title: 'Fix the build' } },
+      associated: { a: [OTHER] },
+    });
+    // The host may read the folder once before the setting arrives; nothing is listed after it.
+    const listedBefore = listed.length;
+    await open('ahp-session:/a');
+    expect(await details('ahp-session:/a')).toEqual({ [OTHER]: { url: OTHER, state: 'merged', title: 'Fix the build' } });
+    expect(listed.length).toBe(listedBefore);
+    expect(store.pullRequests('a')?.associatedPullRequestUrls).toEqual([OTHER]);
+  });
+
+  it('does not read a merged pull request again', async () => {
+    const { open, details, read } = await world({ pages: { [OTHER]: { url: OTHER, state: 'merged' } }, associated: { a: [OTHER] } });
+    await open('ahp-session:/a');
+    await details('ahp-session:/a');
+    const count = read.length;
+    expect(count).toBeGreaterThan(0);
+    await details('ahp-session:/a');
+    expect(read.length).toBe(count);
+  });
+
+  it('keeps what it held when GitHub does not answer for one', async () => {
+    const { open, details, failing, pages } = await world({ pages: { [OTHER]: { url: OTHER, state: 'open', title: 'Kept' } }, associated: { a: [OTHER] } });
+    await open('ahp-session:/a');
+    await details('ahp-session:/a');
+    failing.add(OTHER);
+    pages.set(OTHER, { url: OTHER, state: 'closed', title: 'Not seen' });
+    expect((await details('ahp-session:/a'))?.[OTHER]).toMatchObject({ state: 'open', title: 'Kept' });
+  });
+
+  it('sends a session only its own pull requests, not another session\'s in the same folder', async () => {
+    const MINE = 'https://github.com/softov/ahpd/pull/1';
+    const THEIRS = 'https://github.com/softov/ahpd/pull/2';
+    const { open, details } = await world({
+      pages: { [MINE]: { url: MINE, state: 'open' }, [THEIRS]: { url: THEIRS, state: 'open' } },
+      associated: { a: [MINE], b: [THEIRS] },
+    });
+    await open('ahp-session:/a');
+    await open('ahp-session:/b');
+    expect(Object.keys(await details('ahp-session:/a') ?? {})).toEqual([MINE]);
+    expect(Object.keys(await details('ahp-session:/b') ?? {})).toEqual([THEIRS]);
+  });
+
+  it('cuts a long description and says so', async () => {
+    const { open, details } = await world({ pages: { [OTHER]: { url: OTHER, state: 'open', body: 'x'.repeat(1500) } }, associated: { a: [OTHER] } });
+    await open('ahp-session:/a');
+    const held = (await details('ahp-session:/a'))?.[OTHER];
+    expect((held?.body as string).length).toBe(1000);
+    expect(held?.bodyTruncated).toBe(true);
+  });
+
+  it('reads an open pull request again after a minute while a client watches, and says it merged', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const { open, details, meta, pages, read } = await world({ pages: { [OTHER]: { url: OTHER, state: 'open' } }, associated: { a: [OTHER] } });
+    await open('ahp-session:/a');
+    expect((await details('ahp-session:/a'))?.[OTHER]).toMatchObject({ state: 'open' });
+    pages.set(OTHER, { url: OTHER, state: 'merged' });
+    const before = read.length;
+    await vi.advanceTimersByTimeAsync(60_000);
+    await settle(8);
+    expect(read.length).toBe(before + 1);
+    expect((await meta('ahp-session:/a'))?.[OTHER]).toMatchObject({ state: 'merged' });
+    // Merged now, so the next minute reads nothing.
+    await vi.advanceTimersByTimeAsync(60_000);
+    await settle(8);
+    expect(read.length).toBe(before + 1);
+  });
+
+  it('reads nothing once no client watches, and stops the poll with the watch', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const { client, open, details, read } = await world({ pages: { [OTHER]: { url: OTHER, state: 'open' } }, associated: { a: [OTHER] } });
+    await open('ahp-session:/a');
+    await details('ahp-session:/a');
+    await client.handle({ method: 'unsubscribe', params: { channel: 'ahp-session:/a/changeset/uncommitted' } });
+    await settle(8);
+    const before = read.length;
+    await vi.advanceTimersByTimeAsync(180_000);
+    await settle(8);
+    expect(read.length).toBe(before);
+  });
+});

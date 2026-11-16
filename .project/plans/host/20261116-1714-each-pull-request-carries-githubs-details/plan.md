@@ -94,10 +94,10 @@ a client watches the directory -> every 60 s the open ones are read again -> met
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - the port reads a pull request's details](task-01-the-port-reads-a-pull-requests-details.md) | todo | - |
-| [02 - a session sends its pull requests](task-02-a-session-sends-its-pull-requests.md) | todo | 01 |
-| [03 - an open pull request is read each minute](task-03-an-open-pull-request-is-read-each-minute.md) | todo | 02 |
-| [04 - the docs name the details](task-04-the-docs-name-the-details.md) | todo | 02 |
+| [01 - the port reads a pull request's details](task-01-the-port-reads-a-pull-requests-details.md) | implemented | - |
+| [02 - a session sends its pull requests](task-02-a-session-sends-its-pull-requests.md) | implemented | 01 |
+| [03 - an open pull request is read each minute](task-03-an-open-pull-request-is-read-each-minute.md) | implemented | 02 |
+| [04 - the docs name the details](task-04-the-docs-name-the-details.md) | implemented | 02 |
 
 ## Risks and tradeoffs
 
@@ -107,8 +107,8 @@ a client watches the directory -> every 60 s the open ones are read again -> met
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-the-port-reads-a-pull-requests-details.md](task-01-the-port-reads-a-pull-requests-details.md).
+- **Done so far:** tasks 01 to 04 built on 2026-11-16 on branch `host/20261116-1714-each-pull-request-carries-githubs-details`, awaiting review.
+- **Next action:** Softov reviews the PR, then the check by hand on the test daemon in *Final verification checklist*.
 - **Open questions:** none.
 - **Watch out for:**
   - VS Code's `_meta.github` keys and `pullRequestState` stay exactly as they are; the details are a new key beside them.

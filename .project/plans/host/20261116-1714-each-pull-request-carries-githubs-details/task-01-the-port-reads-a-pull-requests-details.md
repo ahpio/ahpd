@@ -1,6 +1,6 @@
 ---
 title: The port reads a pull request's details
-status: todo
+status: implemented
 depends: []
 layer: "sdk"
 refs:
@@ -40,4 +40,10 @@ refs:
 - `pnpm typecheck` passes.
 
 ## Resume
+
+Built on 2026-11-16, awaiting review.
+
+- `PullRequestAuthor` is a type of its own, exported beside `PullRequest`.
+- `gh` sends `null` for a date that has not happened, checked on 2026-11-16 with `gh pr view`; the mapping leaves it out.
+- The four cases that held the old answers and the old `--json` list now hold the details.
 

@@ -1,6 +1,6 @@
 ---
 title: A session sends what GitHub says of each of its pull requests
-status: todo
+status: implemented
 depends: [task-01-the-port-reads-a-pull-requests-details.md]
 layer: "sdk"
 refs:
@@ -51,4 +51,12 @@ A recorded pull request on another branch shows merged once GitHub says it is me
 - The sdk suite and the computer suite pass, one at a time.
 
 ## Resume
+
+Built on 2026-11-16, awaiting review.
+
+- `candidatesOf` moved to the top of `createFacts`.
+- `readDetails` reads the session URLs after the branch read in every path, also after a failed one.
+- The key is `PULL_REQUESTS_META`, exported from `host/facts.ts`.
+- A case first read the folder before the setting arrived, so the case with automatic attachment off checks that nothing is listed after the setting.
+- The 25 cases that were there pass unchanged.
 

@@ -35,7 +35,7 @@ The scopes are the uncommitted tree, the whole session and each turn.
 Each side of a diff has a URI that this host makes and reads back.
 The committed side is an `ahp-git:` URI, and a side that the host holds is an `ahp-edit:` URI.
 The operations are the ones of the VS Code agent host: commit, discard, stage, unstage, revert, checkout, and the two pull request operations.
-The session's pull request facts go to clients in `_meta.github`.
+The session's pull request facts go to clients in `_meta.github`, and what GitHub says of each pull request in `_meta['ahpd.pullRequests']`.
 
 ## Scenarios
 
@@ -111,6 +111,22 @@ WHEN `create-pr` gives a pull request
 THEN its URL goes to the front of `associatedPullRequestUrls`
 AND it leaves `initialPullRequestUrls`, compared without case and without a trailing slash.
 See [Host tools](host-tools.md) for the artifact that it records.
+
+### A session's pull requests carry what GitHub says of them
+
+WHEN the host reads a folder's facts, with `autoAttachPullRequests` on or off
+THEN it reads each pull request a session there shows: the branch's, the recorded ones and the associated ones
+AND each session's `_meta['ahpd.pullRequests']` holds the details of its own, keyed by URL
+AND a pull request held as merged is not read again
+AND a read that fails keeps what was held.
+See [Sessions](../../docs/sdk/SESSIONS.md#pull-requests) for the fields.
+
+### A watched folder's pull requests are read each minute
+
+WHEN a client watches a changeset of a folder
+THEN every 60 seconds the host reads again each pull request it holds there that is not merged
+AND a change sends `session/metaChanged`
+AND the poll stops when no client watches the folder.
 
 ### Where worktrees live
 
