@@ -1,6 +1,7 @@
 export { botCatalogue, CATALOGUE, CATALOGUE_SCHEME } from './catalogue.js';
-export type { BotCatalogue, Catalogue } from './catalogue.js';
+export type { BotCatalogue, BotViews, Catalogue } from './catalogue.js';
 export { apply, defaults, name, title } from './plugin.js';
+export { botMethods } from './commands.js';
 export { botProvider } from './provider.js';
 export type { BotOptions, BotProvider } from './provider.js';
 export type { BotSessions } from './wake.js';

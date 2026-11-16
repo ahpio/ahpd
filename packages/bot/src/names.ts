@@ -171,6 +171,8 @@ export interface FrontSessions {
   put(bot: string, user: string, session: string): Promise<void>;
   /** Every session one bot's rows name. */
   sessions(bot: string): Promise<string[]>;
+  /** Every row of one bot: whose talk it is, and its session. */
+  talks(bot: string): Promise<{ user: string; session: string }[]>;
 }
 
 /** The Front rows over one collection a bot. */
@@ -191,5 +193,14 @@ export const frontSessions = (rows: (bot: string) => RecordCollection): FrontSes
     return found
       .map((row) => row['session'])
       .filter((session): session is string => typeof session === 'string' && session !== '');
+  },
+
+  talks: async (bot) => {
+    const found = await rows(bot).find({ bot });
+    return found.flatMap((row) => {
+      const user = row['user'];
+      const session = row['session'];
+      return typeof user === 'string' && user !== '' && typeof session === 'string' && session !== '' ? [{ user, session }] : [];
+    });
   },
 });

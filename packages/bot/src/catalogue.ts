@@ -2,16 +2,18 @@ import { ownerOfPrincipal, RpcError } from '@ahpd/sdk';
 import { mayRead } from './provider.js';
 import type { BotRecord } from './record.js';
 import type { BotStore } from './store.js';
-import type { ChannelHandle, PluginChannel, Principal } from '@ahpd/sdk';
+import type { ChannelHandle, PluginChannel, PublishOptions, Principal } from '@ahpd/sdk';
 
 /**
  * The `x-ahpd-bots://` channel: every bot a reader may read, kept current.
  *
- * A subscribe answers `{ bots }`, each record the same object a read of
- * `bot://<slug>` answers. Three actions follow it:
+ * A subscribe answers `{ records }`, each entry `{ id, record }` with the
+ * record a read of `bot://<id>` answers that reader: the `AGENTS.md` parts,
+ * `state`, and the reader's own `session`. Three actions follow it, in the
+ * shape every records channel sends:
  *
- * - `x-ahpd-bots/added` `{ bot }` - a bot this client did not have, and may read now.
- * - `x-ahpd-bots/changed` `{ bot }` - a bot this client has, edited, and still readable.
+ * - `x-ahpd-bots/added` `{ id, record }` - a bot this client did not have, and may read now.
+ * - `x-ahpd-bots/changed` `{ id, record }` - a bot this client has, edited, and still readable.
  * - `x-ahpd-bots/removed` `{ id }` - a bot this client has, deleted or no longer readable.
  *
  * Each client is sent only what concerns it - decision
@@ -19,6 +21,12 @@ import type { ChannelHandle, PluginChannel, Principal } from '@ahpd/sdk';
  * keeps the slugs it sent to each reader, a client id and the person on it.
  * An edit that changes whether a client
  * may read the bot is `added` or `removed` to that client, never `changed`.
+ *
+ * A reader's `session` differs from the next reader's, so a change is
+ * published once for each person who talks to the bot, and once for everyone
+ * else, each with a `visible` test that lets only its own readers see it. The
+ * talks are kept here by bot, read at each snapshot and told by `talked`, so
+ * every publish is decided at the moment of the change, as a replay asks it.
  */
 
 /** The channel's scheme. */
@@ -35,6 +43,16 @@ export interface BotCatalogue {
   remove(bot: BotRecord): void;
 }
 
+/** How the catalogue reads what a read of one bot answers. */
+export interface BotViews {
+  /** The record every reader is answered, before their own `session`. */
+  record(bot: BotRecord): Record<string, unknown>;
+  /** Each person's talk with this bot, by whose talk it is. */
+  talks(slug: string): Promise<Map<string, string>>;
+  /** Whose talks a reader is answered, or nobody for a reader that has none. */
+  talker(reader: Principal | undefined): string | undefined;
+}
+
 /** The catalogue, its channel, and the steps the plugin wires to the host. */
 export interface Catalogue extends BotCatalogue {
   /** What `registerChannel` takes. */
@@ -43,6 +61,10 @@ export interface Catalogue extends BotCatalogue {
   bind(handle: ChannelHandle): void;
   /** Memberships changed: send each client what it gained and lost. */
   recompute(): void;
+  /** A person's talk with a bot was written down: send that person's readers the bot with it. */
+  talked(slug: string, talker: string, session: string): void;
+  /** Something a bot's record is read from changed, such as its `AGENTS.md`: send it again where it now differs. */
+  touch(slug: string): void;
 }
 
 /**
@@ -65,9 +87,16 @@ const readerKey = (client: string, reader: Principal | undefined): string =>
 /** The client id a `readerKey` was made from. */
 const clientOfKey = (key: string): string => (JSON.parse(key) as [string, string])[0];
 
-export function botCatalogue(store: BotStore): Catalogue {
+/** Who one publish is for: the test asked of each subscriber at each send and each replay. */
+type Visible = (reader: Principal | undefined, client: string) => boolean;
+
+export function botCatalogue(store: BotStore, views: BotViews): Catalogue {
   /** The slugs sent to each reader, by `readerKey`. */
   const sent = new Map<string, Set<string>>();
+  /** Each bot's talks, by whose talk it is, as the last snapshot read them and `talked` told them since. */
+  const talks = new Map<string, Map<string, string>>();
+  /** Each bot's record as last sent, before any reader's `session`, so `touch` sends only a change. */
+  const last = new Map<string, string>();
   let handle: ChannelHandle | undefined;
 
   /**
@@ -86,8 +115,48 @@ export function botCatalogue(store: BotStore): Catalogue {
     else set.delete(slug);
   };
 
-  const publish = (type: 'added' | 'changed' | 'removed', body: { bot: BotRecord } | { id: string }, visible: (reader: Principal | undefined, client: string) => boolean): void => {
-    handle?.publish(CATALOGUE, { type: `${CATALOGUE_SCHEME}/${type}`, ...body }, { visible });
+  /** The reader's own talk with this bot, where the catalogue knows one. */
+  const sessionOf = (slug: string, reader: Principal | undefined): string | undefined => {
+    const talker = views.talker(reader);
+    return talker === undefined ? undefined : talks.get(slug)?.get(talker);
+  };
+
+  /** One bot as this reader is answered it. */
+  const entry = (bot: BotRecord, reader: Principal | undefined): { id: string; record: Record<string, unknown> } => {
+    const session = sessionOf(bot.id, reader);
+    const record = views.record(bot);
+    last.set(bot.id, JSON.stringify(record));
+    return { id: bot.id, record: { ...record, ...(session === undefined ? {} : { session }) } };
+  };
+
+  const send = (type: 'added' | 'changed' | 'removed', body: Record<string, unknown>, options: PublishOptions): void => {
+    handle?.publish(CATALOGUE, { type: `${CATALOGUE_SCHEME}/${type}`, ...body }, options);
+  };
+
+  /**
+   * Send one bot as `added` or `changed`, once for each record a reader may be
+   * answered: each talker's own, and the one with no session for every other
+   * reader. `visible` is asked only of the readers a record is for, so the
+   * note it keeps is kept once for each reader.
+   */
+  const publish = (type: 'added' | 'changed', bot: BotRecord, visible: Visible, to?: string): void => {
+    const record = views.record(bot);
+    last.set(bot.id, JSON.stringify(record));
+    // A copy: a replay asks `visible` again, after later talks have changed the map.
+    const held = new Map(talks.get(bot.id));
+    for (const [talker, session] of held) {
+      send(type, { id: bot.id, record: { ...record, session } }, {
+        ...(to === undefined ? {} : { to }),
+        visible: (reader, client) => views.talker(reader) === talker && visible(reader, client),
+      });
+    }
+    send(type, { id: bot.id, record }, {
+      ...(to === undefined ? {} : { to }),
+      visible: (reader, client) => {
+        const talker = views.talker(reader);
+        return (talker === undefined || !held.has(talker)) && visible(reader, client);
+      },
+    });
   };
 
   return {
@@ -109,13 +178,17 @@ export function botCatalogue(store: BotStore): Catalogue {
        * loads its cache on the first read rather than while the plugin applies.
        * A snapshot answered from an empty cache would never be corrected:
        * nothing publishes a bot that was there all along.
+       *
+       * Each bot's talks are read again here, so a talk whose session the host
+       * dropped leaves the catalogue at the next snapshot.
        */
       snapshot: async (uri, reader, client) => {
         await store.ready();
         if (uri !== CATALOGUE) throw new RpcError(-32001, `No channel at ${uri}; the catalogue is ${CATALOGUE}`);
         const bots = store.all().filter((one) => readable(one, reader));
+        for (const bot of bots) talks.set(bot.id, await views.talks(bot.id));
         sent.set(readerKey(client, reader), new Set(bots.map((one) => one.id)));
-        return { bots };
+        return { records: bots.map((bot) => entry(bot, reader)) };
       },
       left: (client) => {
         for (const key of [...sent.keys()]) if (clientOfKey(key) === client) sent.delete(key);
@@ -131,23 +204,25 @@ export function botCatalogue(store: BotStore): Catalogue {
      */
     put: (bot, before) => {
       if (before === undefined) {
-        publish('added', { bot }, (reader, client) => {
+        publish('added', bot, (reader, client) => {
           if (!readable(bot, reader)) return false;
           note(client, reader, bot.id, true);
           return true;
         });
         return;
       }
-      publish('changed', { bot }, (reader, client) => had(client, reader, before) && readable(bot, reader));
-      publish('added', { bot }, (reader, client) => {
+      publish('changed', bot, (reader, client) => had(client, reader, before) && readable(bot, reader));
+      publish('added', bot, (reader, client) => {
         if (had(client, reader, before) || !readable(bot, reader)) return false;
         note(client, reader, bot.id, true);
         return true;
       });
-      publish('removed', { id: bot.id }, (reader, client) => {
-        if (!had(client, reader, before) || readable(bot, reader)) return false;
-        note(client, reader, bot.id, false);
-        return true;
+      send('removed', { id: bot.id }, {
+        visible: (reader, client) => {
+          if (!had(client, reader, before) || readable(bot, reader)) return false;
+          note(client, reader, bot.id, false);
+          return true;
+        },
       });
     },
 
@@ -157,11 +232,43 @@ export function botCatalogue(store: BotStore): Catalogue {
      * replayed delete still has to reach that client.
      */
     remove: (bot) => {
-      publish('removed', { id: bot.id }, (reader, client) => {
-        if (!had(client, reader, bot) && !readable(bot, reader)) return false;
-        note(client, reader, bot.id, false);
-        return true;
+      talks.delete(bot.id);
+      last.delete(bot.id);
+      send('removed', { id: bot.id }, {
+        visible: (reader, client) => {
+          if (!had(client, reader, bot) && !readable(bot, reader)) return false;
+          note(client, reader, bot.id, false);
+          return true;
+        },
       });
+    },
+
+    /*
+     * The bot again, to the readers this talk is theirs and who hold it. The
+     * record every other reader holds has not changed.
+     */
+    talked: (slug, talker, session) => {
+      const held = talks.get(slug);
+      if (held?.get(talker) === session) return;
+      // A new map, so the publishes made before this one keep the talks they were sent with.
+      talks.set(slug, new Map(held).set(talker, session));
+      const bot = store.get(slug);
+      if (bot === undefined) return;
+      send('changed', { id: bot.id, record: { ...views.record(bot), session } }, {
+        visible: (reader, client) => views.talker(reader) === talker && had(client, reader, bot) && readable(bot, reader),
+      });
+    },
+
+    /*
+     * The bot again, to every reader who holds it, when what it is read as
+     * moved: a save of the bot writes its file too, and that write is heard
+     * here after the edit was sent, with nothing new in it.
+     */
+    touch: (slug) => {
+      const bot = store.get(slug);
+      if (bot === undefined) return;
+      if (last.get(slug) === JSON.stringify(views.record(bot))) return;
+      publish('changed', bot, (reader, client) => had(client, reader, bot) && readable(bot, reader));
     },
 
     /*
@@ -179,17 +286,13 @@ export function botCatalogue(store: BotStore): Catalogue {
         sent.set(key, now);
         // A reader with no set has nothing to diff against, and starts from here.
         if (set === undefined) continue;
-        const audience = (bot: BotRecord | undefined) => ({
-          to: client,
-          visible: (seen: Principal | undefined, at: string) => readerKey(at, seen) === key && (bot === undefined || readable(bot, seen)),
-        });
         for (const bot of every) {
           if (now.has(bot.id) && !set.has(bot.id)) {
-            handle.publish(CATALOGUE, { type: `${CATALOGUE_SCHEME}/added`, bot }, audience(bot));
+            publish('added', bot, (seen, at) => readerKey(at, seen) === key && readable(bot, seen), client);
           }
         }
         for (const id of set) {
-          if (!now.has(id)) handle.publish(CATALOGUE, { type: `${CATALOGUE_SCHEME}/removed`, id }, audience(undefined));
+          if (!now.has(id)) send('removed', { id }, { to: client, visible: (seen, at) => readerKey(at, seen) === key });
         }
       }
     },

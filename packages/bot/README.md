@@ -106,7 +106,7 @@ A listing shows what a read would allow: a list that showed a bot the reader can
 
 ### The catalogue
 
-A subscribe to `x-ahpd-bots://` answers `{ bots }`, the bots the reader may read, then `x-ahpd-bots/added`, `x-ahpd-bots/changed` and `x-ahpd-bots/removed` as they change - [BOTS.md](https://github.com/ahpio/ahpd/blob/main/docs/plugins/BOTS.md#the-catalogue).
+A subscribe to `x-ahpd-bots://` answers `{ records }`, each bot the reader may read as a read answers it, then `x-ahpd-bots/added`, `x-ahpd-bots/changed` and `x-ahpd-bots/removed` as they change. `x-ahpd/bots/put` and `x-ahpd/bots/remove` make, edit and delete one - [BOTS.md](https://github.com/ahpio/ahpd/blob/main/docs/plugins/BOTS.md#the-catalogue).
 
 ### The workspace
 

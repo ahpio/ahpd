@@ -248,21 +248,36 @@ A watch needs `bot:watch`, or a bot the reader may read: a watch on `bot://` is 
 
 A client that subscribes to `x-ahpd-bots://` gets every bot it may read in one snapshot, then an action for each change. It reads the bots without one `resourceRead` per bot, and it hears changes that other clients make.
 
-The snapshot state is `{ bots: BotRecord[] }`. Each record is the bot's own, the JSON object a write takes and a read answers. Three actions follow it:
+The snapshot state is `{ records: { id, record }[] }`, the shape of every records channel. `id` is the slug, and `record` is what a read of `bot://<id>` answers this reader: the record with its `AGENTS.md` parts, `state: 'unavailable'` when its agent is gone, and the reader's own `session` when they talk to the bot. Three actions follow it:
 
 | Action | When the client gets it |
 | --- | --- |
-| `{ type: 'x-ahpd-bots/added', bot: BotRecord }` | A bot was made that it may read, or a bot it did not have became readable |
-| `{ type: 'x-ahpd-bots/changed', bot: BotRecord }` | A bot it has was edited, and it may still read it |
-| `{ type: 'x-ahpd-bots/removed', id: string }` | A bot it has was deleted, or it may no longer read it. `id` is the slug |
+| `{ type: 'x-ahpd-bots/added', id, record }` | A bot was made that it may read, or a bot it did not have became readable |
+| `{ type: 'x-ahpd-bots/changed', id, record }` | A bot it has was edited, and it may still read it, or the reader's talk with it started |
+| `{ type: 'x-ahpd-bots/removed', id }` | A bot it has was deleted, or it may no longer read it |
 
 When an edit changes whether a client may read the bot, that client gets `added` or `removed`, never `changed`. When the users file changes, each subscriber gets `added` and `removed` for the bots its memberships gave or took away. Only that subscriber gets them.
 
 Each client gets only the actions about bots it may read, so it sees gaps in `serverSeq` on this channel. A client cannot dispatch an action to the channel.
 
+A reader's `session` is theirs alone: each change is sent once for each person who talks to the bot, and once without a `session` for every other reader. A talk is read at each subscribe and heard when it starts. A talk the host dropped leaves at the next subscribe. Each local bot's workspace folder is watched for `AGENTS.md`, so an edit the bot makes to its own file is sent as `changed` too. A save of the bot writes the file as well, and sends one `changed`, not two.
+
+Hosts up to 0.15.0-rc.3 send `{ bots: BotRecord[] }` and `{ bot }`. A client that reads both shapes works with either host.
+
 The channel's grant is `bot:read`. A reader without it is let in all the same, as VS Code serves each client its own projection of a list: it sees the bots it may read, none at first for a reader who may read none, and an `added` for each that becomes readable to it. `bot:get` reads every bot, so a holder of `bot:read` sees them all.
 
 The channel is in `_meta['ahpd.channels']` on `initialize` and on the root state, as `{ scheme: 'x-ahpd-bots', title: 'Bots', description, grant: 'bot:read' }`. [PLUGINS.md](PLUGINS.md#a-channel-of-your-own) describes a plugin channel.
+
+## Commands
+
+A bot is made, edited and deleted with two commands, as every records list is. Each runs the same write or delete as the resource call, with the same refusals, and the catalogue hears both.
+
+| Command | Params | Grant |
+| --- | --- | --- |
+| `x-ahpd/bots/put` | `{ id, record, createOnly?, ifMatch? }` | `bot:put` |
+| `x-ahpd/bots/remove` | `{ id }` | `bot:delete` |
+
+`record` is the body a `resourceWrite` to `bot://<id>` takes. `ifMatch` is the `updatedAt` the client last read. Both answer `{}`. The commands are in `_meta['ahpd.methods']`. `resourceWrite` and `resourceDelete` on `bot://` keep working in 0.15.
 
 ## An example
 

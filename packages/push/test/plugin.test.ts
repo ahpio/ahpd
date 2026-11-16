@@ -55,6 +55,8 @@ const node = (configDir: string, owners: Map<string, Owner>, hasUsers: boolean):
       else held.push(handler);
     },
     registerResourceProvider: () => {},
+    registerChannel: () => ({ publish: () => {}, subscribers: () => [] }),
+    registerMethod: () => {},
     registerClose: () => {},
     sessionOwner: async (uri: string) => owners.get(uri),
     connect: () => ({

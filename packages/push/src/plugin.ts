@@ -1,6 +1,7 @@
 import { posix } from 'node:path';
 import { Status, bag, idOf, reason, secretRef, str, translated } from '@ahpd/sdk';
 import { SUPPORTED_PROTOCOL_VERSIONS } from '@microsoft/agent-host-protocol';
+import { DEVICES_SCHEME, devicesChannel, pushMethods } from './channel.js';
 import { WEB_PUSH_HOSTS, deviceStore, pushProvider } from './provider.js';
 import { createSender } from './send.js';
 import { loadVapid } from './vapid.js';
@@ -155,7 +156,16 @@ export const apply: Plugin['apply'] = (host, options) => {
   const webPushHosts = Array.isArray(options['webPushHosts'])
     ? options['webPushHosts'].filter((one): one is string => typeof one === 'string' && one.trim() !== '')
     : [...WEB_PUSH_HOSTS];
-  host.registerResourceProvider('push', pushProvider({ store, webPushHosts, ...(vapid === undefined ? {} : { vapid }) }));
+  const devices = devicesChannel(store, (line) => { host.log(`${name}: ${line}`, 'warn'); });
+  devices.bind(host.registerChannel(DEVICES_SCHEME, devices.channel));
+  const provider = pushProvider({
+    store,
+    webPushHosts,
+    ...(vapid === undefined ? {} : { vapid }),
+    changed: () => { void devices.refresh(); },
+  });
+  host.registerResourceProvider('push', provider);
+  for (const [command, method] of Object.entries(pushMethods(provider, devices.refresh))) host.registerMethod(command, method);
 
   const accessToken = options['accessToken'];
 

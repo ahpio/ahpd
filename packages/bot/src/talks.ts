@@ -38,6 +38,8 @@ export interface TalkSeams {
   kept(uri: string): Promise<boolean>;
   /** Whose the session at this URI is, or nothing where the host has none. */
   owner(uri: string): Promise<Owner | undefined>;
+  /** Told after a talk is written down: the bot, whose talk it is as `talkerOf` names it, and its session. */
+  onKeep?(bot: string, talker: string, session: string): void;
 }
 
 /** The talks of every bot with every person. */
@@ -57,6 +59,14 @@ export interface Talks {
   of(bot: string, owner: Owner | undefined): Promise<string | undefined>;
   /** Write down the session this person talks to this bot in. */
   keep(bot: string, owner: Owner | undefined, session: string): Promise<void>;
+  /**
+   * Every person's talk with this bot whose session the host still holds, by
+   * whose talk it is as `talkerOf` names it.
+   *
+   * Only the kept rows: a talk from before rows were kept is found by `of`,
+   * which writes its row, and is in this list from then on.
+   */
+  all(bot: string): Promise<Map<string, string>>;
 }
 
 /** The URIs a talk's session with this id may be held under: a window's own, and the older one named by the provider. */
@@ -104,6 +114,14 @@ export function botTalks(seams: TalkSeams, second: SecondSession = 'refuse'): Ta
     },
     keep: async (bot, owner, session) => {
       await seams.fronts.put(bot, talkerOf(owner), session);
+      seams.onKeep?.(bot, talkerOf(owner), session);
+    },
+    all: async (bot) => {
+      const found = new Map<string, string>();
+      for (const { user, session } of await seams.fronts.talks(bot)) {
+        if (await seams.kept(session)) found.set(user, session);
+      }
+      return found;
     },
   };
 }

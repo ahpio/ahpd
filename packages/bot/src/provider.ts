@@ -5,6 +5,7 @@ import { covers, ownerFilter } from '@ahpd/sdk';
 import { instructionsProblem } from './agents.js';
 import { AGENTS_FILE, fromAgents, makeFolder, partsOf, readAgentsFile, writeAgentsFile } from './folder.js';
 import { CHAT_PROVIDER, NOT_ITS_OWN_FRONT } from './names.js';
+import { talkerOf } from './talks.js';
 import {
   BOT_BODIES, BOT_COLORS, checkRecord, isSlug,
 } from './record.js';
@@ -144,6 +145,17 @@ export interface BotProvider extends ResourceProvider {
   read(uri: string, wanted?: string, reader?: Principal): Promise<Read>;
   write(uri: string, content: Write, owner?: Owner, client?: string, reader?: Principal): Promise<void>;
   delete(uri: string, recursive?: boolean, owner?: Owner, reader?: Principal): Promise<void>;
+  /**
+   * One bot as every reader is answered it: the record with its `AGENTS.md`
+   * parts read now, and `state` where its agent is gone. A read adds the
+   * reader's own `session`; the catalogue sends the same record.
+   */
+  view(bot: BotRecord): Record<string, unknown>;
+  /**
+   * Whose talks a reader is answered, as `talkerOf` names them: `root` for no
+   * reader, and nobody for a plugin, whose own read has no talk.
+   */
+  talker(reader: Principal | undefined): string | undefined;
   watch(uri: string, options: WatchOptions, onChange: (changes: ResourceChange[]) => void, reader?: Principal): Promise<Watcher>;
   describe(): SchemeDescription;
   authorize(uri: string, reader: Principal | undefined): Promise<boolean>;
@@ -404,6 +416,33 @@ export function botProvider(options: BotOptions): BotProvider {
     options.catalogue?.put(change.bot, change.before);
   });
 
+  /*
+   * One bot as a read answers it to any reader.
+   *
+   * The file's parts are read now rather than answered from the cache: an edit
+   * the bot made to its own file shows on the next read, without anything
+   * having to notice the write.
+   *
+   * The agent it names is the bot's session's, and one this host does not
+   * serve is said so here: a bot whose agent went is one that wakes nothing,
+   * and a client reading it is told rather than left to find out when a
+   * message goes unanswered.
+   */
+  const view = (known: BotRecord): Record<string, unknown> => {
+    const bot = fromAgents(options.yaml, known, options.instructionsIn);
+    const provider = bot.preset ?? bot.provider;
+    const unavailable = provider !== undefined && options.available !== undefined && !options.available(provider);
+    return { ...bot, ...(unavailable ? { state: 'unavailable' } : {}) };
+  };
+
+  /*
+   * Whose talk a reader is answered: theirs alone, so a read by anybody else
+   * answers the record without it. A read with no reader is the root's, as a
+   * root connection has no principal; a plugin's own read has no talk.
+   */
+  const viewer = (reader: Principal | undefined): string | undefined =>
+    reader?.plugin !== undefined ? undefined : talkerOf(reader === undefined ? undefined : `user:${reader.id}`);
+
   /** Whose a bot this write makes is, or the refusal it is owed. */
   const ownerFor = (
     asked: Owner | undefined,
@@ -553,32 +592,15 @@ export function botProvider(options: BotOptions): BotProvider {
       if (held.slug === '' || held.path !== '') throw absent(uri);
       const known = store.get(held.slug);
       if (known === undefined) throw absent(uri);
-      // The file's parts, read now rather than answered from the cache: an edit
-      // the bot made to its own file shows on the next read, without anything
-      // having to notice the write.
-      const bot = fromAgents(options.yaml, known, options.instructionsIn);
-      /*
-       * The agent it names is the bot's session's, and one this host does not
-       * serve is said so here: a bot whose agent went is one that wakes
-       * nothing, and a client reading it is told rather than left to find out
-       * when a message goes unanswered.
-       */
-      const provider = bot.preset ?? bot.provider;
-      const state = provider !== undefined && options.available !== undefined && !options.available(provider)
-        ? { state: 'unavailable' as const }
-        : {};
-      /*
-       * The reader's own session with the bot, where they have one: theirs
-       * alone, so a read by anybody else answers the record without it. The
-       * read starts nothing.
-       */
-      // A read with no reader is the root's, as a root connection has no
-      // principal; a plugin's own read has no talk.
-      const talk = options.talks === undefined || reader?.plugin !== undefined
+      const talk = options.talks === undefined || viewer(reader) === undefined
         ? undefined
-        : await options.talks.of(bot.id, reader === undefined ? undefined : `user:${reader.id}`);
-      return json({ ...bot, ...state, ...(talk === undefined ? {} : { session: talk }) });
+        : await options.talks.of(known.id, reader === undefined ? undefined : `user:${reader.id}`);
+      return json({ ...view(known), ...(talk === undefined ? {} : { session: talk }) });
     },
+
+    view,
+
+    talker: viewer,
 
     /**
      * A bot is made here, and edited here.
