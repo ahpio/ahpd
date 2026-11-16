@@ -456,8 +456,8 @@ export function createSnapshots(ctx: HostContext): Snapshots {
        */
       if (sessions.has(owning) || (unavailableProvider(id) !== undefined && nameOf(id) === owning)
         || ((await restoreSession(id)) !== undefined && nameOf(id) === owning))
-        // Its own marks, and the comments people wrote outside any session on files under its folders.
-        return value({ resource: channel, state: { annotations: [...marksOf(id).annotations, ...ctx.resourceAnnotations.outsideUnder(ctx.placesOf(owning))] }, fromSeq: ctx.serverSeq });
+        // Its own marks, and the comments people wrote outside any session on files under its folders that this reader may read.
+        return value({ resource: channel, state: { annotations: [...marksOf(id).annotations, ...ctx.resourceAnnotations.outsideUnder(ctx.placesOf(owning), connection?.principal)] }, fromSeq: ctx.serverSeq });
     }
     /*
      * A watch, attached at its channel's first subscribe. The state is what
