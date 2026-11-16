@@ -1,6 +1,6 @@
 ---
 title: The start carries the check
-status: todo
+status: implemented
 depends: []
 layer: sdk
 refs:
@@ -35,3 +35,7 @@ Under `handed`, `Start` has no such field.
 
 ## Resume
 
+Built on 2026-11-16, awaiting review.
+
+- `Start.alwaysAsks` reads the bound tools of the session's default chat at each call.
+- One case in `host-permissions.test.ts` covers both values of `managedRules`.

@@ -1338,6 +1338,12 @@ export function createSpawn(ctx: HostContext): Spawn {
       uri,
       chatUri,
       trusted: trustedBy,
+      // The operator's `eligibleForAutoApproval`, read for the backend at each call by the same reading as a question's.
+      ...(options.managedRules === 'handed' ? {} : {
+        alwaysAsks: (toolName: string, contributor?: unknown) => alwaysAsks(options.eligibleForAutoApproval, toolName,
+          ctx.boundTools(uri, chatUri, agent.provider).filter((one) => one.owner === undefined).map((one) => one.definition.name),
+          contributor, ctx.stateOf(uri)?.customizations),
+      }),
       // The operator's policy as it stands at the start: managed settings, and
       // the auto-approval restriction a window forwarded.
       ...ctx.schemaPolicy(),

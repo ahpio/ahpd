@@ -3,10 +3,11 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, it } from 'vitest';
-import { createFakeModel } from '@cofold/agents/testing';
+import { createFakeModel, createMemoryStore } from '@cofold/agents/testing';
+import type { Store } from '@cofold/agents';
 import { bag } from '@ahpd/sdk';
 import type { Bag, Session, Start } from '@ahpd/sdk';
-import { cofoldAgent } from '../src/index.js';
+import { cofoldAgent, cofoldSession } from '../src/index.js';
 import { startedNow } from '../../sdk/test/support/started.js';
 
 /*
@@ -49,19 +50,24 @@ const SHELL = process.platform === 'win32' ? 'powershell' : 'bash';
 async function open(args: {
   script: Parameters<typeof createFakeModel>[0]['script'];
   settings?: Record<string, unknown>;
+  alwaysAsks?: Start['alwaysAsks'];
+  store?: Store;
 }) {
   const model = createFakeModel({ script: args.script, stream: true });
   const agent = cofoldAgent({ adapter: model, memory: true });
   const notes: Note[] = [];
   const dir = mkdtempSync(join(tmpdir(), 'ahpd-cofold-questions-'));
-  const session: Session = startedNow(agent.create({
+  const start = {
     uri: 'ahp-session:/questions',
     chatUri: 'ahp-chat:/questions',
     settings: { ...agent.defaults(), ...(args.settings ?? {}) },
     workingDirectory: dir,
     schema: () => agent.schema(),
     emit: (channel: Note['channel'], action: Bag) => { notes.push({ channel, action }); },
-  } as unknown as Start));
+    ...(args.alwaysAsks === undefined ? {} : { alwaysAsks: args.alwaysAsks }),
+  } as unknown as Start;
+  // A store the test holds is read by one session over it, as the backend's own sessions read theirs.
+  const session: Session = startedNow(args.store === undefined ? agent.create(start) : cofoldSession({ adapter: model }, start, args.store));
   return { session, model, notes, dir };
 }
 
@@ -143,4 +149,50 @@ it('answers cofold for the call alone, whatever option the host\'s answer names'
   session.confirm('c2', false);
   await when(() => endings(notes) === 2);
   rmSync(dir, { recursive: true, force: true });
+});
+
+/*
+ * A tool the operator's `eligibleForAutoApproval` sets `false` asks in every
+ * mode the host's check reaches, `dontAsk` refuses it, and an approval cofold
+ * remembers for the session does not settle it.
+ */
+it('asks about a tool the operator\'s rule sets false in every mode, and refuses it under dontAsk', async () => {
+  const shell = [
+    { toolCalls: [{ name: 'shell_exec', input: { command: 'echo hi' }, callId: 'c1' }] },
+    { text: 'done' },
+  ];
+  const named: Start['alwaysAsks'] = (toolName) => toolName === 'shell_exec';
+  for (const permissionMode of ['bypassPermissions', 'auto', 'acceptEdits']) {
+    const { session, notes, dir } = await open({ script: shell, settings: { permissionMode }, alwaysAsks: named });
+    session.sendMessage('t1', 'run it');
+    await when(() => of(notes, 'session/inputNeededSet').length > 0 || endings(notes) === 1);
+    expect([permissionMode, of(notes, 'session/inputNeededSet').length]).toEqual([permissionMode, 1]);
+    session.confirm('c1', false);
+    await when(() => endings(notes) === 1);
+    rmSync(dir, { recursive: true, force: true });
+  }
+
+  const refused = await open({ script: shell, settings: { permissionMode: 'dontAsk' }, alwaysAsks: named });
+  refused.session.sendMessage('t1', 'run it');
+  await when(() => endings(refused.notes) === 1);
+  expect(of(refused.notes, 'session/inputNeededSet')).toEqual([]);
+  rmSync(refused.dir, { recursive: true, force: true });
+
+  // An approval remembered for the session and the tool, as cofold keeps one.
+  const store = createMemoryStore();
+  await store.kv({ kind: 'agent', agentId: 'cofold' }).set('approvals/questions/shell_exec', true);
+  const remembered = await open({ script: shell, settings: { permissionMode: 'default' }, alwaysAsks: named, store });
+  remembered.session.sendMessage('t1', 'run it');
+  await when(() => of(remembered.notes, 'session/inputNeededSet').length > 0 || endings(remembered.notes) === 1);
+  expect(of(remembered.notes, 'session/inputNeededSet')).toHaveLength(1);
+  remembered.session.confirm('c1', false);
+  await when(() => endings(remembered.notes) === 1);
+  rmSync(remembered.dir, { recursive: true, force: true });
+
+  // A tool the rule does not name keeps its mode.
+  const other = await open({ script: shell, settings: { permissionMode: 'bypassPermissions' }, alwaysAsks: () => false });
+  other.session.sendMessage('t1', 'run it');
+  await when(() => endings(other.notes) === 1);
+  expect(of(other.notes, 'session/inputNeededSet')).toEqual([]);
+  rmSync(other.dir, { recursive: true, force: true });
 });

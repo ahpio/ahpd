@@ -804,6 +804,8 @@ export function claude(options: ClaudeOptions): Agent<Session> {
       ...(start.userSettings === undefined ? {} : { userSettings: start.userSettings }),
       // The operator's managed settings, which the CLI holds as its own policy tier.
       ...(start.managedSettings === undefined ? {} : { managedSettings: start.managedSettings }),
+      // The host's per-call reading of the operator's rule, under `managedRules: checked`.
+      ...(start.alwaysAsks === undefined ? {} : { alwaysAsks: start.alwaysAsks }),
       // Each one checked the way the first is: a directory this host does not
       // serve is not one an agent may be pointed at, however it arrived.
       ...(start.additional && start.additional.length > 0

@@ -1,6 +1,6 @@
 ---
 title: Claude asks about a named host tool
-status: todo
+status: implemented
 depends: [task-01-the-start-carries-the-check.md]
 layer: agent-claude
 refs:
@@ -34,3 +34,8 @@ A Claude host tool with `confirm: false` that the operator sets `false` asks the
 
 ## Resume
 
+Built on 2026-11-16, awaiting review.
+
+- The cases are in `host-tool-confirm.test.ts`, where the `confirm: false` cases already are, not in `agent-claude-questions.test.ts`.
+- The case uses `mcp__host__post_message`, the tool that file already binds.
+- The check reads the call's name alone, with no contributor, since the CLI names a host tool by its server.

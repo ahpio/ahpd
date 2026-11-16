@@ -391,10 +391,12 @@ export function createAsking(ctx: SessionContext): Asking {  /**
      * person's answer about it. The CLI calls a contributed tool by the name of
      * the server offering it, so both the bound tools and the call are read
      * under that name. Every other question is the host's to answer, the
-     * session's lists among what its chain reads.
+     * session's lists among what its chain reads. A tool the operator sets
+     * `false` in `eligibleForAutoApproval` is the host's to ask about too.
      * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/claude/claudeCanUseTool.ts#L138-L145
      */
-    if (ctx.hostToolOf(toolName)?.confirm === false && !ctx.allowed.deny.includes(toolName)) {
+    if (ctx.hostToolOf(toolName)?.confirm === false && !ctx.allowed.deny.includes(toolName)
+      && ctx.options.alwaysAsks?.(toolName) !== true) {
       return { behavior: 'allow', updatedInput: input };
     }
     /*

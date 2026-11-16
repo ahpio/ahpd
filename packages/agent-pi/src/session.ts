@@ -544,9 +544,20 @@ export function piSession(
   /**
    * What to do about one call: run it, put it to the host as a question, or
    * refuse it, by the siblings' six modes. A question is the host's to decide,
-   * its chain reading the owner's rules on it.
+   * its chain reading the owner's rules on it. A tool the operator sets `false`
+   * in `eligibleForAutoApproval` asks in every mode: a mode that refuses the
+   * call still refuses it, and `dontAsk` refuses what it would have asked.
    */
   const decide = (toolName: string, input: Bag): ToolCallEventResult | 'ask' | undefined => {
+    const mode = modeOf(values.permissionMode);
+    if (start.alwaysAsks?.(toolName) !== true) return byMode(toolName, input, mode);
+    if (mode === 'dontAsk') return { block: true, reason: `${toolName} would need approval and the mode is dontAsk` };
+    const settled = byMode(toolName, input, mode);
+    return typeof settled === 'object' && settled.block === true ? settled : 'ask';
+  };
+
+  /** What one call's mode alone says of it. */
+  const byMode = (toolName: string, input: Bag, mode: ReturnType<typeof modeOf>): ToolCallEventResult | 'ask' | undefined => {
     const effects = effectsOf(toolName);
     /** Whether the modes that ask before a change ask about this call. */
     const asks = (): boolean => {
@@ -560,7 +571,7 @@ export function piSession(
       return false;
     };
     const onEffects = (): ToolCallEventResult | 'ask' | undefined => (asks() ? 'ask' : undefined);
-    switch (modeOf(values.permissionMode)) {
+    switch (mode) {
       case 'bypassPermissions':
         return undefined;
       case 'plan':

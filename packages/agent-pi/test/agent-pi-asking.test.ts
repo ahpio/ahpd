@@ -433,8 +433,9 @@ async function verdict(
   toolName: string,
   input: Bag,
   tools: BoundTool[] = [],
+  more: Partial<Start> = {},
 ): Promise<'run' | 'ask' | 'refused'> {
-  const { session, pi } = opened({ tools, settings: { permissionMode: mode } } as Partial<Start>);
+  const { session, pi } = opened({ tools, settings: { permissionMode: mode }, ...more } as Partial<Start>);
   pi.hold();
   session.sendMessage('t1', 'hello');
   await settled();
@@ -500,6 +501,26 @@ it('decides each mode the way the siblings do', async () => {
     expect([mode, toolName, await verdict(mode, toolName, input, tools)], `${mode} ${toolName}`)
       .toEqual([mode, toolName, expected]);
   }
+});
+
+/*
+ * A tool the operator's `eligibleForAutoApproval` sets `false` is asked about
+ * in every mode the host's check reaches: a mode that runs it asks, a mode that
+ * refuses it still refuses, and `dontAsk` refuses what it would have asked.
+ */
+it('asks about a tool the operator\'s rule sets false in every mode, and refuses it under dontAsk', async () => {
+  const operator: Partial<Start> = { alwaysAsks: (toolName) => toolName === 'plain_tool' || toolName === 'read' };
+  const tools: BoundTool[] = [{ definition: { name: 'plain_tool' }, run: async () => 'x' }];
+  const inside = { path: join(root, 'a.txt') };
+  for (const mode of ['bypassPermissions', 'auto', 'acceptEdits', 'default']) {
+    expect([mode, await verdict(mode, 'plain_tool', {}, tools, operator)]).toEqual([mode, 'ask']);
+    expect([mode, await verdict(mode, 'read', inside, tools, operator)]).toEqual([mode, 'ask']);
+  }
+  expect(await verdict('plan', 'read', inside, tools, operator)).toBe('ask');
+  expect(await verdict('plan', 'edit', inside, tools, operator)).toBe('refused');
+  expect(await verdict('dontAsk', 'plain_tool', {}, tools, operator)).toBe('refused');
+  // A tool the rule does not name keeps its mode.
+  expect(await verdict('bypassPermissions', 'bash', { command: 'ls' }, tools, operator)).toBe('run');
 });
 
 it('judges a path where pi will use it, not where the string points', async () => {

@@ -327,6 +327,20 @@ export interface Start {
    */
   managedSettings?: { permissions?: ManagedSettingsPermissions; eligibleForAutoApproval?: Record<string, boolean> };
   /**
+   * Whether the operator's `eligibleForAutoApproval` sets this call's tool to
+   * `false`, under the daemon's `managedRules: checked`: the host's own reading
+   * of the rule, by the tool's name as the backend calls it and the
+   * contributor the call names, against the tools bound to the session at the
+   * time of the call.
+   *
+   * A backend asks it before its own mode, or any approval it remembers,
+   * settles a call. True means the call goes to the host as a question in every
+   * mode, and a mode that never asks refuses it. Absent under `handed`, where
+   * the runtimes read the rule from `managedSettings`, and the backend checks
+   * nothing here.
+   */
+  alwaysAsks?(toolName: string, contributor?: unknown): boolean;
+  /**
    * Whether managed policy forbids elevated auto-approval, the root config's
    * `autoApprovePolicyRestricted` a VS Code window forwards from its policy,
    * read as the session starts, as VS Code's agents read it when they launch a

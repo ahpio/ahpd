@@ -388,12 +388,22 @@ export const createTurnAgent = (
        * and the call carries the input, so the two halves name one file even
        * when the model wrote a relative path. The pair also lands in the right
        * order, because cofold runs this hook before it announces the call.
+       *
+       * A tool the operator sets `false` in `eligibleForAutoApproval` asks in
+       * every mode, and `dontAsk` refuses it. The hook asks for approval, which
+       * the mode cannot lower, and cofold answers an approval it remembers for
+       * the session before it asks, so that approval is cleared first.
        */
       hooks: {
-        beforeTool: ({ call, tool }) => {
+        beforeTool: async ({ call, tool, run }) => {
+          const asks = start.alwaysAsks?.(tool.name) === true;
+          if (asks) {
+            if (modeOf(values) === 'dontAsk') return { decision: 'deny', reason: `${tool.name} would need approval and the mode is dontAsk` };
+            await run.kv.agent.delete(`approvals/${run.sessionId}/${tool.name}`);
+          }
           const path = editPathOf(where, tool, call.input);
           if (path !== undefined) announceEdit(call.callId, path);
-          return { decision: 'allow' };
+          return asks ? { decision: 'approval' } : { decision: 'allow' };
         },
         afterTool: ({ call, output }) => {
           settleEdit(call.callId);

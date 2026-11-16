@@ -62,6 +62,8 @@ false or absent -> the backend's mode and confirm: false, as today
 | The check is `Start.alwaysAsks(toolName, contributor?)`, and the host answers it with `alwaysAsks` | (defaulted: the host's function already reads the rule, and one reading keeps backends and host in agreement) | 01 |
 | The check covers `eligibleForAutoApproval` only; the managed `ask` rules keep their path | (defaulted: the problem names the per-tool rule) | 01 |
 | The docs say what `false` means under each value of `managedRules` | Softov, 2026-11-08, in the problem file | 04 |
+| A mode that refuses a call the rule names, such as `plan` for a write, still refuses it | (defaulted: a refusal holds more back than a question) | 03 |
+| cofold clears its remembered approval for a tool the rule names | (defaulted: cofold reads that approval after the policy, and nothing else can stop it settling the call) | 03 |
 
 ## Proposed architecture
 
@@ -74,10 +76,10 @@ false or absent -> the backend's mode and confirm: false, as today
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - the start carries the check](task-01-the-start-carries-the-check.md) | todo | - |
-| [02 - claude asks about a named host tool](task-02-claude-asks-about-a-named-host-tool.md) | todo | 01 |
-| [03 - pi and cofold ask in every mode](task-03-pi-and-cofold-ask-in-every-mode.md) | todo | 01 |
-| [04 - the docs say what false means](task-04-the-docs-say-what-false-means.md) | todo | 02, 03 |
+| [01 - the start carries the check](task-01-the-start-carries-the-check.md) | implemented | - |
+| [02 - claude asks about a named host tool](task-02-claude-asks-about-a-named-host-tool.md) | implemented | 01 |
+| [03 - pi and cofold ask in every mode](task-03-pi-and-cofold-ask-in-every-mode.md) | implemented | 01 |
+| [04 - the docs say what false means](task-04-the-docs-say-what-false-means.md) | implemented | 02, 03 |
 
 ## Risks and tradeoffs
 
@@ -86,8 +88,8 @@ false or absent -> the backend's mode and confirm: false, as today
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-the-start-carries-the-check.md](task-01-the-start-carries-the-check.md).
+- **Done so far:** tasks 01 to 04 built on 2026-11-16 on branch `host/20261116-2128-backends-ask-what-the-operator-asks`, from the branch of host/20261116-2126, awaiting review.
+- **Next action:** Softov reviews the PR, then the checks of *Final verification checklist* on the test daemon.
 - **Open questions:** none.
 - **Watch out for:** an sdk host change runs the computer suite too; each backend's suite runs on its own.
 
