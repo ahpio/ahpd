@@ -20,7 +20,8 @@ Current progress and pending items only, as of 2026-11-16. *Outside this reposit
 - The pull request card is planned on 2026-11-16, for 0.15: [host/20261116-1714-each-pull-request-carries-githubs-details](../plans/host/20261116-1714-each-pull-request-carries-githubs-details/plan.md) here, and ahpw's `sessions/20261116-1714-the-pull-request-card-shows-github`, which starts with a mockup. Each pull request a session shows carries what GitHub says of it under `_meta['ahpd.pullRequests']`. It covers the merged pull request that stayed unmerged in a session's list.
 - The upgrade break is planned on 2026-11-16, and must merge before rc.4: [plugin/20261116-1816-plugins-follow-the-sdk](../plans/plugin/20261116-1816-plugins-follow-the-sdk/plan.md), 4 tasks. The upgrade check of 2026-11-16 found that the 0.14.0 backends do not import on sdk 0.15. A plugin is checked against the sdk the daemon ships. A prerelease sdk takes the plugin prereleases that a range admits. Each release sets the plugins' range from its sdk to the next minor.
   - It requires ahpio-site's `plugins/20261116-1816-the-list-serves-prereleases` (1 task), since the list serves releases only. Its deploy is Softov's step.
-  - How the builds run waits for Softov's answer.
+  - Softov chose on 2026-11-16 that this session builds both. Both are built and await review: ahpd on branch `plugin/20261116-1816-plugins-follow-the-sdk` (no PR yet), and ahpio-site on branch `plugins/20261116-1816-the-list-serves-prereleases`, not committed. The server, sdk and computer suites pass on the ahpd branch.
+  - Found in the build: [a-dev-container-installs-the-server-at-the-sdks-version.md](../problems/a-dev-container-installs-the-server-at-the-sdks-version.md).
 - Problems found on 2026-11-14, none with a fix chosen:
   - [stop-refuses-a-run-whose-sessions-run-no-turn.md](../problems/stop-refuses-a-run-whose-sessions-run-no-turn.md): Softov asked for a problem file, not a fix.
   - In ahpw, `the-automation-form-hides-a-model-its-agent-does-not-offer.md` on ahpw main (`7ffec74`).
@@ -61,6 +62,7 @@ Current progress and pending items only, as of 2026-11-16. *Outside this reposit
 ## Tests
 
 - Six computer cases time out on this machine at any load, and pass on CI: [computer-cases-time-out-on-a-busy-machine.md](../problems/computer-cases-time-out-on-a-busy-machine.md).
+- A first-party load case of the server suite timed out once at a load near 10: [a-first-party-load-case-times-out-on-a-busy-machine.md](../problems/a-first-party-load-case-times-out-on-a-busy-machine.md).
 - Run one vitest suite at a time: `TMPDIR=/home/softov/tmp/ahpd-test flock /home/softov/tmp/ahpd-test/vitest.lock npx vitest run <package>`. A fresh worktree needs `pnpm schema` first.
 - `packages/sdk/test/fixtures/wire.jsonl` is rewritten by every run. Restore it with `git checkout --` and never print it.
 - An sdk host change is gated by the computer suite too.
