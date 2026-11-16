@@ -72,6 +72,27 @@ A row also carries `changes`, the diff stat a client draws beside it: how many f
 
 Each chat the session lists carries counts of its own on its entry, which a session's `chats` and its row's chats both show, as [VS Code's host](https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostChangesetService.ts#L1724-L1828) sets each listed chat's aggregate. The default chat carries the session's own **Session Changes**, a worktree session's included; any other chat carries the edits its own tools were seen to write, across its turns; a worker carries none. They move with the session's counts, are said by `session/chatUpdated`, and are kept per chat, so a listed session's chats carry them after a restart. What a chat's tools wrote is held in memory, so after a restart a chat other than the default keeps the counts it was saved with until its next edit, which counts what this process saw.
 
+## Pull requests
+
+`_meta['ahpd.pullRequests']` holds what GitHub says of each pull request a session shows, keyed by its URL. A session shows its folder's pull requests, the ones under `_meta.github.pullRequestUrls`, and its own: the ones it recorded as artifacts and the ones associated with it. Another session's own pull requests in the same folder are not in its map. `_meta.github` stays as VS Code's host writes it, and this key is beside it.
+
+| Field | What it holds |
+| --- | --- |
+| `url` | Its page |
+| `state` | `open`, `closed` or `merged` |
+| `number` | Its number in its repository |
+| `title` | Its title |
+| `body` | Its description, in Markdown, cut at 1000 characters |
+| `bodyTruncated` | `true` when the description was cut |
+| `isDraft` | Whether it is a draft |
+| `author` | `login`, and `avatarUrl` when GitHub sent one |
+| `baseRef`, `headRef` | The branch it merges into, and the one it merges from |
+| `createdAt`, `updatedAt`, `mergedAt`, `closedAt` | When it was opened, last changed, merged and closed, ISO 8601 |
+
+A field GitHub did not send is left out. The fields take the names of VS Code's [`IGitHubPullRequest`](https://github.com/microsoft/vscode/blob/6e68549edb69380c9316e49df5d3795d5064a2b0/src/vs/workbench/contrib/sessions/common/github/types.ts#L76-L97).
+
+The host reads each pull request when it reads the folder's facts, with `autoAttachPullRequests` on or off, and a read associates nothing with the session. A merged one is not read again. While a client watches a changeset of the folder, the ones that are not merged are read again every 60 seconds, as VS Code's window reads a pull request it shows, so a merge made on GitHub shows within a minute. A read that fails keeps what was held. The map is held in memory, and a restart reads it again at the folder's first read.
+
 ## Finding one
 
 `listSessions` answers from two halves at once: the sessions running now, read out of memory and never stale, and the rows the last pass over the machine's transcripts found. Neither waits for the other, so a client is answered in the time it takes to sort however long that pass takes, and a refresh runs behind the answer and tells every client what moved.

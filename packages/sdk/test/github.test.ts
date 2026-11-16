@@ -51,7 +51,7 @@ describe('the pull requests of a branch', () => {
     const found = await githubPullRequests().forBranch({ owner: 'softov', repo: 'ahpd' }, 'fix/kqueue', 'gho_x', '/tmp');
     // When each was opened too, which a session's baseline is read by.
     expect(found).toEqual([
-      { url: 'https://github.com/softov/ahpd/pull/9', state: 'merged' },
+      { url: 'https://github.com/softov/ahpd/pull/9', state: 'merged', mergedAt: '2026-09-13T10:00:00Z' },
       { url: 'https://github.com/softov/ahpd/pull/7', state: 'open', title: 'Port the kqueue build', createdAt: '2026-09-01T08:00:00Z' },
       { url: 'https://github.com/softov/ahpd/pull/2', state: 'closed' },
     ]);
@@ -74,12 +74,12 @@ describe('the pull requests of a branch', () => {
     ]));
     const found = await githubPullRequests().forBranch({ owner: 'softov', repo: 'ahpd' }, 'fix/kqueue', undefined, dir);
     expect(found).toEqual([
-      { url: 'https://github.com/softov/ahpd/pull/9', state: 'merged' },
-      { url: 'https://github.com/softov/ahpd/pull/7', state: 'open', title: 'The fix', createdAt: '2026-09-01T08:00:00Z' },
+      { url: 'https://github.com/softov/ahpd/pull/9', state: 'merged', updatedAt: '2026-09-13T00:00:00Z' },
+      { url: 'https://github.com/softov/ahpd/pull/7', state: 'open', title: 'The fix', createdAt: '2026-09-01T08:00:00Z', updatedAt: '2026-09-12T00:00:00Z' },
     ]);
     const { readFileSync } = await import('node:fs');
     expect(readFileSync(join(dir, 'asked'), 'utf8').trim())
-      .toBe('pr list --repo softov/ahpd --head fix/kqueue --state all --limit 10 --json url,state,title,updatedAt,createdAt');
+      .toBe('pr list --repo softov/ahpd --head fix/kqueue --state all --limit 10 --json url,state,title,number,body,isDraft,author,baseRefName,headRefName,createdAt,updatedAt,mergedAt,closedAt');
   });
 
   // `fakeGh` puts a `#!/bin/sh` script first on `PATH`, and the host runs it:
@@ -108,7 +108,7 @@ describe('one pull request by its page', () => {
     });
     const port = githubPullRequests();
     expect(await port.byUrl?.('https://github.com/softov/ahpd/pull/9', 'gho_x', '/tmp'))
-      .toEqual({ url: 'https://github.com/softov/ahpd/pull/9', state: 'merged', title: 'Merged' });
+      .toEqual({ url: 'https://github.com/softov/ahpd/pull/9', state: 'merged', title: 'Merged', mergedAt: '2026-09-13T10:00:00Z' });
     expect(await port.byUrl?.('https://github.com/softov/ahpd/pull/7', 'gho_x', '/tmp'))
       .toEqual({ url: 'https://github.com/softov/ahpd/pull/7', state: 'open', title: 'Open' });
     expect(await port.byUrl?.('https://github.com/softov/ahpd/pull/2/', 'gho_x', '/tmp'))
@@ -136,7 +136,53 @@ describe('one pull request by its page', () => {
     expect(await githubPullRequests().byUrl?.('https://github.com/softov/ahpd/pull/9', undefined, dir))
       .toEqual({ url: 'https://github.com/softov/ahpd/pull/9', state: 'merged', title: 'The fix' });
     const { readFileSync } = await import('node:fs');
-    expect(readFileSync(join(dir, 'asked'), 'utf8').trim()).toBe('pr view https://github.com/softov/ahpd/pull/9 --json url,state,title');
+    expect(readFileSync(join(dir, 'asked'), 'utf8').trim()).toBe('pr view https://github.com/softov/ahpd/pull/9 --json url,state,title,number,body,isDraft,author,baseRefName,headRefName,createdAt,updatedAt,mergedAt,closedAt');
+  });
+});
+
+describe('the details of a pull request', () => {
+  /** A REST pull request with every field the card reads. */
+  const rest = {
+    html_url: 'https://github.com/ahpio/ahpd/pull/349', state: 'closed', merged_at: '2026-11-16T12:00:00Z', closed_at: '2026-11-16T12:00:00Z',
+    number: 349, title: 'Fix the kqueue build', body: 'It builds on Linux now.', draft: false,
+    user: { login: 'softov', avatar_url: 'https://avatars.githubusercontent.com/u/1?v=4' },
+    base: { ref: 'main' }, head: { ref: 'fix/kqueue' }, created_at: '2026-11-15T10:00:00Z', updated_at: '2026-11-16T12:00:00Z',
+  };
+  const details = {
+    url: 'https://github.com/ahpio/ahpd/pull/349', state: 'merged', number: 349, title: 'Fix the kqueue build', body: 'It builds on Linux now.',
+    isDraft: false, author: { login: 'softov', avatarUrl: 'https://avatars.githubusercontent.com/u/1?v=4' }, baseRef: 'main', headRef: 'fix/kqueue',
+    createdAt: '2026-11-15T10:00:00Z', updatedAt: '2026-11-16T12:00:00Z', mergedAt: '2026-11-16T12:00:00Z', closedAt: '2026-11-16T12:00:00Z',
+  };
+
+  it('reads a pull request\'s details over the API, for a list and for one page', async () => {
+    vi.stubGlobal('fetch', async (url: string) => ({ ok: true, status: 200, json: async () => (url.includes('?head=') ? [rest] : rest) }));
+    const port = githubPullRequests();
+    expect(await port.forBranch({ owner: 'ahpio', repo: 'ahpd' }, 'fix/kqueue', 'gho_x', '/tmp')).toEqual([details]);
+    expect(await port.byUrl?.('https://github.com/ahpio/ahpd/pull/349', 'gho_x', '/tmp')).toEqual(details);
+  });
+
+  // `fakeGh` puts a `#!/bin/sh` script first on `PATH`, and the host runs it:
+  // a POSIX shell outside a terminal, which Windows has not.
+  it.skipIf(!posix)('reads a pull request\'s details from gh, for gh pr list and gh pr view', async () => {
+    const gh = {
+      url: 'https://github.com/ahpio/ahpd/pull/349', state: 'MERGED', number: 349, title: 'Fix the kqueue build', body: 'It builds on Linux now.',
+      isDraft: false, author: { id: 'U_1', is_bot: false, login: 'softov', name: 'Someone' }, baseRefName: 'main', headRefName: 'fix/kqueue',
+      createdAt: '2026-11-15T10:00:00Z', updatedAt: '2026-11-16T12:00:00Z', mergedAt: '2026-11-16T12:00:00Z', closedAt: '2026-11-16T12:00:00Z',
+    };
+    const fromGh = { ...details, author: { login: 'softov' } };
+    const listed = fakeGh(JSON.stringify([gh]));
+    expect(await githubPullRequests().forBranch({ owner: 'ahpio', repo: 'ahpd' }, 'fix/kqueue', undefined, listed)).toEqual([fromGh]);
+    const viewed = fakeGh(JSON.stringify(gh));
+    expect(await githubPullRequests().byUrl?.('https://github.com/ahpio/ahpd/pull/349', undefined, viewed)).toEqual(fromGh);
+  });
+
+  it.skipIf(!posix)('answers a pull request with no details where GitHub sent none', async () => {
+    const open = fakeGh(JSON.stringify({ url: 'https://github.com/ahpio/ahpd/pull/350', state: 'OPEN', mergedAt: null, closedAt: null, author: null }));
+    expect(await githubPullRequests().byUrl?.('https://github.com/ahpio/ahpd/pull/350', undefined, open))
+      .toEqual({ url: 'https://github.com/ahpio/ahpd/pull/350', state: 'open' });
+    vi.stubGlobal('fetch', async () => ({ ok: true, status: 200, json: async () => ({ html_url: 'https://github.com/ahpio/ahpd/pull/350', state: 'open', merged_at: null, user: null, body: null }) }));
+    expect(await githubPullRequests().byUrl?.('https://github.com/ahpio/ahpd/pull/350', 'gho_x', '/tmp'))
+      .toEqual({ url: 'https://github.com/ahpio/ahpd/pull/350', state: 'open' });
   });
 });
 

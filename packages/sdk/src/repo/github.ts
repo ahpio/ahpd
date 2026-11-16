@@ -87,6 +87,59 @@ export function githubPullRequests(): PullRequests {
     return String(state ?? '').toLowerCase() === 'open' ? 'open' : 'closed';
   };
 
+  /** A string GitHub sent, or nothing. */
+  const text = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined);
+
+  /**
+   * The details of a REST pull request: each field GitHub sent, under the
+   * name VS Code's `IGitHubPullRequest` gives it, and none it did not send.
+   */
+  const detailsOfRest = (item: Record<string, unknown>): Omit<PullRequest, 'url' | 'state'> => {
+    const user = item.user as { login?: unknown; avatar_url?: unknown } | null | undefined;
+    const base = item.base as { ref?: unknown } | null | undefined;
+    const head = item.head as { ref?: unknown } | null | undefined;
+    const login = text(user?.login);
+    const avatarUrl = text(user?.avatar_url);
+    const fields = {
+      title: text(item.title),
+      number: typeof item.number === 'number' ? item.number : undefined,
+      body: text(item.body),
+      isDraft: typeof item.draft === 'boolean' ? item.draft : undefined,
+      author: login === undefined ? undefined : { login, ...(avatarUrl === undefined ? {} : { avatarUrl }) },
+      baseRef: text(base?.ref),
+      headRef: text(head?.ref),
+      createdAt: text(item.created_at),
+      updatedAt: text(item.updated_at),
+      mergedAt: text(item.merged_at),
+      closedAt: text(item.closed_at),
+    };
+    return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined));
+  };
+
+  /** The fields `gh pr list` and `gh pr view` are asked for, by `gh`'s names. */
+  const GH_FIELDS = 'url,state,title,number,body,isDraft,author,baseRefName,headRefName,createdAt,updatedAt,mergedAt,closedAt';
+
+  /** The details of a pull request as `gh` names them, mapped as `detailsOfRest` maps REST's. */
+  const detailsOfGh = (item: Record<string, unknown>): Omit<PullRequest, 'url' | 'state'> => {
+    const author = item.author as { login?: unknown } | null | undefined;
+    const login = text(author?.login);
+    const fields = {
+      title: text(item.title),
+      number: typeof item.number === 'number' ? item.number : undefined,
+      body: text(item.body),
+      isDraft: typeof item.isDraft === 'boolean' ? item.isDraft : undefined,
+      author: login === undefined ? undefined : { login },
+      baseRef: text(item.baseRefName),
+      headRef: text(item.headRefName),
+      createdAt: text(item.createdAt),
+      updatedAt: text(item.updatedAt),
+      // A date that has not happened comes as null, and an empty one is left out too.
+      mergedAt: text(item.mergedAt) || undefined,
+      closedAt: text(item.closedAt) || undefined,
+    };
+    return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined));
+  };
+
   const byApi = async (owner: string, repo: string, branch: string, token: string): Promise<PullRequest[]> => {
     const head = encodeURIComponent(`${owner}:${branch}`);
     const url = `https://api.github.com/repos/${owner}/${repo}/pulls?head=${head}&state=all&sort=updated&direction=desc&per_page=${MOST}`;
@@ -99,14 +152,13 @@ export function githubPullRequests(): PullRequests {
       signal: AbortSignal.timeout(10_000),
     });
     if (!answer.ok) throw new Error(`GitHub answered ${answer.status} for ${owner}/${repo}#${branch}`);
-    const items = await answer.json() as { html_url?: unknown; state?: unknown; merged_at?: unknown; title?: unknown; created_at?: unknown }[];
+    const items = await answer.json() as Record<string, unknown>[];
     return items
       .filter((item) => typeof item.html_url === 'string')
       .map((item) => ({
         url: item.html_url as string,
         state: stateOf(item.state, item.merged_at != null),
-        ...(typeof item.title === 'string' ? { title: item.title } : {}),
-        ...(typeof item.created_at === 'string' ? { createdAt: item.created_at } : {}),
+        ...detailsOfRest(item),
       }));
   };
 
@@ -114,21 +166,20 @@ export function githubPullRequests(): PullRequests {
     new Promise((answer, refuse) => {
       execFile('gh', [
         'pr', 'list', '--repo', `${owner}/${repo}`, '--head', branch, '--state', 'all',
-        '--limit', String(MOST), '--json', 'url,state,title,updatedAt,createdAt',
+        '--limit', String(MOST), '--json', GH_FIELDS,
       ], { cwd, timeout: 10_000, maxBuffer: 1 << 20, windowsHide: true }, (error, out, bad) => {
         if (error) {
           refuse(new Error(bad.toString().trim() || error.message));
           return;
         }
-        const items = JSON.parse(out.toString()) as { url?: unknown; state?: unknown; updatedAt?: unknown; title?: unknown; createdAt?: unknown }[];
+        const items = JSON.parse(out.toString()) as Record<string, unknown>[];
         answer(items
           .filter((item) => typeof item.url === 'string')
           .sort((a, b) => String(b.updatedAt ?? '').localeCompare(String(a.updatedAt ?? '')))
           .map((item) => ({
             url: item.url as string,
             state: stateOf(item.state, String(item.state).toUpperCase() === 'MERGED'),
-            ...(typeof item.title === 'string' ? { title: item.title } : {}),
-            ...(typeof item.createdAt === 'string' ? { createdAt: item.createdAt } : {}),
+            ...detailsOfGh(item),
           })));
       });
     });
@@ -154,23 +205,23 @@ export function githubPullRequests(): PullRequests {
     // No pull request at that page is an answer, and every other refusal is not.
     if (answer.status === 404) return undefined;
     if (!answer.ok) throw new Error(`GitHub answered ${answer.status} for ${url}`);
-    const item = await answer.json() as { html_url?: unknown; state?: unknown; merged_at?: unknown; title?: unknown };
+    const item = await answer.json() as Record<string, unknown>;
     if (typeof item.html_url !== 'string') return undefined;
     return {
       url: item.html_url,
       state: stateOf(item.state, item.merged_at != null),
-      ...(typeof item.title === 'string' ? { title: item.title } : {}),
+      ...detailsOfRest(item),
     };
   };
 
   const oneByGh = (url: string, cwd: string): Promise<PullRequest | undefined> =>
     new Promise((answer, refuse) => {
-      execFile('gh', ['pr', 'view', url, '--json', 'url,state,title'], { cwd, timeout: 10_000, maxBuffer: 1 << 20, windowsHide: true }, (error, out, bad) => {
+      execFile('gh', ['pr', 'view', url, '--json', GH_FIELDS], { cwd, timeout: 10_000, maxBuffer: 1 << 20, windowsHide: true }, (error, out, bad) => {
         if (error) {
           refuse(new Error(bad.toString().trim() || error.message));
           return;
         }
-        const item = JSON.parse(out.toString()) as { url?: unknown; state?: unknown; title?: unknown };
+        const item = JSON.parse(out.toString()) as Record<string, unknown>;
         if (typeof item.url !== 'string') {
           answer(undefined);
           return;
@@ -178,7 +229,7 @@ export function githubPullRequests(): PullRequests {
         answer({
           url: item.url,
           state: stateOf(item.state, String(item.state).toUpperCase() === 'MERGED'),
-          ...(typeof item.title === 'string' ? { title: item.title } : {}),
+          ...detailsOfGh(item),
         });
       });
     });

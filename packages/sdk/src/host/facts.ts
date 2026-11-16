@@ -27,6 +27,19 @@ const PULL_REQUEST_CLOCK_SKEW_MS = 5 * 60_000;
  */
 const MAX_SESSION_PULL_REQUEST_REFERENCES = 10;
 
+/** The key a session's pull requests and what GitHub says of each go under in its `_meta`. */
+export const PULL_REQUESTS_META = 'ahpd.pullRequests';
+
+/** The longest description a pull request carries in `_meta`, since `_meta` goes with every session summary. */
+export const PULL_REQUEST_BODY_LIMIT = 1000;
+
+/**
+ * How often a watched directory's pull requests that are not merged are read
+ * again, VS Code's interval for a pull request a window shows.
+ * https://github.com/microsoft/vscode/blob/6e68549edb69380c9316e49df5d3795d5064a2b0/src/vs/workbench/contrib/sessions/browser/github/models/githubPullRequestModel.ts#L22
+ */
+export const PULL_REQUEST_POLL_MS = 60_000;
+
 /** What a session's directory says about it, and what the host asks to move it. */
 export interface Facts {
   describes(uri: string): Bag;
@@ -134,7 +147,8 @@ export function createFacts(ctx: HostContext): Facts {
           associatedPullRequestUrls: baseline.associatedPullRequestUrls,
         }),
       };
-    if (told === undefined && facts === undefined && artifacts === undefined && Object.keys(added).length === 0) return undefined;
+    const pullRequests = pullRequestsMetaOf(uri, dir);
+    if (told === undefined && facts === undefined && artifacts === undefined && pullRequests === undefined && Object.keys(added).length === 0) return undefined;
     // The folder the state belongs to, and the key it is published under. One
     // string for both, so a client that reads the key it was given and a
     // client that derives the key from the working directory arrive at the
@@ -182,6 +196,8 @@ export function createFacts(ctx: HostContext): Facts {
       // The session's own, beside the directory's: what the agent recorded
       // as worth coming back to, under the key the reference client reads.
       ...(artifacts !== undefined && artifacts.length > 0 ? { [ARTIFACTS_META]: artifacts } : {}),
+      // What GitHub says of each pull request the session shows, keyed by its URL.
+      ...(pullRequests === undefined ? {} : { [PULL_REQUESTS_META]: pullRequests }),
     };
   };
 
@@ -189,6 +205,92 @@ export function createFacts(ctx: HostContext): Facts {
   const listed = new Map<string, PullRequest[]>();
   /** The comparison the reference makes, so a URL with a trailing slash is the same one. */
   const urlKey = (url: string): string => url.trim().replace(/\/+$/, '').toLowerCase();
+  /** What GitHub last said of each pull request a directory's sessions show, by directory and then by `urlKey`. */
+  const details = new Map<string, Map<string, PullRequest>>();
+  /**
+   * A session's own pull requests: its pull request artifacts and the ones
+   * associated with it, as VS Code's restricted reconciliation names its
+   * candidates.
+   * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostPullRequestAssociationResolver.ts#L249-L258
+   */
+  const candidatesOf = (uri: string): string[] => [
+    ...artifactsIn(kept.artifacts(idOf(uri))).filter((one) => one.type === 'pullRequest').map((one) => String(one.link)),
+    ...(kept.pullRequests(idOf(uri))?.associatedPullRequestUrls ?? []),
+  ];
+  /**
+   * Every pull request a session shows, as VS Code's window lists them: its
+   * directory's, then its own, each once, as many as the GitHub state holds.
+   * https://github.com/microsoft/vscode/blob/6e68549edb69380c9316e49df5d3795d5064a2b0/src/vs/workbench/contrib/sessions/common/github/sessionGitHubReferences.ts#L62-L121
+   */
+  const sessionUrls = (uri: string): string[] => {
+    const dir = dirOf(uri);
+    const held = dir === undefined ? undefined : githubFacts.get(dir)?.pullRequestUrls;
+    const dirs = Array.isArray(held) ? held.filter((one): one is string => typeof one === 'string') : [];
+    return pullRequestUrlsOf([...dirs, ...candidatesOf(uri)]);
+  };
+  /**
+   * What GitHub said of each pull request a session shows, keyed by its URL,
+   * or nothing when none is held. A description is cut at
+   * `PULL_REQUEST_BODY_LIMIT`, and `bodyTruncated` says so.
+   */
+  const pullRequestsMetaOf = (uri: string, dir: string): Bag | undefined => {
+    const held = details.get(dir);
+    if (held === undefined) return undefined;
+    const entries = sessionUrls(uri).flatMap((url) => {
+      const one = held.get(urlKey(url));
+      if (one === undefined) return [];
+      const cut = one.body !== undefined && one.body.length > PULL_REQUEST_BODY_LIMIT;
+      return [[url, cut ? { ...one, body: (one.body as string).slice(0, PULL_REQUEST_BODY_LIMIT), bodyTruncated: true } : one] as const];
+    });
+    return entries.length === 0 ? undefined : Object.fromEntries(entries);
+  };
+  /** Hold what GitHub said of each of `answered` for `dir`, answering whether anything held changed. */
+  const holdDetails = (dir: string, answered: readonly PullRequest[]): boolean => {
+    let held = details.get(dir);
+    if (held === undefined) {
+      held = new Map();
+      details.set(dir, held);
+    }
+    let changed = false;
+    for (const one of answered) {
+      const key = urlKey(one.url);
+      if (isDeepStrictEqual(held.get(key), one)) continue;
+      held.set(key, one);
+      changed = true;
+    }
+    return changed;
+  };
+  /**
+   * Read each of `urls` by its page and hold the answer, answering whether
+   * anything held changed.
+   *
+   * A pull request held as merged is not read again, as VS Code's window
+   * stops reading one. A read that fails keeps what was held, and the next
+   * URL is read.
+   * https://github.com/microsoft/vscode/blob/6e68549edb69380c9316e49df5d3795d5064a2b0/src/vs/sessions/contrib/github/browser/github.contribution.ts#L264-L275
+   */
+  const readDetails = async (dir: string, urls: readonly string[], token: string | undefined): Promise<boolean> => {
+    const byUrl = options.github?.byUrl;
+    if (byUrl === undefined) return false;
+    let changed = false;
+    for (const url of urls) {
+      if (details.get(dir)?.get(urlKey(url))?.state === 'merged') continue;
+      let one;
+      try {
+        one = await byUrl.call(options.github, url, token, dir);
+      }
+      catch (error) {
+        log.error(`${dir}: GitHub did not answer for ${url}: ${error instanceof Error ? error.message : String(error)}`);
+        continue;
+      }
+      if (one !== undefined && holdDetails(dir, [one])) changed = true;
+    }
+    return changed;
+  };
+  /** The token a client lent for GitHub, or nothing. */
+  const githubToken = (): string | undefined => options.github === undefined
+    ? undefined
+    : getAuthToken(String(options.github.resource.resource ?? ''), normalizeScopes(options.github.resource.scopes_supported));
   /**
    * Pull request URLs as VS Code's host writes them into a session's GitHub
    * state, most recent first: a pull request's URL with its host in lower case
@@ -543,11 +645,40 @@ export function createFacts(ctx: HostContext): Facts {
 
   /** A source watch per directory, opened when the first changeset there is read. */
   const dirWatchers = new Map<string, () => void>();
+  /** The pull request poll of each watched directory, with whether a tick is reading. */
+  const polls = new Map<string, { timer: ReturnType<typeof setInterval>; reading: boolean }>();
+  /**
+   * Read again each pull request held for `dir` that is not merged, while a
+   * client watches it, so a merge made on GitHub outside any turn shows within
+   * `PULL_REQUEST_POLL_MS`. A tick that finds the one before it still reading
+   * reads nothing.
+   */
+  const pollPullRequests = (dir: string): void => {
+    if (polls.has(dir) || options.github?.byUrl === undefined) return;
+    const poll = {
+      reading: false,
+      timer: setInterval(() => {
+        if (poll.reading || !watchedIn(dir)) return;
+        const open = [...(details.get(dir)?.values() ?? [])].filter((one) => one.state !== 'merged').map((one) => one.url);
+        if (open.length === 0) return;
+        poll.reading = true;
+        void readDetails(dir, open, githubToken())
+          .then((changed) => { if (changed) metaChanged(dir); }, () => {})
+          .finally(() => { poll.reading = false; });
+      }, PULL_REQUEST_POLL_MS),
+    };
+    poll.timer.unref?.();
+    polls.set(dir, poll);
+  };
   const stopWatchingDir = (dir: string): void => {
     dirWatchers.get(dir)?.();
     dirWatchers.delete(dir);
+    const poll = polls.get(dir);
+    if (poll !== undefined) clearInterval(poll.timer);
+    polls.delete(dir);
   };
   const startWatchingDir = (dir: string): void => {
+    pollPullRequests(dir);
     if (dirWatchers.has(dir)) return;
     const stop = options.changes?.watch?.(dir, () => {
       // The last session left: nothing here is worth a watcher, so this closes
@@ -601,7 +732,23 @@ export function createFacts(ctx: HostContext): Facts {
     const owner = git?.githubOwner;
     const repo = git?.githubRepo;
     const branch = git?.branchName;
-    if (typeof owner !== 'string' || typeof repo !== 'string') return githubFacts.delete(dir);
+    if (typeof owner !== 'string' || typeof repo !== 'string') {
+      details.delete(dir);
+      return githubFacts.delete(dir);
+    }
+    const token = githubToken();
+    /** The URLs the branch read of this pass answered, which the session reads skip. */
+    const answeredNow = new Set<string>();
+    /**
+     * After the branch, each pull request a session in `dir` shows, with the
+     * setting on or off, as VS Code's window reads every one it lists. Answers
+     * whether the branch's state or anything held moved.
+     */
+    const withSessions = async (moved: boolean): Promise<boolean> => {
+      const urls = [...new Set(inThere(dir).flatMap(sessionUrls))].filter((url) => !answeredNow.has(urlKey(url)));
+      const read = await readDetails(dir, urls, token);
+      return moved || read;
+    };
     const before = githubFacts.get(dir);
     const held: Bag = { ...(before?.owner === owner && before.repo === repo ? before : {}), owner, repo };
     /** Hold `now` for the directory, answering whether it differs from what was held. */
@@ -617,13 +764,8 @@ export function createFacts(ctx: HostContext): Facts {
        * and the ones associated with it, as VS Code's restricted mode keeps a
        * session's state: its baseline as well, and the selected pull request
        * with its status gone where the list's first is no candidate.
-       * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostPullRequestAssociationResolver.ts#L249-L258
        * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostPullRequestAssociationResolver.ts#L392-L418
        */
-      const candidatesOf = (uri: string): string[] => [
-        ...artifactsIn(kept.artifacts(idOf(uri))).filter((one) => one.type === 'pullRequest').map((one) => String(one.link)),
-        ...(kept.pullRequests(idOf(uri))?.associatedPullRequestUrls ?? []),
-      ];
       let baselineMoved = false;
       for (const uri of inThere(dir)) {
         const baseline = kept.pullRequests(idOf(uri));
@@ -639,12 +781,10 @@ export function createFacts(ctx: HostContext): Facts {
       const { pullRequestUrls: _urls, pullRequestBranchName: _branch, pullRequestState: _state, pullRequestStateUrl: _stateUrl, ...rest } = held;
       const keepsSelected = urls[0] !== undefined && restricted[0] !== undefined && urlKey(urls[0]) === urlKey(restricted[0]);
       const moved = put(keepsSelected ? { ...held, pullRequestUrls: restricted } : rest);
-      return moved || baselineMoved;
+      return withSessions(moved || baselineMoved);
     }
-    const resource = String(options.github.resource.resource ?? '');
-    const token = getAuthToken(resource, normalizeScopes(options.github.resource.scopes_supported));
     const answered = typeof branch === 'string' && held.pullRequestBranchName === branch;
-    if (typeof branch !== 'string' || branch === git?.baseBranchName || (answered && urls[0] === undefined)) return put(held);
+    if (typeof branch !== 'string' || branch === git?.baseBranchName || (answered && urls[0] === undefined)) return withSessions(put(held));
     let found;
     try {
       found = answered && options.github.byUrl !== undefined
@@ -653,11 +793,13 @@ export function createFacts(ctx: HostContext): Facts {
     }
     catch (error) {
       log.error(`${dir}: GitHub did not answer for ${branch}: ${error instanceof Error ? error.message : String(error)}`);
-      return false;
+      return withSessions(false);
     }
+    for (const one of found) answeredNow.add(urlKey(one.url));
+    const heldFound = holdDetails(dir, found);
     if (answered) {
       const known = found.find((one) => urlKey(one.url) === urlKey(urls[0] as string));
-      return put(known === undefined ? held : { ...held, pullRequestState: known.state, pullRequestStateUrl: urls[0] });
+      return withSessions(put(known === undefined ? held : { ...held, pullRequestState: known.state, pullRequestStateUrl: urls[0] }) || heldFound);
     }
     listed.set(dir, found);
     const newest = found[0];
@@ -667,7 +809,7 @@ export function createFacts(ctx: HostContext): Facts {
       pullRequestStateUrl: pullRequestUrlsOf([newest.url])[0],
     });
     for (const uri of inThere(dir)) captureBaseline(uri);
-    return moved;
+    return withSessions(moved || heldFound);
   };
 
   /**

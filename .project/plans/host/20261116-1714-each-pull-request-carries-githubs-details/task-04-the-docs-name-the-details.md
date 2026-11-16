@@ -1,6 +1,6 @@
 ---
 title: The docs and the spec name a pull request's details
-status: todo
+status: implemented
 depends: [task-02-a-session-sends-its-pull-requests.md]
 layer: "docs"
 refs:
@@ -34,4 +34,9 @@ A client author reads what `ahpd.pullRequests` holds and when it moves, and the 
 - `lint-prose.mjs` passes on `.project/specs/git-and-changes.md`.
 
 ## Resume
+
+Built on 2026-11-16, awaiting review.
+
+- The section is *Pull requests* in `docs/sdk/SESSIONS.md`, and the release note sits under a new *Sessions* heading of 0.15.0.
+- `pnpm docs:build` passes after `pnpm build`.
 

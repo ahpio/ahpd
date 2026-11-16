@@ -12,6 +12,32 @@ export interface PullRequest {
   title?: string;
   /** When it was opened, ISO 8601, when the answer carried it. */
   createdAt?: string;
+  /** Its number in its repository, as `#349` shows it. */
+  number?: number;
+  /** Its description, as its author wrote it in Markdown. */
+  body?: string;
+  /** Whether it is a draft. */
+  isDraft?: boolean;
+  /** Who opened it. */
+  author?: PullRequestAuthor;
+  /** The branch it merges into. */
+  baseRef?: string;
+  /** The branch it merges from. */
+  headRef?: string;
+  /** When it last changed, ISO 8601. */
+  updatedAt?: string;
+  /** When it was merged, ISO 8601. */
+  mergedAt?: string;
+  /** When it was closed, merged or not, ISO 8601. */
+  closedAt?: string;
+}
+
+/** Who opened a pull request, as VS Code's `IGitHubUser` names it. */
+export interface PullRequestAuthor {
+  /** The GitHub login. */
+  login: string;
+  /** The picture GitHub shows for the login, when the answer carried it. */
+  avatarUrl?: string;
 }
 
 /**

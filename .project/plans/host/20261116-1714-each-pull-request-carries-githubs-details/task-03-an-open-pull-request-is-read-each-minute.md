@@ -1,6 +1,6 @@
 ---
 title: An open pull request is read again each minute while a client watches
-status: todo
+status: implemented
 depends: [task-02-a-session-sends-its-pull-requests.md]
 layer: "sdk"
 refs:
@@ -38,4 +38,10 @@ A merge made on GitHub, outside any turn, shows within a minute.
 - The sdk suite passes.
 
 ## Resume
+
+Built on 2026-11-16, awaiting review.
+
+- The poll is a timer of its own per directory, started in `startWatchingDir` before the changes watch.
+- A host with no changes port still polls, and `stopWatchingDir` clears the timer.
+- An unsubscribe stops the watch, so one case covers "reads nothing when no client watches" and "stops the poll with the watch".
 
