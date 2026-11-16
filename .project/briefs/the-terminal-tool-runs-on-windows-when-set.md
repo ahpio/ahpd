@@ -32,7 +32,7 @@ He chose on 2026-11-12: "A setting, off by default."
 - On Windows the host opens PowerShell, and the tool set's primary is `powershell`.
 - The host terminal works on Windows: the shell integration check of host/20261103-1620 passed there on 2026-11-12, in PowerShell.
 - The primary tool sets no `confirm`, so the backend's approval policy decides each call, as for any tool. `read_`, `write_`, `list_` and `_shutdown` set `confirm: false`.
-- The problem [backends-skip-the-operators-always-ask-rule.md](../problems/backends-skip-the-operators-always-ask-rule.md) says a `confirm: false` host tool such as `write_bash` runs with no question in Claude.
+- The problem backends-skip-the-operators-always-ask-rule, now plan [host/20261116-2128](../plans/host/20261116-2128-backends-ask-what-the-operator-asks/plan.md), says a `confirm: false` host tool such as `write_bash` runs with no question in Claude.
 
 ## Who writes
 
