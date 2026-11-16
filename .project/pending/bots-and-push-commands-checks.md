@@ -6,28 +6,29 @@ plans:
 
 # Check that bots and push devices take commands
 
-A host with this change serves `x-ahpd/bots/*` and `x-ahpd/push/*`, and sends the bot list as `{ records }`. ahpw and ahpapp send the commands. Nothing is committed yet. The work is in three worktrees:
-
-| Repo | Worktree | Branch |
-| --- | --- | --- |
-| ahpd | `/github/ahpd.worktrees/bots-push-commands` | `plugin/20261116-1940-bots-and-push-take-commands` |
-| ahpw | `/github/ahpw.worktrees/bots-push-commands` | `shell/20261116-2200-bots-and-push-send-commands` |
-| ahpapp | `/github/ahpapp.worktrees/bots-push-commands` | `host/20261116-2100-bots-and-push-send-commands` |
+A host with this change serves `x-ahpd/bots/*` and `x-ahpd/push/*`, and sends the bot list as `{ records }`. ahpw and ahpapp send the commands. All three are on main: ahpio/ahpd#359, ahpio/ahpw#99 and softov/ahpapp#1.
 
 ## Set up
 
-1. Stop your dev daemon with Ctrl+C in its terminal.
-2. Start it from the ahpd worktree, in that terminal:
+1. Bring each checkout to main. A checkout on another branch, or with changes not committed, is another session's: use a worktree of main for it instead.
 
 ```bash
-cd /github/ahpd.worktrees/bots-push-commands
+cd /github/ahpd && git switch main && git pull --ff-only
+cd /github/ahpw && git switch main && git pull --ff-only && pnpm install
+cd /github/ahpapp && git switch main && git pull --ff-only && npm install
+```
+
+2. Stop your dev daemon with Ctrl+C in its terminal, and start it again from ahpd main:
+
+```bash
+cd /github/ahpd
 node --conditions development --import ./scripts/dev.mjs packages/server/src/main.ts --config-file /home/softov/.config/ahpd/config-dev.json
 ```
 
-3. Start ahpw from its worktree, with `AHPD_URL` on that daemon:
+3. Start ahpw from main, with `AHPD_URL` on that daemon:
 
 ```bash
-cd /github/ahpw.worktrees/bots-push-commands
+cd /github/ahpw
 AHPD_URL=http://127.0.0.1:37537 pnpm dev --port 5180
 ```
 
@@ -57,7 +58,7 @@ AHPD_URL=http://127.0.0.1:37537 pnpm dev --port 5180
 
 ## Checks in ahpapp
 
-Run the app from `/github/ahpapp.worktrees/bots-push-commands` with `npm run web` or on your phone, against the same daemon.
+Run the app from `/github/ahpapp` on main, with `npm run web` or on your phone, against the same daemon.
 
 1. Open the bots tab.
    - Pass: every bot is listed.
@@ -71,7 +72,3 @@ Run the app from `/github/ahpapp.worktrees/bots-push-commands` with `npm run web
 4. On your phone, with push on, give the host a new token in its settings.
    - Pass: notifications reach the phone for the person of the new token.
    - Fail: no notification, and the daemon log has a `-32009` for `push://devices`.
-
-## After
-
-Start your dev daemon from the folder you used before, so it loads its own plugins again.
