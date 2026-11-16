@@ -65,7 +65,7 @@ ahpd plugin update all          # every plugin
 ahpd plugin update @ahpd/agent-pi
 ```
 
-Each plugin moves to its newest version whose `@ahpd/sdk` range fits this daemon, in an npm call of its own, so one npm cannot install stops no other, as VS Code updates each extension and answers each. A plugin with no version that fits is named and left as it is, and a plugin installed from a path, git or a URL is left as it is.
+Each plugin moves to its newest version whose `@ahpd/sdk` range admits the sdk this daemon ships, in an npm call of its own, so one npm cannot install stops no other, as VS Code updates each extension and answers each. A plugin with no version that fits is named and left as it is, and a plugin installed from a path, git or a URL is left as it is.
 
 ## Options
 

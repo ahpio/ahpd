@@ -45,7 +45,7 @@
     "test": "cd ../.. && vitest run packages/server/test"
   },
   "dependencies": {
-    "@ahpd/sdk": "workspace:^",
+    "@ahpd/sdk": "workspace:*",
     "@cofold/commands": "^0.3.0",
     "@cofold/config": "^0.3.1",
     "@cofold/remote": "^0.5.0",

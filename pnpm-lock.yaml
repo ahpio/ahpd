@@ -220,7 +220,7 @@ importers:
   packages/server:
     dependencies:
       '@ahpd/sdk':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../sdk
       '@cofold/commands':
         specifier: ^0.3.0

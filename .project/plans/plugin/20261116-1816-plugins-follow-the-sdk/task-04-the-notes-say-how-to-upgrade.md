@@ -1,6 +1,6 @@
 ---
 title: The notes say how to upgrade
-status: todo
+status: implemented
 depends: [task-01-the-shipped-sdk-is-the-gate.md, task-02-a-prerelease-sdk-takes-prereleases.md, task-03-a-release-sets-the-sdk-range.md]
 layer: docs
 refs:
@@ -37,4 +37,10 @@ The 0.15 notes and the plugin guide state the rule of this plan, and tell a test
 - The plan's *Final verification checklist* follows the item from rc.3 to rc.4.
 
 ## Resume
+
+Built on 2026-11-16, awaiting review.
+
+- The rule is under a new heading, *Choosing a version*, in `docs/plugins/PLUGINS.md`, and the notes link to it.
+- `docs/server/PLUGINS.md` said a plugin moves to the version that fits the daemon; it says the sdk the daemon ships now.
+- `pnpm docs:build` passes, after `pnpm build`.
 

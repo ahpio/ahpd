@@ -1,6 +1,6 @@
 ---
 title: A release sets each plugin's sdk range
-status: todo
+status: implemented
 depends: []
 layer: scripts
 refs:
@@ -58,4 +58,10 @@ One script writes the ranges at a bump, and CI and the release refuse a range th
 - CI runs the step in `check` and `check-windows`.
 
 ## Resume
+
+Built on 2026-11-16, awaiting review.
+
+- The 11 ranges are `>=0.15.0-rc.3 <0.16.0-0`. The rc.4 bump runs `node scripts/sdk-range.mjs --write`, or CI fails.
+- `plugin-compat.test.ts` held each range at `>=0.14 <1`; it checks the release range now.
+- `computer-devcontainer.test.ts` loaded the computer plugin as sdk `0.14.4`, which the new range refuses; it loads it as the workspace sdk now.
 

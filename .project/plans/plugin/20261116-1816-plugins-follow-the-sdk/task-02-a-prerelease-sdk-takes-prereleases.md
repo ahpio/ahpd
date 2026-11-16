@@ -1,6 +1,6 @@
 ---
 title: A prerelease sdk takes the prereleases its plugins admit
-status: todo
+status: implemented
 depends: [task-01-the-shipped-sdk-is-the-gate.md]
 layer: server
 refs:
@@ -51,4 +51,10 @@ A daemon whose sdk is a release takes no prerelease, as today.
 - `TMPDIR=/home/softov/tmp/ahpd-test flock /home/softov/tmp/ahpd-test/vitest.lock npx vitest run packages/server` passes.
 
 ## Resume
+
+Built on 2026-11-16, awaiting review.
+
+- The rule is `isOffered(version, sdk)`, since `offered` is already the name of the local lists it filters.
+- `available` and `details` filter by `isOffered` alone, not by the range check. A picker still shows a release whose range refuses the sdk, as before; only the prereleases are new.
+- `later` is `semver.gt`.
 

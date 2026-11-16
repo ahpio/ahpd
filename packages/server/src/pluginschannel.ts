@@ -18,7 +18,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync 
 import { dirname, join } from 'node:path';
 import { check } from '@cofold/commands';
 import type { JsonSchema } from '@cofold/commands';
-import { formIn, HOST_CATALOGS, isRecordSlug, RECORD_SLUG, recordsChannel, RpcError, scopeOf, secretRef, translated } from '@ahpd/sdk';
+import { formIn, HOST_CATALOGS, isRecordSlug, RECORD_SLUG, recordsChannel, RpcError, scopeOf, sdkVersion, secretRef, translated } from '@ahpd/sdk';
 import type { Alert, Bag, Catalogs, Grant, Loaded, PluginMethod, PluginSpec, PluginView, RecordsChannel, RecordsSource } from '@ahpd/sdk';
 import type { Applied } from './applyplugins.js';
 import { maskOption, SET, withoutSpecSecrets, withoutUserinfoIn } from './commands/config.js';
@@ -35,7 +35,6 @@ import { availableAnswer } from './commands/plugin.js';
 import { ICON_BOUNDS } from './icons.js';
 import { deprecationOf, installedFiles, listedDetails } from './pluginlist.js';
 import type { ListsAt } from './pluginlist.js';
-import { version } from './version.js';
 
 /** The channel, and the domain its commands are named after. */
 const SCHEME = 'x-ahpd-plugins';
@@ -202,8 +201,8 @@ export interface PluginsChannelOptions {
   run?: Runner;
   /** How the registry is asked about a registry name before npm runs; absent is the global `fetch`. */
   fetch?: Fetch;
-  /** The daemon's own version, which an installed plugin's `@ahpd/sdk` is pinned to; absent is this package's. */
-  version?(): string;
+  /** The version of the `@ahpd/sdk` the daemon ships, which a plugin's range is checked against and the folder's sdk is pinned to; absent is `sdkVersion()`. */
+  sdk?(): string;
   /**
    * The plugin lists the daemon reads, in order, kept in `plugin-marketplaces/`
    * under `where.configDir`. Absent reads none: `available` answers no list, and
@@ -247,8 +246,8 @@ export const pluginsChannel = (options: PluginsChannelOptions): PluginsChannel =
   const npm: Runner = options.run ?? runProgram;
   /** The registry, as the install path asks it about a name. */
   const registryFetch: Fetch = options.fetch ?? globalThis.fetch;
-  /** The daemon's own version, which a registry install pins the sdk to. */
-  const daemonVersion = (): string => options.version?.() ?? version();
+  /** The version of the `@ahpd/sdk` the daemon ships, which a registry install checks ranges against and pins the sdk to. */
+  const sdk = (): string => options.sdk?.() ?? sdkVersion();
 
   /**
    * Nothing the install and remove paths say reaches the channel's log.
@@ -543,7 +542,7 @@ export const pluginsChannel = (options: PluginsChannelOptions): PluginsChannel =
           packages = await installPlugins([source], {
             configDir: where.configDir,
             configFile,
-            version: daemonVersion(),
+            sdk: sdk(),
             enable: true,
             run: npm,
             fetch: registryFetch,
@@ -892,7 +891,7 @@ export const pluginsChannel = (options: PluginsChannelOptions): PluginsChannel =
         try {
           const all = await updatePlugins([packageName], {
             configDir: where.configDir,
-            version: daemonVersion(),
+            sdk: sdk(),
             run: npm,
             fetch: registryFetch,
             say,
@@ -926,6 +925,7 @@ export const pluginsChannel = (options: PluginsChannelOptions): PluginsChannel =
         pluginMarketplaces: urls,
         iconLimitBytes: where.icons?.limitBytes ?? ICON_BOUNDS.limitBytes,
         iconTimeoutMs: where.icons?.timeoutMs ?? ICON_BOUNDS.timeoutMs,
+        sdk: sdk(),
       }, where) as unknown as Bag;
     },
   };
@@ -962,7 +962,7 @@ export const pluginsChannel = (options: PluginsChannelOptions): PluginsChannel =
           id,
           marketplace,
           version: asked,
-          daemonVersion: daemonVersion(),
+          sdk: sdk(),
           fetch: registryFetch,
           icons: { problem: () => undefined, bounds: where.icons ?? ICON_BOUNDS },
         }) as unknown as Bag;

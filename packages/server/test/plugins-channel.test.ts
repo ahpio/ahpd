@@ -233,7 +233,7 @@ type Host = Awaited<ReturnType<typeof served>>['host'];
  * text, as `ahpd plugin reload` does at the terminal. The root carries the
  * daemon's keys from the same file, and hears the values each apply moved.
  */
-const live = async ({ run, fetch, version }: { run?: Runner; fetch?: Fetch; version?: string } = {}) => {
+const live = async ({ run, fetch, sdk }: { run?: Runner; fetch?: Fetch; sdk?: string } = {}) => {
   let set: PluginSet;
   let host: Host;
   let markRestart: () => void = () => {};
@@ -259,7 +259,7 @@ const live = async ({ run, fetch, version }: { run?: Runner; fetch?: Fetch; vers
     restartNeeded: () => markRestart(),
     ...(run === undefined ? {} : { run }),
     ...(fetch === undefined ? {} : { fetch }),
-    ...(version === undefined ? {} : { version: () => version }),
+    ...(sdk === undefined ? {} : { sdk: () => sdk }),
   });
   refresh = lists.refresh;
   const wire = servedRecords('ahpd', [lists.channel], lists.methods);
@@ -1448,7 +1448,7 @@ it('updates a plugin to the version that fits this daemon, and loads it again', 
   const { runner, calls } = await installedDemo('1.1.0');
   const { host, users, close } = await live({
     run: runner,
-    version: '0.14.1',
+    sdk: '0.14.1',
     fetch: registryHolding({ demo: ['1.0.0 >=0.10', '1.1.0 >=0.14', '2.0.0 >=0.15'] }),
   });
   const ana = await as(host, users, 'ana');
@@ -1469,7 +1469,7 @@ it('answers the id alone when the plugin is already at the version that fits', a
   const { runner } = await installedDemo('1.0.0');
   const { host, users, close } = await live({
     run: runner,
-    version: '0.14.1',
+    sdk: '0.14.1',
     fetch: registryHolding({ demo: ['1.0.0 >=0.10'] }),
   });
   const jo = await as(host, users, 'jo');

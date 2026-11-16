@@ -1,6 +1,6 @@
 ---
 title: The sdk the daemon ships is the gate
-status: todo
+status: implemented
 depends: []
 layer: server
 refs:
@@ -56,4 +56,13 @@ The folder's `@ahpd/sdk` is pinned to that sdk, and the server depends on the ex
 - `pnpm -C packages/server pack --dry-run --json` shows `@ahpd/sdk` at the exact version of the sdk.
 
 ## Resume
+
+Built on 2026-11-16, awaiting review.
+
+- The `sdk` option replaces `version` in `InstallOptions`, `UpdateOptions`, `PluginOptions`, `ConfigureOptions` and `DetailsOptions`, and the channel's `sdk?()` replaces `version?()`. The type check found every caller, `commands/configure.ts` among them.
+- `planUpdate` is unchanged. A new `targetSdk` in `selfupdate.ts` reads the target's sdk, and `ahpd update` calls it before the check. A registry with no answer gives the target's own version.
+- The Windows helper runs the new binary's `plugin update all`, which reads `sdkVersion()`, so it needed no change.
+- No case runs the CLI with a server version apart from its sdk's: the two are one file in this workspace. `server-update.test.ts` covers a target whose sdk differs from its version.
+- `plugins-channel.test.ts` set `version` through a spread, which the type check did not see. It sets `sdk` now.
+- Found, not changed: a plugin's `context.version` is the sdk's, and the computer plugin installs `@ahpd/server` at it in a machine.
 

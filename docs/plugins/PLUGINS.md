@@ -1558,7 +1558,7 @@ holds both names.
 | `contracts` | The names each kind of registration may use. See [the contracts](#the-contracts) |
 | `icons` | What a client draws beside the plugin's name and each adapter's title. See [icons](#icons) |
 | `optionsSchema` | A JSON Schema for the options `apply` receives: its `properties` are the option keys, and its `required` list is what the configuration must set before the plugin is `ready`. The daemon reads it with no import, so a plugin switched off is still listed with the form a client draws and its values are still checked. See [Declaring the options](#declaring-the-options) |
-| `peerDependencies["@ahpd/sdk"]` | The compatibility range, checked **before** the module is imported. It states the oldest `@ahpd/sdk` the plugin needs |
+| `peerDependencies["@ahpd/sdk"]` | The compatibility range, checked against the `@ahpd/sdk` the daemon ships **before** the module is imported. It states the oldest sdk the plugin needs. A first-party plugin names the sdk of its release up to the next minor, such as `>=0.15.0-rc.4 <0.16.0-0` |
 
 A field is written at the top level of a standalone manifest and under `ahpd`
 in a package.json, so `{ "description": "..." }` in a `plugin.json` and
@@ -2173,7 +2173,11 @@ The daemon fetches each list at its start when the list it keeps is older than `
 
 `x-ahpd/plugins/details { id, installed: true }` answers an installed plugin's own files, where `id` is its row: `{ id, readme?, changelog?, license? }`, read from the root of the package it loads from, each at most 1 MB. A plugin from a list, from a folder or from a file shows what is installed, not what a list says of another build.
 
-An install of a source a list has takes its version from that list: the list `--marketplace` or `marketplace` names, then the one the package was installed from, then the first list that has the source. The version is the newest that fits this daemon by the rule npm's versions are read with, a prerelease and a version marked `deprecated` left out. A `github:` source is installed at its version's commit. After npm runs, the package is checked against the list: its integrity for an npm source, and the commit npm resolved for a `github:` one. A package that differs is uninstalled, and an update that differs puts back the version it moved from. Both are refused with the two values. A source no list has installs from npm, or as written. The list each installed package came from is kept in `plugin-marketplaces/installed.json`. A `github:` plugin is left as installed by an update, as before.
+#### Choosing a version
+
+An install or an update takes the newest version whose `@ahpd/sdk` range admits the sdk the daemon ships. A daemon whose sdk is a release takes no prerelease. A daemon whose sdk is a prerelease, such as a release candidate, also takes the prereleases a range admits, so it finds the plugins of its own release. From npm, a release above `dist-tags.latest` is left out. `available` and `details` list only the versions this daemon would take.
+
+An install of a source a list has takes its version from that list: the list `--marketplace` or `marketplace` names, then the one the package was installed from, then the first list that has the source. The version is chosen by the same rule, and a version marked `deprecated` is left out. A `github:` source is installed at its version's commit. After npm runs, the package is checked against the list: its integrity for an npm source, and the commit npm resolved for a `github:` one. A package that differs is uninstalled, and an update that differs puts back the version it moved from. Both are refused with the two values. A source no list has installs from npm, or as written. The list each installed package came from is kept in `plugin-marketplaces/installed.json`. A `github:` plugin is left as installed by an update, as before.
 
 ### Writing a plugin in a client
 
