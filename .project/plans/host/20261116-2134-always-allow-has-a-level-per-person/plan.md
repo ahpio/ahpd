@@ -6,7 +6,7 @@ priority: high
 created: 2026-11-16
 revalidated: 2026-11-16
 refs:
-  - git://17aa9ecbf - the last commit that holds `problems/always-allow-writes-host-rules-without-config-change.md`, with its reproduction of 2026-11-16
+  - git://8c790f5bd - the last commit that holds `problems/always-allow-writes-host-rules-without-config-change.md`, with its reproduction of 2026-11-16
   - "[code://packages/sdk/src/access/permissionrules.ts#L17-L30](../../../../packages/sdk/src/access/permissionrules.ts#L17-L30) - `PermissionGrantScope` and the option ids of a grant"
   - "[code://packages/sdk/src/host/permissions.ts#L529](../../../../packages/sdk/src/host/permissions.ts#L529) - `grantOption`, one option of a grant"
   - "[code://packages/sdk/src/host/permissions.ts#L635](../../../../packages/sdk/src/host/permissions.ts#L635) - `confirmationOptions`, the options a question offers"
@@ -30,7 +30,7 @@ An option allows every command for the rest of one session.
 ## Reconnaissance
 
 The files read and the patterns to reuse are the `refs` in the frontmatter, each with its note.
-The reproduction is in the problem file at `git://17aa9ecbf`.
+The reproduction is in the problem file at `git://8c790f5bd`.
 bob, a member, answered Always Allow `rm …`, and `rm` then ran with no question in alice's session.
 
 ### Searches performed

@@ -6,7 +6,7 @@ priority: high
 created: 2026-11-16
 revalidated: 2026-11-16
 refs:
-  - git://cab2b50cb - the last commit that holds `problems/auto-approval-and-trust-ignore-who-sent-the-turn.md`, with its reproduction of 2026-11-16
+  - git://37affa5dc - the last commit that holds `problems/auto-approval-and-trust-ignore-who-sent-the-turn.md`, with its reproduction of 2026-11-16
   - git://e388d12f5 - `getAutoApproval` and `trustedBy` answered only the session's owner, the check this plan brings back
   - "[code://packages/sdk/src/host/spawn.ts#L520-L640](../../../../packages/sdk/src/host/spawn.ts#L520-L640) - `toolReady`, which reads every approval for every question, whoever sent the turn"
   - "[code://packages/sdk/src/host/spawn.ts#L1248-L1255](../../../../packages/sdk/src/host/spawn.ts#L1248-L1255) - `trustedBy`, which reads `workspaceTrust` for every start"
@@ -29,7 +29,7 @@ A host with no users file is unchanged.
 ## Reconnaissance
 
 The files read and the patterns to reuse are the `refs` in the frontmatter, each with its note.
-The reproduction is in the problem file at `git://cab2b50cb`: dave, with `chat:send` and no `chat:answer`, ran `rm` in alice's `autoApprove` session with no question.
+The reproduction is in the problem file at `git://37affa5dc`: dave, with `chat:send` and no `chat:answer`, ran `rm` in alice's `autoApprove` session with no question.
 
 ### Searches performed
 
