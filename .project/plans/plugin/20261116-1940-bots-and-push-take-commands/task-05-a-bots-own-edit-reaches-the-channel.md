@@ -1,6 +1,6 @@
 ---
 title: A bot's own edit reaches the channel
-status: implemented
+status: done
 depends: [task-02-the-bot-channel-sends-records.md]
 layer: "bot"
 refs:

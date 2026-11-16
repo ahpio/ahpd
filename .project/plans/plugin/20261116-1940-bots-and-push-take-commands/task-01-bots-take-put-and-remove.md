@@ -1,6 +1,6 @@
 ---
 title: Bots take put and remove commands
-status: implemented
+status: done
 depends: []
 layer: "bot"
 refs:

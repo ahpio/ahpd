@@ -1,7 +1,7 @@
 ---
 title: Bots and push devices take commands
 domain: plugin
-status: active
+status: built
 priority: high
 created: 2026-11-16
 revalidated: 2026-11-16
@@ -79,12 +79,12 @@ client x-ahpd/push/put -> host gate push:put -> push plugin method -> provider w
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - bots-take-put-and-remove](task-01-bots-take-put-and-remove.md) | implemented | - |
-| [02 - the-bot-channel-sends-records](task-02-the-bot-channel-sends-records.md) | implemented | - |
-| [03 - push-devices-take-commands](task-03-push-devices-take-commands.md) | implemented | - |
-| [04 - a-records-channel-has-commands](task-04-a-records-channel-has-commands.md) | implemented | 01, 03 |
-| [05 - a-bots-own-edit-reaches-the-channel](task-05-a-bots-own-edit-reaches-the-channel.md) | implemented | 02 |
-| [06 - a-file-watch-hears-the-file](task-06-a-file-watch-hears-the-file.md) | implemented | - |
+| [01 - bots-take-put-and-remove](task-01-bots-take-put-and-remove.md) | done | - |
+| [02 - the-bot-channel-sends-records](task-02-the-bot-channel-sends-records.md) | done | - |
+| [03 - push-devices-take-commands](task-03-push-devices-take-commands.md) | done | - |
+| [04 - a-records-channel-has-commands](task-04-a-records-channel-has-commands.md) | done | 01, 03 |
+| [05 - a-bots-own-edit-reaches-the-channel](task-05-a-bots-own-edit-reaches-the-channel.md) | done | 02 |
+| [06 - a-file-watch-hears-the-file](task-06-a-file-watch-hears-the-file.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -94,8 +94,8 @@ client x-ahpd/push/put -> host gate push:put -> push plugin method -> provider w
 
 ## Resume state
 
-- **Done so far:** tasks 01 to 06 built on branch `plugin/20261116-1940-bots-and-push-take-commands` on 2026-11-16, awaiting review. `pnpm typecheck` and `pnpm test:unit` pass: 520 files, 9121 tests.
-- **Next action:** Softov's review, then the pull request.
+- **Done so far:** tasks 01 to 06 built, and merged in ahpio/ahpd#359 on 2026-11-16 as `37affa5dc`.
+- **Next action:** none.
 - **Watch out for:** the bot read and the channel must answer the same record; build both from one function.
 
 ## Final verification checklist

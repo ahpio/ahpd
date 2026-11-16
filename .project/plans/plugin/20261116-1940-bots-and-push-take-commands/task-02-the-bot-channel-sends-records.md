@@ -1,6 +1,6 @@
 ---
 title: The bot channel sends records
-status: implemented
+status: done
 depends: []
 layer: "bot"
 refs:

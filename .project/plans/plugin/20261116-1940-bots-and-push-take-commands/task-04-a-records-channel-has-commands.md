@@ -1,6 +1,6 @@
 ---
 title: A records channel has commands
-status: implemented
+status: done
 depends: [task-01-bots-take-put-and-remove.md, task-03-push-devices-take-commands.md]
 layer: "server"
 refs:

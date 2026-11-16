@@ -1,6 +1,6 @@
 ---
 title: Push devices take commands and a channel
-status: implemented
+status: done
 depends: []
 layer: "push"
 refs:
