@@ -4,7 +4,7 @@ title: "Handoff: where ahpd stands, and what is pending"
 
 # Handoff: where `ahpd` stands, and what is pending
 
-Current progress and pending items only, as of 2026-11-15. *Outside this repository* was last checked on 2026-11-04.
+Current progress and pending items only, as of 2026-11-16. *Outside this repository* was last checked on 2026-11-04.
 `node ~/.claude/skills/do-spec/scripts/plans.mjs` lists the backlog, and each plan's Resume state is its detail. What merged is in `git log`, and what was released is in [docs/updates/](../../docs/updates/).
 
 ## Main
@@ -18,6 +18,9 @@ Current progress and pending items only, as of 2026-11-15. *Outside this reposit
 - [claude/20261115-0157-the-history-reads-across-compactions](../plans/claude/20261115-0157-the-history-reads-across-compactions/plan.md) is merged in #338, and closes on Softov's word. After a restart, a Claude session shows its turns before each compaction again, and draws each compaction notice. The test daemon check passed at `9863785ca`.
 - [plugin/20261113-2029-the-daemon-reads-the-plugin-list](../plans/plugin/20261113-2029-the-daemon-reads-the-plugin-list/plan.md) is merged in #339, with four tasks `implemented`, and waits for Softov's review. The daemon reads `pluginMarketplaces`, answers `x-ahpd/plugins/available` and `details`, and installs a listed version. `details` with `installed: true` answers the README, changelog and license of the installed package. Its `linux (2/2)` failed once in the cofold truncation case, and passed on one rerun after #340. The list at `https://plugins.ahpio.com/v1/plugins.json` holds 12 plugins on 2026-11-15.
 - The pull request card is planned on 2026-11-16, for 0.15: [host/20261116-1714-each-pull-request-carries-githubs-details](../plans/host/20261116-1714-each-pull-request-carries-githubs-details/plan.md) here, and ahpw's `sessions/20261116-1714-the-pull-request-card-shows-github`, which starts with a mockup. Each pull request a session shows carries what GitHub says of it under `_meta['ahpd.pullRequests']`. It covers the merged pull request that stayed unmerged in a session's list.
+- The upgrade break is planned on 2026-11-16, and must merge before rc.4: [plugin/20261116-1816-plugins-follow-the-sdk](../plans/plugin/20261116-1816-plugins-follow-the-sdk/plan.md), 4 tasks. The upgrade check of 2026-11-16 found that the 0.14.0 backends do not import on sdk 0.15. A plugin is checked against the sdk the daemon ships. A prerelease sdk takes the plugin prereleases that a range admits. Each release sets the plugins' range from its sdk to the next minor.
+  - It requires ahpio-site's `plugins/20261116-1816-the-list-serves-prereleases` (1 task), since the list serves releases only. Its deploy is Softov's step.
+  - How the builds run waits for Softov's answer.
 - Problems found on 2026-11-14, none with a fix chosen:
   - [stop-refuses-a-run-whose-sessions-run-no-turn.md](../problems/stop-refuses-a-run-whose-sessions-run-no-turn.md): Softov asked for a problem file, not a fix.
   - In ahpw, `the-automation-form-hides-a-model-its-agent-does-not-offer.md` on ahpw main (`7ffec74`).
@@ -142,7 +145,6 @@ Each plan here has every task `implemented`, and closes as `built` on Softov's w
 
 ## Open findings with no brief yet
 
-- The upgrade check of 2026-11-16 found that the four 0.14.0 backends do not import beside sdk 0.15. Every upgrade to a release candidate leaves no backend loaded. Softov chose the fix on 2026-11-16, in the brief [plugins-follow-the-release-line.md](../briefs/plugins-follow-the-release-line.md). It waits for "plan it".
 - ahpw's plan `plugins/20261115-0746-a-person-finds-a-plugin-to-install` is merged in ahpw #86 (`108a3e719`), with four tasks `implemented`, and waits for Softov's review. The Plugins sidebar is one list with search and Install. An installed plugin's page has Overview, Features and Settings from its own package, and Marketplace facts only when it came from a list.
 - Softov's test of 2026-11-15 found that `x-ahpd/plugins/remove` gave npm the row id, and that `npm uninstall` ran without `--legacy-peer-deps`. Both are fixed in #339. His `~/.config/ahpd` may still hold `@ahpd/web` in `package.json`, since that uninstall failed.
 - The plugin list names first-party plugins without their scope, such as `agent-acp`. ahpd names them `ahpd-agent-acp`, since none exports a `name`. The plugins repository's check (`scripts/check.mjs`, `unscoped`) holds the list to the first rule. The build of plugin/20261113-2029 matches by source first.
