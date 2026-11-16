@@ -391,12 +391,6 @@ it('takes a question\'s host-only fields off before any client is sent it', asyn
   await host.close();
 });
 
-/*
- * A `Shell` rule with a specifier names the commands of a line, and one that
- * denies refuses the call before anybody is asked, as VS Code's host reads
- * its permission rules.
- * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/sessionPermissions.ts#L397-L425
- */
 /** A people directory of two admins, each signed in by the token that names them. */
 const people = (): Users => ({
   resource: { resource: 'ahpd://users', resource_name: 'ahpd users', authorization_servers: ['ahpd://users'], required: false },
@@ -493,6 +487,12 @@ it('gives no approvals to a turn that is no person\'s when a sender other than t
   await host.close();
 });
 
+/*
+ * A `Shell` rule with a specifier names the commands of a line, and one that
+ * denies refuses the call before anybody is asked, as VS Code's host reads
+ * its permission rules.
+ * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/sessionPermissions.ts#L397-L425
+ */
 it('refuses a command a session\'s Shell rule denies before any client is asked', async () => {
   const answers: Answer[] = [];
   const { host, p, dispatch } = await serving(asking(answers, 'bash', undefined, { permissionKind: 'shell', shellCommand: 'git status && rm -rf build', shellLanguage: 'bash' }));
