@@ -25,7 +25,10 @@ Current progress and pending items only, as of 2026-11-16. *Outside this reposit
 - The four multi-user security problems of 2026-11-08 reproduce on the test daemon at `2228ec5af`, on 2026-11-16. Each problem file's *Symptom* holds the steps and what was not tried. Softov chose on 2026-11-16 to fix all four for 0.15, problem 4 with rules per person, which needs `a-claude-session-from-vs-code-has-no-owner.md` first.
   - Problem 1 is planned: [host/20261116-2126-approvals-follow-the-sessions-owner](../plans/host/20261116-2126-approvals-follow-the-sessions-owner/plan.md), with `unattendedAutoApprove` on by default (Softov, 2026-11-16).
   - Problem 2 is planned: [host/20261116-2128-backends-ask-what-the-operator-asks](../plans/host/20261116-2128-backends-ask-what-the-operator-asks/plan.md).
-  - [always-allow-writes-host-rules-without-config-change.md](../problems/always-allow-writes-host-rules-without-config-change.md)
+  - Problem 3 is planned: [host/20261116-2134-always-allow-has-a-level-per-person](../plans/host/20261116-2134-always-allow-has-a-level-per-person/plan.md). It builds the mockup Softov approved on 2026-11-16.
+  - Problem 4 waits for `a-claude-session-from-vs-code-has-no-owner.md`, whose cause is not found.
+  - Its first step logs each request while Softov opens a Claude session from VS Code. A plan of terminal rules per person comes after, and may share the person store of host/20261116-2134.
+  - How the builds of the three plans run waits for Softov's answer.
   - [an-admins-pushed-terminal-rule-applies-to-every-session.md](../problems/an-admins-pushed-terminal-rule-applies-to-every-session.md)
 - The test daemon's `~/ahpd-check` holds users alice, bob, carol and dave, a role `senders`, and `eligibleForAutoApproval` in `config.json`. It is stopped.
 - Problems found on 2026-11-14, none with a fix chosen:

@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Approval levels mockup</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Emoji&display=block">
+<link rel="stylesheet" href="file:///github/ahpw/node_modules/.pnpm/@softov+scena@0.7.0_react-dom@19.3.0_react@19.3.0__react@19.3.0/node_modules/@softov/scena/dist/styles/theme.css">
+<style>
+body { margin: 0; padding: 18px; background: var(--oo-color-canvas, var(--oo-color-surface)); color: var(--oo-color-text); font-family: var(--oo-font-family, system-ui); font-size: 13px; }
+h1 { font-size: 15px; margin: 0 0 4px; }
+.lead { margin: 0 0 18px; color: var(--oo-color-muted); max-width: 980px; }
+.state { margin: 0 0 26px; }
+.state > h3 { margin: 0 0 4px; font-size: 12px; font-weight: 600; color: var(--oo-color-muted); text-transform: uppercase; letter-spacing: .04em; }
+.state > p { margin: 0 0 10px; color: var(--oo-color-muted); max-width: 980px; }
+.row { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; }
+.col { display: grid; gap: 6px; }
+.who { font-size: 12px; color: var(--oo-color-muted); }
+
+/* The tool call and its question, as ahpw's chat draws them. */
+.call { width: 520px; max-width: 100%; box-sizing: border-box; border: 1px solid var(--oo-color-border); border-radius: 8px; background: var(--oo-color-surface); padding: 10px 12px; display: grid; gap: 8px; position: relative; }
+.call__head { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+.call__head code { font-weight: 400; }
+.call__title { color: var(--oo-color-text); }
+.call pre { margin: 0; padding: 6px 8px; border-radius: 6px; background: color-mix(in srgb, var(--oo-color-text) 6%, transparent); font-family: var(--oo-font-family-mono, ui-monospace, monospace); font-size: 12px; }
+.actions { display: flex; gap: 6px; align-items: center; }
+.btn { border: 1px solid var(--oo-color-border); background: var(--oo-color-surface); color: var(--oo-color-text); border-radius: 6px; padding: 4px 11px; font: inherit; font-size: 12.5px; }
+.btn--primary { background: var(--oo-color-primary); border-color: var(--oo-color-primary); color: var(--oo-color-on-primary, #fff); }
+.split { display: inline-flex; }
+.split .btn:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.split .btn + .btn { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 1px solid color-mix(in srgb, currentColor 35%, transparent); padding: 4px 7px; }
+
+/* The menu the caret opens, as scena's ContextMenu draws it. */
+.menu { width: 360px; box-sizing: border-box; border: 1px solid var(--oo-color-border); border-radius: 8px; background: var(--oo-color-raised, var(--oo-color-surface)); box-shadow: 0 6px 18px rgb(0 0 0 / .22); padding: 4px; }
+.menu__item { padding: 5px 10px; border-radius: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.menu__item[data-hover] { background: var(--oo-color-hover, color-mix(in srgb, var(--oo-color-text) 8%, transparent)); }
+.menu__item code { font-size: 12px; }
+.menu__sep { height: 1px; margin: 4px 6px; background: var(--oo-color-border); }
+.menu__note { font-size: 11.5px; color: var(--oo-color-muted); padding: 2px 10px 4px; }
+.tag { display: inline-block; font-size: 11px; color: var(--oo-color-muted); margin-left: 6px; }
+.new { color: var(--oo-color-primary); }
+</style>
+</head>
+<body>
+<h1>Approval levels: who an Always Allow is for</h1>
+<p class="lead">ahpw's question card for a shell command, with the host's options. Allow Once is the main button, the caret opens the rest in groups, and Skip stands alone. New options are <span class="new">in blue</span> here only, to tell them apart; the real card draws them as the others.</p>
+
+<section class="state">
+  <h3>1. A member, the menu open</h3>
+  <p>bob is a member: he holds <code>chat:answer</code> and not <code>config:permissions</code>. He is offered the session's level, his own level, and Allow All in this Session. No option writes the host's rules.</p>
+  <div class="row">
+    <div class="col">
+      <div class="who">bob's session, as bob sees it</div>
+      <div class="call">
+        <div class="call__head"><span style="font-family:'Noto Emoji',sans-serif">🖥︎</span> <span class="call__title">Run <code>rm b.txt</code>?</span></div>
+        <pre>rm b.txt</pre>
+        <div class="actions">
+          <span class="split"><button class="btn btn--primary">Allow Once</button><button class="btn btn--primary">▾</button></span>
+          <button class="btn">Skip</button>
+        </div>
+      </div>
+    </div>
+    <div class="menu">
+      <div class="menu__item">Allow <code>rm …</code> in this Session</div>
+      <div class="menu__item">Allow Exact Command in this Session</div>
+      <div class="menu__sep"></div>
+      <div class="menu__item new" data-hover>Always Allow <code>rm …</code> for Me</div>
+      <div class="menu__item new">Always Allow Exact Command for Me</div>
+      <div class="menu__sep"></div>
+      <div class="menu__item new">Allow All Commands in this Session</div>
+    </div>
+  </div>
+</section>
+
+<section class="state">
+  <h3>2. An admin, the menu open</h3>
+  <p>alice holds <code>config:permissions</code>, so the host's level is offered too: it applies in every person's sessions, automations included.</p>
+  <div class="row">
+    <div class="col">
+      <div class="who">alice's session, as alice sees it</div>
+      <div class="call">
+        <div class="call__head"><span style="font-family:'Noto Emoji',sans-serif">🖥︎</span> <span class="call__title">Run <code>rm a.txt</code>?</span></div>
+        <pre>rm a.txt</pre>
+        <div class="actions">
+          <span class="split"><button class="btn btn--primary">Allow Once</button><button class="btn btn--primary">▾</button></span>
+          <button class="btn">Skip</button>
+        </div>
+      </div>
+    </div>
+    <div class="menu">
+      <div class="menu__item">Allow <code>rm …</code> in this Session</div>
+      <div class="menu__item">Allow Exact Command in this Session</div>
+      <div class="menu__sep"></div>
+      <div class="menu__item new">Always Allow <code>rm …</code> for Me</div>
+      <div class="menu__item new">Always Allow Exact Command for Me</div>
+      <div class="menu__sep"></div>
+      <div class="menu__item" data-hover>Always Allow <code>rm …</code> for Everyone</div>
+      <div class="menu__item">Always Allow Exact Command for Everyone</div>
+      <div class="menu__sep"></div>
+      <div class="menu__item new">Allow All Commands in this Session</div>
+    </div>
+  </div>
+</section>
+
+<section class="state">
+  <h3>3. A host with no users file</h3>
+  <p>One person is the host, as in VS Code: the host's level is that person's, so the card keeps VS Code's labels and no "for Me" level.</p>
+  <div class="row">
+    <div class="col">
+      <div class="who">the only person's session</div>
+      <div class="call">
+        <div class="call__head"><span style="font-family:'Noto Emoji',sans-serif">🖥︎</span> <span class="call__title">Run <code>rm a.txt</code>?</span></div>
+        <pre>rm a.txt</pre>
+        <div class="actions">
+          <span class="split"><button class="btn btn--primary">Allow Once</button><button class="btn btn--primary">▾</button></span>
+          <button class="btn">Skip</button>
+        </div>
+      </div>
+    </div>
+    <div class="menu">
+      <div class="menu__item">Allow <code>rm …</code> in this Session</div>
+      <div class="menu__item">Allow Exact Command in this Session</div>
+      <div class="menu__sep"></div>
+      <div class="menu__item">Always Allow <code>rm …</code></div>
+      <div class="menu__item">Always Allow Exact Command</div>
+      <div class="menu__sep"></div>
+      <div class="menu__item new">Allow All Commands in this Session</div>
+    </div>
+  </div>
+</section>
+
+<section class="state">
+  <h3>4. Auto-approve locked by the operator</h3>
+  <p>Where <code>autoApprovePolicyRestricted</code> is set, the host leaves out Allow All Commands in this Session, and refuses it if a client sends it anyway.</p>
+  <div class="row">
+    <div class="col">
+      <div class="who">bob's session, with the lock</div>
+      <div class="call">
+        <div class="call__head"><span style="font-family:'Noto Emoji',sans-serif">🖥︎</span> <span class="call__title">Run <code>rm b.txt</code>?</span></div>
+        <pre>rm b.txt</pre>
+        <div class="actions">
+          <span class="split"><button class="btn btn--primary">Allow Once</button><button class="btn btn--primary">▾</button></span>
+          <button class="btn">Skip</button>
+        </div>
+      </div>
+    </div>
+    <div class="menu">
+      <div class="menu__item">Allow <code>rm …</code> in this Session</div>
+      <div class="menu__item">Allow Exact Command in this Session</div>
+      <div class="menu__sep"></div>
+      <div class="menu__item new">Always Allow <code>rm …</code> for Me</div>
+      <div class="menu__item new">Always Allow Exact Command for Me</div>
+    </div>
+  </div>
+</section>
+
+<script>
+if (new URLSearchParams(location.search).get('theme') === 'dark') document.documentElement.setAttribute('data-theme-mode', 'dark');
+</script>
+</body>
+</html>

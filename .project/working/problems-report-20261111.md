@@ -104,7 +104,7 @@ The audit of 2026-11-08 wrote these 11 problems and never committed them. Each w
 | Problem | Severity |
 | --- | --- |
 | The tunnel hop hands every caller the root token, fixed by #303 (`a87e399a7`) | blocker |
-| [always-allow-writes-host-rules-without-config-change.md](../problems/always-allow-writes-host-rules-without-config-change.md) | major |
+| always-allow-writes-host-rules-without-config-change.md, planned in [host/20261116-2134](../plans/host/20261116-2134-always-allow-has-a-level-per-person/plan.md) | major |
 | auto-approval-and-trust-ignore-who-sent-the-turn.md, planned in [host/20261116-2126](../plans/host/20261116-2126-approvals-follow-the-sessions-owner/plan.md) | major |
 | backends-skip-the-operators-always-ask-rule.md, planned in [host/20261116-2128](../plans/host/20261116-2128-backends-ask-what-the-operator-asks/plan.md) | major |
 | Part images are pulled by a tag with no digest, planned as [container/20261113-0408](../plans/container/20261113-0408-a-part-is-pulled-by-its-digest/plan.md) | major |
