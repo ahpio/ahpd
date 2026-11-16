@@ -59,7 +59,7 @@
     "id": "copilot",
     "name": "Copilot",
     "kind": "npm",
-    "version": "1.0.111",
+    "version": "1.0.112",
     "requires": ["node"],
     "packages": ["@github/copilot"],
     "updates": { "COPILOT_AUTO_UPDATE": "false" },
@@ -98,15 +98,15 @@
     "id": "goose",
     "name": "Goose",
     "kind": "archive",
-    "version": "1.59.0",
+    "version": "1.59.1",
     "archives": {
       "linux-x64": {
-        "url": "https://github.com/block/goose/releases/download/v1.59.0/goose-x86_64-unknown-linux-gnu.tar.bz2",
-        "sha256": "e4dda9ce4264b08842f836ed13e818a836156a8778d09b6c113264c32323a171"
+        "url": "https://github.com/block/goose/releases/download/v1.59.1/goose-x86_64-unknown-linux-gnu.tar.bz2",
+        "sha256": "f7391321c00035ff6eb48d2250db0cc4a5c3e34102d6f44734f38d9a226eb65b"
       },
       "linux-arm64": {
-        "url": "https://github.com/block/goose/releases/download/v1.59.0/goose-aarch64-unknown-linux-gnu.tar.bz2",
-        "sha256": "c729a825575eb2ebc0e06a319797db92b70debbe706ffc12ffe392f05b9d3920"
+        "url": "https://github.com/block/goose/releases/download/v1.59.1/goose-aarch64-unknown-linux-gnu.tar.bz2",
+        "sha256": "5381580baf3ef599a374d02ef627526a4b9ce2a29f2d0f0a591688f2e891d8c1"
       }
     },
     "bin": ["goose"],
@@ -161,15 +161,15 @@
     "id": "cursor",
     "name": "Cursor",
     "kind": "archive",
-    "version": "2026.11.11",
+    "version": "2026.11.13",
     "archives": {
       "linux-x64": {
-        "url": "https://downloads.cursor.com/lab/2026.11.11-b912975/linux/x64/agent-cli-package.tar.gz",
-        "sha256": "be01f42ad334f81d05a9992fcf060a52cc746f52cc451e849eb652146a6e3c91"
+        "url": "https://downloads.cursor.com/lab/2026.11.13-eacade1/linux/x64/agent-cli-package.tar.gz",
+        "sha256": "c02e4321f20d691ee03af94d29948dc3a81c6c34e7328da7bb1afade4c75812f"
       },
       "linux-arm64": {
-        "url": "https://downloads.cursor.com/lab/2026.11.11-b912975/linux/arm64/agent-cli-package.tar.gz",
-        "sha256": "f068af64ed91b5304605976586f690579679f740a41f388091a6b3a2e776987c"
+        "url": "https://downloads.cursor.com/lab/2026.11.13-eacade1/linux/arm64/agent-cli-package.tar.gz",
+        "sha256": "e4ba0611045a24d1cf78f021d34c19461680fc7234c19c1f981f1cc169f70cdc"
       }
     },
     "bin": ["cursor-agent"],
@@ -199,7 +199,7 @@
     "id": "qwen",
     "name": "Qwen Code",
     "kind": "npm",
-    "version": "0.27.3",
+    "version": "0.27.4",
     "requires": ["node"],
     "packages": ["@qwen-code/qwen-code"],
     "bin": ["qwen"]
