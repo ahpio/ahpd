@@ -37,6 +37,9 @@ In its full run, with a load average near 9, four more cases timed out at 5000 m
 
 A run of those four files at a load average of 7 passed all of them, and timed out on `reads a dev container's vault-named need again after a restart` in their place.
 
+On 2026-11-16, `reads a dev container's vault-named need again after a restart, for the owner in its record` timed out at 5000 ms in a full run, at a load average near 10.
+The branch was host/20261116-1714, which does not change `packages/computer`.
+
 On 2026-11-13 `computer-disposable.test.ts`: `takes the machine's own git volume with it, and asks for none where the profile leaves it open` timed out alone the same way, at `2bf97a6c1`.
 
 ## Cause
