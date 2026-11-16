@@ -1,3 +1,4 @@
+import { pathToFileURL } from 'node:url';
 import { expect, it } from 'vitest';
 import { agentsWatch } from '../src/agentswatch.js';
 import type { BotRecord } from '../src/record.js';
@@ -25,6 +26,9 @@ const fake = (missing: string[] = []) => {
   return { opened, watch };
 };
 
+/** A workspace's URI as the watch is asked it: a drive letter on Windows. */
+const at = (path: string): string => pathToFileURL(path).href;
+
 const settled = async (): Promise<void> => { await new Promise((done) => { setTimeout(done, 0); }); };
 
 it('watches a local bot\'s folder for AGENTS.md, and says which bot moved', async () => {
@@ -36,7 +40,7 @@ it('watches a local bot\'s folder for AGENTS.md, and says which bot moved', asyn
   watches.follow(bot('remote', { computer: 'box' }));
   await settled();
 
-  expect(opened.map((one) => [one.uri, one.options])).toEqual([['file:///bots/motion', { recursive: false, includes: ['AGENTS.md'] }]]);
+  expect(opened.map((one) => [one.uri, one.options])).toEqual([[at('/bots/motion'), { recursive: false, includes: ['AGENTS.md'] }]]);
   opened[0]?.fire();
   expect(told).toEqual(['motion']);
 });
@@ -48,7 +52,7 @@ it('watches again where the workspace moved, and stops on drop and close', async
   await settled();
   watches.follow(bot('motion', { workspace: '/elsewhere/motion' }));
   await settled();
-  expect(opened.map((one) => `${one.uri} ${one.closed}`)).toEqual(['file:///bots/motion true', 'file:///elsewhere/motion false']);
+  expect(opened.map((one) => `${one.uri} ${one.closed}`)).toEqual([`${at('/bots/motion')} true`, `${at('/elsewhere/motion')} false`]);
 
   watches.follow(bot('other'));
   watches.drop('motion');
@@ -71,7 +75,7 @@ it('asks again at the next change when the folder was not there, and watches not
   missing.length = 0;
   watches.follow(bot('new'));
   await settled();
-  expect(opened.map((one) => one.uri)).toEqual(['file:///bots/new']);
+  expect(opened.map((one) => one.uri)).toEqual([at('/bots/new')]);
 
   const none = agentsWatch(undefined, () => {});
   none.follow(bot('motion'));
