@@ -99,7 +99,7 @@ A comment's `origin.session` is a session of the writer, or the channel itself f
 A session's comments stay in the session's record, as VS Code keeps them. The two channels show each other's comments:
 
 - A resource's channel shows its own comments and every session's comments on that resource. A reply, a resolve or a delete there on a session's comment is kept in that session, and needs the session's `review`.
-- A session's channel shows its own comments and the comments outside any session on files under its folder or listed as its artifacts. VS Code draws both on the file. A reply, a resolve or a delete there on a file's comment is kept on the file, and needs the file's `comment`.
+- A session's channel shows its own comments and the comments outside any session on files under its folder or listed as its artifacts, to a reader who may read those files (`file:get`), as their own channel does. VS Code draws both on the file. A reply, a resolve or a delete there on a file's comment is kept on the file, and needs the file's `comment`.
 
 The host stamps a session's new entries as it stamps a resource's, so each channel says who wrote each entry and when.
 

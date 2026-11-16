@@ -4,7 +4,8 @@ import { ANNOTATIONS_SCHEME, annotatedResourceOf, schemeOf } from './channels.js
 import { personOf, shortId } from './shared.js';
 import { mapPosition, type TextChange } from './textchanges.js';
 import type { Connection } from '../types/host.js';
-import type { Grant } from '../types/users.js';
+import type { Grant, Principal } from '../types/users.js';
+import type { PublishOptions } from '../types/plugin.js';
 import type { ResourceAnnotationsStore } from '../types/host.js';
 import type { Origin } from './state.js';
 
@@ -29,8 +30,8 @@ export interface Writer {
 export interface ResourceAnnotationsPorts {
   /** Where the comments are kept; none keeps them in memory. */
   store(): ResourceAnnotationsStore | undefined;
-  /** Send one action to the channel's subscribers. */
-  emit(channel: string, action: Record<string, unknown>, origin?: Origin): void;
+  /** Send one action to the channel's subscribers, or to those `audience` lets see it. */
+  emit(channel: string, action: Record<string, unknown>, origin?: Origin, audience?: PublishOptions): void;
   /** Whether the connection may name this session as a comment's origin. */
   hasSession(connection: Connection, session: string): boolean;
   /** The sessions' annotations channels that show this resource's comments too, besides its own channel. */
@@ -69,10 +70,14 @@ export interface ResourceAnnotations {
   within(resource: string, places: readonly string[]): boolean;
   /** A change taken on the resource's shared channel: move each range through it. */
   moved(resource: string, change: TextChange, before: string, after: string): void;
-  /** The comments outside any session on the resources under these folders, as a session shows them beside its own. */
-  outsideUnder(folders: readonly string[]): Annotation[];
-  /** The resource under these folders that holds this comment outside any session, or nothing. */
-  holderOf(folders: readonly string[], annotationId: string): string | undefined;
+  /**
+   * The comments outside any session on the resources under these folders, as
+   * a session shows them beside its own: only those on resources `reader` may
+   * read. With no reader, a host with no users directory, all of them.
+   */
+  outsideUnder(folders: readonly string[], reader?: Principal): Annotation[];
+  /** The resource under these folders, one `reader` may read, that holds this comment outside any session, or nothing. */
+  holderOf(folders: readonly string[], annotationId: string, reader?: Principal): string | undefined;
 }
 
 /** The writer a connection is, as an entry's stamp names it. */
@@ -164,10 +169,15 @@ export function createResourceAnnotations(ports: ResourceAnnotationsPorts): Reso
     return action;
   };
 
+  /** Whether `reader` may read the resource, as its own comments' channel asks: none is a host with no users directory. */
+  const reads = (reader: Principal | undefined, resource: string): boolean => reader === undefined || reader.can(grantOn(resource, 'get'));
+
   const apply = (resource: string, action: AnnotationsAction, origin?: Origin): void => {
     keep(resource, annotationsReducer(stateOf(resource), action));
     ports.emit(`${ANNOTATIONS_SCHEME}:${resource}`, action as unknown as Record<string, unknown>, origin);
-    for (const channel of ports.alsoOn?.(resource) ?? []) ports.emit(channel, action as unknown as Record<string, unknown>, origin);
+    // A session's channel holds readers of the session, not all of them readers of the resource: each is asked, at this send and at every replay.
+    const audience: PublishOptions = { visible: (reader) => reads(reader, resource) };
+    for (const channel of ports.alsoOn?.(resource) ?? []) ports.emit(channel, action as unknown as Record<string, unknown>, origin, audience);
   };
 
   /** A resource's comments made outside any session: their origin is the resource's own channel. */
@@ -235,9 +245,10 @@ export function createResourceAnnotations(ports: ResourceAnnotationsPorts): Reso
     under,
     within,
 
-    outsideUnder: (folders) => under(folders).flatMap(outside),
+    outsideUnder: (folders, reader) => under(folders).filter((resource) => reads(reader, resource)).flatMap(outside),
 
-    holderOf: (folders, annotationId) => under(folders).find((resource) => outside(resource).some((one) => one.id === annotationId)),
+    holderOf: (folders, annotationId, reader) => under(folders)
+      .find((resource) => reads(reader, resource) && outside(resource).some((one) => one.id === annotationId)),
 
     moved(resource, change, before, after) {
       const state = held.get(resource) ?? (ports.store() === undefined ? undefined : stateOf(resource));

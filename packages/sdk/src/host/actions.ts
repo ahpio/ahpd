@@ -274,7 +274,7 @@ export function createActions(ctx: HostContext, conn: ConnectionContext): Action
          */
         const target = typeof action.annotationId === 'string' ? action.annotationId : undefined;
         const holder = target === undefined || ctx.marksOf(id).annotations.some((one) => one.id === target)
-          ? undefined : ctx.resourceAnnotations.holderOf(ctx.placesOf(owning), target);
+          ? undefined : ctx.resourceAnnotations.holderOf(ctx.placesOf(owning), target, connection.principal);
         if (holder === undefined) {
           // Stamped as a file's comments are, so a file's channel says who wrote each entry and when.
           ctx.markAnnotation(owning, ctx.resourceAnnotations.stamped(action as unknown as AnnotationsAction, writerOf(connection)), origin);

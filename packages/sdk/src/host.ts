@@ -1612,8 +1612,11 @@ export function createHost(options: HostOptions): Host {
   /** The comments on resources outside any session; their ranges move with the shared resources' changes. */
   const resourceAnnotations = createResourceAnnotations({
     store: () => options.resourceAnnotations,
-    // A session's channel goes through the session's own path, as its marks do.
-    emit: (channel, action, origin) => { (channel.endsWith(ANNOTATIONS_PATH_SEGMENT) ? dispatch : emit)(channel, action, origin); },
+    // A session's channel goes through the session's own path, as its marks do; one with an audience is said to that audience alone.
+    emit: (channel, action, origin, audience) => {
+      if (audience !== undefined) emit(channel, action, origin, audience);
+      else (channel.endsWith(ANNOTATIONS_PATH_SEGMENT) ? dispatch : emit)(channel, action, origin);
+    },
     hasSession: (connection, session) => (sessions.has(session) || owners.has(session)) && visible(connection, session),
     sessionCommentsOn: (resource) => [...new Set([...kept.sessions(), ...marks.keys()])]
       .flatMap((id) => marksOf(id).annotations.filter((one) => one.resource === resource).map((annotation) => ({ session: ctx.nameOf(id), annotation }))),
