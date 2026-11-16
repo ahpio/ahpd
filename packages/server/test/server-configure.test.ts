@@ -130,7 +130,7 @@ const asked = async (...answers: string[]): Promise<{ answered: Configured; said
   const term = terminal(...answers);
   const lines: string[] = [];
   const answered = await configure({
-    configDir, configFile, version: '0.8.0', term: term.term, run, fetch, path: bin, say: (line) => { lines.push(line); },
+    configDir, configFile, sdk: '0.8.0', term: term.term, run, fetch, path: bin, say: (line) => { lines.push(line); },
   });
   return { answered, said: `${term.said()}${lines.join('\n')}` };
 };
@@ -286,7 +286,7 @@ it('makes the configuration folder on a first run, rather than failing on the to
   const file = join(fresh, 'config.json');
   const term = terminal('', '', '', '', '', '', '', '');
   const answered = await configure({
-    configDir: fresh, configFile: file, version: '0.8.0', term: term.term, run, fetch, path: bin, say: () => {},
+    configDir: fresh, configFile: file, sdk: '0.8.0', term: term.term, run, fetch, path: bin, say: () => {},
   });
   expect(answered.paths).toEqual([process.cwd()]);
   const wrote = join(fresh, 'connection-token');

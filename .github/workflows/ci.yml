@@ -46,6 +46,12 @@ jobs:
         if: matrix.shard == 1
         run: pnpm boundary
 
+      # Each plugin's sdk range is the one this release sets: from its sdk to
+      # the next minor. A bump that forgot it fails here, not at the tag.
+      - name: Each plugin names the sdk range of this release
+        if: matrix.shard == 1
+        run: pnpm sdk-range
+
       # A catalog is keyed by field path, so a renamed field leaves an entry
       # nothing reads.
       - name: Each catalog path names a field
@@ -118,6 +124,11 @@ jobs:
       - name: The packages import only what they declare
         if: matrix.shard == 1
         run: pnpm boundary
+        shell: bash
+
+      - name: Each plugin names the sdk range of this release
+        if: matrix.shard == 1
+        run: pnpm sdk-range
         shell: bash
 
       - run: pnpm typecheck

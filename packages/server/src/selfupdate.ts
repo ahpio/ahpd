@@ -24,9 +24,10 @@ import { copyFileSync, existsSync, mkdtempSync, realpathSync, rmSync, writeFileS
 import { tmpdir } from 'node:os';
 import { dirname, join, posix, win32 } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { minVersion, valid, validRange } from 'semver';
 import { FOREGROUND, busy, notRestartable } from './commands/restart.js';
 import type { Running } from './daemon.js';
-import { fittingVersion, launch, npmFailed, pluginRoot, registryPluginsIn, updatePlugins } from './install.js';
+import { fittingVersion, launch, npmFailed, pluginRoot, registryPluginsIn, SDK, updatePlugins } from './install.js';
 import type { Launch, Moved, Ran, Runner } from './install.js';
 import { installedListing } from './pluginlist.js';
 import { askRegistry, newer, parse, registryPath } from './update.js';
@@ -139,6 +140,25 @@ const latestOnNpm = async (fetch?: Fetch | undefined): Promise<string> => {
     throw new Error(`The registry did not say which version of ${SERVER} is latest; name one with --version.`);
   }
   return said.latest;
+};
+
+/**
+ * The `@ahpd/sdk` a version of the server ships, read from its registry
+ * manifest before npm installs it, so the plugins are checked against the sdk
+ * the next daemon loads them with.
+ *
+ * A server depends on the exact sdk of its release. One released before that
+ * named a range, and its lowest version is the one it was released with. A
+ * registry that does not answer, or names no sdk, answers the server's own
+ * version, which every release so far has shared with its sdk.
+ */
+export const targetSdk = async (serverVersion: string, fetch?: Fetch | undefined): Promise<string> => {
+  const manifest = await askRegistry(`${registryPath(SERVER)}/${encodeURIComponent(serverVersion)}`, { fetch }) as { dependencies?: Record<string, unknown> } | null | undefined;
+  const named = manifest?.dependencies?.[SDK];
+  if (typeof named !== 'string') return serverVersion;
+  if (valid(named) !== null) return named;
+  if (validRange(named) === null) return serverVersion;
+  return minVersion(named)?.version ?? serverVersion;
 };
 
 /** What planning an update is given, so the cases can be answered without a registry, a daemon or an install. */
@@ -438,8 +458,8 @@ export const handOffToHelper = async (options: HelperOptions): Promise<HandedOff
 export interface PluginOptions {
   /** The configuration directory, which holds the plugin root when `AHPD_PLUGIN_ROOT` is unset. */
   configDir: string;
-  /** The version being installed, which is the `@ahpd/sdk` every plugin moves to. */
-  version: string;
+  /** The `@ahpd/sdk` the version being installed ships, which every plugin is checked against and moves to. */
+  sdk: string;
   /** How npm is run. */
   run: Runner;
   /** How the registry is asked which versions of a plugin fit. */
@@ -480,7 +500,7 @@ export async function checkPlugins(options: PluginOptions): Promise<PluginCheck>
     try {
       // The list the plugin was installed from, as the move after the update reads it.
       const listing = options.marketplaces === undefined ? undefined : installedListing(name, { urls: options.marketplaces, dir: options.configDir });
-      await fittingVersion(name, options.version, { fetch: options.fetch, listing });
+      await fittingVersion(name, options.sdk, { fetch: options.fetch, listing });
       return undefined;
     }
     catch (error) {
@@ -498,16 +518,16 @@ export async function checkPlugins(options: PluginOptions): Promise<PluginCheck>
  * Move every plugin in the root to the sdk being installed, answering what
  * moved.
  *
- * This is `plugin update all` with the new version in place of the running
- * daemon's: `@ahpd/sdk` is pinned at it, and each plugin goes to the newest of
- * its own versions whose range admits it. The fitted versions were checked
+ * This is `plugin update all` with the new version's sdk in place of the
+ * running daemon's: `@ahpd/sdk` is pinned at it, and each plugin goes to the
+ * newest of its own versions whose range admits it. The fitted versions were checked
  * before npm installed the daemon, so the same registry answers are chosen
  * again; a plugin the registry cannot be asked about still moves to `latest`.
  */
 export async function movePlugins(options: PluginOptions): Promise<Moved[]> {
   return updatePlugins('all', {
     configDir: options.configDir,
-    version: options.version,
+    sdk: options.sdk,
     run: options.run,
     fetch: options.fetch,
     say: options.say,

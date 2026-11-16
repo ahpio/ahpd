@@ -110,6 +110,9 @@ jobs:
       # somewhere else is not good enough. CI splits the suite into shards;
       # here it runs whole, in one step, so its limit is the whole suite's.
       - run: pnpm boundary
+      # A plugin published with another sdk range is one a daemon loads with
+      # an sdk it was not built against.
+      - run: pnpm sdk-range
       - run: pnpm typecheck
       - run: timeout 1500 pnpm test
       - run: pnpm build

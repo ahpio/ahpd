@@ -9,7 +9,7 @@
 
 import { check, output } from '@cofold/commands';
 import type { Command, CommandContext, JsonSchema, Output, Registry } from '@cofold/commands';
-import { scopeOf, secretRef } from '@ahpd/sdk';
+import { scopeOf, sdkVersion, secretRef } from '@ahpd/sdk';
 import { configDir, configPath } from '../config.js';
 import { running } from '../daemon.js';
 import { API_PREFIX } from '../http.js';
@@ -22,7 +22,6 @@ import { availablePlugins, configuredMarketplaces } from '../pluginlist.js';
 import type { Available, InstalledRow } from '../pluginlist.js';
 import type { Where } from '../plugins.js';
 import type { PluginSpec } from '@ahpd/sdk';
-import { version } from '../version.js';
 import { keyed, maskOption, schemasFor, withoutSpecSecrets, withoutUserinfoIn } from './config.js';
 import { namedOptionsFrom, pluginWriteFields, flagFields, serverFields, servedPluginWriteFields, splitPluginOption, stop, typedValue } from './options.js';
 import { reachable } from './paths.js';
@@ -300,7 +299,7 @@ export const declarePlugin = (registry: Registry<object>, served?: ServedFacts):
         if (sub === 'install') {
           await installPlugins(names, {
             configDir: configDir(), configFile: configFile ?? configPath(),
-            version: version(), enable: !context.flag('noEnable'), run: runProgram, fetch, say,
+            sdk: sdkVersion(), enable: !context.flag('noEnable'), run: runProgram, fetch, say,
             marketplaces: served === undefined ? configuredMarketplaces(namedFile) : served.options.pluginMarketplaces,
             marketplace: context.optional<string>('marketplace'),
           });
@@ -354,7 +353,7 @@ export const declarePlugin = (registry: Registry<object>, served?: ServedFacts):
       let moved: Moved[] = [];
       try {
         moved = await updatePlugins(asked.length === 1 && asked[0] === 'all' ? 'all' : asked, {
-          configDir: configDir(), version: version(), run: runProgram, fetch, say,
+          configDir: configDir(), sdk: sdkVersion(), run: runProgram, fetch, say,
           marketplaces: served === undefined ? configuredMarketplaces() : served.options.pluginMarketplaces,
         });
       }
@@ -667,7 +666,7 @@ export const declarePlugin = (registry: Registry<object>, served?: ServedFacts):
  * manifest's id and not by its spec.
  */
 export async function availableAnswer(
-  options: { plugins: readonly PluginSpec[]; pluginMarketplaces: readonly string[]; iconLimitBytes: number; iconTimeoutMs: number },
+  options: { plugins: readonly PluginSpec[]; pluginMarketplaces: readonly string[]; iconLimitBytes: number; iconTimeoutMs: number; sdk?: string | undefined },
   where: Where,
 ): Promise<Available> {
   const installed: InstalledRow[] = [];
@@ -679,6 +678,7 @@ export async function availableAnswer(
     urls: options.pluginMarketplaces,
     dir: where.configDir,
     installed,
+    sdk: options.sdk ?? sdkVersion(),
     icons: { problem: () => undefined, bounds: { limitBytes: options.iconLimitBytes, timeoutMs: options.iconTimeoutMs } },
   });
 }

@@ -34,7 +34,7 @@ import type { ServedFacts } from '../src/commands/served.js';
 import { declareUpdate } from '../src/commands/update.js';
 import type { UpdateFacts } from '../src/commands/update.js';
 import { apiHandler } from '../src/http.js';
-import { planUpdate } from '../src/selfupdate.js';
+import { planUpdate, targetSdk } from '../src/selfupdate.js';
 import type { HelperOptions, PlaceFacts } from '../src/selfupdate.js';
 import type { Fetch } from '../src/update.js';
 import { version } from '../src/version.js';
@@ -377,6 +377,31 @@ describe('the install and the restart', () => {
       ],
       left: [],
     });
+  });
+
+  it('checks and moves the plugins against the sdk the target ships, not its own version', async () => {
+    const configDir = plugins(
+      { '@ahpd/agent-acp': '^1.0.0', '@ahpd/sdk': '0.12.0' },
+      { '@ahpd/agent-acp': '1.0.0', '@ahpd/sdk': '0.12.0' },
+    );
+    const npm = fakeNpm();
+    const plugin = pluginRegistry({ '@ahpd/agent-acp': [['1.5.0', '>=98.0.0 <98.1.0-0'], ['2.0.0', '>=99.0.0 <99.1.0-0']] });
+    const fetch: Fetch = async (url, init) => decodeURIComponent(String(url)).endsWith(`/@ahpd/server/${LATEST}`)
+      ? Response.json({ name: '@ahpd/server', version: LATEST, dependencies: { '@ahpd/sdk': '98.0.0' } })
+      : plugin(url, init);
+    await update({ version: LATEST }, { configDir, run: npm.runner, fetch });
+    expect(npm.calls[1]).toEqual([
+      'install', '--prefix', configDir, '--legacy-peer-deps', '@ahpd/sdk@98.0.0', '@ahpd/agent-acp@1.5.0',
+    ]);
+  });
+
+  it('reads the sdk a target ships: exact, the lowest of a range, or its own version when the registry names none', async () => {
+    const answering = (dependencies: Record<string, string> | undefined): Fetch => async () =>
+      (dependencies === undefined ? new Response('{}', { status: 404 }) : Response.json({ dependencies }));
+    expect(await targetSdk('0.16.0', answering({ '@ahpd/sdk': '0.15.2' }))).toBe('0.15.2');
+    expect(await targetSdk('0.15.0-rc.3', answering({ '@ahpd/sdk': '^0.15.0-rc.3' }))).toBe('0.15.0-rc.3');
+    expect(await targetSdk('0.16.0', answering({}))).toBe('0.16.0');
+    expect(await targetSdk('0.16.0', answering(undefined))).toBe('0.16.0');
   });
 
   it('refuses a plugin with no version that admits the new sdk, before npm runs', async () => {

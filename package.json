@@ -25,6 +25,7 @@
     "demo:bun": "bun --watch --conditions development examples/demo/main.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "boundary": "node scripts/boundary.mjs",
+    "sdk-range": "node scripts/sdk-range.mjs",
     "i18n": "node tools/i18n-check.mjs",
     "test": "node tools/schema.mjs && vitest run",
     "test:unit": "node tools/schema.mjs && vitest run --exclude \"packages/computer/**\" --exclude \"packages/server/test/server-cli*\" --exclude \"packages/server/test/server-http*\" --exclude \"packages/sdk/test/nested-process*\"",

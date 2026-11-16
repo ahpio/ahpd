@@ -27,11 +27,10 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, w
 import { dirname, join } from 'node:path';
 import { isRecord, readJsonObject, writeJsonAtomic } from '@ahpd/sdk';
 import type { Icon } from '@ahpd/sdk';
-import { newestFitting } from './compat.js';
+import { isOffered, newestFitting } from './compat.js';
 import { loadConfig, pluginFilesPath, pluginMarketplacesPath } from './config.js';
 import { fetchIcons, ICON_BOUNDS } from './icons.js';
 import type { IconBounds, IconProblem } from './icons.js';
-import { parse } from './update.js';
 import type { Fetch } from './update.js';
 
 /** The marketplaces a daemon reads when its configuration names none. */
@@ -487,18 +486,19 @@ export const installedListing = (name: string, at: ListsAt): Listing | undefined
 };
 
 /**
- * The newest listed version this daemon can load, refusing when none is.
+ * The newest listed version a daemon whose sdk is `sdk` can load, refusing
+ * when none is.
  *
- * A prerelease is skipped, as the npm path skips one, and so is a version the
- * list marks `deprecated`. Nothing when the daemon's version is `unknown`,
- * which no range can be compared against.
+ * A version `isOffered` does not admit is skipped, as the npm path skips one,
+ * and so is a version the list marks `deprecated`. Nothing when the sdk's
+ * version is `unknown`, which no range can be compared against.
  */
-export const fittingListed = (name: string, versions: readonly ListedVersion[], daemonVersion: string): ListedVersion | undefined => {
-  if (daemonVersion === 'unknown') return undefined;
+export const fittingListed = (name: string, versions: readonly ListedVersion[], sdk: string): ListedVersion | undefined => {
+  if (sdk === 'unknown') return undefined;
   const offered = versions
-    .filter((one) => { const read = parse(one.version); return read !== undefined && !read.prerelease && one.deprecated === undefined; })
+    .filter((one) => isOffered(one.version, sdk) && one.deprecated === undefined)
     .map((one) => ({ version: one.version, range: one.sdk }));
-  const chosen = newestFitting(name, offered, daemonVersion);
+  const chosen = newestFitting(name, offered, sdk);
   return versions.find((one) => one.version === chosen);
 };
 
@@ -580,13 +580,16 @@ export interface Available {
 /** What `available` was given. */
 export interface AvailableOptions extends ListsAt {
   installed: readonly InstalledRow[];
+  /** The version of the `@ahpd/sdk` the daemon ships; an entry lists only the versions `isOffered` admits for it. */
+  sdk: string;
   icons: Omit<IconOptions, 'dir' | 'by'>;
 }
 
 /**
  * Every listed plugin, with its marketplace, its icons as `data:` URIs and the
  * installed plugin it is: the one whose package is its source, or else the one
- * with its id.
+ * with its id. Its `versions` are the ones this daemon considers, so a daemon
+ * on a release lists no prerelease.
  */
 export async function availablePlugins(options: AvailableOptions): Promise<Available> {
   const marketplaces = readMarketplaces(options);
@@ -604,6 +607,7 @@ export async function availablePlugins(options: AvailableOptions): Promise<Avail
     const deprecated = row?.version === undefined ? undefined : plugin.versions.find((version) => version.version === row.version)?.deprecated;
     return {
       ...rest,
+      versions: rest.versions.filter((version) => isOffered(version.version, options.sdk)),
       marketplace: one.url,
       ...(drawn === undefined ? {} : { icons: drawn }),
       ...(row === undefined ? {} : {
@@ -659,8 +663,8 @@ export interface DetailsOptions extends ListsAt {
   id: string;
   marketplace?: string | undefined;
   version?: string | undefined;
-  /** The daemon's own version, which picks the version when none is named. */
-  daemonVersion: string;
+  /** The version of the `@ahpd/sdk` the daemon ships, which picks the version when none is named and the versions listed. */
+  sdk: string;
   fetch?: Fetch | undefined;
   icons: Omit<IconOptions, 'dir' | 'by'>;
 }
@@ -691,8 +695,8 @@ export async function listedDetails(options: DetailsOptions): Promise<Details> {
   const named = options.version === undefined ? undefined : plugin.versions.find((one) => one.version === options.version);
   if (options.version !== undefined && named === undefined) throw new Error(`${options.id} lists no version ${options.version}.`);
   const version = named
-    ?? fittingListed(options.id, plugin.versions, options.daemonVersion)
-    ?? plugin.versions.find((one) => { const read = parse(one.version); return read !== undefined && !read.prerelease; });
+    ?? fittingListed(options.id, plugin.versions, options.sdk)
+    ?? plugin.versions.find((one) => isOffered(one.version, options.sdk));
   if (version === undefined) throw new Error(`${options.id} lists no version.`);
   if (!SEGMENT.test(plugin.id) || !SEGMENT.test(version.version)) throw new Error(`${options.id} ${version.version} is not a name a file can be kept under.`);
   const folder = join(pluginFilesPath(options.dir), marketplaceName(marketplace), plugin.id, version.version);
@@ -736,7 +740,7 @@ export async function listedDetails(options: DetailsOptions): Promise<Details> {
     id: plugin.id,
     marketplace,
     version: version.version,
-    versions: plugin.versions.map((one) => one.version),
+    versions: plugin.versions.filter((one) => isOffered(one.version, options.sdk)).map((one) => one.version),
     ...(texts.readme === undefined ? {} : { readme: texts.readme }),
     ...(texts.changelog === undefined ? {} : { changelog: texts.changelog }),
     ...(texts.license === undefined ? {} : { license: texts.license }),

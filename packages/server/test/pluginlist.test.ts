@@ -221,9 +221,25 @@ describe('installed.json', () => {
 });
 
 describe('fittingListed', () => {
-  it('takes the newest version that fits, and skips a prerelease and a deprecated version', () => {
+  it('takes the newest version that fits, and skips a prerelease and a deprecated version on a release sdk', () => {
     const versions = [aVersion('0.16.0-rc.1'), aVersion('0.15.0', { deprecated: 'Use 0.14.0.' }), aVersion('0.14.0'), aVersion('0.13.0')];
-    expect(fittingListed('agent-acp', versions, '0.15.0-rc.3')?.version).toBe('0.14.0');
+    expect(fittingListed('agent-acp', versions, '0.15.1')?.version).toBe('0.14.0');
+  });
+
+  it('takes the listed release candidate whose range admits an sdk that is a release candidate', () => {
+    const versions = [
+      aVersion('0.15.0-rc.4', { sdk: '>=0.15.0-rc.4 <0.16.0-0' }),
+      aVersion('0.15.0-rc.3', { sdk: '>=0.15.0-rc.3 <0.16.0-0' }),
+      aVersion('0.14.0'),
+    ];
+    expect(fittingListed('agent-acp', versions, '0.15.0-rc.4')?.version).toBe('0.15.0-rc.4');
+    expect(fittingListed('agent-acp', versions, '0.15.0-rc.3')?.version).toBe('0.15.0-rc.3');
+    expect(fittingListed('agent-acp', versions, '0.14.0')?.version).toBe('0.14.0');
+  });
+
+  it('skips a deprecated release candidate', () => {
+    const versions = [aVersion('0.15.0-rc.4', { deprecated: 'Broken.' }), aVersion('0.15.0-rc.3'), aVersion('0.14.0')];
+    expect(fittingListed('agent-acp', versions, '0.15.0-rc.4')?.version).toBe('0.15.0-rc.3');
   });
 
   it('refuses with the newest version and its range when none fits', () => {
@@ -246,7 +262,7 @@ describe('availablePlugins', () => {
     await keep(THEIRS, aList([aPlugin({ versions: [aVersion('0.13.0', { deprecated: 'Use 0.14.0.' })] })]));
     recordInstalled(dir, '@ahpd/agent-acp', { marketplace: THEIRS, source: '@ahpd/agent-acp' });
     const icons = stub({ 'https://plugins.example.com/icon.svg': svgAnswer });
-    const answer = await availablePlugins({
+    const answer = await availablePlugins({ sdk: '0.14.0',
       urls: [OURS, THEIRS, 'https://none.example.com/v1/plugins.json'],
       dir,
       installed: [{ id: 'agent-acp', name: '@ahpd/agent-acp', version: '0.13.0' }],
@@ -262,7 +278,7 @@ describe('availablePlugins', () => {
   it('keeps a fetched icon, so a second answer makes no request for it', async () => {
     await keep(OURS, aList([aPlugin({ icons: [{ src: 'https://plugins.example.com/icon.svg' }] })]));
     const icons = stub({ 'https://plugins.example.com/icon.svg': svgAnswer });
-    const ask = () => availablePlugins({ urls: [OURS], dir, installed: [], icons: { problem: () => undefined, fetch: icons.fetch as typeof fetch } });
+    const ask = () => availablePlugins({ sdk: '0.14.0', urls: [OURS], dir, installed: [], icons: { problem: () => undefined, fetch: icons.fetch as typeof fetch } });
     await ask();
     const second = await ask();
     expect(icons.asked).toHaveLength(1);
@@ -271,23 +287,39 @@ describe('availablePlugins', () => {
   });
 });
 
+describe('availablePlugins lists the versions the daemon considers', () => {
+  const withRc = () => aList([aPlugin({ versions: [aVersion('0.15.0-rc.4'), aVersion('0.14.0'), aVersion('0.13.0')] })]);
+
+  it('with no prerelease on a release sdk', async () => {
+    await keep(OURS, withRc());
+    const answer = await availablePlugins({ sdk: '0.14.0', urls: [OURS], dir, installed: [], icons: { problem: () => undefined } });
+    expect(answer.plugins[0]?.versions.map((one) => one.version)).toEqual(['0.14.0', '0.13.0']);
+  });
+
+  it('with the prereleases on an sdk that is a prerelease', async () => {
+    await keep(OURS, withRc());
+    const answer = await availablePlugins({ sdk: '0.15.0-rc.4', urls: [OURS], dir, installed: [], icons: { problem: () => undefined } });
+    expect(answer.plugins[0]?.versions.map((one) => one.version)).toEqual(['0.15.0-rc.4', '0.14.0', '0.13.0']);
+  });
+});
+
 describe('availablePlugins matches an installed plugin', () => {
   it('by its source first, as a first-party plugin whose id the daemon spells otherwise', async () => {
     await keep(OURS, aList());
-    const answer = await availablePlugins({ urls: [OURS], dir, installed: [{ id: 'ahpd-agent-acp', name: '@ahpd/agent-acp', version: '0.14.0' }], icons: { problem: () => undefined } });
+    const answer = await availablePlugins({ sdk: '0.14.0', urls: [OURS], dir, installed: [{ id: 'ahpd-agent-acp', name: '@ahpd/agent-acp', version: '0.14.0' }], icons: { problem: () => undefined } });
     expect(answer.plugins[0]?.installed).toEqual({ id: 'ahpd-agent-acp', version: '0.14.0' });
   });
 
   it('by the source installed.json keeps for a github: package', async () => {
     await keep(OURS, aList([aPlugin({ id: 'web', source: 'github:ahpio/ahpw' })]));
     recordInstalled(dir, 'web-ui', { marketplace: OURS, source: 'github:ahpio/ahpw' });
-    const answer = await availablePlugins({ urls: [OURS], dir, installed: [{ id: 'something-else', name: 'web-ui', version: '0.8.0' }], icons: { problem: () => undefined } });
+    const answer = await availablePlugins({ sdk: '0.14.0', urls: [OURS], dir, installed: [{ id: 'something-else', name: 'web-ui', version: '0.8.0' }], icons: { problem: () => undefined } });
     expect(answer.plugins[0]?.installed).toEqual({ id: 'something-else', version: '0.8.0', marketplace: OURS });
   });
 
   it('by its id when no package is its source', async () => {
     await keep(OURS, aList());
-    const answer = await availablePlugins({ urls: [OURS], dir, installed: [{ id: 'agent-acp', name: './local/acp' }], icons: { problem: () => undefined } });
+    const answer = await availablePlugins({ sdk: '0.14.0', urls: [OURS], dir, installed: [{ id: 'agent-acp', name: './local/acp' }], icons: { problem: () => undefined } });
     expect(answer.plugins[0]?.installed).toEqual({ id: 'agent-acp' });
   });
 });
@@ -313,7 +345,7 @@ describe('listedDetails', () => {
   it('answers the README and the contracts of the version that fits, and a second call makes no request', async () => {
     await keep(OURS, aList());
     const { fetch, asked } = stub(files);
-    const ask = () => listedDetails({ urls: [OURS], dir, id: 'agent-acp', daemonVersion: '0.15.0', fetch, icons: { problem: () => undefined } });
+    const ask = () => listedDetails({ urls: [OURS], dir, id: 'agent-acp', sdk: '0.15.0', fetch, icons: { problem: () => undefined } });
     const first = await ask();
     expect(first).toMatchObject({
       id: 'agent-acp', marketplace: OURS, version: '0.14.0', versions: ['0.14.0', '0.13.0'],
@@ -326,19 +358,28 @@ describe('listedDetails', () => {
     expect(asked).toHaveLength(count);
   });
 
+  it('lists no prerelease to a release sdk, and lists it to an sdk that is a prerelease', async () => {
+    await keep(OURS, aList([aPlugin({ versions: [aVersion('0.15.0-rc.4'), aVersion('0.14.0'), aVersion('0.13.0')] })]));
+    const { fetch } = stub(files);
+    const onRelease = await listedDetails({ urls: [OURS], dir, id: 'agent-acp', sdk: '0.14.0', fetch, icons: { problem: () => undefined } });
+    expect(onRelease).toMatchObject({ version: '0.14.0', versions: ['0.14.0', '0.13.0'] });
+    const onRc = await listedDetails({ urls: [OURS], dir, id: 'agent-acp', sdk: '0.15.0-rc.4', version: '0.14.0', fetch, icons: { problem: () => undefined } });
+    expect(onRc.versions).toEqual(['0.15.0-rc.4', '0.14.0', '0.13.0']);
+  });
+
   it('keeps the files of two marketplaces with one id apart', async () => {
     await keep(OURS, aList());
     await keep(THEIRS, aList());
     const { fetch } = stub(files);
-    await listedDetails({ urls: [OURS, THEIRS], dir, id: 'agent-acp', daemonVersion: '0.15.0', fetch, icons: { problem: () => undefined } });
-    await listedDetails({ urls: [OURS, THEIRS], dir, id: 'agent-acp', marketplace: THEIRS, daemonVersion: '0.15.0', fetch, icons: { problem: () => undefined } });
+    await listedDetails({ urls: [OURS, THEIRS], dir, id: 'agent-acp', sdk: '0.15.0', fetch, icons: { problem: () => undefined } });
+    await listedDetails({ urls: [OURS, THEIRS], dir, id: 'agent-acp', marketplace: THEIRS, sdk: '0.15.0', fetch, icons: { problem: () => undefined } });
     expect(readdirSync(pluginFilesPath(dir)).sort()).toEqual([marketplaceName(OURS), marketplaceName(THEIRS)].sort());
   });
 
   it('answers one problem for a part it could not fetch', async () => {
     await keep(OURS, aList());
     const { fetch } = stub({ 'https://plugins.example.com/v1/agent-acp/0.14.0/package.json': files['https://plugins.example.com/v1/agent-acp/0.14.0/package.json'] });
-    const answer = await listedDetails({ urls: [OURS], dir, id: 'agent-acp', daemonVersion: '0.15.0', fetch, icons: { problem: () => undefined } });
+    const answer = await listedDetails({ urls: [OURS], dir, id: 'agent-acp', sdk: '0.15.0', fetch, icons: { problem: () => undefined } });
     expect(answer.readme).toBeUndefined();
     expect(answer.problems).toEqual([{ part: 'readme', problem: 'https://plugins.example.com/v1/agent-acp/0.14.0/README.md answered 404' }]);
   });
@@ -346,15 +387,15 @@ describe('listedDetails', () => {
   it('refuses a file that is not https:, and one over 1 MB', async () => {
     await keep(OURS, aList([aPlugin({ versions: [aVersion('0.14.0', { files: { download: 'x', manifest: 'http://plugins.example.com/package.json', readme: 'https://plugins.example.com/big.md' } })] })]));
     const { fetch } = stub({ 'https://plugins.example.com/big.md': () => new Response('x'.repeat(1024 * 1024 + 1)) });
-    const answer = await listedDetails({ urls: [OURS], dir, id: 'agent-acp', daemonVersion: '0.15.0', fetch, icons: { problem: () => undefined } });
+    const answer = await listedDetails({ urls: [OURS], dir, id: 'agent-acp', sdk: '0.15.0', fetch, icons: { problem: () => undefined } });
     expect(answer.problems?.map((one) => one.part).sort()).toEqual(['manifest', 'readme']);
   });
 
   it('refuses an id no list has, and a version the entry does not list', async () => {
     await keep(OURS, aList());
     const { fetch } = stub({});
-    await expect(listedDetails({ urls: [OURS], dir, id: 'agent-pi', daemonVersion: '0.15.0', fetch, icons: { problem: () => undefined } })).rejects.toThrow('agent-pi is in no plugin list.');
-    await expect(listedDetails({ urls: [OURS], dir, id: 'agent-acp', version: '9.9.9', daemonVersion: '0.15.0', fetch, icons: { problem: () => undefined } })).rejects.toThrow('agent-acp lists no version 9.9.9.');
+    await expect(listedDetails({ urls: [OURS], dir, id: 'agent-pi', sdk: '0.15.0', fetch, icons: { problem: () => undefined } })).rejects.toThrow('agent-pi is in no plugin list.');
+    await expect(listedDetails({ urls: [OURS], dir, id: 'agent-acp', version: '9.9.9', sdk: '0.15.0', fetch, icons: { problem: () => undefined } })).rejects.toThrow('agent-acp lists no version 9.9.9.');
   });
 });
 

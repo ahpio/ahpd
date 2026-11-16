@@ -62,7 +62,7 @@
     "test": "cd ../.. && vitest run packages/computer/test"
   },
   "peerDependencies": {
-    "@ahpd/sdk": ">=0.14 <1"
+    "@ahpd/sdk": ">=0.15.0-rc.3 <0.16.0-0"
   },
   "dependencies": {
     "@vscode/sandbox-runtime": "0.0.1",

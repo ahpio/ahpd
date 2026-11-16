@@ -15,14 +15,15 @@
  * loads unchecked.
  */
 
-import { satisfies as satisfiedBy, valid, validRange } from 'semver';
+import { gt, prerelease, satisfies as satisfiedBy, valid, validRange } from 'semver';
 
 /**
  * Does `version` satisfy `range`? Throws, naming the range, for one npm could not read.
  *
- * `version` is this daemon's own, so a prerelease of it is read as the release
- * it leads to: a daemon at 0.15.0-rc.1 loads a plugin that asks for >=0.14 <1.
- * node-semver leaves a prerelease out of every range unless told otherwise.
+ * `version` is the sdk the daemon ships, and a prerelease of it is compared as
+ * any other version: an sdk at 0.15.0-rc.1 satisfies >=0.14 <1 and
+ * >=0.15.0-rc.1 <0.16.0-0, and not >=0.15.0-rc.2 <0.16.0-0. node-semver leaves a
+ * prerelease out of every range unless told otherwise.
  */
 export const satisfies = (version: string, range: string): boolean => {
   if (valid(version) === null) throw new Error(`version ${version} is not one this daemon can read`);
@@ -37,20 +38,28 @@ export interface Offered {
 }
 
 /** Why no version of a package can be installed, naming the newest one's range. */
-export const noFit = (name: string, newest: { version: string; range: string } | undefined, daemonVersion: string): string =>
+export const noFit = (name: string, newest: { version: string; range: string } | undefined, sdk: string): string =>
   newest === undefined
-    ? `${name} has no version that admits @ahpd/sdk ${daemonVersion}.`
-    : `${name} has no version that admits @ahpd/sdk ${daemonVersion}: its newest, ${newest.version}, needs ${newest.range}.`;
+    ? `${name} has no version that admits @ahpd/sdk ${sdk}.`
+    : `${name} has no version that admits @ahpd/sdk ${sdk}: its newest, ${newest.version}, needs ${newest.range}.`;
 
-/** Whether `one` is a later version than `other`, both `X.Y.Z`; a prerelease was left out before this is asked. */
-const later = (one: string, other: string): boolean => {
-  const a = one.split('.').map(Number);
-  const b = other.split('.').map(Number);
-  for (let i = 0; i < 3; i++) {
-    if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) > (b[i] ?? 0);
-  }
-  return false;
+/**
+ * Whether a daemon whose sdk is `sdk` considers `version` of a plugin at all.
+ *
+ * A release is considered by every daemon. A prerelease is considered only
+ * when the sdk is one too, so a daemon on a release candidate finds the
+ * plugins of its own release and a daemon on a release never installs a
+ * prerelease nobody named. Which prerelease fits is the plugin's range to say,
+ * checked by `newestFitting`. A version that is not semver is not considered.
+ */
+export const isOffered = (version: string, sdk: string): boolean => {
+  if (valid(version) === null) return false;
+  if (prerelease(version) === null) return true;
+  return valid(sdk) !== null && prerelease(sdk) !== null;
 };
+
+/** Whether `one` is a later version than `other`, in semver order: `0.15.0` is later than `0.15.0-rc.4`. */
+const later = (one: string, other: string): boolean => gt(one, other);
 
 /**
  * The newest of `offered` that this daemon can load, refusing when none is.
@@ -58,10 +67,9 @@ const later = (one: string, other: string): boolean => {
  * The rule `fittingVersion` reads npm with and the plugin list is read with:
  * no range is a plugin that declares nothing to check, which the loader loads,
  * and a range this daemon cannot read is one it would refuse at the next
- * start. The caller has already left out what it does not offer, such as a
- * prerelease.
+ * start. The caller has already left out what `isOffered` does not admit.
  */
-export const newestFitting = (name: string, offered: readonly Offered[], daemonVersion: string): string => {
+export const newestFitting = (name: string, offered: readonly Offered[], sdk: string): string => {
   /** The newest version considered, kept for the refusal, which names its range. */
   let newest: { version: string; range: string } | undefined;
   const fits: string[] = [];
@@ -69,10 +77,10 @@ export const newestFitting = (name: string, offered: readonly Offered[], daemonV
     if (range !== undefined && (newest === undefined || later(version, newest.version))) newest = { version, range };
     if (range === undefined) { fits.push(version); continue; }
     try {
-      if (satisfies(daemonVersion, range)) fits.push(version);
+      if (satisfies(sdk, range)) fits.push(version);
     }
     catch { /* refused at the next start, so not installed now */ }
   }
-  if (fits.length === 0) throw new Error(noFit(name, newest, daemonVersion));
+  if (fits.length === 0) throw new Error(noFit(name, newest, sdk));
   return fits.reduce((best, one) => (later(one, best) ? one : best));
 };

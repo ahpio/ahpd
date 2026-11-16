@@ -24,7 +24,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { output } from '@cofold/commands';
 import type { Command, Registry } from '@cofold/commands';
-import { isRecord, knownAgents } from '@ahpd/sdk';
+import { isRecord, knownAgents, sdkVersion } from '@ahpd/sdk';
 import type { RecordCollection } from '@ahpd/sdk';
 import { ask, answering, confirm, here, type Term } from '../ask.js';
 import { asSpec, configDir, configPath } from '../config.js';
@@ -34,7 +34,6 @@ import { editableEntry, installPlugins, readEntry, run as runProgram, writeEntry
 import { isNamed, sourceOf, pluginIdOf } from '../plugins.js';
 import { fileRecords } from '../records.js';
 import type { Fetch } from '../update.js';
-import { version } from '../version.js';
 import { serverFields, stop, type Options } from './options.js';
 
 /**
@@ -82,8 +81,8 @@ export interface ConfigureOptions {
   configDir: string;
   /** The configuration file this reads, asks against and writes. */
   configFile: string;
-  /** The daemon's own version, which a plugin's `@ahpd/sdk` range is checked against, and which the sdk is installed at. */
-  version: string;
+  /** The version of the `@ahpd/sdk` the daemon ships, which a plugin's range is checked against, and which the sdk is installed at. */
+  sdk: string;
   /** The terminal the questions are asked on. */
   term: Term;
   /** How npm is run. */
@@ -445,7 +444,7 @@ export async function configure(options: ConfigureOptions): Promise<Configured> 
   if (missing.length > 0) {
     await installPlugins(missing, {
       configDir: options.configDir, configFile: options.configFile,
-      version: options.version, enable: true, run: options.run, fetch: options.fetch, say: options.say,
+      sdk: options.sdk, enable: true, run: options.run, fetch: options.fetch, say: options.say,
     });
   }
   else if (backends.length > 0) options.say(`Every backend is already named in ${options.configFile}.`);
@@ -457,10 +456,10 @@ export async function configure(options: ConfigureOptions): Promise<Configured> 
  * Run `ahpd configure` against a file, over a terminal, with npm for real.
  *
  * What the command and the offer below both do, so neither writes the six lines
- * it takes to name the directory, the version and the runner.
+ * it takes to name the directory, the sdk and the runner.
  */
 export async function runConfigure(configFile: string, term: Term, say: (line: string) => void): Promise<void> {
-  await configure({ configDir: configDir(), configFile, version: version(), term, run: runProgram, fetch, say });
+  await configure({ configDir: configDir(), configFile, sdk: sdkVersion(), term, run: runProgram, fetch, say });
 }
 
 /** What the offer is given, so a caller can answer for it rather than run npm. */
@@ -552,7 +551,7 @@ export const declareConfigure = (registry: Registry<object>): Command => registr
     const done = await configure({
       configDir: configDir(),
       configFile: context.optional<string>('configFile') ?? configPath(),
-      version: version(),
+      sdk: sdkVersion(),
       term: here,
       run: runProgram,
       fetch,

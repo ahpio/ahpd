@@ -22,7 +22,7 @@ import { running, stop as stopDaemon } from '../daemon.js';
 import type { Running } from '../daemon.js';
 import { oneAtATime, run as npm } from '../install.js';
 import type { Runner } from '../install.js';
-import { checkPlugins, handOffToHelper, installServer, movePlugins, planUpdate } from '../selfupdate.js';
+import { checkPlugins, handOffToHelper, installServer, movePlugins, planUpdate, targetSdk } from '../selfupdate.js';
 import type { HelperOptions, PlaceFacts } from '../selfupdate.js';
 import type { Fetch } from '../update.js';
 import { conflict } from './options.js';
@@ -147,7 +147,9 @@ export async function runUpdate(ask: UpdateAsk, served?: ServedFacts, facts: Upd
    */
   // The plugin lists the check and the move read, the daemon's own when it serves this.
   const marketplaces = served === undefined ? configuredMarketplaces() : served.options.pluginMarketplaces;
-  const checked = await checkPlugins({ configDir: where, version: plan.latest, run, fetch, force: ask.force, marketplaces, say: (line) => { said.push(line); } });
+  // The sdk the target ships, which its daemon loads the plugins with.
+  const sdk = await targetSdk(plan.latest, fetch);
+  const checked = await checkPlugins({ configDir: where, sdk, run, fetch, force: ask.force, marketplaces, say: (line) => { said.push(line); } });
   const platform = facts.place?.platform ?? process.platform;
   const daemon = record as Running;
   /*
@@ -196,7 +198,7 @@ export async function runUpdate(ask: UpdateAsk, served?: ServedFacts, facts: Upd
     ...(facts.npmVersion === undefined ? {} : { npmVersion: facts.npmVersion }),
     say: (line) => { said.push(line); },
   });
-  const moved = await movePlugins({ configDir: where, version: plan.latest, run, fetch, force: ask.force, marketplaces, say: (line) => { said.push(line); } });
+  const moved = await movePlugins({ configDir: where, sdk, run, fetch, force: ask.force, marketplaces, say: (line) => { said.push(line); } });
   /*
    * A terminal's restart is a signal another process answers, so the new
    * binary is asked about the recorded line here, before the answer: the
