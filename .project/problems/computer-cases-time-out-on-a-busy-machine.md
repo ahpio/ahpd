@@ -42,6 +42,11 @@ The branch was host/20261116-1714, which does not change `packages/computer`.
 
 On 2026-11-13 `computer-disposable.test.ts`: `takes the machine's own git volume with it, and asks for none where the profile leaves it open` timed out alone the same way, at `2bf97a6c1`.
 
+
+On 2026-11-16, in CI run 43952762220 for ahpio/ahpd#356, the `processes (1/2)` job failed on one case at 5000 ms: `computer-servercheck.test.ts`: `runs its own script under sh, and reads what this host has`. The same job passed on the run before, and the change does not touch `packages/computer`.
+
+On 2026-11-16, on Softov's machine with a load average near 17, a full run timed out 15 cases in `packages/computer` and `plugin-load.test.ts`. The 8 files run again alone timed out 4 cases, 2 of them not in the first set.
+
 ## Cause
 
 Each connect starts the fake `docker` and `devcontainer` CLIs as node processes.
