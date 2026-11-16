@@ -1,6 +1,6 @@
 ---
 title: The comment tools take a resource
-status: implemented
+status: done
 depends: [task-01-the-annotations-channel.md]
 layer: "sdk"
 refs:

@@ -1,6 +1,6 @@
 ---
 title: The annotations channel of a resource
-status: implemented
+status: done
 depends: []
 layer: "sdk, server"
 refs:

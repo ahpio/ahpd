@@ -1,6 +1,6 @@
 ---
 title: Changes and carets
-status: implemented
+status: done
 depends: [task-01-the-document-channel.md]
 layer: "sdk"
 refs:

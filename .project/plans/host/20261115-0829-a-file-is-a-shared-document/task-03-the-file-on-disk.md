@@ -1,6 +1,6 @@
 ---
 title: The file on disk
-status: implemented
+status: done
 depends: [task-02-changes-and-carets.md]
 layer: "sdk"
 refs:

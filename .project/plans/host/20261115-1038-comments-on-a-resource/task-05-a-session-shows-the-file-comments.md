@@ -1,6 +1,6 @@
 ---
 title: A session and a file show each other's comments
-status: implemented
+status: done
 depends: [task-01-the-annotations-channel.md, task-03-the-tools-take-a-resource.md]
 layer: "sdk"
 refs:

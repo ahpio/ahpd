@@ -1,7 +1,7 @@
 ---
 title: A file is a shared document
 domain: host
-status: active
+status: built
 priority: medium
 created: 2026-11-15
 revalidated: 2026-11-15
@@ -122,10 +122,10 @@ In the host's action, `version` is the version the positions are in now; after a
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - The document channel](task-01-the-document-channel.md) | implemented | - |
-| [02 - Changes and carets](task-02-changes-and-carets.md) | implemented | 01 |
-| [03 - The file on disk](task-03-the-file-on-disk.md) | implemented | 02 |
-| [04 - The documents page](task-04-the-documents-page.md) | implemented | 03 |
+| [01 - The document channel](task-01-the-document-channel.md) | done | - |
+| [02 - Changes and carets](task-02-changes-and-carets.md) | done | 01 |
+| [03 - The file on disk](task-03-the-file-on-disk.md) | done | 02 |
+| [04 - The documents page](task-04-the-documents-page.md) | done | 03 |
 
 ## Risks and tradeoffs
 
@@ -137,10 +137,9 @@ In the host's action, `version` is the version the positions are in now; after a
 
 ## Resume state
 
-- **Done so far:** tasks 01 to 04 built on 2026-11-15, on branch `host/20261115-0829-a-file-is-a-shared-document`; Softov tested them and asked for the shared resource name, kinds, `editing` and root names, built the same day.
-- **Next action:** Softov runs the daemon from the branch with ahpw's plan; then review, `implemented.md`, and a PR.
+- **Done so far:** every task built, reviewed and merged in ahpio/ahpd#341 on 2026-11-15; `implemented.md` says what exists.
+- **Next action:** none; the plan is built.
 - **Open questions:** none.
-- **Watch out for:** `emit` keeps every action for replay unless told not to. The tie rule in task 02 is what ahpw's client must match.
 
 ## Final verification checklist
 

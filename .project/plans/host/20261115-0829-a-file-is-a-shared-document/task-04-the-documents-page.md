@@ -1,6 +1,6 @@
 ---
 title: The documents page
-status: implemented
+status: done
 depends: [task-03-the-file-on-disk.md]
 layer: "docs"
 refs:

@@ -1,6 +1,6 @@
 ---
 title: The comments in the docs
-status: implemented
+status: done
 depends: [task-03-the-tools-take-a-resource.md]
 layer: "docs"
 refs:

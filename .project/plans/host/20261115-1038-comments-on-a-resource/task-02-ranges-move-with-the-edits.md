@@ -1,6 +1,6 @@
 ---
 title: Ranges move with the edits
-status: implemented
+status: done
 depends: [task-01-the-annotations-channel.md]
 layer: "sdk"
 refs:

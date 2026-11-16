@@ -1,6 +1,6 @@
 ---
 title: A session's comments move with the edits
-status: implemented
+status: done
 depends: [task-02-ranges-move-with-the-edits.md, task-05-a-session-shows-the-file-comments.md]
 layer: "sdk"
 refs:
