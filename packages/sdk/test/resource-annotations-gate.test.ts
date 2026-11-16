@@ -1,3 +1,4 @@
+import { pathToFileURL } from 'node:url';
 import { expect, it } from 'vitest';
 import { WAIT_MS } from '../../../tools/wait.ts';
 import { call, directory, file, host, root, withRole } from './users-gate-helpers.js';
@@ -49,15 +50,17 @@ it('lets a reader comment, and refuses one without file:comment', async () => {
 it('shows the comments on a file in a session only to a reader with file:get', async () => {
   const session = ['session:read', 'session:write', 'session:review'] as const;
   const made = host({ users: directory({ reader: [...session, 'file:read', 'file:comment'], blind: [...session] }) });
-  const onFile = `x-ahpd-annotations:file://${file}`;
+  // URIs from `pathToFileURL`, which the host's own folder URIs match on Windows too.
+  const fileUri = pathToFileURL(file).href;
+  const onFile = `x-ahpd-annotations:${fileUri}`;
   const reader = await withRole(made, 'reader');
   const blind = await withRole(made, 'blind');
   for (const [one, name] of [[reader, 'reader'], [blind, 'blind']] as const) {
-    expect(await call(one.client, 'createSession', { channel: `ahp-session:/${name}`, provider: 'base', workingDirectories: [`file://${root}`] })).toHaveProperty('result');
+    expect(await call(one.client, 'createSession', { channel: `ahp-session:/${name}`, provider: 'base', workingDirectories: [pathToFileURL(root).href] })).toHaveProperty('result');
   }
 
   expect(await call(reader.client, 'subscribe', { channel: onFile })).toHaveProperty('result');
-  await reader.send(onFile, comment(onFile));
+  await reader.send(onFile, { ...comment(onFile), annotation: { ...comment(onFile).annotation, resource: fileUri } });
   await until(() => reader.seen.seen.some((one) => one.method === 'action' && one.params.channel === onFile), 'the comment');
 
   const opened = async (one: typeof reader, name: string) =>
