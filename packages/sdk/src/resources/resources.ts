@@ -1,6 +1,6 @@
 import { constants, watch as watchPath } from 'node:fs';
 import { cp, lstat, open, mkdir as makeDir, readdir, readFile, realpath, rename, rm, stat } from 'node:fs/promises';
-import { dirname, isAbsolute, join, relative, sep } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { uriOf } from './fileuri.js';
 import { INVALID_PARAMS, RpcError } from '../rpc.js';
@@ -513,9 +513,21 @@ export async function watch(
   onChange: (changes: ResourceChange[]) => void,
 ): Promise<Watcher> {
   const path = await allowed(uri);
-  await stat(path).catch(() => {
+  const target = await stat(path).catch(() => {
     throw new RpcError(NOT_FOUND, `Nothing at ${uri}`);
   });
+  /*
+   * A file is watched through its folder, for the one name it has there.
+   *
+   * `node:fs.watch` on the file itself names the file in each event, so the
+   * path joined below would be one that is not there and the change would be
+   * said as `deleted`. And a save that writes a new file and renames it over
+   * the old one leaves that watch on the old inode, which hears nothing again.
+   * The folder hears both, and goes on hearing.
+   */
+  const file = !target.isDirectory();
+  const root = file ? dirname(path) : path;
+  const only = file ? basename(path) : undefined;
   const excludes = (options.excludes ?? []).map(globbed);
   const includes = (options.includes ?? []).map(globbed);
   /** Whether a path relative to the root is one the caller asked about. */
@@ -555,16 +567,16 @@ export async function watch(
     })().catch(() => {});
   };
 
-  const held = watchPath(path, { recursive: options.recursive === true }, (kind, name) => {
+  const held = watchPath(root, { recursive: !file && options.recursive === true }, (kind, name) => {
     // A watcher can fire with no filename - the platform knows something moved
     // and not what. Nothing useful can be said about that, and saying the
     // directory changed would send a client to re-read the wrong thing.
     if (name === null || name === undefined) return;
     const relative_ = String(name).split(sep).join('/');
-    if (!wanted(relative_)) return;
+    if (only !== undefined ? relative_ !== only : !wanted(relative_)) return;
     // `kind` is deliberately unread: see above.
     void kind;
-    pending.add(join(path, String(name)));
+    pending.add(join(root, String(name)));
     if (timer === undefined) timer = setTimeout(flush, COALESCE);
   });
   // Never the reason a daemon stays up: a watch is something a client asked

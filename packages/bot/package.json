@@ -80,9 +80,11 @@
       "channels": ["x-ahpd-bots"],
       "grants": ["bot"],
       "resourceProviders": ["bot"],
+      "methods": ["x-ahpd/bots/put", "x-ahpd/bots/remove"],
       "tools": ["post_message"],
       "bindings": ["*"],
-      "folders": ["the bots' workspaces, one folder per bot under root"]
+      "folders": ["the bots' workspaces, one folder per bot under root"],
+      "closers": ["the watch on each bot's AGENTS.md"]
     },
     "optionsSchema": {
       "type": "object",

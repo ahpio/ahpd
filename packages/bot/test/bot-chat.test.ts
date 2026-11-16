@@ -1061,6 +1061,7 @@ it('keeps a talk under the owner the host recorded where the start has no reader
     second: 'refuse',
     of: async () => undefined,
     keep: async (bot, owner, session) => { kept.push([bot, owner, session]); },
+    all: async () => new Map(),
   };
   const agent = botChatAgent(configDir, store, undefined, undefined, talks);
   const start = (id: string, owner?: Owner): Start => ({

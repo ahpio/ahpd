@@ -74,6 +74,19 @@ A browser's `endpoint` must be an `https:` URL on a host that `webPushHosts` all
 
 `push://` and `push://devices` are directories, and nothing below `push://devices/<id>` names anything. A write or a delete of either is refused `-32009`.
 
+A device is its person's. A write or a delete of a device another person registered is refused `-32009`. The holder of `*:*`, the root connection and a host with no users may change any device.
+
+### Commands and the channel
+
+| Command | Params | Grant |
+| --- | --- | --- |
+| `x-ahpd/push/put` | `{ id, record, createOnly?, ifMatch? }` | `push:put` |
+| `x-ahpd/push/remove` | `{ id }` | `push:delete` |
+
+Each runs the same write or delete as the resource call, with the same refusals. `record` is the body a write takes. Both answer `{}`.
+
+`x-ahpd-push://` lists the caller's own devices as `{ records }`, each `{ id, record }` with the record a read answers, then `x-ahpd-push/added`, `x-ahpd-push/changed` and `x-ahpd-push/removed`. Every signed-in person may subscribe without a grant, and a holder of `push:read` sees only their own devices too. `resourceWrite` and `resourceDelete` on `push://devices` keep working in 0.15.
+
 ### `push://vapid`
 
 `push://vapid` is one read-only record, `{ "publicKey": "<base64url>" }`. It is the host's VAPID public key, which a browser passes as `applicationServerKey` when it subscribes. The key pair is made at the first load and kept in `push-vapid.json`, written `0600`. A host with no pair refuses the read `-32008`, and a write or delete against it is refused `-32009`.

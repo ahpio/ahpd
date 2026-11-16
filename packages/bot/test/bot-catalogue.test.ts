@@ -1,6 +1,6 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
 import { loggerOf } from '@ahpd/sdk';
-import { appendFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -183,7 +183,7 @@ const call = async (reader: Reader, method: string, params: Bag) => reader.clien
 const subscribe = async (reader: Reader): Promise<string[]> => {
   const answer = await call(reader, 'subscribe', { channel: CATALOGUE });
   if (!('result' in answer)) throw new Error(`refused: ${answer.code} ${answer.message}`);
-  return (answer.result.snapshot.state.bots as Bag[]).map((one) => String(one.id));
+  return (answer.result.snapshot.state.records as Bag[]).map((one) => String(one.id));
 };
 
 const write = async (reader: Reader, slug: string, body: Bag): Promise<void> => {
@@ -222,9 +222,9 @@ it('answers each reader the bots it may read, each as a read of it answers', asy
   const answer = await call(ana, 'subscribe', { channel: CATALOGUE });
   const read = await call(ana, 'resourceRead', { uri: 'bot://mine' });
   if (!('result' in answer) || !('result' in read)) throw new Error('refused');
-  const record = (answer.result.snapshot.state.bots as Bag[]).find((one) => one.id === 'mine');
-  // The entry is the bot, the same record a read of it answers.
-  expect(record).toEqual(JSON.parse(String(read.result.data)) as Bag);
+  const entry = (answer.result.snapshot.state.records as Bag[]).find((one) => one.id === 'mine');
+  // The entry is the bot's id and the same record a read of it answers.
+  expect(entry?.record).toEqual(JSON.parse(String(read.result.data)) as Bag);
 });
 
 it('sends a make, an edit and a delete to the readers each concerns', async () => {
@@ -491,4 +491,65 @@ it('lists a chat that is not running as the bot it is with', async () => {
 
   expect(row).toBeDefined();
   expect(row?._meta).toMatchObject({ 'ahpd.bot': { id: 'motion', name: 'Motion', color: 'red' } });
+});
+
+/** A command's answer, or the refusal's code. */
+const command = async (reader: Reader, method: string, params: Bag): Promise<Bag | number> => {
+  const answer = await call(reader, method, params);
+  return 'result' in answer ? answer.result : answer.code;
+};
+
+it('makes, edits and removes a bot by command, with the rules a resource write has', async () => {
+  const { host } = made({ ana: PERSON, bo: PERSON }, { ana: [], bo: [] });
+  const ana = await as(host, 'ana');
+  const bo = await as(host, 'bo');
+  const listed = (ana.ready._meta?.['ahpd.methods'] ?? []) as { method: string; grant: string }[];
+  expect(listed.filter((one) => one.method.startsWith('x-ahpd/bots/'))).toEqual([
+    expect.objectContaining({ method: 'x-ahpd/bots/put', grant: 'bot:put' }),
+    expect.objectContaining({ method: 'x-ahpd/bots/remove', grant: 'bot:delete' }),
+  ]);
+  await subscribe(ana);
+
+  expect(await command(ana, 'x-ahpd/bots/put', { id: 'motion', record: { name: 'Motion' }, createOnly: true })).toEqual({});
+  expect(await command(ana, 'x-ahpd/bots/put', { id: 'motion', record: { name: 'Again' }, createOnly: true })).toBe(-32010);
+  const read = await call(ana, 'resourceRead', { uri: 'bot://motion' });
+  if (!('result' in read)) throw new Error('refused');
+  const first = JSON.parse(String(read.result.data)) as Bag;
+  expect(await command(ana, 'x-ahpd/bots/put', { id: 'motion', record: { name: 'Stale' }, ifMatch: 'not-the-last' })).toBe(-32011);
+  expect(await command(ana, 'x-ahpd/bots/put', { id: 'motion', record: { name: 'Two' }, ifMatch: first.updatedAt })).toEqual({});
+  // Not his bot: refused by the rule a resource write is.
+  expect(await command(bo, 'x-ahpd/bots/put', { id: 'motion', record: { name: 'His' } })).toBe(-32009);
+  expect(await command(bo, 'x-ahpd/bots/remove', { id: 'motion' })).toBe(-32009);
+  expect(await command(ana, 'x-ahpd/bots/put', { id: 'a/b', record: {} })).toBe(-32602);
+  expect(await command(ana, 'x-ahpd/bots/put', { id: 'motion', record: [] })).toBe(-32602);
+  expect(await command(ana, 'x-ahpd/bots/remove', { id: 'motion' })).toEqual({});
+  expect(await command(ana, 'x-ahpd/bots/remove', { id: 'motion' })).toBe(-32008);
+
+  // The catalogue hears the commands as it hears a resource write.
+  expect(ana.heard()).toEqual(['added motion', 'changed motion', 'removed motion']);
+});
+
+it('sends a bot again when it edits its own AGENTS.md, and once only for a save of the bot', async () => {
+  const { host } = made({ ana: PERSON }, { ana: [] });
+  const ana = await as(host, 'ana');
+  await write(ana, 'motion', { name: 'Motion', description: 'First' });
+  const answer = await call(ana, 'subscribe', { channel: CATALOGUE });
+  if (!('result' in answer)) throw new Error('refused');
+  const workspace = String((answer.result.snapshot.state.records as Bag[])[0]?.record.workspace);
+
+  // A save of the bot writes its file too: the watch hears that write, and sends nothing more.
+  await write(ana, 'motion', { name: 'Motion', description: 'Second' });
+  await hears(ana, 'changed motion');
+  await new Promise((done) => { setTimeout(done, 300); });
+  expect(ana.heard()).toEqual(['changed motion']);
+
+  // The bot edits its own file, as its session would.
+  const file = join(workspace, 'AGENTS.md');
+  writeFileSync(file, readFileSync(file, 'utf8').replace(/^description: .*$/m, 'description: Said by the bot'));
+  const end = Date.now() + WAIT_MS;
+  while (ana.heard().length < 2 && Date.now() < end) await new Promise((done) => { setTimeout(done, 5); });
+  expect(ana.heard()).toEqual(['changed motion', 'changed motion']);
+  const read = await call(ana, 'resourceRead', { uri: 'bot://motion' });
+  if (!('result' in read)) throw new Error('refused');
+  expect((JSON.parse(String(read.result.data)) as Bag).description).toBe('Said by the bot');
 });

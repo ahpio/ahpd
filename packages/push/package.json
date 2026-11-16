@@ -76,7 +76,9 @@
       { "src": "./icon-dark.svg", "theme": "dark" }
     ],
     "contracts": {
+      "channels": ["x-ahpd-push"],
       "resourceProviders": ["push"],
+      "methods": ["x-ahpd/push/put", "x-ahpd/push/remove"],
       "closers": ["the receipt reads and the completed notices still to come"]
     },
     "optionsSchema": {

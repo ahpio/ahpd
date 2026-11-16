@@ -139,6 +139,8 @@ const node = (configDir: string, said: HostSays): Node => {
       else held.push(handler);
     },
     registerResourceProvider: () => {},
+    registerChannel: () => ({ publish: () => {}, subscribers: () => [] }),
+    registerMethod: () => {},
     registerClose: (close: () => void | Promise<void>) => { made.closers.push(close); },
     sessionOwner: async (uri: string) => said.owners?.get(uri),
     connect: () => ({

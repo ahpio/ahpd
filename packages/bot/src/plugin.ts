@@ -1,9 +1,12 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
-import { expandHome, mayUseAgentFor, ownershipOf, reason, Status } from '@ahpd/sdk';
+import { expandHome, fileResources, mayUseAgentFor, ownershipOf, reason, Status } from '@ahpd/sdk';
 import { SUPPORTED_PROTOCOL_VERSIONS } from '@microsoft/agent-host-protocol';
 import { botAsk } from './ask.js';
 import { botCatalogue, CATALOGUE_SCHEME } from './catalogue.js';
+import type { BotCatalogue } from './catalogue.js';
+import { agentsWatch } from './agentswatch.js';
+import { botMethods } from './commands.js';
 import { botChatAgent, openTalks } from './chat.js';
 import type { TurnHandle } from './chat.js';
 import { prepareAgentsTemplate } from './folder.js';
@@ -554,6 +557,8 @@ export const apply: Plugin['apply'] = (host, options) => {
     configDir: host.configDir,
     kept: (uri) => host.sessionKept(uri),
     owner: (uri) => host.sessionOwner(uri),
+    // A talk written down is the bot again to the person whose talk it is.
+    onKeep: (bot, talker, session) => { catalogue.talked(bot, talker, session); },
   }, second);
   /*
    * The plugin's own connection to this host, opened by the first message that
@@ -598,9 +603,36 @@ export const apply: Plugin['apply'] = (host, options) => {
     const { sender, channels } = await connection();
     return await channels.hold(chat, () => sender.dispatch(chat, action));
   };
-  const catalogue = botCatalogue(store);
+  /*
+   * The catalogue answers each reader what a read of the bot answers them,
+   * through the provider made below: both are asked only once the plugin has
+   * applied.
+   */
+  const catalogue = botCatalogue(store, {
+    record: (bot) => provider.view(bot),
+    talks: (slug) => talks.all(slug),
+    talker: (reader) => provider.talker(reader),
+  });
   catalogue.bind(host.registerChannel(CATALOGUE_SCHEME, catalogue.channel));
   host.on('users_changed', () => { catalogue.recompute(); });
+  /*
+   * Each bot's `AGENTS.md`, watched so an edit the bot makes to its own file
+   * reaches the catalogue. Opened for every bot once the store has loaded,
+   * and kept in step with each make, edit and delete the catalogue hears.
+   */
+  const agentsFiles = agentsWatch(fileResources().watch, (slug) => { catalogue.touch(slug); });
+  void store.ready().then(() => { for (const bot of store.all()) agentsFiles.follow(bot); }, () => {});
+  host.registerClose(() => { agentsFiles.close(); });
+  const told: BotCatalogue = {
+    put: (bot, before) => {
+      catalogue.put(bot, before);
+      agentsFiles.follow(bot);
+    },
+    remove: (bot) => {
+      catalogue.remove(bot);
+      agentsFiles.drop(bot.id);
+    },
+  };
   /*
    * Whether a bot's owner may start a session on the agent its record names.
    *
@@ -622,11 +654,11 @@ export const apply: Plugin['apply'] = (host, options) => {
    * would wake nothing.
    */
   const available = (provider: string): boolean => host.machineNeeds(provider) !== undefined;
-  host.registerResourceProvider('bot', botProvider({
+  const provider = botProvider({
     root,
     botsDir: join(host.configDir, BOTS_DIR),
     store,
-    catalogue,
+    catalogue: told,
     hostName: host.hostName,
     templates,
     yaml,
@@ -635,7 +667,9 @@ export const apply: Plugin['apply'] = (host, options) => {
     mayUse,
     available,
     talks,
-  }));
+  });
+  host.registerResourceProvider('bot', provider);
+  for (const [command, method] of Object.entries(botMethods(provider))) host.registerMethod(command, method);
   // The one grant a bot asks for, apart from reading it: talking to it.
   host.registerGrants('bot', { operations: ['chat'] });
   /*

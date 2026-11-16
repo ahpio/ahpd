@@ -1,5 +1,5 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
-import { mkdtempSync, mkdirSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, renameSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -103,6 +103,34 @@ it('reports a file appearing, changing and going', async () => {
 
   unlinkSync(join(root, 'a.txt'));
   await until(() => changes(p, made.channel).some((c) => c.uri.endsWith('/a.txt') && c.type === 'deleted'), 'the file to go');
+});
+
+it('watches one file: its own edits as updated, a save by rename heard, its siblings not', async () => {
+  writeFileSync(join(root, 'one.md'), 'one');
+  // Older than the watch's allowance for a clock that runs early, so its edits are edits.
+  await new Promise((done) => { setTimeout(done, 100); });
+  const { client, peer: p } = await connected();
+  const made = await client.handle({
+    method: 'createResourceWatch', params: { channel: 'ahp-root://', uri: `file://${join(root, 'one.md')}` },
+  }) as { channel: string };
+  await client.handle({ method: 'subscribe', params: { channel: made.channel } });
+  const seen = () => changes(p, made.channel).map((c) => `${c.type} ${c.uri.slice(c.uri.lastIndexOf('/') + 1)}`);
+
+  writeFileSync(join(root, 'one.md'), 'two');
+  await until(() => seen().includes('updated one.md'), 'the edit');
+  writeFileSync(join(root, 'other.md'), 'x');
+  // A save that writes a new file and renames it over: the next edit is still heard.
+  writeFileSync(join(root, 'one.md.tmp'), 'three');
+  renameSync(join(root, 'one.md.tmp'), join(root, 'one.md'));
+  await until(() => seen().filter((one) => one.endsWith(' one.md')).length >= 2, 'the save by rename');
+  writeFileSync(join(root, 'one.md'), 'four');
+  await until(() => seen().filter((one) => one.endsWith(' one.md')).length >= 3, 'the edit after it');
+  unlinkSync(join(root, 'one.md'));
+  await until(() => seen().includes('deleted one.md'), 'the file to go');
+
+  // Only the file itself, and never a deletion while it was there.
+  expect(seen().every((one) => one.endsWith(' one.md'))).toBe(true);
+  expect(seen().filter((one) => one.startsWith('deleted'))).toEqual(['deleted one.md']);
 });
 
 it('honours the excludes it was given', async () => {

@@ -205,7 +205,7 @@ const asFile = (data: string): Read => ({ data, encoding: 'utf-8', contentType: 
  * subscription's endpoint and keys are the same kind of secret: the endpoint is
  * a capability URL and the keys are what a message to it is sealed with.
  */
-const shownOf = (device: Device): Record<string, unknown> => {
+export const shownOf = (device: Device): Record<string, unknown> => {
   if (device.platform === 'web') {
     const { endpoint: _endpoint, keys: _keys, ...shown } = device;
     return shown;
@@ -345,6 +345,8 @@ export interface PushProviderOptions {
   vapid?: Vapid;
   /** The hosts a browser's endpoint may be at. The default is every push service of a major browser. */
   webPushHosts?: readonly string[];
+  /** Called after each write and delete the store took, so a channel over the devices hears it. */
+  changed?(): void;
 }
 
 /**
@@ -438,6 +440,25 @@ const deviceOf = (uri: string, content: Write, webPushHosts: readonly string[]):
 };
 
 /**
+ * Whether this caller may replace or remove this device.
+ *
+ * A device is its person's: a token and a subscription are credentials to
+ * that person's notifications, so another person who holds `push:put` may not
+ * point them elsewhere or turn them off. The person it was registered by may,
+ * and so may a holder of `*:*`, the root connection, a host with no users and a
+ * device kept before anybody's was written down - the same ways into a bot
+ * `mayWrite` has.
+ */
+const mayChange = (device: Device, owner: Owner | undefined, reader: Principal | undefined): boolean => {
+  if (device.owner === undefined || owner === undefined || owner.startsWith('root:')) return true;
+  if (device.owner === owner) return true;
+  return reader?.can('*:*') === true;
+};
+
+/** The refusal a write or delete of another person's device is owed. */
+const notYours = (uri: string): RpcError => new RpcError(-32009, `Permission denied: ${uri} is another person's device`);
+
+/**
  * The `push:` scheme, over the devices one daemon keeps.
  *
  * The root and the `devices` directory are readable and nothing else: a write
@@ -526,10 +547,11 @@ export const pushProvider = (options: PushProviderOptions): PushProvider => {
      * https://github.com/microsoft/agent-host-protocol/blob/spec/v1.0.0/types/common/commands.ts#L724-L726
      * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/resourceProviders/fileSystemResources.ts#L201-L207
      */
-    write: async (uri, content, owner, client) => {
+    write: async (uri, content, owner, client, reader) => {
       const place = placeOf(uri);
       if (place.at !== 'device') throw new RpcError(-32009, `Permission denied: ${uri}`);
       const held = store.get(place.id);
+      if (held !== undefined && !mayChange(held, owner, reader)) throw notYours(uri);
       if (content.createOnly === true && held !== undefined) {
         throw new RpcError(-32010, `${place.id} is already a device here; edit it or choose another id`);
       }
@@ -542,6 +564,7 @@ export const pushProvider = (options: PushProviderOptions): PushProvider => {
         ...(owner === undefined ? {} : { owner }),
         ...(client === undefined || client === '' ? {} : { client }),
       });
+      options.changed?.();
     },
 
     /**
@@ -552,10 +575,13 @@ export const pushProvider = (options: PushProviderOptions): PushProvider => {
      * or nothing: there are no children to take with a flag. The public key
      * and the two directories are `PermissionDenied`, as a write to them is.
      */
-    delete: async (uri) => {
+    delete: async (uri, _recursive, owner, reader) => {
       const place = placeOf(uri);
       if (place.at !== 'device') throw new RpcError(-32009, `Permission denied: ${uri}`);
+      const held = store.get(place.id);
+      if (held !== undefined && !mayChange(held, owner, reader)) throw notYours(uri);
       if (!store.remove(place.id)) throw absentResource(SCHEME, uri);
+      options.changed?.();
     },
   };
 };
