@@ -22,8 +22,8 @@ Current progress and pending items only, as of 2026-11-16. *Outside this reposit
   - It requires ahpio-site's `plugins/20261116-1816-the-list-serves-prereleases` (1 task), since the list serves releases only. Its deploy is Softov's step.
   - Softov chose on 2026-11-16 that this session builds both. The ahpd build is merged in #355 (`2fa19f87f`), green on the first attempt, and the plan closes on his word. The ahpio-site build is on its main as `3aae9f7`. Softov's deploy of 2026-11-16 ran before `/github/ahpio-site` held it, and the 20:17 UTC run served no prerelease, so it waits for a deploy again. The server, sdk and computer suites pass on the ahpd branch.
   - Found in the build: [a-dev-container-installs-the-server-at-the-sdks-version.md](../problems/a-dev-container-installs-the-server-at-the-sdks-version.md).
-- The four multi-user security problems of 2026-11-08 reproduce on the test daemon at `2228ec5af`, on 2026-11-16. Each problem file's *Symptom* holds the steps and what was not tried. Whether each is fixed for 0.15 or named in the notes waits for Softov.
-  - [auto-approval-and-trust-ignore-who-sent-the-turn.md](../problems/auto-approval-and-trust-ignore-who-sent-the-turn.md)
+- The four multi-user security problems of 2026-11-08 reproduce on the test daemon at `2228ec5af`, on 2026-11-16. Each problem file's *Symptom* holds the steps and what was not tried. Softov chose on 2026-11-16 to fix all four for 0.15, problem 4 with rules per person, which needs `a-claude-session-from-vs-code-has-no-owner.md` first.
+  - Problem 1 is planned: [host/20261116-2126-approvals-follow-the-sessions-owner](../plans/host/20261116-2126-approvals-follow-the-sessions-owner/plan.md), with `unattendedAutoApprove` on by default (Softov, 2026-11-16).
   - [backends-skip-the-operators-always-ask-rule.md](../problems/backends-skip-the-operators-always-ask-rule.md)
   - [always-allow-writes-host-rules-without-config-change.md](../problems/always-allow-writes-host-rules-without-config-change.md)
   - [an-admins-pushed-terminal-rule-applies-to-every-session.md](../problems/an-admins-pushed-terminal-rule-applies-to-every-session.md)
