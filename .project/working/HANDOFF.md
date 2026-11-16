@@ -142,7 +142,7 @@ Each plan here has every task `implemented`, and closes as `built` on Softov's w
 
 ## Open findings with no brief yet
 
-- `@ahpd/agent-acp` 0.14.0 declares `@ahpd/sdk >=0.10 <1`, and does not import beside sdk 0.15.0-rc.3, which no longer exports `callTimes`. A daemon on rc.3 installs 0.14.0, since the version rule skips a prerelease. Seen on 2026-11-15.
+- The upgrade check of 2026-11-16: the four 0.14.0 backends do not import beside sdk 0.15, and every upgrade to a release candidate leaves no backend loaded. Softov chose the fix on 2026-11-16, in the brief [plugins-follow-the-release-line.md](../briefs/plugins-follow-the-release-line.md). It waits for "plan it".
 - ahpw's plan `plugins/20261115-0746-a-person-finds-a-plugin-to-install` is merged in ahpw #86 (`108a3e719`), with four tasks `implemented`, and waits for Softov's review. The Plugins sidebar is one list with search and Install. An installed plugin's page has Overview, Features and Settings from its own package, and Marketplace facts only when it came from a list.
 - Softov's test of 2026-11-15 found that `x-ahpd/plugins/remove` gave npm the row id, and that `npm uninstall` ran without `--legacy-peer-deps`. Both are fixed in #339. His `~/.config/ahpd` may still hold `@ahpd/web` in `package.json`, since that uninstall failed.
 - The plugin list names first-party plugins without their scope, such as `agent-acp`. ahpd names them `ahpd-agent-acp`, since none exports a `name`. The plugins repository's check (`scripts/check.mjs`, `unscoped`) holds the list to the first rule. The build of plugin/20261113-2029 matches by source first.
