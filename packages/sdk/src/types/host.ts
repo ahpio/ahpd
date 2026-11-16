@@ -1012,6 +1012,18 @@ export interface HostOptions {
    */
   eligibleForAutoApproval?: Record<string, boolean>;
   /**
+   * Whether a turn nobody at a keyboard sent gets the session owner's
+   * approvals, on a host with users: an automation's run, a resumed turn, one
+   * an agent or a tool started. The approvals are the permission allow rules,
+   * the terminal rules, the edit patterns, the reads in the working folders,
+   * the global and the session's auto-approve, and `workspaceTrust` for the
+   * start. On unless set `false`; off, such a turn asks about every call its
+   * backend asks about. A person's turn gets them only in a session that
+   * person owns, whatever this says, and a host with no users file reads it
+   * not at all.
+   */
+  unattendedAutoApprove?: boolean;
+  /**
    * Who checks the managed rules, `managedSettingsPermissions` and
    * `eligibleForAutoApproval`, on a tool question.
    *

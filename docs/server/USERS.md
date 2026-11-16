@@ -89,6 +89,10 @@ At a terminal `--user <id>` names whose tokens they are, and `--team <team>` nam
 
 You can define your own roles in the file. See [sdk/USERS.md](../sdk/USERS.md).
 
+## Whose turns are approved
+
+A session's approvals are its owner's: the permission allow rules, the terminal rules, the edit patterns, the reads in its working folders, auto-approve and workspace trust. A turn its owner sends gets them. A turn another person sends into the session gets none, so each call its agent asks about asks, and a person whose role holds `chat:answer` may answer it. A turn nobody at a keyboard sent, such as an automation's run or a resumed turn, gets the owner's approvals while `unattendedAutoApprove` is on, the default. See [Configure](CONFIGURE.md).
+
 ## Sign in with GitHub or OpenID Connect
 
 ```bash

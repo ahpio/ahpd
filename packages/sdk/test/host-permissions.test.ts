@@ -419,16 +419,18 @@ const people = (): Users => ({
 });
 
 /*
- * The terminal rules answer a command whoever sent its turn, the session's
- * owner or anybody else, as VS Code's host reads its one value of each for
- * every question.
- * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/sessionPermissions.ts#L380
+ * On a host with users, a person's turn gets a session's approvals only in a
+ * session that person owns, as `getAutoApproval` answered at e388d12f5. A turn
+ * nobody at a keyboard sent - one whose message is not a person's - gets the
+ * owner's as `unattendedAutoApprove` says, and none when a sender other than
+ * the owner is known for it.
  */
-it('answers a command by the host\'s terminal rules in a turn somebody other than the session\'s owner sent', async () => {
+const whoseTurn = async (over: Partial<HostOptions> = {}) => {
   const answers: Answer[] = [];
   const host = createHost({
     path: dir, resources: fileResources(), users: people(),
     agents: [asking(answers, 'bash', undefined, { permissionKind: 'shell', shellCommand: 'ls', shellLanguage: 'bash' })],
+    ...over,
   });
   const signedIn = async (token: string) => {
     const p = listening();
@@ -441,17 +443,53 @@ it('answers a command by the host\'s terminal rules in a turn somebody other tha
   const bo = await signedIn('bo');
   await ana.client.handle({ method: 'createSession', params: { channel: SESSION, provider: 'echo' } });
   // The chat the host minted for Ana's session, read off its state.
-  const chat = ((await bo.client.handle({ method: 'subscribe', params: { channel: SESSION } })) as { snapshot: { state: { defaultChat: string } } }).snapshot.state.defaultChat;
+  const chat = ((await ana.client.handle({ method: 'subscribe', params: { channel: SESSION } })) as { snapshot: { state: { defaultChat: string } } }).snapshot.state.defaultChat;
+  await ana.client.handle({ method: 'subscribe', params: { channel: chat } });
+  await bo.client.handle({ method: 'subscribe', params: { channel: SESSION } });
   await bo.client.handle({ method: 'subscribe', params: { channel: chat } });
-  await bo.client.handle({
-    method: 'dispatchAction',
-    params: { channel: chat, action: { type: 'chat/turnStarted', turnId: 't1', startedAt: new Date().toISOString(), message: { text: 'a turn long enough to be asked about', origin: { kind: 'user' } } } },
-  });
-  const ready = (): Bag | undefined => bo.p.heard.find((one) => one.action.type === 'chat/toolCallReady' && one.action.turnId === 't1')?.action;
-  await until(() => ready() !== undefined, 'the question');
-  expect(ready()?.confirmed).toBe('not-needed');
+  /** The question a turn sent by `who`, with its message from `kind`, raised, once it is put. */
+  const ask = async (who: typeof ana, turnId: string, kind = 'user'): Promise<Bag | undefined> => {
+    await who.client.handle({
+      method: 'dispatchAction',
+      params: { channel: chat, action: { type: 'chat/turnStarted', turnId, startedAt: new Date().toISOString(), message: { text: 'a turn long enough to be asked about', origin: { kind } } } },
+    });
+    const ready = (): Bag | undefined => who.p.heard.find((one) => one.action.type === 'chat/toolCallReady' && one.action.turnId === turnId)?.action;
+    await until(() => ready() !== undefined, 'the question');
+    return ready();
+  };
+  return { host, ana, bo, ask, answers };
+};
+
+it('asks about a command the terminal rules approve in a turn somebody other than the session\'s owner sent', async () => {
+  const { host, bo, ask, answers } = await whoseTurn();
+  const ready = await ask(bo, 't1');
+  expect(ready?.confirmed).toBeUndefined();
+  expect(typeof ready?.confirmationTitle).toBe('string');
+  await settle();
+  expect(answers).toEqual([]);
+  await host.close();
+});
+
+it('answers the same command by the terminal rules in the session owner\'s own turn', async () => {
+  const { host, ana, ask, answers } = await whoseTurn();
+  expect((await ask(ana, 't1'))?.confirmed).toBe('not-needed');
   await until(() => answers.length > 0, 'the approval');
   expect(answers).toEqual([['call-t1', true, undefined]]);
+  await host.close();
+});
+
+it('answers a turn nobody at a keyboard sent by the owner\'s approvals unless unattendedAutoApprove is off', async () => {
+  const on = await whoseTurn();
+  expect((await on.ask(on.ana, 't1', 'automation'))?.confirmed).toBe('not-needed');
+  await on.host.close();
+  const off = await whoseTurn({ unattendedAutoApprove: false });
+  expect((await off.ask(off.ana, 't1', 'automation'))?.confirmed).toBeUndefined();
+  await off.host.close();
+});
+
+it('gives no approvals to a turn that is no person\'s when a sender other than the owner is known for it', async () => {
+  const { host, bo, ask } = await whoseTurn();
+  expect((await ask(bo, 't1', 'tool'))?.confirmed).toBeUndefined();
   await host.close();
 });
 

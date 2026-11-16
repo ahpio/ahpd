@@ -1562,6 +1562,7 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
     ...(options.managedSettingsSandbox === undefined ? {} : { managedSettingsSandbox: options.managedSettingsSandbox }),
     ...(options.eligibleForAutoApproval === undefined ? {} : { eligibleForAutoApproval: options.eligibleForAutoApproval }),
     managedRules: options.managedRules,
+    unattendedAutoApprove: options.unattendedAutoApprove,
     /*
      * The reader a configured module exports, which takes the sdk's own
      * splitter's place.

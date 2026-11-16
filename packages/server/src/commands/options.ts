@@ -146,6 +146,8 @@ export interface Options {
   eligibleForAutoApproval?: Record<string, boolean>;
   /** Who checks the managed rules on a tool question: the host, or the backends it hands them to. */
   managedRules: 'checked' | 'handed';
+  /** Whether a turn nobody at a keyboard sent gets the session owner's approvals, on a host with users. */
+  unattendedAutoApprove: boolean;
   /**
    * A module whose default export reads a session's shell commands, as the
    * file's `commandParser` names it.
@@ -860,6 +862,10 @@ export const serverFields = {
     enum: ['checked', 'handed'],
     description: 'Who checks managedSettingsPermissions and eligibleForAutoApproval on a tool question: checked has the host check each on every question of its kind; handed hands them to the backends and checks none, putting a question a backend marked managed with Allow Once and Skip, as VS Code does.',
   },
+  unattendedAutoApprove: {
+    type: 'boolean',
+    description: 'On a host with users, whether a turn nobody at a keyboard sent gets the session owner\'s approvals: an automation\'s run, a resumed turn, one an agent or a tool started. The approvals are the permission allow rules, the terminal rules, the edit patterns, the reads in the working folders, auto-approve and workspace trust. On by default; false makes such a turn ask about every call its agent asks about. A person\'s turn gets them only in a session that person owns. Set in the configuration file only.',
+  },
   commandParser: {
     type: 'string',
     title: 'Command parser',
@@ -1567,6 +1573,7 @@ const noCwd = input['noCwd'] === true;
     ...(managedSettingsSandbox === undefined ? {} : { managedSettingsSandbox }),
     ...(eligibleForAutoApproval === undefined ? {} : { eligibleForAutoApproval }),
     managedRules: given('managedRules') ?? 'checked',
+    unattendedAutoApprove: given('unattendedAutoApprove') ?? true,
     ...(commandParser === undefined ? {} : { commandParser }),
     ...(deltaWindowMs === undefined ? {} : { deltaWindowMs }),
     ...(sleepAfterMinutes === undefined ? {} : { sleepAfterMinutes }),

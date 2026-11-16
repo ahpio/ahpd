@@ -139,9 +139,10 @@ const about = (told: Told, folder: string): boolean | undefined =>
  * when the host asks it a question, which is where a trust question lands.
  */
 function serving({
-  store, automations = false, listed = false, people = true, worktrees, worktreesRoot, folders = [...FOLDERS], answer = () => ({}),
+  store, automations = false, listed = false, people = true, worktrees, worktreesRoot, folders = [...FOLDERS], answer = () => ({}), unattended,
 }: {
   store?: SessionStore;
+  unattended?: boolean;
   automations?: boolean;
   listed?: boolean;
   people?: boolean;
@@ -159,6 +160,7 @@ function serving({
     ...(automations ? { automations: memoryAutomations() } : {}),
     ...(worktrees === undefined ? {} : { worktrees }),
     ...(worktreesRoot === undefined ? {} : { worktreesRoot }),
+    ...(unattended === undefined ? {} : { unattendedAutoApprove: unattended }),
   });
   /** Everything the host put to a client, which is where a trust question lands. */
   const asked: { method: string; params: unknown }[] = [];
@@ -258,11 +260,10 @@ it('tells a backend the folders the last trust push names, whichever window push
 });
 
 /*
- * A start reads the host's one trust value whoever sent the turn behind it, as
- * VS Code's host reads its trust for every session it starts.
- * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostSessionPrewarmer.ts#L166-L169
+ * On a host with users, a start reads the host's trust only when the session's
+ * owner sent the turn behind it, as `trustedBy` answered at e388d12f5.
  */
-it('tells a session the folders the host trusts when somebody other than its owner sends its turn', async () => {
+it('tells a session nothing is trusted when somebody other than its owner sends its turn', async () => {
   const store = memorySessions();
   const first = serving({ store });
   const bo = await first.signedIn('bo');
@@ -294,17 +295,16 @@ it('tells a session the folders the host trusts when somebody other than its own
   });
   await settle(60);
 
-  // A's push is the host's trust, and B's session reads it with every other.
-  expect(about(second.told(), A)).toBe(true);
+  // A's push is the host's trust, and B's session started by A reads none of it.
+  expect(about(second.told(), A)).toBe(false);
 });
 
 /*
- * A start nobody sent reads the host's trust too, as VS Code's host reads its
- * one value for every session it starts.
- * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostSessionPrewarmer.ts#L166-L169
+ * A start no window sent reads the host's trust as `unattendedAutoApprove`
+ * says: on unless the operator turned it off.
  */
-it('tells an automation the folders the host trusts, though no window sent it', async () => {
-  const { signedIn, told } = serving({ automations: true });
+const automationTrust = async (unattended?: boolean): Promise<boolean | undefined> => {
+  const { signedIn, told } = serving({ automations: true, ...(unattended === undefined ? {} : { unattended }) });
   const ana = await signedIn('ana');
   await trusting(ana, [A]);
   await settle();
@@ -331,8 +331,16 @@ it('tells an automation the folders the host trusts, though no window sent it', 
   });
   await settle(60);
 
-  // The automation's session reads the trust ana pushed, as every start does.
-  expect(about(told(), A)).toBe(true);
+  return about(told(), A);
+};
+
+it('tells an automation the folders the host trusts, though no window sent it', async () => {
+  // The automation's session reads the trust ana pushed, as unattendedAutoApprove is on by default.
+  expect(await automationTrust()).toBe(true);
+});
+
+it('tells an automation nothing is trusted when unattendedAutoApprove is off', async () => {
+  expect(await automationTrust(false)).toBe(false);
 });
 
 /*
