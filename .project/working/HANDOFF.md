@@ -24,7 +24,7 @@ Current progress and pending items only, as of 2026-11-16. *Outside this reposit
   - Found in the build: [a-dev-container-installs-the-server-at-the-sdks-version.md](../problems/a-dev-container-installs-the-server-at-the-sdks-version.md).
 - The four multi-user security problems of 2026-11-08 reproduce on the test daemon at `2228ec5af`, on 2026-11-16. Each problem file's *Symptom* holds the steps and what was not tried. Softov chose on 2026-11-16 to fix all four for 0.15, problem 4 with rules per person, which needs `a-claude-session-from-vs-code-has-no-owner.md` first.
   - Problem 1 is planned: [host/20261116-2126-approvals-follow-the-sessions-owner](../plans/host/20261116-2126-approvals-follow-the-sessions-owner/plan.md), with `unattendedAutoApprove` on by default (Softov, 2026-11-16).
-  - [backends-skip-the-operators-always-ask-rule.md](../problems/backends-skip-the-operators-always-ask-rule.md)
+  - Problem 2 is planned: [host/20261116-2128-backends-ask-what-the-operator-asks](../plans/host/20261116-2128-backends-ask-what-the-operator-asks/plan.md).
   - [always-allow-writes-host-rules-without-config-change.md](../problems/always-allow-writes-host-rules-without-config-change.md)
   - [an-admins-pushed-terminal-rule-applies-to-every-session.md](../problems/an-admins-pushed-terminal-rule-applies-to-every-session.md)
 - The test daemon's `~/ahpd-check` holds users alice, bob, carol and dave, a role `senders`, and `eligibleForAutoApproval` in `config.json`. It is stopped.
