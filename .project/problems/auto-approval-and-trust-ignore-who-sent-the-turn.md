@@ -15,7 +15,15 @@ refs:
 
 ## Symptom
 
-Read from the code in the security review of 2026-11-08, and not reproduced.
+Read from the code in the security review of 2026-11-08.
+Reproduced on 2026-11-16 on the test daemon at `2228ec5af`, with users and a Claude session on `haiku`.
+The client was a script that sends a turn and reads each tool call's `chat/toolCallReady` and result.
+alice, an admin, made a session with `autoApprove` set to `autoApprove`.
+dave held a role with `session:read` and `chat:send` only, and no `chat:answer`.
+dave sent `rm d.txt` into alice's session, and it ran with no question.
+In alice's session with no `autoApprove`, the same command from dave asked, and dave's answer changed nothing.
+bob, a member, got the same result as dave.
+An automation run, a bot wake and a restart were not tried.
 On a host with users, a turn that the session's owner did not send gets the owner's approvals.
 An automation run, a bot wake and a restart get them too, with nobody as the sender.
 

@@ -18,7 +18,14 @@ refs:
 
 ## Symptom
 
-Read from the code in the security review of 2026-11-08, and not reproduced.
+Read from the code in the security review of 2026-11-08.
+Reproduced on 2026-11-16 on the test daemon at `2228ec5af`, with users and a Claude session on `haiku`.
+The client was a script that sends a turn and reads each tool call's `chat/toolCallReady` and result.
+With `enableCustomTerminalTool` on, `eligibleForAutoApproval` set `host/list_bash` to `false`.
+A Claude session called `mcp__host__list_bash`, and it ran with no question.
+In the same turn, `host/list_sessions`, also set to `false`, asked with Allow Once and Skip.
+So the rule's name is right, and the call that skips it is a host tool with `confirm: false`.
+The pi and cofold cases were not tried, since the test daemon loaded only agent-claude.
 The operator sets `eligibleForAutoApproval` to `false` for a tool, which means the tool asks every time.
 
 - In a Claude session, a host tool with `confirm: false`, such as `write_bash`, runs with no question.

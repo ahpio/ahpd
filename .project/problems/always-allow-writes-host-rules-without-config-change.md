@@ -16,7 +16,13 @@ refs:
 
 ## Symptom
 
-Read from the code in the security review of 2026-11-08, and not reproduced.
+Read from the code in the security review of 2026-11-08.
+Reproduced on 2026-11-16 on the test daemon at `2228ec5af`, with users and a Claude session on `haiku`.
+The client was a script that sends a turn and reads each tool call's `chat/toolCallReady` and result.
+bob, a member, asked for `rm b.txt` in his own session, and answered with Always Allow `rm …`.
+The host saved `permissions.allow: ["Shell(rm *)"]` in `root-config.json`.
+Then `rm a.txt` ran with no question in a session of alice, an admin.
+The deny list of the terminal table, such as `find -exec`, was not tried.
 A member steers the agent in their own session to ask about `npm install <package>`.
 The member answers with the Always Allow option.
 After that, every session on the host runs `npm install` commands with no question, an admin's sessions and automation runs included.

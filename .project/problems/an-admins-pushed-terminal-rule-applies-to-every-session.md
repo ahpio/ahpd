@@ -20,6 +20,12 @@ As a member, bob's push did not apply, and `rm` asked.
 
 Softov passed the check of plan host/100-p2 on 2026-11-09, and asked to keep this case as a problem to check.
 
+Reproduced again on 2026-11-16 on the test daemon at `2228ec5af`, with a Claude session on `haiku`.
+carol, an admin, pushed `{"rm": true}` as `terminalAutoApproveRules`.
+Then `rm scratch.txt` ran with no question in a session of alice, another admin.
+The push is saved in `root-config.json` under `values`, so it holds after a restart.
+bob, a member, pushed a rule, and the host refused it: `bob may not config:change here`.
+
 ## Cause
 
 The terminal rules are one value for the whole host, as VS Code has them.
