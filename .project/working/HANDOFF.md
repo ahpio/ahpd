@@ -27,7 +27,7 @@ Current progress and pending items only, as of 2026-11-16. *Outside this reposit
   - Problem 2 is planned: [host/20261116-2128-backends-ask-what-the-operator-asks](../plans/host/20261116-2128-backends-ask-what-the-operator-asks/plan.md).
   - Problem 3 is planned: [host/20261116-2134-always-allow-has-a-level-per-person](../plans/host/20261116-2134-always-allow-has-a-level-per-person/plan.md). It builds the mockup Softov approved on 2026-11-16.
   - Problem 4 waits for `a-claude-session-from-vs-code-has-no-owner.md`, whose cause is not found.
-  - Its first step logs each request while Softov opens a Claude session from VS Code. A plan of terminal rules per person comes after, and may share the person store of host/20261116-2134.
+  - Its first step is [pending/claude-session-owner-checks.md](../pending/claude-session-owner-checks.md): a wire log while Softov opens a Claude session from VS Code. A plan of terminal rules per person comes after, and may share the person store of host/20261116-2134.
   - How the builds of the three plans run waits for Softov's answer.
   - [an-admins-pushed-terminal-rule-applies-to-every-session.md](../problems/an-admins-pushed-terminal-rule-applies-to-every-session.md)
 - The test daemon's `~/ahpd-check` holds users alice, bob, carol and dave, a role `senders`, and `eligibleForAutoApproval` in `config.json`. It is stopped.
