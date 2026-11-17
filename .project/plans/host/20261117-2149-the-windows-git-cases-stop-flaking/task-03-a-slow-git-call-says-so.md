@@ -25,7 +25,7 @@ The Windows CI jobs print it, so the next failure names the call.
 
 1. Time each `runGit` call from its start to its close.
 2. Say a call over 2 s to the `onSlowGit` listener, with the folder, the arguments and the milliseconds.
-3. Write the same line to stderr for a call that outlasts `AHPD_GIT_SLOW_MS`, when it is set.
+3. Also write the line to stderr for a call that outlasts `AHPD_GIT_SLOW_MS`, if the variable exists.
 4. Set the listener in `createHost` to `log.debug`.
 5. Set `AHPD_GIT_SLOW_MS: 2000` on the Windows test jobs in `ci.yml`.
 6. Remove the fixed cases from the problem file, and keep the branches case with this plan named.
