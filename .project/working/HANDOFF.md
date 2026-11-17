@@ -54,7 +54,7 @@ Current progress and pending items only, as of 2026-11-16. *Outside this reposit
 ## The dev daemon
 
 - Softov's dev daemon runs from `/github/ahpd` with `~/.config/ahpd/config-dev.json`, on ports 5180 and 37537. It runs from `src`, so a restart is all a merge needs. It needs `DEEPSEEK_API_KEY` in its environment. Never restart it or use its ports yourself.
-- Softov restarted it on 2026-11-17 at 04:10 local, from `/github/ahpd` on `3fd572987`. It runs every merge up to #365. `/github/ahpd` was fast-forwarded to `2f39699c8` with Softov's yes, so one more restart wires in #366. Check `git -C /github/ahpd log -1` before you ask for a restart.
+- Softov restarted it on 2026-11-17 at 05:58 local, from `/github/ahpd` on `2f39699c8`. It runs every merge up to #366. Check `git -C /github/ahpd log -1` before you ask for a restart.
 - After that restart, ahpw's new session form refused a Claude session with `RPC error -32009: no policy allows computer host`. Softov then wrote policies with `*` for agents and for computers, one for each case, so sessions start. The cause is not read yet. Softov asked to review it after the current work. The first Always Allow "for Me" wrote `~/.config/ahpd/permissions/soft.json` with `Shell(command *)`, which approves any command until host/20261117-0525 is built.
 - #345 renames the model proxy to the model gateway. Softov's `config-dev.json` and `config.json` say `modelGateway`, and the `developer` role says `gateway:*`, since 2026-11-15. Each file has a copy beside it ending in `.bak-gateway-20261115-200146`. The daemon on the old code reads no model table from them if it reloads, so it is restarted on main.
 - #329 lets a bot talk run with no grants on the bot plugin's entry.
