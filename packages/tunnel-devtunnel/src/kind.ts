@@ -67,6 +67,16 @@ const REFUSED = 'This tunnel refused a visitor: the host has users and the tunne
  * there is nobody this tunnel could carry a visitor as; it is not started
  * rather than started and refusing every visitor.
  */
+/**
+ * What an anonymous tunnel to the daemon is refused with on a daemon that asks
+ * for no token.
+ *
+ * Anyone reaches an anonymous port, and the daemon admits any connection on
+ * loopback when it has no token and no users, so the tunnel would be the
+ * daemon open to everyone.
+ */
+const OPEN_TO_ANYONE = `An anonymous tunnel on port ${String(TUNNEL_PORT)} would let anyone with its address drive this daemon, which asks for no token. Set a connection token or a users file first.`;
+
 const NO_ISSUER_KEY = (person: string): string =>
   `This tunnel names user:${person}, who must sign in through the issuer, so a key cannot stand in for that sign-in. The tunnel needs another person.`;
 
@@ -91,7 +101,7 @@ export const SCHEMA: Record<string, unknown> = {
     anonymous: {
       type: 'boolean',
       title: 'Anonymous',
-      description: 'Whether somebody who is not signed in to this account may reach the tunnel.',
+      description: 'Whether somebody who is not signed in to this account may reach the tunnel. On port 31546, a visitor then brings a token this host accepts, and VS Code over the tunnel cannot connect.',
       default: false,
     },
     person: {
@@ -207,6 +217,12 @@ interface Hop {
   key?: string;
   /** Whether every request's token is carried as the visitor wrote it. */
   requireToken: boolean;
+  /**
+   * Whether anyone may reach the port. The derived token is the hash of the
+   * tunnel id, which is in the port's address, so while this is on a visitor's
+   * token is carried as they wrote it, and the daemon decides.
+   */
+  anonymous: boolean;
   /** Stop carrying the port, so the next visitor is carried as the tunnel's access alone says. */
   close(): Promise<void>;
 }
@@ -346,6 +362,7 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
     port: number,
     person: string | undefined,
     requireToken: boolean,
+    anonymous: boolean,
   ): Promise<Hop | undefined> => {
     if (port !== TUNNEL_PORT) return undefined;
     const daemon = options.daemonPort();
@@ -358,11 +375,12 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
       ...(person === undefined ? {} : { person }),
       ...(key === undefined ? {} : { key }),
       requireToken,
+      anonymous,
       close: async () => { options.service.carry(connector, port, undefined); },
     };
     options.service.carry(connector, port, (stream) => {
       void carry(stream, daemon, (tkn) => {
-        if (hop.requireToken) return { keep: true };
+        if (hop.requireToken || hop.anonymous) return { keep: true };
         if (tkn === undefined || tkn !== hop.derived) return { keep: true };
         if (plugin.hasUsers === true) {
           if (hop.key !== undefined) return { set: hop.key };
@@ -380,6 +398,23 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
       });
     });
     return hop;
+  };
+
+  /**
+   * Whether an anonymous port would open the daemon to anyone: the daemon's own
+   * port, anonymous, on a daemon with no token and no users.
+   */
+  const openToAnyone = (port: number, anonymous: boolean): boolean =>
+    port === TUNNEL_PORT && anonymous && !options.guarded() && plugin.hasUsers !== true;
+
+  /**
+   * Refuse an anonymous port that would open the daemon, on the row and in the
+   * answer: a start that puts nothing up says the record is in error, and a
+   * change refused on a port says only why, leaving the port as it is.
+   */
+  const refuseOpen = (report: ReportTunnel, starting: boolean): void => {
+    plugin.alert({ level: 'error', ref: REF, text: OPEN_TO_ANYONE });
+    report(starting ? { status: 'error', error: OPEN_TO_ANYONE } : { error: OPEN_TO_ANYONE });
   };
 
   /** Put one tunnel up, or say why it is not up. */
@@ -407,6 +442,11 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
       report({ status: 'running' });
       return;
     }
+    if (openToAnyone(port, anonymous)) {
+      plugin.log.warn(`${NAME}: tunnel ${tunnel.id} was not started: ${OPEN_TO_ANYONE}`);
+      refuseOpen(report, true);
+      return;
+    }
     if (!options.open(connector)) {
       plugin.log.warn(`${NAME}: tunnel ${tunnel.id} was not started: connector ${connector} is not open`);
       report({ status: 'error', error: NOT_OPEN });
@@ -415,7 +455,7 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
 
     let hop: Hop | undefined;
     try {
-      hop = await hopFor(connector, port, person, requireToken);
+      hop = await hopFor(connector, port, person, requireToken, anonymous);
       const served = await options.service.add(connector, port, anonymous);
       const derived = await deriveConnectionToken(served.remote.id);
       if (hop !== undefined) hop.derived = derived;
@@ -504,15 +544,26 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
     const on = input?.['on'];
     if (typeof on !== 'boolean') throw new Error('anonymous access needs `on`, a boolean');
     const one = running.get(tunnel.id);
+    if (openToAnyone(one?.port ?? numberOf(tunnel.settings['port']) ?? 0, on)) {
+      plugin.log.warn(`${NAME}: tunnel ${tunnel.id} kept its access: ${OPEN_TO_ANYONE}`);
+      refuseOpen(report, false);
+      return;
+    }
     if (one !== undefined) {
+      // The hop stops mapping before the port opens to anyone, and maps again
+      // only once it is closed, so no anonymous moment maps the derived token.
+      const was = one.hop?.anonymous;
+      if (on && one.hop !== undefined) one.hop.anonymous = true;
       try {
         await options.service.access(one.connector, one.port, on);
       } catch (error) {
         const message = reason(error);
+        if (one.hop !== undefined && was !== undefined) one.hop.anonymous = was;
         plugin.log.warn(`${NAME}: tunnel ${tunnel.id} kept its access: ${message}`);
         report({ error: message });
         return;
       }
+      if (!on && one.hop !== undefined) one.hop.anonymous = false;
     }
     // Saved by the host, so the next start puts the port on with this access.
     report({ settings: { anonymous: on } });
@@ -563,6 +614,12 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
       const requireToken = tunnel.settings['requireToken'] === true;
       const person = personOf(tunnel.settings['person']);
 
+      if (openToAnyone(port, anonymous)) {
+        plugin.log.warn(`${NAME}: tunnel ${tunnel.id} kept its access: ${OPEN_TO_ANYONE}`);
+        refuseOpen(report, false);
+        return;
+      }
+
       if (connector !== one.connector) {
         // Another account: the old port goes with the old connector, and the
         // tunnel starts again on the new one.
@@ -585,7 +642,7 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
           // The new port's handler goes in before the port moves, because a
           // visitor can connect the moment the service answers it, and the
           // token stays the same: the Dev Tunnel's id does not change.
-          hop = await hopFor(connector, port, person, requireToken);
+          hop = await hopFor(connector, port, person, requireToken, anonymous);
           if (hop !== undefined && one.derived !== undefined) hop.derived = one.derived;
           const url = await options.service.replace(connector, one.port, port, anonymous);
           await one.hop?.close();
@@ -655,12 +712,18 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
         return;
       }
 
+      // In the order `access` takes: the hop stops mapping before the port
+      // opens to anyone, and maps again only once it is closed.
+      const was = one.hop?.anonymous;
+      if (anonymous && one.hop !== undefined) one.hop.anonymous = true;
       try {
         await options.service.access(connector, port, anonymous);
       } catch (error) {
+        if (one.hop !== undefined && was !== undefined) one.hop.anonymous = was;
         report({ error: reason(error) });
         return;
       }
+      if (!anonymous && one.hop !== undefined) one.hop.anonymous = false;
       report({ status: 'running' });
     },
 

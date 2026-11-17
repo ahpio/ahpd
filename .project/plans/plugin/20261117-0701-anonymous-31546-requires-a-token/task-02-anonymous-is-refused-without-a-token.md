@@ -1,6 +1,6 @@
 ---
 title: Anonymous is refused without a token
-status: todo
+status: implemented
 depends: [task-01-an-anonymous-hop-swaps-no-token.md]
 layer: "tunnel-devtunnel"
 refs:
@@ -38,3 +38,7 @@ An anonymous 31546 does not start, and anonymous does not turn on there, while t
 - Run the tunnel-devtunnel and server suites one at a time, as HANDOFF *Tests* says.
 
 ## Resume
+
+Built on 2026-11-17.
+`OPEN_TO_ANYONE` is the refusal text, and `refuseOpen` raises the alert and reports it.
+A refused start reports `status: error`, and a refused change reports only the error, so the port keeps its access.

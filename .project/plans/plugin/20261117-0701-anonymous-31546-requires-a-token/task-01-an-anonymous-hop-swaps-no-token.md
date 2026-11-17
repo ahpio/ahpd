@@ -1,6 +1,6 @@
 ---
 title: An anonymous hop swaps no token
-status: todo
+status: implemented
 depends: []
 layer: "tunnel-devtunnel"
 refs:
@@ -39,3 +39,9 @@ A signed-in 31546 swaps the derived token as today.
 - Run the tunnel-devtunnel suite as HANDOFF *Tests* says.
 
 ## Resume
+
+Built on 2026-11-17.
+The hop holds `anonymous`, and the admit decision keeps the token while it or `requireToken` is on.
+A failed access change puts the hop back to the value it had, not to off.
+A saved change of `person` returns before the access step, as before this plan.
+So the hop and the port keep the old access together.

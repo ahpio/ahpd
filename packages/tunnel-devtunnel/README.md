@@ -40,7 +40,7 @@ In the configuration file, with one tunnel and the person it is for:
 | `connector` | none | The `devtunnel` connector this host's own tunnel uses; absent, no system tunnel is opened |
 | `name` | this machine's hostname | What the Dev Tunnel is called in a client's list, and how it is found. A configured name is normalized as VS Code normalizes one (lowercase, word characters and dashes, twenty at most) and the hostname is cleaned as VS Code and its CLI clean one, so `code tunnel` and this plugin give one machine the same name |
 | `keep` | `true` | Whether the Dev Tunnel outlives the daemon |
-| `anonymous` | `false` | Whether somebody not signed in to this account may reach the system tunnel |
+| `anonymous` | `false` | Whether somebody not signed in to this account may reach the system tunnel. On, the derived token is never mapped, so a visitor brings a token this host accepts, and VS Code over the tunnel cannot connect. A daemon with no connection token and no users refuses it |
 | `person` | none | Who a visitor to the system tunnel is, as `user:` and the id the users directory holds them under. Presenting the tunnel's derived token gets that person's grants; a host with users and no person here refuses the token; a person whose record requires the issuer cannot be named, and the tunnel does not start |
 | `requireToken` | `false` | Whether a visitor to the system tunnel must bring a token this host accepts. On, the derived token is never mapped, and VS Code over the tunnel cannot connect |
 | `allowAccountChange` | `false` | Whether a second sign-in may replace a connector's GitHub account |
@@ -70,8 +70,9 @@ The plugin registers one tunnel kind, `devtunnel`, and the host adds the one tun
 - With `person` set, VS Code connects over the tunnel, and every visitor who presents the tunnel's derived token gets that person's grants. `person` is `user:` and the id the users directory holds them under, as in `"person": "user:ada"`. A host with no users needs no person: the derived token is accepted as it is, or given the daemon's own token when the daemon requires one.
 - With `requireToken` on, a visitor brings a token this host accepts, as `?tkn=<token>` in the URL. VS Code cannot connect that way, because it presents only the derived token.
 - On a host with users and neither set, the derived token is refused: the request is answered with a 401 and never reaches the daemon, and the tunnel's row says to set `person`. Only a person's own token gets in.
+- With `anonymous` on, anyone can reach the port and compute the derived token from its address, so the token is never mapped, whatever `person` and `requireToken` say. A visitor brings a token this host accepts, as `?tkn=<token>`, and VS Code cannot connect. On a daemon with no connection token and no users, an anonymous tunnel on 31546 would let anyone drive the daemon, so it does not start, the `anonymous` operation refuses `{ "on": true }`, and the row says to set a connection token or a users file first.
 
-A saved change of `person` or `requireToken` takes effect on the running tunnel. A person whose record requires the issuer cannot be named: no key is minted for them, the row reports an error saying the tunnel needs another person, and the tunnel does not start.
+A saved change of `person`, `requireToken` or `anonymous` takes effect on the running tunnel. A person whose record requires the issuer cannot be named: no key is minted for them, the row reports an error saying the tunnel needs another person, and the tunnel does not start.
 
 A tunnel on another port is not a way to get a public URL for the daemon: it forwards that port as it is, with no token mapping, so a visitor gets whatever that port offers. When it is anonymous and that port has no sign-in of its own, anyone with the URL gets in, so leave `anonymous` off unless you mean it.
 
@@ -124,7 +125,7 @@ This is the way in when the tunnel sets `person`. With `requireToken` on, VS Cod
 
 ## The connection token
 
-A client connecting over a tunnel computes its token from the tunnel's id, as the unpadded base64url of its SHA-256, and presents it as `?tkn=`. Anyone who knows the tunnel's id can compute it, and on an anonymous tunnel anyone can reach it, so the token is not a secret. What the host does with it is the tunnel's setting, and [The tunnel kind](#the-tunnel-kind) has the three cases.
+A client connecting over a tunnel computes its token from the tunnel's id, as the unpadded base64url of its SHA-256, and presents it as `?tkn=`. Anyone who knows the tunnel's id can compute it, and on an anonymous tunnel anyone can reach it, so the token is not a secret. What the host does with it is the tunnel's setting, and [The tunnel kind](#the-tunnel-kind) has the cases. On an anonymous tunnel it is never mapped.
 
 No local port listens for the tunnel. The relay hands each connection to the daemon's own process, which reads the request there and carries it to the daemon over a loopback dial, so nothing on this machine accepts a connection on the tunnel's port unless the daemon itself is bound to it (as VS Code's CLI takes its agent host's port in its own process). The port is still 31546 on the reverse-proxy side, which is the one VS Code looks for.
 

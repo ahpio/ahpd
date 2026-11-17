@@ -1,6 +1,6 @@
 ---
 title: The docs say anonymous needs a token
-status: todo
+status: implemented
 depends: [task-02-anonymous-is-refused-without-a-token.md]
 layer: "docs"
 refs:
@@ -33,3 +33,6 @@ The README, the setting's description and the 0.15 notes say that an anonymous 3
 - The `plugin-load.test.ts` case of the first-party options passes, since the schema text changes.
 
 ## Resume
+
+Built on 2026-11-17.
+The plugin's `anonymous` option in `package.json` says it too, beyond the task's files.
