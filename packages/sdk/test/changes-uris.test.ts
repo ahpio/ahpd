@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -10,6 +9,7 @@ import { gitChanges } from '../src/sessions/changes.js';
 import { createHost } from '../src/host.js';
 import { uriOf } from '../src/resources/fileuri.js';
 import { echo } from '../../../examples/echo/agent.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /*
  * The URIs a changeset mints, sent back the way a client sends them.
@@ -27,13 +27,13 @@ afterEach(async () => {
 });
 
 const git = (dir: string, ...args: string[]): string =>
-  execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' }).toString().trim();
+  gitSync(['-C', dir, ...args]).trim();
 
 /** A repository with `docs/AHP.md` and `docs/a file #1.md` committed, then both modified. */
 const repository = (): string => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'ahpd-uris-')));
   made.push(dir);
-  execFileSync('git', ['init', '-q', '-b', 'main', dir]);
+  gitSync(['init', '-q', '-b', 'main', dir]);
   git(dir, 'config', 'user.email', 'test@example.com');
   git(dir, 'config', 'user.name', 'Test');
   mkdirSync(join(dir, 'docs'));
@@ -499,7 +499,7 @@ describe('the directory a session\'s changesets are of', () => {
     const root = scratch();
     const where = join(root, 'C#', 'app');
     mkdirSync(where, { recursive: true });
-    execFileSync('git', ['init', '-q', '-b', 'main', where]);
+    gitSync(['init', '-q', '-b', 'main', where]);
     git(where, 'config', 'user.email', 'test@example.com');
     git(where, 'config', 'user.name', 'Test');
     writeFileSync(join(where, 'tracked.txt'), 'one\n');

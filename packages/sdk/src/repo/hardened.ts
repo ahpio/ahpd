@@ -60,8 +60,10 @@ export const onSlowGit = (listener: ((line: string) => void) | undefined): void 
  * The line for a slow `git`, said to the listener when it ran longer than
  * `SLOW_GIT_MS`, and written to stderr when it ran longer than
  * `AHPD_GIT_SLOW_MS`, which a CI job sets so a failing run's log names it.
+ * `runGit` times every call of the host with it, and `tools/git.ts` every
+ * call a test makes itself.
  */
-const timed = (dir: string, args: readonly string[], ms: number): void => {
+export const timed = (dir: string, args: readonly string[], ms: number): void => {
   const line = `slow git: ${String(ms)} ms for git ${args.join(' ')} in ${dir}`;
   if (ms > SLOW_GIT_MS) slowGitListener?.(line);
   const limit = Number(process.env['AHPD_GIT_SLOW_MS']);

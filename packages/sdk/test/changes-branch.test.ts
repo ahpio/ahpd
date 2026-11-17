@@ -1,10 +1,10 @@
-import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { gitChanges } from '../src/sessions/changes.js';
 import { uriOf } from '../src/resources/fileuri.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /*
  * Branch Changes: what the branch of a worktree session has, since it was cut.
@@ -24,10 +24,10 @@ afterEach(() => {
 
 /** Git's own answer, which is what the assertions are about. */
 const gitIn = (dir: string, ...args: string[]): string =>
-  execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' }).toString();
+  gitSync(['-C', dir, ...args]);
 
 /** One git command, for the ones whose output nobody reads. */
-const runIn = (dir: string, ...args: string[]): void => { execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' }); };
+const runIn = (dir: string, ...args: string[]): void => { gitSync(['-C', dir, ...args]); };
 
 /** A repository with a commit on `main`, which is what a worktree is cut from. */
 const repository = (): string => {

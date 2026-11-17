@@ -83,6 +83,7 @@ CI runs them on Linux and on Windows, and a failure on either fails the run.
 On Windows the tests are `pnpm test:unit`: the daemon's command line, the HTTP server, the computer plugin and a nested host are tested in CI on Linux only.
 They pass on Windows too, run by hand one file at a time on a Windows machine, with Docker Desktop for the cases that need a real Docker.
 The Windows test step sets `AHPD_GIT_SLOW_MS=2000`, which writes each `git` call that runs longer to stderr as a `slow git:` line, so a case that stalls names the call. Set it locally to see the same.
+A test runs its own `git` through `gitSync` from [`tools/git.ts`](tools/git.ts), which times the call the same way and stops it at `WAIT_MS` with the call named. A case in `packages/sdk/test/test-git.test.ts` fails on a test that runs `git` directly.
 A test that is POSIX by nature, such as one that sends a signal or reads a file mode, skips on Windows with `it.skipIf(!posix)` from [`tools/posix.ts`](tools/posix.ts), and says why in a comment beside it.
 
 | Command | What it checks |

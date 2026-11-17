@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -6,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, expect, it } from 'vitest';
 import { gitVolumeOf } from '../src/gitdir.js';
 import { dockerRuntime } from '../src/runtime.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /*
  * A machine a create did not finish leaves nothing behind.
@@ -51,7 +51,7 @@ const held = (path: string): Held => JSON.parse(readFileSync(path, 'utf8')) as H
 const repository = (dir: string): { repo: string; gitDir: string } => {
   const repo = join(dir, 'repo');
   mkdirSync(repo);
-  const run = (...args: string[]) => execFileSync('git', ['-C', repo, ...args], { stdio: 'pipe' });
+  const run = (...args: string[]) => gitSync(['-C', repo, ...args]);
   run('init', '-q', '-b', 'main');
   run('config', 'user.email', 'test@example.com');
   run('config', 'user.name', 'Test');

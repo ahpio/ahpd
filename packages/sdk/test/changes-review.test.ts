@@ -11,7 +11,6 @@
  * https://github.com/microsoft/agent-host-protocol/blob/v1.0.0/docs/guide/reconciliation.md
  */
 
-import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -25,6 +24,7 @@ import type { ChangesetFile, ChangesetSource } from '../src/types/changes.js';
 import type { Bag } from '../src/types/common.js';
 import type { Peer } from '../src/types/rpc.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
+import { gitSync } from '../../../tools/git.ts';
 
 let made: string[] = [];
 afterEach(() => {
@@ -32,7 +32,7 @@ afterEach(() => {
   made = [];
 });
 
-const runIn = (dir: string, ...args: string[]): void => { execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' }); };
+const runIn = (dir: string, ...args: string[]): void => { gitSync(['-C', dir, ...args]); };
 
 /** A repository with one commit on `main`. */
 const repository = (): string => {

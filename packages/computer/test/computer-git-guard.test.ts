@@ -7,6 +7,7 @@ import { basename, dirname, join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { guardedMounts, gitInside, MACHINE_GIT_TARGET, runsAsHost } from '../src/gitdir.js';
 import { dockerRuntime } from '../src/runtime.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /*
  * How a profile guards the git directory its machines see - decision
@@ -26,7 +27,7 @@ const repository = () => {
   loose = mkdtempSync(join(tmpdir(), 'ahpd-git-guard-'));
   const repo = join(loose, 'repo');
   mkdirSync(repo);
-  const run = (...args: string[]) => execFileSync('git', ['-C', repo, ...args], { stdio: 'pipe' });
+  const run = (...args: string[]) => gitSync(['-C', repo, ...args]);
   run('init', '-q', '-b', 'main');
   run('config', 'user.email', 'test@example.com');
   run('config', 'user.name', 'Test');
@@ -136,7 +137,7 @@ const DOCKER = answers();
 
 /** The branch a worktree has checked out, as the host's git answers it. */
 const headOf = (repo: string, branch: string): string =>
-  execFileSync('git', ['-C', repo, 'log', '--oneline', '-1', branch], { encoding: 'utf8' }).trim();
+  gitSync(['-C', repo, 'log', '--oneline', '-1', branch]).trim();
 
 it.skipIf(!DOCKER)('commits into the host\'s git directory from a machine its profile leaves open', async () => {
   const { repo, tree, gitDir, state } = repository();

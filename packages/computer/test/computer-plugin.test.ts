@@ -19,6 +19,7 @@ import type { NestedHost, NestedStart, NestedStarted } from '../../sdk/src/types
 import type { HostOptions, HostTool, NodeChange, NodeRegistry } from '../../sdk/src/types/host.js';
 import type { Peer } from '../../sdk/src/types/rpc.js';
 import type { Usage, UsageEntry, UsageTotal } from '../../sdk/src/types/usage.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /*
  * The package as a plugin: the loader, the scheme and the tools.
@@ -657,7 +658,7 @@ it('refuses a body naming a runtime this host does not serve, and names the ones
 const repositoryAt = (dir: string): { repo: string; gitDir: string } => {
   const repo = join(dir, 'repo');
   mkdirSync(repo);
-  const run = (...args: string[]) => spawnSync('git', ['-C', repo, ...args], { stdio: 'pipe' });
+  const run = (...args: string[]) => gitSync(['-C', repo, ...args]);
   run('init', '-q', '-b', 'main');
   run('config', 'user.email', 'test@example.com');
   run('config', 'user.name', 'Test');

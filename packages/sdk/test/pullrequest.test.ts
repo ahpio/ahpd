@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -7,6 +6,7 @@ import { uriOf } from '../src/resources/fileuri.js';
 import { gitChanges } from '../src/sessions/changes.js';
 import type { ChangesetOperationContext } from '../src/types/changes.js';
 import type { NewPullRequest, PullRequest } from '../src/types/github.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /*
  * The pull request and checkout operations, on a real repository.
@@ -23,16 +23,16 @@ afterEach(() => {
   made = [];
 });
 
-const git = (dir: string, ...args: string[]): string => execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' }).toString().trim();
+const git = (dir: string, ...args: string[]): string => gitSync(['-C', dir, ...args]).trim();
 
 /** A repository with a bare `origin` beside it, on `main`, with one commit. */
 const repository = (): { dir: string; origin: string } => {
   const root = mkdtempSync(join(tmpdir(), 'ahpd-pr-'));
   made.push(root);
   const origin = join(root, 'origin.git');
-  execFileSync('git', ['init', '-q', '--bare', '-b', 'main', origin]);
+  gitSync(['init', '-q', '--bare', '-b', 'main', origin]);
   const dir = join(root, 'work');
-  execFileSync('git', ['clone', '-q', origin, dir], { stdio: 'pipe' });
+  gitSync(['clone', '-q', origin, dir]);
   git(dir, 'config', 'user.email', 'test@example.com');
   git(dir, 'config', 'user.name', 'Test');
   git(dir, 'checkout', '-q', '-b', 'main');

@@ -13,7 +13,6 @@
  * branch, because whether a branch is pushed is what git says.
  */
 
-import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -29,6 +28,7 @@ import type { PullRequest, PullRequests } from '../src/types/github.js';
 import type { HostOptions } from '../src/types/host.js';
 import type { Peer } from '../src/types/rpc.js';
 import type { Worktrees } from '../src/types/worktrees.js';
+import { gitSync } from '../../../tools/git.ts';
 
 let made: string[] = [];
 afterEach(() => {
@@ -55,8 +55,8 @@ const repository = (): { root: string; project: string } => {
   const project = join(root, 'project');
   const remote = join(root, 'remote.git');
   mkdirSync(project);
-  execFileSync('git', ['init', '-q', '--bare', remote], { stdio: 'pipe' });
-  const run = (...args: string[]) => execFileSync('git', ['-C', project, ...args], { stdio: 'pipe' });
+  gitSync(['init', '-q', '--bare', remote]);
+  const run = (...args: string[]) => gitSync(['-C', project, ...args]);
   run('init', '-q', '-b', 'main');
   run('config', 'user.email', 'test@example.com');
   run('config', 'user.name', 'Test');
@@ -68,7 +68,7 @@ const repository = (): { root: string; project: string } => {
   return { root, project };
 };
 
-const git = (dir: string, ...args: string[]): string => execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' }).toString().trim();
+const git = (dir: string, ...args: string[]): string => gitSync(['-C', dir, ...args]).trim();
 
 const peer = (): Peer & { notes: { method: string; params: unknown }[] } => {
   const notes: { method: string; params: unknown }[] = [];

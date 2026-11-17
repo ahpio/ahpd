@@ -6,6 +6,7 @@ import { afterEach, expect, it } from 'vitest';
 import { posix } from '../../../tools/posix.ts';
 import { gitBranches } from '../src/repo/git.js';
 import { gitChanges } from '../src/sessions/changes.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /*
  * The git that `gitBranches` and `gitChanges` run in the background takes no
@@ -27,13 +28,13 @@ afterEach(() => {
 });
 
 const git = (dir: string, ...args: string[]): string =>
-  execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' }).toString().trim();
+  gitSync(['-C', dir, ...args]).trim();
 
 /** A repository with one tracked file whose stat no longer matches the index. */
 const repository = (): string => {
   const dir = mkdtempSync(join(tmpdir(), 'ahpd-branch-locks-'));
   made.push(dir);
-  execFileSync('git', ['init', '-q', '-b', 'main', dir]);
+  gitSync(['init', '-q', '-b', 'main', dir]);
   git(dir, 'config', 'user.email', 'test@example.com');
   git(dir, 'config', 'user.name', 'Test');
   writeFileSync(join(dir, 'tracked.txt'), 'one\n');

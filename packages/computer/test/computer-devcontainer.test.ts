@@ -23,6 +23,7 @@ import type { HostOptions, HostTool, ToolCall } from '../../sdk/src/types/host.j
 import type { MachineNeed } from '../../sdk/src/types/machine.js';
 import type { Peer } from '../../sdk/src/types/rpc.js';
 import type { Vault } from '../../sdk/src/types/vault.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /*
  * A dev container is a computer, made from a folder's `devcontainer.json`.
@@ -1958,7 +1959,7 @@ it('mounts a worktree folder\'s git directory through the override, and runs eac
   const dockerState = join(dir, 'docker.json');
   const repo = join(dir, 'repo');
   mkdirSync(repo);
-  const run = (...args: string[]) => spawnSync('git', ['-C', repo, ...args], { stdio: 'pipe' });
+  const run = (...args: string[]) => gitSync(['-C', repo, ...args]);
   run('init', '-q', '-b', 'main');
   run('-c', 'user.email=test@example.com', '-c', 'user.name=Test', 'commit', '-q', '--allow-empty', '-m', 'first');
   const tree = join(dir, 'tree');
