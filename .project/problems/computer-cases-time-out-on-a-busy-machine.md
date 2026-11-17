@@ -50,6 +50,8 @@ On 2026-11-16, in CI run 43952762220 for ahpio/ahpd#356, the `processes (1/2)` j
 
 On 2026-11-16, on Softov's machine with a load average near 17, a full run timed out 15 cases in `packages/computer` and `plugin-load.test.ts`. The 8 files run again alone timed out 4 cases, 2 of them not in the first set.
 
+On 2026-11-17, at `acc5b9b9c` with the wrapper change, both cases timed out at 5000 ms again in a full run, at a load average near 15 while the dev daemon restarted. The change touches only the sdk's command matching.
+
 ## Cause
 
 Each connect starts the fake `docker` and `devcontainer` CLIs as node processes.
