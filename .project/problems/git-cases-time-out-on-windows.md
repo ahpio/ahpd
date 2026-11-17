@@ -7,17 +7,19 @@ refs:
   - "[code://packages/sdk/test/changes-refresh.test.ts#L217](../../packages/sdk/test/changes-refresh.test.ts#L217) - \"re-reads a changeset when git is changed outside the host\""
   - "[code://packages/sdk/test/changes-refresh.test.ts#L1332](../../packages/sdk/test/changes-refresh.test.ts#L1332) - \"moves a worktree row at a tool call, from its branch, before the turn ends\""
   - "[code://packages/sdk/test/worktrees.test.ts#L839](../../packages/sdk/test/worktrees.test.ts#L839) - \"answers the branches a client types for, not the whole list\""
+  - "[code://packages/sdk/test/worktrees.test.ts#L1346](../../packages/sdk/test/worktrees.test.ts#L1346) - \"takes away and puts back a tree a move left the session, as its own\""
 ---
 
 ## Symptom
 
-Three cases that run `git` fail at random in `windows (3/4)`, and pass when the job runs again on the same commit. They pass on Linux.
+Four cases that run `git` fail at random in `windows (3/4)`, and pass when the job runs again on the same commit. They pass on Linux.
 
 | Case | Run | What it said |
 | --- | --- | --- |
 | changes-refresh, "re-reads a changeset when git is changed outside the host" | 42760023503 | `Test timed out in 20000ms`, after 23.8 s |
 | worktrees, "answers the branches a client types for" | 42760023503 | `Test timed out in 20000ms`, after 24.6 s |
 | changes-refresh, "moves a worktree row at a tool call" | 42984895620 | `git worktree list --porcelain`: `fatal: failed to read .git/worktrees/s/commondir: No error` |
+| worktrees, "an archived session's tree > takes away and puts back a tree a move left the session" | 44172119274, on #368, which changes only `tunnel-devtunnel` | `never logged "put ...project.worktrees\left back on agents/left"`, after 20.6 s |
 
 ## Cause
 
