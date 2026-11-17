@@ -19,6 +19,9 @@ The load average was near 10, and the run took 135 s.
 The same file alone passed, and the bot case took 2038 ms.
 The branch does not change the loader or `packages/bot`.
 
+On 2026-11-17, at `c75b479ad` of plugin/20261117-0701, the same case timed out at 5000 ms in a full run of the server suite.
+The load average was near 15. That branch changes only `tunnel-devtunnel`.
+
 ## Cause
 
 Unknown.
