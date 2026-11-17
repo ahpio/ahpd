@@ -1,6 +1,6 @@
 ---
 title: pi and cofold ask in every mode
-status: todo
+status: implemented
 depends: [task-01-the-start-carries-the-check.md]
 layer: agent-pi, agent-cofold
 refs:
@@ -39,3 +39,10 @@ In cofold, an approval remembered for the session does not settle that call.
 
 ## Resume
 
+Built on 2026-11-16, awaiting review.
+
+- In pi, a mode that refuses the call still refuses it. `plan` refuses a write that the rule names, and does not ask about it.
+- cofold's policy cannot ask past an approval it remembers, so the check is in `beforeTool`. It answers `approval`, or a refusal in `dontAsk`.
+- cofold reads its remembered approval at `approvals/<session>/<tool>`. The hook deletes that key for a tool the rule names.
+- ahpd never sends cofold `alwaysApprove`, so only a store another program shares holds such a key.
+- The cofold case seeds the key in a memory store. The case fails when the delete is removed.

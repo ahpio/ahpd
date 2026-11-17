@@ -73,7 +73,7 @@ const settle = async (times = 30): Promise<void> => {
 };
 
 /** A session holding `tools`, and what it said on the wire. */
-async function sessionWith(tools: BoundTool[], settings: Bag = {}): Promise<{
+async function sessionWith(tools: BoundTool[], settings: Bag = {}, alwaysAsks?: (toolName: string) => boolean): Promise<{
   canUseTool: NonNullable<typeof sdk.canUseTool>;
   sent: Bag[];
   session: ReturnType<typeof createSession>;
@@ -87,6 +87,7 @@ async function sessionWith(tools: BoundTool[], settings: Bag = {}): Promise<{
     emit: (_channel, action) => { sent.push(action as Bag); },
     tools,
     settings,
+    ...(alwaysAsks === undefined ? {} : { alwaysAsks }),
   });
   await settle();
   // A turn running, as the CLI asks about a call only inside one.
@@ -114,6 +115,23 @@ it('asks about a host tool that says nothing, as it always has', async () => {
   void canUseTool(CALLED, { text: 'hello' }, { toolUseID: 'toolu_ask' });
   await settle();
   expect(sent.filter((one) => one.type === 'session/inputNeededSet')).toHaveLength(1);
+});
+
+/*
+ * The operator's `eligibleForAutoApproval` setting a tool `false` is the
+ * operator's answer about it, so the call is the host's to ask about whatever
+ * the tool says; a tool the rule does not name keeps its flag.
+ */
+it('asks about a host tool that needs no confirmation when the operator\'s rule sets it false', async () => {
+  const named = await sessionWith([offered({ confirm: false })], {}, (toolName) => toolName === CALLED);
+  void named.canUseTool(CALLED, { text: 'hello' }, { toolUseID: 'toolu_named' });
+  await settle();
+  expect(named.sent.filter((one) => one.type === 'chat/toolCallReady').map((one) => one.toolCallId)).toEqual(['toolu_named']);
+
+  const other = await sessionWith([offered({ confirm: false })], {}, () => false);
+  expect(await other.canUseTool(CALLED, { text: 'hello' }, { toolUseID: 'toolu_other' }))
+    .toEqual({ behavior: 'allow', updatedInput: { text: 'hello' } });
+  expect(other.sent.filter((one) => one.type === 'chat/toolCallReady')).toEqual([]);
 });
 
 /*

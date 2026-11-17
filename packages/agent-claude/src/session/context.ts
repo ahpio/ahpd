@@ -173,6 +173,12 @@ export interface ClaudeSessionOptions extends SessionOptions {
    */
   managedSettings?: Start['managedSettings'];
   /**
+   * The host's reading of the operator's `eligibleForAutoApproval` for one
+   * call, carried from `Start`. Absent where the host hands the rule to the
+   * CLI instead.
+   */
+  alwaysAsks?: Start['alwaysAsks'];
+  /**
    * The host's seam for a chat of one tool call's own.
    *
    * A subagent is a conversation inside one call, and the host owns what a

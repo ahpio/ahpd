@@ -1,6 +1,6 @@
 ---
 title: The docs say what false means
-status: todo
+status: implemented
 depends: [task-02-claude-asks-about-a-named-host-tool.md, task-03-pi-and-cofold-ask-in-every-mode.md]
 layer: docs
 refs:
@@ -32,3 +32,6 @@ The configuration reference says that under `checked` a tool set `false` asks in
 
 ## Resume
 
+Built on 2026-11-16, awaiting review.
+
+- The note item is under *Upgrading* of 0.15.0.

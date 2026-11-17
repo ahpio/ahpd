@@ -768,6 +768,29 @@ it('hands a backend the operator\'s eligibility beside the managed rules on its 
 });
 
 /*
+ * Under `managedRules: checked` a backend's start carries the host's reading of
+ * `eligibleForAutoApproval`, so a backend that settles a call itself asks it
+ * first; under `handed` the runtimes read the rule, and the start has none.
+ */
+it('hands a backend the operator\'s per-call check under managedRules checked, and none under handed', async () => {
+  const notify: HostTool = { definition: { name: 'notify', inputSchema: { type: 'object', properties: {} } }, run: () => 'sent' };
+  const eligible = { 'host/notify': false, bash: false };
+  const starts: Start[] = [];
+  const checked = await serving(asking([], 'bash', undefined, {}, starts), { eligibleForAutoApproval: eligible, tools: [notify] });
+  await checked.turn('t1');
+  expect(starts[0]?.alwaysAsks?.('mcp__host__notify')).toBe(true);
+  expect(starts[0]?.alwaysAsks?.('bash')).toBe(true);
+  expect(starts[0]?.alwaysAsks?.('read')).toBe(false);
+  await checked.host.close();
+
+  const handedStarts: Start[] = [];
+  const handed = await serving(asking([], 'bash', undefined, {}, handedStarts), { managedRules: 'handed', eligibleForAutoApproval: eligible, tools: [notify] });
+  await handed.turn('t1');
+  expect(handedStarts[0]?.alwaysAsks).toBeUndefined();
+  await handed.host.close();
+});
+
+/*
  * Under `managedRules: handed` the host checks no managed rule and marks
  * nothing, hands the rules to its backends, and puts a question a backend
  * marked managed with Allow Once and Skip, as VS Code's host keeps the merged
