@@ -10,6 +10,7 @@ import { uriOf } from '../src/resources/resources.js';
 import { fileSessions, memorySessions } from '../src/sessions/sessions.js';
 import type { Request } from '../src/types/rpc.js';
 import type { HostOptions } from '../src/types/host.js';
+import type { Users } from '../src/types/users.js';
 import {
   claude, createHost, defaultChatOf, echo, firstMessage, flushed, machine, resetSdk, actions, emit, hello, open, peer,
   sdk, serving, sessionQueries, settle, showExternal, running, wrote,
@@ -2132,6 +2133,67 @@ describe('a session made outside this host', () => {
     expect((said('root/sessionAdded') as { summary: Row }[]).map((one) => one.summary.resource)).toContain('ahp-session:/older');
     const row = (await listed()).find((one) => one.resource === 'ahp-session:/older');
     expect(row?._meta?.['vscode.external']).toBeUndefined();
+  });
+
+  /*
+   * On a host with users, a session this host makes is kept with the owner of
+   * the connection that made it. One a person's turn adopts is this host's
+   * own from then on, so it is kept with that person as its owner too.
+   */
+  /** A host with users where ana is signed in, over `store`, with the external session `older` listed. */
+  const signedIn = async (store: ReturnType<typeof memorySessions>) => {
+    sdk.sessions.push({ sessionId: 'older', summary: 'Theirs', ...at(HOUR) });
+    sdk.transcript.push({ type: 'user', uuid: 'u1', message: { role: 'user', content: 'earlier' } });
+    wrote('older', WORK);
+    const users = {
+      resource: { resource: 'ahpd://users', resource_name: 'ahpd users', authorization_servers: ['ahpd://users'], required: false },
+      verify: async (token: string) => (token === 'ana' ? { id: 'ana', roles: ['admin'], can: () => true } : undefined),
+      list: async () => [],
+      grantsOfRoles: async () => [],
+      grantsOfPerson: async () => undefined,
+    } as unknown as Users;
+    const client = serving(WORK, [], { sessions: store, users }).accept(peer());
+    await client.handle(hello(['0.9.0'], { initialSubscriptions: ['ahp-root://'] }));
+    await client.handle({ method: 'authenticate', params: { channel: 'ahp-root://', resource: 'ahpd://users', token: 'ana' } });
+    /** Ana's turn in the external session, which adopts it, with `opened` run once the host has opened it. */
+    const adopt = async (opened: () => void = () => {}): Promise<void> => {
+      await client.handle({ method: 'subscribe', params: { channel: 'ahp-session:/older' } });
+      opened();
+      await client.handle({
+        method: 'dispatchAction',
+        params: {
+          channel: chatUriFor('ahp-session:/older'),
+          action: { type: 'chat/turnStarted', turnId: 't1', startedAt: new Date().toISOString(), message: { origin: { kind: 'user' }, text: 'and now?' } },
+        },
+      });
+      await settle(6);
+    };
+    return { client, adopt };
+  };
+
+  /*
+   * On a host with users, a session this host makes is kept with the owner of
+   * the connection that made it. One a person's turn adopts is this host's
+   * own from then on, so it is kept with that person as its owner too.
+   */
+  it('gives one a person\'s turn adopts the owner a session this host makes gets', async () => {
+    const store = memorySessions();
+    const { client, adopt } = await signedIn(store);
+    await client.handle({ method: 'createSession', params: { channel: 'ahp-session:/mine', provider: 'claude' } });
+    await adopt();
+
+    expect(store.external?.('older')).toBeUndefined();
+    expect(store.owner('mine')).toBe('user:ana');
+    expect(store.owner('older')).toBe('user:ana');
+  });
+
+  it('keeps the owner one already has when a person\'s turn adopts it', async () => {
+    const store = memorySessions();
+    const { adopt } = await signedIn(store);
+    await adopt(() => { store.setOwner('older', 'user:bo'); });
+
+    expect(store.external?.('older')).toBeUndefined();
+    expect(store.owner('older')).toBe('user:bo');
   });
 
   it('tells every client what a change of mode shows and what it hides', async () => {

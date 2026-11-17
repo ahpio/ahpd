@@ -1,6 +1,6 @@
 ---
 title: Adoption writes the owner
-status: todo
+status: implemented
 depends: []
 layer: "sdk"
 refs:
@@ -35,3 +35,8 @@ A person's turn that adopts an external session writes that person as its owner,
 - Run the sdk and computer suites one at a time, as HANDOFF *Tests* says.
 
 ## Resume
+
+Built on 2026-11-17.
+The two cases share `signedIn`, a host with users where ana is signed in and `older` is listed external.
+The kept-owner case writes `user:bo` once the host has opened the session.
+In this fake, a record that starts with a provider and the external mark is not opened at all.

@@ -2258,7 +2258,20 @@ export function createLifecycle(ctx: HostContext): Lifecycle {
         // A person's turn going out makes an external session this host's own,
         // as VS Code's host adopts one on its outgoing user turn.
         // https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/chatContributions/externalSessionAdoption/externalSessionAdoptionContribution.ts#L25-L30
-        if ((from?.origin?.kind ?? 'user') === 'user') ctx.adoptExternalSession(session.uri);
+        if ((from?.origin?.kind ?? 'user') === 'user') {
+          /*
+           * The person whose turn adopts it owns it from then on, as the person
+           * whose `createSession` made one does: written before the adoption is
+           * announced, so the announcement carries the owner, and never over an
+           * owner the session already has.
+           */
+          const id = idOf(session.uri);
+          if (ctx.isExternal(session.uri) && who !== undefined && kept.owner(id) === undefined) {
+            kept.setOwner(id, who);
+            if (sender?.principal !== undefined) principals.set(who, sender.principal);
+          }
+          ctx.adoptExternalSession(session.uri);
+        }
         void sendTurn(session, turnId, text, model, from, attachments, stopped);
       }
       return undefined;
