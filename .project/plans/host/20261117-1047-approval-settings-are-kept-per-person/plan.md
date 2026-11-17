@@ -83,7 +83,7 @@ question in a session -> spawn: the owner's approval settings where they have on
 
 ## Risks and tradeoffs
 
-- On a host with users, no window sets the host's approval settings - the docs say so, and the stored root value and the defaults stay the host's.
+- On a host with users, no window sets the host's approval settings - the docs say so, and the stored root value stays the host's.
 - A value an admin pushed before this change stays the host's - the 0.15 notes say to read it once.
 - VS Code reads the root's value back, not the person's - a person's window shows its own settings anyway, since it pushed them.
 
