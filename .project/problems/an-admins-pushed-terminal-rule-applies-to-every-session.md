@@ -46,5 +46,5 @@ None. Give `config:change` only to people whose rules every session may follow.
 
 No fix is chosen. Check first whether this is wanted, because VS Code's host has one person.
 
-- Keep the rules per person, and read the rules of the session's owner. [a-claude-session-from-vs-code-has-no-owner.md](a-claude-session-from-vs-code-has-no-owner.md) must be fixed first.
+- Keep the rules per person, and read the rules of the session's owner. [host/20261117-0842-an-adopted-session-keeps-its-owner](../plans/host/20261117-0842-an-adopted-session-keeps-its-owner/plan.md) comes first.
 - Keep one host value, and refuse a push from VS Code's connect when the value differs, so only an explicit change sets it.
