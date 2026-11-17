@@ -52,6 +52,8 @@ On 2026-11-16, on Softov's machine with a load average near 17, a full run timed
 
 On 2026-11-17, at `acc5b9b9c` with the wrapper change, both cases timed out at 5000 ms again in a full run.
 The load average was near 15, while the dev daemon restarted. The change touches only the sdk's command matching.
+The two files run alone timed out 3 cases at a load average near 5, the adopted container case among them.
+The same 3 timed out on main at `11846b594`, without the change, and CI passed all of them on #363.
 
 ## Cause
 
