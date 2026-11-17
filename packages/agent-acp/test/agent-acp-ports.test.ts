@@ -160,6 +160,8 @@ async function talking(options: {
     // Somebody for this window to be, without whom its session has no owner and
     // so no folder it can be told is trusted.
     users: anyone(),
+    // Where the window's command rules are kept, as its person's own.
+    personPermissionsDir: mkdtempSync(join(tmpdir(), 'ahpd-acp-ports-people-')),
     ...(options.files === false ? {} : { resources: fileResources() }),
     ...(options.shells === false ? {} : { terminals: shellTerminals(options.pty === undefined ? {} : { pty: options.pty }) }),
     ...(options.changes === undefined ? {} : { changes: options.changes }),

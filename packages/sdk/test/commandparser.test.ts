@@ -72,7 +72,12 @@ const settle = async (): Promise<void> => {
  */
 function serving(extra: Partial<HostOptions> = {}) {
   const backend = questioning(DIR);
-  const host = createHost({ path: DIR, agents: [backend.agent], users: directory(), terminalAutoApproveDefaults: 'vscode', ...extra });
+  const host = createHost({
+    path: DIR, agents: [backend.agent], users: directory(), terminalAutoApproveDefaults: 'vscode',
+    // Where the window's rules are kept, as its person's own.
+    personPermissionsDir: mkdtempSync(join(tmpdir(), 'ahpd-commandparser-people-')),
+    ...extra,
+  });
   const p = peer();
   const client: Client = host.accept(p);
   const uri = 'ahp-session:/ana-one';

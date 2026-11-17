@@ -440,6 +440,29 @@ it('refuses a pushed regular expression from a member, and the root connection t
   expect(await values(door)).toMatchObject(pushed);
 });
 
+/*
+ * A host with users and no person folder has nowhere to keep a person's
+ * approval settings, and does not set them for everybody: a push of only them
+ * is refused, and the rest of a push beside them still holds.
+ */
+it('refuses a person\'s approval settings on a host with no person folder, and applies the rest of the push', async () => {
+  const made = host({ users: directory({ a: ['config:change', 'trust:push', 'session:read'] }) });
+  const seen = watching();
+  const admin = made.accept(seen);
+  await hello(admin, 'a'); await signIn(admin, 'a');
+
+  await configChanged(admin, { terminalAutoApproveRules: { 'make test': true } });
+  await new Promise((done) => { setTimeout(done, 20); });
+  expect(refusalsOf(seen)).toEqual([expect.stringContaining('no settings per person')]);
+
+  await configChanged(admin, { terminalAutoApproveRules: { 'make test': true }, defaultShell: '/bin/sh' });
+  await new Promise((done) => { setTimeout(done, 20); });
+  expect(refusalsOf(seen)).toHaveLength(1);
+  const held = await values(admin);
+  expect(held.defaultShell).toBe('/bin/sh');
+  expect(held).not.toHaveProperty('terminalAutoApproveRules');
+});
+
 it('refuses defaultShell alone from a role with no config grant', async () => {
   const made = host({ users: directory({ g: ['session:read'] }) });
   const seen = watching();

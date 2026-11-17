@@ -360,15 +360,20 @@ export function createActions(ctx: HostContext, conn: ConnectionContext): Action
        * push to the root as before. A root connection, a `replace` and a host
        * with no users set the host's value, as VS Code's host with its one
        * person does. A host with users and no person store has nowhere to keep
-       * them, and refuses them rather than set them for everybody.
+       * them, and refuses them rather than set them for everybody: a push of
+       * nothing else is refused, and the rest of a push beside them is applied
+       * without them, so the window's other keys, its trust among them, still
+       * hold.
        */
       const pusher = options.users !== undefined && connection.root !== true && action.replace !== true ? connection.principal?.id : undefined;
       const own = pusher === undefined ? {} : Object.fromEntries(Object.entries(pushed).filter(([key]) => APPROVAL_KEYS.includes(key)));
       const config = Object.keys(own).length === 0 ? pushed : Object.fromEntries(Object.entries(pushed).filter(([key]) => !APPROVAL_KEYS.includes(key)));
       if (pusher !== undefined && Object.keys(own).length > 0) {
         const folder = options.personPermissionsDir;
-        if (folder === undefined) return Promise.reject(new Error(`This host keeps no settings per person, so ${Object.keys(own).join(', ')} cannot be pushed`));
-        filePersonRules(folder).keep(pusher, own);
+        const refused = `This host keeps no settings per person, so ${Object.keys(own).join(', ')} cannot be pushed`;
+        if (folder === undefined && Object.keys(config).length === 0) return Promise.reject(new Error(refused));
+        if (folder === undefined) log.warn(`root config: ${refused}; the rest of the push is applied`);
+        else filePersonRules(folder).keep(pusher, own);
         if (Object.keys(config).length === 0) return;
       }
       /*
