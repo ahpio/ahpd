@@ -65,7 +65,7 @@ chat/turnStarted from a person -> lifecycle: who = ownerFor(sender)
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - adoption writes the owner](task-01-adoption-writes-the-owner.md) | todo | - |
+| [01 - adoption writes the owner](task-01-adoption-writes-the-owner.md) | implemented | - |
 
 ## Risks and tradeoffs
 
@@ -74,8 +74,8 @@ chat/turnStarted from a person -> lifecycle: who = ownerFor(sender)
 
 ## Resume state
 
-- **Done so far:** nothing. The test of task 01 is written, uncommitted, in `/github/ahpd.worktrees/external-owner`.
-- **Next action:** [task-01-adoption-writes-the-owner.md](task-01-adoption-writes-the-owner.md).
+- **Done so far:** task 01 is `implemented` on 2026-11-17, on the branch `host/20261117-0842-an-adopted-session-keeps-its-owner`.
+- **Next action:** Softov's review, then the check of *Final verification checklist* on the test daemon.
 - **Open questions:** none.
 - **Watch out for:** an sdk host change runs the computer suite too, as HANDOFF *Tests* says.
 
