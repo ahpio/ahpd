@@ -22,7 +22,7 @@ None of them blocks the tag: each is a fault in one path, with a workaround or a
 | --- | --- | --- | --- |
 | 4 | [a-running-claude-turn-is-lost-while-the-cli-keeps-working.md](../problems/a-running-claude-turn-is-lost-while-the-cli-keeps-working.md) | major | A prompt vanishes from history while the CLI works on it. Cause unknown, one sighting |
 | 5 | `a-claude-session-from-vs-code-has-no-owner.md`, planned in [host/20261117-0842](../plans/host/20261117-0842-an-adopted-session-keeps-its-owner/plan.md) | major | The owner's command check never applies to VS Code sessions, so approved commands ask |
-| 6 | [an-admins-pushed-terminal-rule-applies-to-every-session.md](../problems/an-admins-pushed-terminal-rule-applies-to-every-session.md) | major | One admin's `rm` rule runs `rm` unasked in another person's session. A safety gap on a shared host |
+| 6 | `an-admins-pushed-terminal-rule-applies-to-every-session.md`, planned in [host/20261117-1047](../plans/host/20261117-1047-approval-settings-are-kept-per-person/plan.md) | major | One admin's `rm` rule runs `rm` unasked in another person's session. A safety gap on a shared host |
 | 7 | [a-system-tunnel-that-fails-at-start-is-not-retried.md](../problems/a-system-tunnel-that-fails-at-start-is-not-retried.md) | major | Remote access stays down after a start-time 401 until a disable and enable |
 | 8 | [a-sessions-changes-are-kept-under-two-keys.md](../problems/a-sessions-changes-are-kept-under-two-keys.md) | major | The Changes view misses files a shell wrote, and a folder with no git shows no counts |
 | 9 | [a-worktree-made-after-start-offers-no-changeset.md](../problems/a-worktree-made-after-start-offers-no-changeset.md) | major | A new worktree shows counts on its row and nothing in Changes |
