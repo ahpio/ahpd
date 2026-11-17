@@ -53,9 +53,7 @@ Current progress and pending items only, as of 2026-11-16. *Outside this reposit
 ## The dev daemon
 
 - Softov's dev daemon runs from `/github/ahpd` with `~/.config/ahpd/config-dev.json`, on ports 5180 and 37537. It runs from `src`, so a restart is all a merge needs. It needs `DEEPSEEK_API_KEY` in its environment. Never restart it or use its ports yourself.
-- On 2026-11-16 at 20:56 local, Softov restarted it, but `/github/ahpd`'s main was still at `91356e61f`. It was fast-forwarded to `bdedcf21a` after that, with his yes, so one more restart wires in the list below. Check `git -C /github/ahpd log -1` before you ask for a restart.
-- Softov restarted it on 2026-11-13 after #317. Since then, #321, #322, #323, #326, #329, #331, #333, #337, #338, #339, #341, #343, #345, #348, #355, #357, #360, #361 and #362 change the daemon. The others, #324, #325, #327, #328, #340, #342 and #347, change only tests.
-- On 2026-11-15 the running daemon was started at 10:27 from `/github/ahpd.worktrees/resource-comments`, not from `/github/ahpd`.
+- Softov restarted it on 2026-11-16 at 23:15 local, from `/github/ahpd` on `bdedcf21a`, so it runs every merge up to #362. Check `git -C /github/ahpd log -1` before you ask for a restart.
 - #345 renames the model proxy to the model gateway. Softov's `config-dev.json` and `config.json` say `modelGateway`, and the `developer` role says `gateway:*`, since 2026-11-15. Each file has a copy beside it ending in `.bak-gateway-20261115-200146`. The daemon on the old code reads no model table from them if it reloads, so it is restarted on main.
 - #329 lets a bot talk run with no grants on the bot plugin's entry.
 - #331 updates a Claude session's context figure during a turn and after a compaction.
