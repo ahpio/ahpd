@@ -135,9 +135,13 @@ jobs:
         if: matrix.shard == 1
         shell: bash
 
+      # A git call over 2 s is written to stderr, so a case that stalls on this
+      # runner names the call in its log.
       - name: Tests
         run: timeout 300 pnpm test:unit --shard=${{ matrix.shard }}/4
         shell: bash
+        env:
+          AHPD_GIT_SLOW_MS: '2000'
 
       # The computer plugin's cases that need no Docker, which `processes`
       # runs on Linux only: its Windows paths run nowhere else. The cases that

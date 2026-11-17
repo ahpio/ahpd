@@ -1,6 +1,6 @@
 ---
 title: The git watch reads once when armed
-status: todo
+status: dropped
 depends: []
 layer: "sdk"
 refs:
@@ -29,3 +29,8 @@ A change made between a changeset's first read and its watch being armed is read
 - Run the sdk suite as HANDOFF *Tests* says.
 
 ## Resume
+
+Dropped on 2026-11-17, before anything merged.
+The host already reads a directory again once its watch says it is armed, in `facts.ts:694-701`, and two cases test it.
+The race this task named does not exist, so the answer that chose it rested on a wrong reading.
+Softov chose to treat the case as the branches case.

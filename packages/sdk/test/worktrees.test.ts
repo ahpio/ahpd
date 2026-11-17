@@ -1259,13 +1259,16 @@ describe('an archived session\'s tree', () => {
     });
     const client = host.accept(peer());
     await client.handle({ method: 'initialize', params: { clientId: 'probe', protocolVersions: ['0.9.0'] } });
-    /** The first log line that holds `text`, once there is one. */
+    /** The first log line that holds `text`, once there is one, waiting by the clock as the suite waits. */
     const logged = async (text: string): Promise<string> => {
-      for (let tries = 0; tries < 400; tries++) {
+      const until = Date.now() + WAIT_MS;
+      while (Date.now() < until) {
         const line = lines.find((one) => one.includes(text));
         if (line !== undefined) return line;
-        await new Promise((r) => { setTimeout(r, 10); });
+        await new Promise((r) => { setTimeout(r, 25); });
       }
+      const line = lines.find((one) => one.includes(text));
+      if (line !== undefined) return line;
       throw new Error(`never logged "${text}" in:\n${lines.join('\n')}`);
     };
     const open = async (name: string, config: Record<string, unknown> = {}) => {
@@ -1343,6 +1346,8 @@ describe('an archived session\'s tree', () => {
     expect(store.worktree?.('linked')).toMatchObject({ path: one.where, branch });
   });
 
+  // Its git work, two trees taken away and put back, outgrew the 20 s a case
+  // has on a slow Windows runner, where it takes 2.6 s to 9.6 s when it passes.
   it('takes away and puts back a tree a move left the session, as its own', async () => {
     const root = repository();
     const { store, logged, open, archive } = await archiving(root);
@@ -1361,7 +1366,7 @@ describe('an archived session\'s tree', () => {
     await archive(one.channel, false);
     await logged(`put ${left} back on agents/left`);
     expect(branchOf(left)).toBe('agents/left');
-  });
+  }, process.platform === 'win32' ? 60_000 : undefined);
 
   it('leaves the tree in place for an archive and an unarchive sent together', async () => {
     const root = repository();

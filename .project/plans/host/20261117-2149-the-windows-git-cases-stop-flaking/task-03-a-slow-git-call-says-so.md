@@ -1,6 +1,6 @@
 ---
 title: A slow git call says so
-status: todo
+status: implemented
 depends: []
 layer: "sdk, CI"
 refs:
@@ -37,3 +37,9 @@ The Windows CI jobs print it, so the next failure names the call.
 - Run the sdk suite as HANDOFF *Tests* says.
 
 ## Resume
+
+Built on 2026-11-17.
+`runGit` times each call from its start to its close, and says a slow one to `onSlowGit` and to stderr.
+`createHost` points the listener at `log.debug`; the last host made in a process is the one that hears.
+The tests stand in for the clock, so `git --version` reads as slow or fast as a case needs.
+`DEVELOPER.md` says what `AHPD_GIT_SLOW_MS` does, beyond the task's files.

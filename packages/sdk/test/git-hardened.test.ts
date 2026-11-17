@@ -1,11 +1,11 @@
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, expect, it } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { posix } from '../../../tools/posix.ts';
 import { gitChanges } from '../src/sessions/changes.js';
 import { gitBranches } from '../src/repo/git.js';
-import { gitArgv } from '../src/repo/hardened.js';
+import { SLOW_GIT_MS, gitArgv, onSlowGit, runGit } from '../src/repo/hardened.js';
 import { gitWorktrees } from '../src/repo/worktrees.js';
 
 /*
@@ -76,4 +76,76 @@ it.skipIf(!posix)('runs the branch facts\' git hardened', async () => {
   const said = calls();
   expect(said.length).toBeGreaterThan(0);
   expect(said.every((one) => one.startsWith(`${HARDENED} -C ${root} `))).toBe(true);
+});
+
+/*
+ * A git call slower than `SLOW_GIT_MS` says so, with its arguments and time, so
+ * a case that stalls on a slow runner names the call. The clock is stood in for,
+ * so a fast `git --version` reads as slow or fast as the case needs.
+ */
+const versionOf = (): Promise<void> => new Promise((resolve) => {
+  runGit(root, ['--version'], { windowsHide: true }, () => { resolve(); });
+});
+
+/** Let the call's close, and the timing behind it, come to. */
+const closedNow = (): Promise<void> => new Promise((resolve) => { setTimeout(resolve, 50); });
+
+it('says a git call slower than the limit once, with its arguments and its time', async () => {
+  const heard: string[] = [];
+  onSlowGit((line) => { heard.push(line); });
+  const real = Date.now;
+  let first = true;
+  const now = vi.spyOn(Date, 'now').mockImplementation(() => {
+    if (first) { first = false; return 1_000; }
+    return 1_000 + SLOW_GIT_MS + 500;
+  });
+  try {
+    await versionOf();
+    await closedNow();
+  }
+  finally {
+    now.mockRestore();
+    onSlowGit(undefined);
+  }
+  expect(Date.now).toBe(real);
+  expect(heard).toEqual([`slow git: ${String(SLOW_GIT_MS + 500)} ms for git --version in ${root}`]);
+});
+
+it('says nothing of a git call within the limit', async () => {
+  const heard: string[] = [];
+  onSlowGit((line) => { heard.push(line); });
+  try {
+    await versionOf();
+    await closedNow();
+  }
+  finally {
+    onSlowGit(undefined);
+  }
+  expect(heard).toEqual([]);
+});
+
+it('writes a slow git call to stderr where AHPD_GIT_SLOW_MS is set', async () => {
+  const before = process.env['AHPD_GIT_SLOW_MS'];
+  process.env['AHPD_GIT_SLOW_MS'] = '1';
+  const written: string[] = [];
+  const write = vi.spyOn(process.stderr, 'write').mockImplementation((chunk: string | Uint8Array) => {
+    written.push(String(chunk));
+    return true;
+  });
+  let first = true;
+  const now = vi.spyOn(Date, 'now').mockImplementation(() => {
+    if (first) { first = false; return 1_000; }
+    return 1_010;
+  });
+  try {
+    await versionOf();
+    await closedNow();
+  }
+  finally {
+    now.mockRestore();
+    write.mockRestore();
+    if (before === undefined) delete process.env['AHPD_GIT_SLOW_MS'];
+    else process.env['AHPD_GIT_SLOW_MS'] = before;
+  }
+  expect(written.filter((line) => line.startsWith('slow git: '))).toEqual([`slow git: 10 ms for git --version in ${root}\n`]);
 });
