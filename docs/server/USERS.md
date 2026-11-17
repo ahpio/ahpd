@@ -111,6 +111,14 @@ The terminal table's deny list comes before every allow rule, so a command the t
 
 A host with no users file offers VS Code's options: the session's level and the host's, under VS Code's labels, and Allow All.
 
+## Whose approval settings apply
+
+VS Code pushes three settings from the window at every connect: `terminalAutoApproveRules`, `terminalAutoApproveEnabled` and `editAutoApprovePatterns`. They decide which commands run and which files are written without a question. On a host with users each person's push of them is their own, kept in `permissions/<person>.json` beside their "for Me" rules, and the root config keeps the host's value.
+
+A question in a session reads the session owner's value of each setting, and the host's where the owner keeps none. A session with no owner, or one the host's own connection made, reads the host's. So an admin's window changes the admin's own sessions and nobody else's, and a member's window applies to the member's sessions.
+
+A push of only these settings needs a sign-in. A terminal rule written `/.../` that VS Code's default table does not carry still needs `config:change`, because every expression runs in the daemon for every person. A push of `null` for a setting takes the person's value back, so the host's applies again. A push from the host's own connection, and any push on a host with no users file, sets the host's value as VS Code's host does. On a host with users no window sets the host's value of these three settings.
+
 ## Sign in with GitHub or OpenID Connect
 
 ```bash

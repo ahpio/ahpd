@@ -532,6 +532,41 @@ it('refuses a command a rule the session\'s owner keeps denies', async () => {
   await host.close();
 });
 
+/*
+ * On a host with users, the approval settings a window pushes are its person's
+ * own: an admin's push changes the admin's sessions and nobody else's, and a
+ * member's push applies to the member's.
+ */
+it('answers a command by the rules the session\'s owner pushed, and by no other person\'s', async () => {
+  const kept = join(dir, 'permissions');
+  /** A push of the approval settings from one window. */
+  const pushing = async (who: { client: { handle: (request: { method: string; params: Bag }) => Promise<unknown> } }, config: Bag): Promise<void> => {
+    await who.client.handle({ method: 'dispatchAction', params: { channel: ROOT, action: { type: 'root/configChanged', config } } });
+    await settle();
+  };
+  const others = await whoseTurn({ personPermissionsDir: kept }, { command: 'make build' });
+  await pushing(others.bo, { terminalAutoApproveRules: { 'make build': true } });
+  expect((await others.ask(others.ana, 't1'))?.confirmed).toBeUndefined();
+  await pushing(others.ana, { terminalAutoApproveRules: { 'make build': true } });
+  expect((await others.ask(others.ana, 't2'))?.confirmed).toBe('not-needed');
+  await others.host.close();
+
+  const member = await whoseTurn({ personPermissionsDir: kept }, { command: 'make build', owner: 'cy' });
+  await pushing(member.cy, { terminalAutoApproveRules: { 'make build': true } });
+  expect((await member.ask(member.cy, 't1'))?.confirmed).toBe('not-needed');
+  await member.host.close();
+});
+
+it('asks every command in a session whose owner turned the table off, though the host\'s is on', async () => {
+  const kept = join(dir, 'permissions');
+  const { host, ana, ask } = await whoseTurn({ personPermissionsDir: kept });
+  expect((await ask(ana, 't1'))?.confirmed).toBe('not-needed');
+  await ana.client.handle({ method: 'dispatchAction', params: { channel: ROOT, action: { type: 'root/configChanged', config: { terminalAutoApproveEnabled: false } } } });
+  await settle();
+  expect((await ask(ana, 't2'))?.confirmed).toBeUndefined();
+  await host.close();
+});
+
 /** The options a question about `make build` offers, by level. */
 const MAKE_SESSION = [
   { id: 'allow-session-rules:["Shell(make *)"]', label: 'Allow `make …` in this Session', kind: 'approve' },

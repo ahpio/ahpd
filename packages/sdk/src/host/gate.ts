@@ -1,3 +1,5 @@
+import { DEFAULT_TERMINAL_AUTO_APPROVE_RULES } from '../access/commandautoapprover.js';
+import { APPROVAL_KEYS } from '../access/personrules.js';
 import { computerSource } from '../machines/computers.js';
 import type { Connection } from '../types/host.js';
 import { idOf } from '../sessions/catalog.js';
@@ -295,7 +297,10 @@ export const channelRead = (channel: string, kind: ChannelKind, served?: Grant):
  * `ahp-root://` is the one channel read with the action as well. Every key a
  * `root/configChanged` names is one value for the whole host, which every
  * session and every client reads, so a push changes the host for everybody and
- * needs `config:change`, and so does a `replace`. A push of `workspaceTrust`
+ * needs `config:change`, and so does a `replace`. A push of only the approval
+ * keys, `APPROVAL_KEYS`, needs a sign-in, since on a host with users each
+ * person's are their own, unless it brings a regular expression VS Code's
+ * default table does not have. A push of `workspaceTrust`
  * alone needs `trust:push`, which the `trust:write` group covers: it is the
  * answer about the folders sessions load their projects from. A push of
  * `permissions` alone needs `config:permissions`, the host's permission rules
@@ -321,6 +326,16 @@ export const pushedPermissionsNeed = (channel: string, action?: Record<string, u
   return typeof config === 'object' && config !== null && Object.hasOwn(config, 'permissions') ? 'config:permissions' : undefined;
 };
 
+/**
+ * Whether pushed terminal rules hold a `/.../` key VS Code's default table does
+ * not. A person's rules are their own, but every expression runs in the
+ * daemon's one thread, so a slow one stalls it for every person, and only a
+ * person who may change the host may bring a new one.
+ */
+const newExpressionIn = (rules: unknown): boolean =>
+  typeof rules === 'object' && rules !== null
+  && Object.keys(rules).some((key) => key.length > 1 && key.startsWith('/') && /\/[a-z]*$/u.test(key) && !Object.hasOwn(DEFAULT_TERMINAL_AUTO_APPROVE_RULES, key));
+
 export const dispatchNeeds = (channel: string, kind: ChannelKind, action?: Record<string, unknown>): Grant | undefined => {
   if (isRootChannel(channel)) {
     if (action?.type !== 'root/configChanged' || action.replace === true) return 'config:change';
@@ -330,6 +345,7 @@ export const dispatchNeeds = (channel: string, kind: ChannelKind, action?: Recor
     const keys = Object.keys(config);
     if (keys.length === 0) return undefined;
     if (keys.every((key) => key === 'workspaceTrust')) return 'trust:push';
+    if (keys.every((key) => APPROVAL_KEYS.includes(key))) return newExpressionIn(config.terminalAutoApproveRules) ? 'config:change' : undefined;
     return keys.every((key) => key === 'permissions') ? 'config:permissions' : 'config:change';
   }
   // A shared resource's actions say what they need in `ACTION_NEEDS`.

@@ -108,12 +108,17 @@ it('classifies a dispatch by its action, with the channel beside it', async () =
   expect(await needs(ROOT, { type: 'root/configChanged', config: { workspaceTrust: { enabled: true, trustedUris: [] } } })).toBe('trust:push');
   // The host's permission rules alone ask for their own grant, which the write group covers.
   expect(await needs(ROOT, { type: 'root/configChanged', config: { permissions: { allow: ['Shell(rm *)'], deny: [] } } })).toBe('config:permissions');
-  // The terminal rules, plain or an expression, and VS Code's own table.
+  // The terminal rules are each person's own, so a plain key and VS Code's
+  // own table need a sign-in, and a new expression needs config:change.
   const rules = (terminalAutoApproveRules: Record<string, unknown>) =>
     needs(ROOT, { type: 'root/configChanged', config: { terminalAutoApproveRules } });
-  expect(await rules({ 'make test': true })).toBe('config:change');
+  expect(await rules({ 'make test': true })).toBeUndefined();
   expect(await rules({ '/(a+)+$/': true })).toBe('config:change');
-  expect(await rules({ ...DEFAULT_TERMINAL_AUTO_APPROVE_RULES, 'my-tool': true })).toBe('config:change');
+  expect(await rules({ ...DEFAULT_TERMINAL_AUTO_APPROVE_RULES, 'my-tool': true })).toBeUndefined();
+  // The other two approval keys are a person's own too.
+  expect(await needs(ROOT, { type: 'root/configChanged', config: { terminalAutoApproveEnabled: false, editAutoApprovePatterns: { '**/*': true } } })).toBeUndefined();
+  // Beside a key of the host's, the push needs what that key needs.
+  expect(await needs(ROOT, { type: 'root/configChanged', config: { terminalAutoApproveRules: { 'make test': true }, defaultShell: '/bin/sh' } })).toBe('config:change');
   // And a push that names no key changes nothing.
   expect(await needs(ROOT, { type: 'root/configChanged', config: {} })).toBeUndefined();
   // A file, a watch and any other `ahp-` channel are the host's own names, and
@@ -408,11 +413,11 @@ it('keeps the trust the host had when a push is refused', async () => {
 });
 
 /*
- * Pushing a terminal rule needs `config:change`.
+ * Pushing a new expression as a terminal rule needs `config:change`.
  *
- * `terminalAutoApproveRules` is one value for the whole host, and every rule in
- * it runs against every command of every session there - a `/.../` key that
- * does not finish stalls the daemon for every person.
+ * A person's rules are their own, but every rule runs in the daemon's one
+ * thread - a `/.../` key that does not finish stalls the daemon for every
+ * person.
  */
 it('refuses a pushed regular expression from a member, and the root connection takes it', async () => {
   const made = host({ users: directory({ m: ['file:read', 'session:read'] }) });
