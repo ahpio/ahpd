@@ -27,8 +27,8 @@ Current progress and pending items only, as of 2026-11-16. *Outside this reposit
     - #360 (`9018eba72`): [host/20261116-2126-approvals-follow-the-sessions-owner](../plans/host/20261116-2126-approvals-follow-the-sessions-owner/plan.md), with `unattendedAutoApprove` on by default.
     - #361 (`64639616d`): [host/20261116-2128-backends-ask-what-the-operator-asks](../plans/host/20261116-2128-backends-ask-what-the-operator-asks/plan.md).
     - #362 (`3d753db39`): [host/20261116-2134-always-allow-has-a-level-per-person](../plans/host/20261116-2134-always-allow-has-a-level-per-person/plan.md). A command the table denies is offered no grant (Softov, 2026-11-16). Its first CI run failed in `agent-acp-rule.test.ts`, and `75ccedcaf` fixed it.
-  - Problem 4 waits for `a-claude-session-from-vs-code-has-no-owner.md`, whose cause is not found.
-  - Its first step is [pending/claude-session-owner-checks.md](../pending/claude-session-owner-checks.md): a wire log while Softov opens a Claude session from VS Code. A plan of terminal rules per person comes after, and may share the person store of host/20261116-2134.
+  - Problem 4 waits for `a-claude-session-from-vs-code-has-no-owner.md`. Softov ran its check on 2026-11-17: a new Claude session from VS Code gets its owner. The likely path left is an adopted external session, which the problem file names. A plan of terminal rules per person comes after, and may share the person store of host/20261116-2134.
+  - A plan for [a-grant-on-a-wrapper-command-approves-any-command.md](../problems/a-grant-on-a-wrapper-command-approves-any-command.md) is asked for on 2026-11-17.
   - [an-admins-pushed-terminal-rule-applies-to-every-session.md](../problems/an-admins-pushed-terminal-rule-applies-to-every-session.md)
 - The test daemon's `~/ahpd-check` holds users alice, bob, carol and dave, a role `senders`, and `eligibleForAutoApproval` in `config.json`. It is stopped.
 - Problems found on 2026-11-14, none with a fix chosen:

@@ -9,6 +9,8 @@ refs:
   - "[code://packages/sdk/src/host/lifecycle.ts#L1622](../../packages/sdk/src/host/lifecycle.ts#L1622) - `openSession` writes the owner"
   - "[code://packages/sdk/src/host/owners.ts#L206](../../packages/sdk/src/host/owners.ts#L206) - the scope, which `createSession` also always writes"
   - "[code://packages/sdk/src/host/spawn.ts#L560](../../packages/sdk/src/host/spawn.ts#L560) - `keepProvider`, which writes a record for any session that starts"
+  - "[code://packages/sdk/src/host/lifecycle.ts#L2261](../../packages/sdk/src/host/lifecycle.ts#L2261) - a person's turn adopts an external session, and writes no owner"
+  - "[code://packages/sdk/src/host/catalogue.ts#L1838-L1849](../../packages/sdk/src/host/catalogue.ts#L1838-L1849) - `adoptExternalSession`"
 ---
 
 ## Symptom
@@ -22,9 +24,23 @@ Five Claude sessions from VS Code on 2026-10-20 have no `owner`, no `scope` and 
 Each has turns, a provider and senders `root:soft-sandbox`.
 The pi session `5e8fcdfc` from the same VS Code on the same day has all three fields.
 
+On 2026-11-17, Softov ran the check of `pending/claude-session-owner-checks.md` (git://9c3477986) on the test daemon at `2228ec5af`.
+VS Code sent `createSession` for `87531150`, and the record has `owner: "user:alice"`.
+Every `session/metaChanged` of it says `ahpd.owner: "user:alice"`.
+So a new Claude session from VS Code gets its owner.
+
+The same log lists 22 Claude sessions with `vscode.external: true`, because the test root sets `showExternalSessions: "last24Hours"`.
+They are the Claude Code sessions of the host's account, read from its transcripts.
+
 ## Cause
 
 Partly known.
+
+A person's turn on an external session adopts it, as VS Code's host does.
+`adoptExternalSession` makes it the host's own session, and no code on that path writes an owner.
+The five ids of 2026-10-20 each have a folder in `~/.claude/session-env/` dated 2026-10-20.
+Claude Code makes that folder for any session it runs, so it does not prove they were external.
+Their records and transcripts are gone, so this path is the likely one, not a proven one.
 With a `users` file, `getAutoApproval` approves only when the sender owns the session.
 A session with no owner never matches, so every command asks.
 
@@ -55,5 +71,5 @@ None. Approve each command by hand.
 
 No fix is chosen, because the cause is not found.
 
-1. Log the method and the session URI of each request in development, then run one Claude session from VS Code. The log shows the path.
+1. Send a turn on an external session in a test, and read the record's owner. A record with no owner proves the path.
 2. Write the owner on every path that makes a record, so a session with no owner is only one that nobody owns.
