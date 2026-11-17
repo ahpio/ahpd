@@ -103,7 +103,7 @@ The subjects the host decides are these nineteen:
 | `terminal` | `output` | `create`, `dispose`, `input`, `resize`, `claim`, `rename`, `clear` | Shells on this machine |
 | `automation` | `list` | `create`, `update`, `remove`, `run`, `cancel` | Agent runs that start on a schedule or a trigger |
 | `file` | `get`, `list`, `resolve`, `watch`, `comment` | `put`, `delete`, `mkdir`, `move`, `copy`, `request` | Files and other resources on this host. Every other scheme has the same operations under its own name |
-| `config` | `settings` | `change` | This host's settings |
+| `config` | `settings` | `change`, `permissions` | This host's settings. `config:permissions` writes the host's permission rules, which apply to every session: an "Always Allow … for Everyone" answer and a push of `permissions` |
 | `plugin` | `list` | `enable`, `disable`, `options`, `apply`, `reload` | The plugins the configuration names: listing them, turning them on and off, editing their options, and applying or reloading a running one. `plugin:install` installs, removes or writes a plugin and is in neither group, so `plugin:write` does not hold it |
 | `client` | - | - | The clients this host is serving, and the connection each one holds. `client:read` lists them and `client:drop` closes a connection; `drop` is in neither group, so a role must name it |
 | `tunnel` | - | `put`, `delete` | The tunnels this host keeps, and the operations each one takes. `tunnel:read` draws them, and `put` and `delete` are in the `write` group |
@@ -451,17 +451,18 @@ against is the **channel**, not the action, and a dispatch is always a write: a
 session or a chat needs `session:write`, a terminal needs `terminal:write`, an
 automation needs `automation:write`, and anything else needs `file:read`.
 `ahp-root://` is read with the action: `root/configChanged` that pushes only
-`workspaceTrust` needs `trust:push`, which the `trust:write` group covers. Any
-other key, or a replacement of the whole config, needs `config:write`, which
-only `admin` has among the built-in roles: every key is one value for the whole
-host.
+`workspaceTrust` needs `trust:push`, which the `trust:write` group covers. A
+push that names `permissions` needs `config:permissions`, beside what its other
+keys need. Any other key, or a replacement of the whole config, needs
+`config:change`, which only `admin` has among the built-in roles: every key is
+one value for the whole host.
 
 That half is not optional. Root state names every open terminal's URI, and
 `terminal/input` writes to a shell, so a dispatch nobody checked is a command
 anybody can run.
 
 `defaultShell` names the binary a client's terminal opens. It is one value for
-the whole host, which the last push sets, so pushing it needs `config:write`
+the whole host, which the last push sets, so pushing it needs `config:change`
 like every other key.
 
 The paths with no connection in hand take the daemon's own shell, `$SHELL` and

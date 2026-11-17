@@ -1563,6 +1563,8 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
     ...(options.eligibleForAutoApproval === undefined ? {} : { eligibleForAutoApproval: options.eligibleForAutoApproval }),
     managedRules: options.managedRules,
     unattendedAutoApprove: options.unattendedAutoApprove,
+    // Each person's own permission rules, a file per person.
+    personPermissionsDir: join(configDir(), 'permissions'),
     /*
      * The reader a configured module exports, which takes the sdk's own
      * splitter's place.

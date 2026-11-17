@@ -98,7 +98,8 @@ describe('driving a turn', () => {
         { id: 'allow-once', label: 'Allow Once', kind: 'approve' },
         { id: 'allow-session-rules:["Shell(ls *)"]', label: 'Allow `ls …` in this Session', kind: 'approve', group: 1 },
         { id: 'allow-always-rules:["Shell(ls *)"]', label: 'Always Allow `ls …`', kind: 'approve', group: 1 },
-        { id: 'skip', label: 'Skip', kind: 'deny', group: 2 },
+        { id: 'allow-all-session', label: 'Allow All Commands in this Session', kind: 'approve', group: 2 },
+        { id: 'skip', label: 'Skip', kind: 'deny', group: 3 },
       ];
       expect(actionOf(ready)?.options).toEqual(offered);
       expect((actionOf(needed)?.request as { toolCall: { options?: unknown } }).toolCall.options).toEqual(offered);
@@ -155,7 +156,8 @@ describe('driving a turn', () => {
         { id: 'allow-once', label: 'Allow Once', kind: 'approve' },
         { id: 'allow-session-rules:["Shell(ls *)"]', label: 'Allow `ls …` in this Session', kind: 'approve', group: 1 },
         { id: 'allow-always-rules:["Shell(ls *)"]', label: 'Always Allow `ls …`', kind: 'approve', group: 1 },
-        { id: 'skip', label: 'Skip', kind: 'deny', group: 2 },
+        { id: 'allow-all-session', label: 'Allow All Commands in this Session', kind: 'approve', group: 2 },
+        { id: 'skip', label: 'Skip', kind: 'deny', group: 3 },
       ]);
     });
   });

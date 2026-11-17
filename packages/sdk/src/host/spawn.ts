@@ -31,6 +31,7 @@ import { PENDING_CONFIRMATION_FIELDS } from '../types/agent.js';
 import type { PendingConfirmation } from '../types/agent.js';
 import { sameFolder, trusted } from './trust.js';
 import { isWorktreeUnderRepository } from '../repo/worktrees.js';
+import { filePersonRules, personOf } from '../access/personrules.js';
 import { BASELINE_TURN } from '../types/changes.js';
 import type { Bag } from '../types/common.js';
 import type { Agent, BoundTool, Start } from '../types/agent.js';
@@ -208,6 +209,8 @@ export function createSpawn(ctx: HostContext): Spawn {
     publishAccountInfo, updateChatMovability,
   } = ctx;
   ctx.turnSenders = options.turnSenders ?? 'said';
+  /** The rules each person keeps for their own sessions, on a host with users. */
+  const personRules = options.users === undefined || options.personPermissionsDir === undefined ? undefined : filePersonRules(options.personPermissionsDir);
   ctx.steerReadBack = options.steerReadBack ?? 'inTurn';
   ctx.backendBackgroundWork = options.backendBackgroundWork ?? 'drop';
 
@@ -534,6 +537,24 @@ export function createSpawn(ctx: HostContext): Spawn {
    * known for it. A turn with no approvals still meets every deny and the
    * operator's rules, which are read before this.
    */
+  /**
+   * Whether a session's owner may keep a grant in the host's rules, which apply
+   * to every session: anybody on a host with no users, the host's own owner,
+   * and a person this process knows to hold `config:permissions`.
+   */
+  const writesHostRules = (session: string): boolean => {
+    if (options.users === undefined) return true;
+    const owner = kept.owner(idOf(session));
+    if (owner?.startsWith('root:') === true) return true;
+    return ctx.principalFor(owner)?.can('config:permissions') === true;
+  };
+
+  /** The rules the owner of a session keeps for their own sessions, or nothing. */
+  const personRulesOf = (session: string): Bag | undefined => {
+    const person = personOf(kept.owner(idOf(session)));
+    return person === undefined ? undefined : personRules?.read(person);
+  };
+
   const approvesFor = (session: string, turn: Bag | undefined, turnId: string): boolean => {
     if (options.users === undefined) return true;
     const owner = kept.owner(idOf(session));
@@ -595,7 +616,8 @@ export function createSpawn(ctx: HostContext): Spawn {
       },
       ...(commandLine === undefined ? {} : { commandLine }),
       ...(signal.requestSandboxBypass === true ? { requestSandboxBypass: true } : {}),
-      rules: permissionRulesOf(owning?.config.permissions, ctx.rootConfig.permissions),
+      // The session's rules, then its owner's own, then the host's.
+      rules: permissionRulesOf(owning?.config.permissions, personRulesOf(session), ctx.rootConfig.permissions),
       context: { ...(folders[0] === undefined ? {} : { workingDirectory: folders[0] }), homeDirectory: homedir(), ignorePathCase: process.platform === 'win32' || process.platform === 'darwin' },
       workingDirectories: folders,
       ...(attachments === undefined ? {} : { attachmentsDirectory: attachments }),
@@ -614,6 +636,11 @@ export function createSpawn(ctx: HostContext): Spawn {
         }),
       }),
       exists: existsSync,
+      levels: {
+        people: options.users !== undefined,
+        host: writesHostRules(session),
+        allowAll: ctx.rootConfig.autoApprovePolicyRestricted !== true && managedSettings?.disableBypassPermissionsMode !== 'disable',
+      },
     };
     /*
      * The operator's managed rules, read on every question beside the

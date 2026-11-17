@@ -266,6 +266,8 @@ it('offers VS Code\'s grants of the command for a tool the rule does not name', 
 
   const offered = call(question(p, uri)).options as Bag[];
   expect(offered.at(0)).toEqual(ONCE[0]);
-  expect(offered.at(-1)).toEqual(ONCE[1]);
+  // Skip comes last, in the group after Allow All Commands in this Session.
+  expect(offered.at(-1)).toMatchObject({ id: 'skip', label: 'Skip', kind: 'deny' });
+  expect(offered.some((one) => one.id === 'allow-all-session')).toBe(true);
   expect(offered.some((one) => String(one.id).startsWith('allow-session-rules:'))).toBe(true);
 });

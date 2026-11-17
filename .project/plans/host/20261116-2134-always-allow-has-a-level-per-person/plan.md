@@ -74,6 +74,10 @@ next question -> rules of the session, then the session owner's person rules, th
 | A person's rules are a file per person in the config folder, `permissions/<person>.json` | (defaulted: "a store of their own", from the problem file; no per-person store exists to reuse) | 01 |
 | `permissions` is an operation of the `config` subject in its `write` group | (defaulted: as `change` is, so a role with `config:write` holds it) | 02 |
 | The docs name `config:change` where they say `config:write` for the root config | Softov, 2026-11-08, in the problem file | 05 |
+| A command the table denies is offered no grant | Softov, 2026-11-16: "No grant for it" | 04 |
+| A push that names `permissions` beside other keys needs `config:permissions` too | (defaulted: one grant alone would let a role with `config:change` write the rules) | 02 |
+| Only a `user:` owner has a person store | (defaulted: the host's own owner holds every grant) | 01 |
+| Allow All is on shell questions only, is hidden under the managed lock, and needs `session:configure` | (defaulted: its label says commands, the lock takes Allow All away, and it changes the session's config) | 04 |
 
 ## Proposed architecture
 
@@ -87,11 +91,11 @@ next question -> rules of the session, then the session owner's person rules, th
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a person keeps rules of their own](task-01-a-person-keeps-rules-of-their-own.md) | todo | - |
-| [02 - the host's rules need config:permissions](task-02-the-hosts-rules-need-config-permissions.md) | todo | 01 |
-| [03 - the deny list comes first](task-03-the-deny-list-comes-first.md) | todo | - |
-| [04 - the question offers the approved levels](task-04-the-question-offers-the-approved-levels.md) | todo | 01, 02 |
-| [05 - the docs name the levels and the grant](task-05-the-docs-name-the-levels-and-the-grant.md) | todo | 02, 04 |
+| [01 - a person keeps rules of their own](task-01-a-person-keeps-rules-of-their-own.md) | implemented | - |
+| [02 - the host's rules need config:permissions](task-02-the-hosts-rules-need-config-permissions.md) | implemented | 01 |
+| [03 - the deny list comes first](task-03-the-deny-list-comes-first.md) | implemented | - |
+| [04 - the question offers the approved levels](task-04-the-question-offers-the-approved-levels.md) | implemented | 01, 02 |
+| [05 - the docs name the levels and the grant](task-05-the-docs-name-the-levels-and-the-grant.md) | implemented | 02, 04 |
 
 ## Risks and tradeoffs
 
@@ -100,14 +104,14 @@ next question -> rules of the session, then the session owner's person rules, th
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-person-keeps-rules-of-their-own.md](task-01-a-person-keeps-rules-of-their-own.md); task 03 can run beside it.
+- **Done so far:** tasks 01 to 05 built on 2026-11-16 on branch `host/20261116-2134-always-allow-has-a-level-per-person`, from the branch of host/20261116-2128, awaiting review.
+- **Next action:** Softov reviews the PR, then the checks of *Final verification checklist* on the test daemon.
 - **Open questions:** none.
 - **Watch out for:** compare each label with the approved mockup before the PR. A host with no users file keeps today's options, and gains Allow All.
 
 ## Final verification checklist
 
 - [ ] The sdk suite and the computer suite pass, one at a time.
-- [ ] On the test daemon, bob's "for Me" answer leaves alice's `rm` asking, and alice's "for Everyone" answer approves it in bob's session.
+- [ ] On the test daemon, bob's "for Me" answer leaves alice's `make` asking, and alice's "for Everyone" answer approves it in bob's session. The table denies `rm`, so `rm` asks for both.
 - [ ] A member's push of `permissions` is refused.
 - [ ] Each label matches the approved mockup.

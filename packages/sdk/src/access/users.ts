@@ -177,9 +177,9 @@ export const OPERATIONS: Record<string, SubjectOperations> = {
   file: RESOURCE,
   config: {
     title: 'Host settings',
-    description: 'This host\'s settings.',
-    operations: ['settings', 'change'],
-    groups: { read: ['settings'], write: ['change'] },
+    description: 'This host\'s settings. `permissions` writes the host\'s permission rules, which apply to every session.',
+    operations: ['settings', 'change', 'permissions'],
+    groups: { read: ['settings'], write: ['change', 'permissions'] },
   },
   plugin: {
     title: 'Plugins',

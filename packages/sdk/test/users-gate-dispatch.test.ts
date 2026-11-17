@@ -106,6 +106,8 @@ it('classifies a dispatch by its action, with the channel beside it', async () =
   expect(await needs(ROOT, { type: 'root/configChanged', config: { defaultShell: '/bin/sh' } })).toBe('config:change');
   // The trust key alone asks for the push, which the write group covers.
   expect(await needs(ROOT, { type: 'root/configChanged', config: { workspaceTrust: { enabled: true, trustedUris: [] } } })).toBe('trust:push');
+  // The host's permission rules alone ask for their own grant, which the write group covers.
+  expect(await needs(ROOT, { type: 'root/configChanged', config: { permissions: { allow: ['Shell(rm *)'], deny: [] } } })).toBe('config:permissions');
   // The terminal rules, plain or an expression, and VS Code's own table.
   const rules = (terminalAutoApproveRules: Record<string, unknown>) =>
     needs(ROOT, { type: 'root/configChanged', config: { terminalAutoApproveRules } });
@@ -316,6 +318,43 @@ it('accepts a workspaceTrust push from a role holding only trust:push', async ()
   await configChanged(client, { workspaceTrust: trust });
   expect(refusalsOf(seen)).toEqual([]);
   expect(await values(client)).toMatchObject({ workspaceTrust: trust });
+});
+
+/*
+ * The host's permission rules apply to every session, so a push of
+ * `permissions` needs `config:permissions`, beside what any other key it
+ * names needs; `admin` holds it, and `member` does not.
+ */
+it('refuses a member\'s push of the host\'s permissions, and applies an admin\'s', async () => {
+  const rules = { allow: ['Shell(rm *)'], deny: [] };
+  const member = await signedUp('member');
+  const refused = host({ users: member.users });
+  const seen = watching();
+  const client = refused.accept(seen);
+  await hello(client, 'ana'); await signIn(client, member.secret);
+  await configChanged(client, { permissions: rules });
+  expect(refusalsOf(seen)).toEqual(['ana may not config:permissions here']);
+  expect(await values(client)).not.toHaveProperty('permissions');
+
+  // A role holding `config:change` alone may not carry the rules in beside another key.
+  const users = fileUsers({ path: join(root, 'changers.json') });
+  await users.addRole('changers', ['config:change']);
+  await users.add('bo', ['changers']);
+  const mixed = host({ users });
+  const mixedSeen = watching();
+  const mixedClient = mixed.accept(mixedSeen);
+  await hello(mixedClient, 'bo'); await signIn(mixedClient, await users.mint('bo'));
+  await configChanged(mixedClient, { defaultShell: '/bin/sh', permissions: rules });
+  expect(refusalsOf(mixedSeen)).toEqual(['bo may not config:permissions here']);
+
+  const admin = await signedUp('admin');
+  const applied = host({ users: admin.users });
+  const adminSeen = watching();
+  const adminClient = applied.accept(adminSeen);
+  await hello(adminClient, 'ana'); await signIn(adminClient, admin.secret);
+  await configChanged(adminClient, { permissions: rules });
+  expect(refusalsOf(adminSeen)).toEqual([]);
+  expect(await values(adminClient)).toMatchObject({ permissions: rules });
 });
 
 it('refuses a workspaceTrust push from a role holding only trust:get', async () => {

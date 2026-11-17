@@ -752,10 +752,11 @@ export class CommandAutoApprover {
   /**
    * What the rules say about a command line, with the commands they read in
    * it, as VS Code's `CommandAutoApprover.evaluate` reads one: a permission's
-   * decision on a command, or on the whole line, ahead of the table, a command
-   * that writes in place or sets a variable for itself never approved, and a
-   * write a line makes approved only where it lands in the folder and the
-   * edit patterns allow it.
+   * `ask` on a command, or on the whole line, ahead of the table, the table's
+   * deny rules ahead of a permission's `allow`, so an allow rule never runs
+   * what the table refuses, a command that writes in place or sets a variable
+   * for itself never approved, and a write a line makes approved only where it
+   * lands in the folder and the edit patterns allow it.
    * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/commandAutoApprover.ts#L274-L330
    */
   evaluation(line: string, options: CommandApprovalOptions = {}): CommandApprovalEvaluation {
@@ -782,12 +783,9 @@ export class CommandAutoApprover {
         result = 'denied';
       }
       else if (decision === 'ask' || lineDecision === 'ask') result = 'noMatch';
+      else if (lineDenied || matchesRule(subCommand, rules.deny, powershell)) result = 'denied';
       else if (decision === 'allow' || lineDecision === 'allow') result = 'approved';
-      else {
-        result = lineDenied || matchesRule(subCommand, rules.deny, powershell) ? 'denied'
-          : matchesRule(subCommand, rules.allow, powershell) ? 'approved' : 'noMatch';
-        if (result !== 'denied' && lineAllowed) result = 'approved';
-      }
+      else result = lineAllowed || matchesRule(subCommand, rules.allow, powershell) ? 'approved' : 'noMatch';
       denied ||= result === 'denied';
       if (result !== 'approved') unapprovedSubCommands.push(subCommand);
     }

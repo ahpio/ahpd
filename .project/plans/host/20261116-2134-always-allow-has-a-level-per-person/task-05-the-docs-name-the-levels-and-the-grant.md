@@ -1,6 +1,6 @@
 ---
 title: The docs name the levels and the grant
-status: todo
+status: implemented
 depends: [task-02-the-hosts-rules-need-config-permissions.md, task-04-the-question-offers-the-approved-levels.md]
 layer: docs
 refs:
@@ -37,3 +37,8 @@ The docs name the three levels, the grant `config:permissions` and the person st
 
 ## Resume
 
+Built on 2026-11-16, awaiting review.
+
+- `REMOTE.md:87` and `RUN.md:64` stay as they are. The `config` command and `x-ahpd/restart` check `config:write`.
+- The root push is `config:change` in `docs/sdk/USERS.md`, `AUTHENTICATION.md` and `TOOLS.md`. `HOST.md` has a row for `config:permissions`.
+- The new section in `docs/server/USERS.md` is *Who an Always Allow is for*.

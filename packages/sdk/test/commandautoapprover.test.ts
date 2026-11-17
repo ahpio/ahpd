@@ -175,6 +175,18 @@ describe("VS Code's default table", () => {
     }
   });
 
+  /*
+   * A permission's allow does not run what the table denies: the table's deny
+   * rules are read first, and an allow answers every other command it names.
+   */
+  it('denies a dangerous argument a permission rule allows the command of', () => {
+    const allowFind = { classify: (command: string) => (command.startsWith('find') ? 'allow' as const : undefined) };
+    expect(approver.evaluate('find . -exec rm {} \\;', allowFind)).toBe('denied');
+    expect(approver.evaluate('find . -name x', allowFind)).toBe('approved');
+    // A command the table names nowhere is the allow's to approve.
+    expect(approver.evaluate('make build', { classify: () => 'allow' })).toBe('approved');
+  });
+
   it('denies the dangerous arguments of a command it allows', () => {
     expect(bash('find . -name "*.ts"')).toBe('approved');
     expect(bash('find . -delete')).toBe('denied');

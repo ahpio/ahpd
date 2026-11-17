@@ -27,6 +27,8 @@ import { URI } from '../vscode/uri.js';
 export const ALLOW_SESSION_OPTION_ID = 'allow-session';
 const ALLOW_ONCE_OPTION: Bag = { id: 'allow-once', label: 'Allow Once', kind: 'approve' };
 const SKIP_OPTION: Bag = { id: 'skip', label: 'Skip', kind: 'deny', group: 2 };
+/** The option that turns on the session's `autoApprove` and approves the call. */
+export const ALLOW_ALL_SESSION_OPTION_ID = 'allow-all-session';
 
 /**
  * The options a question offers where its backend offers none, in VS Code's
@@ -241,6 +243,18 @@ export interface ToolApproval {
   evaluateShell?: (options: Pick<CommandApprovalOptions, 'classify' | 'classifyCommandLine'>) => CommandApprovalEvaluation;
   /** Whether a path exists, for the folder grant's git root. */
   exists: (path: string) => boolean;
+  /** The levels a grant is offered at; absent offers VS Code's session and host levels, and no Allow All. */
+  levels?: GrantLevels;
+}
+
+/** The levels a question's grants are offered at. */
+export interface GrantLevels {
+  /** The host has users: each grant is offered for the person who answers, and the host's level reads "for Everyone". */
+  people: boolean;
+  /** The host's level is offered: on a host with users, only where the session's owner holds `config:permissions`. */
+  host: boolean;
+  /** "Allow All Commands in this Session" is offered: neither `autoApprovePolicyRestricted` nor the managed lock is set. */
+  allowAll: boolean;
 }
 
 /** A path and the path it really is, links followed, or nothing where it cannot be read, which asks. */
@@ -525,9 +539,43 @@ export const getAutoApproval = (approval: ToolApproval): 'setting' | 'not-needed
   return undefined;
 };
 
-/** An option that keeps a grant, in the session or for the host. */
-const grantOption = (label: string, rules: readonly string[], scope: PermissionGrantScope = 'session'): Bag =>
-  ({ id: permissionGrantOptionId(scope, rules), label, kind: 'approve', group: 1 });
+/** An option that keeps a grant at one level. */
+const grantOption = (label: string, rules: readonly string[], scope: PermissionGrantScope): Bag =>
+  ({ id: permissionGrantOptionId(scope, rules), label, kind: 'approve' });
+
+/** One grant a question offers: its rules, with its label in the session and VS Code's label for always. */
+interface Offer {
+  session: string;
+  always: string;
+  rules: readonly string[];
+}
+
+/**
+ * A question's options at the levels its host offers, between Allow Once and
+ * Skip. A host with no users offers VS Code's: each grant in the session and
+ * always, in one group. A host with users offers the session's level, the
+ * level of the person who answers, "for Me", and the host's, "for Everyone",
+ * where the session's owner holds `config:permissions`, each in a group of its
+ * own. "Allow All Commands in this Session" comes last, where it is offered.
+ */
+const levelled = (offers: readonly Offer[], levels: GrantLevels | undefined, allowAll: boolean): Bag[] => {
+  const people = levels?.people === true;
+  const host = levels?.host !== false;
+  const groups: Bag[][] = [
+    [
+      ...offers.map((one) => grantOption(one.session, one.rules, 'session')),
+      ...(people || !host ? [] : offers.map((one) => grantOption(one.always, one.rules, 'host'))),
+    ],
+    people ? offers.map((one) => grantOption(`${one.always} for Me`, one.rules, 'person')) : [],
+    people && host ? offers.map((one) => grantOption(`${one.always} for Everyone`, one.rules, 'host')) : [],
+    allowAll ? [{ id: ALLOW_ALL_SESSION_OPTION_ID, label: 'Allow All Commands in this Session', kind: 'approve' }] : [],
+  ].filter((group) => group.length > 0);
+  return [
+    ALLOW_ONCE_OPTION,
+    ...groups.flatMap((group, index) => group.map((one) => ({ ...one, group: index + 1 }))),
+    { ...SKIP_OPTION, group: Math.max(2, groups.length + 1) },
+  ];
+};
 
 /**
  * The grants a question about a read or a write offers: the file, in the
@@ -535,7 +583,7 @@ const grantOption = (label: string, rules: readonly string[], scope: PermissionG
  * write is one that always asks.
  * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/sessionPermissions.ts#L926-L988
  */
-const pathConfirmationOptions = (approval: ToolApproval): Bag[] => {
+const pathConfirmationOffers = (approval: ToolApproval): Offer[] => {
   const { request } = approval;
   if ((request.kind !== 'read' && request.kind !== 'write') || request.path === undefined || !isAbsolute(request.path)) return [];
   const write = request.kind === 'write';
@@ -543,15 +591,17 @@ const pathConfirmationOptions = (approval: ToolApproval): Bag[] => {
   const canonical = paths?.at(-1);
   if (paths === undefined || canonical === undefined) return [];
   const tool = write ? 'Edit' : 'Read';
-  const options: Bag[] = [];
-  const always: Bag[] = [];
+  const offers: Offer[] = [];
   const fileRule = pathRule(tool, canonical, false);
   const base = basename(request.path) || request.path;
   if (fileRule !== undefined) {
-    options.push(grantOption(write ? `Allow Edits to ${base} in this Session` : `Allow Reading ${base} in this Session`, [fileRule]));
-    always.push(grantOption(write ? `Always Allow Edits to ${base}` : `Always Allow Reading ${base}`, [fileRule], 'host'));
+    offers.push({
+      session: write ? `Allow Edits to ${base} in this Session` : `Allow Reading ${base} in this Session`,
+      always: write ? `Always Allow Edits to ${base}` : `Always Allow Reading ${base}`,
+      rules: [fileRule],
+    });
   }
-  if (write && requiresEditConfirmation(paths, approval)) return [...options, ...always];
+  if (write && requiresEditConfirmation(paths, approval)) return offers;
   let folder = dirname(request.path);
   for (let at = folder; ; at = dirname(at)) {
     if (approval.exists(join(at, '.git'))) {
@@ -562,14 +612,17 @@ const pathConfirmationOptions = (approval: ToolApproval): Bag[] => {
   }
   const folders = resolvedPaths(folder);
   const canonicalFolder = folders?.at(-1);
-  if (canonicalFolder === undefined) return [...options, ...always];
+  if (canonicalFolder === undefined) return offers;
   const folderRule = pathRule(tool, canonicalFolder, true);
   if (folderRule !== undefined && inside(canonical, canonicalFolder, approval.context.ignorePathCase === true)) {
     const name = basename(folder) || folder;
-    options.push(grantOption(write ? `Allow Edits in ${name} in this Session` : `Allow Reading Files in ${name} in this Session`, [folderRule]));
-    always.push(grantOption(write ? `Always Allow Edits in ${name}` : `Always Allow Reading Files in ${name}`, [folderRule], 'host'));
+    offers.push({
+      session: write ? `Allow Edits in ${name} in this Session` : `Allow Reading Files in ${name} in this Session`,
+      always: write ? `Always Allow Edits in ${name}` : `Always Allow Reading Files in ${name}`,
+      rules: [folderRule],
+    });
   }
-  return [...options, ...always];
+  return offers;
 };
 
 /**
@@ -583,27 +636,23 @@ const pathConfirmationOptions = (approval: ToolApproval): Bag[] => {
 const scopedConfirmationOptions = (approval: ToolApproval): Bag[] | undefined => {
   const { request } = approval;
   if (request.kind !== 'shell' && request.kind !== 'url' && request.kind !== 'read' && request.kind !== 'write') return undefined;
-  const options: Bag[] = [ALLOW_ONCE_OPTION];
+  const offers: Offer[] = [];
   if (request.kind === 'shell' && request.shellLanguage !== undefined && approval.terminalAutoApprove && approval.commandLine !== undefined
     && approval.evaluateShell !== undefined) {
     const evaluation = approval.evaluateShell(shellClassifiers(approval));
     const unapproved = evaluation.unapprovedSubCommands ?? [];
-    if (evaluation.hasUnsafeSubCommand !== true && evaluation.hasAskRule !== true && unapproved.length > 0) {
+    // A line the table denies is offered no grant, since no allow rule approves what the table denies.
+    if (evaluation.result !== 'denied' && evaluation.hasUnsafeSubCommand !== true && evaluation.hasAskRule !== true && unapproved.length > 0) {
       const { subCommandKeys, offerExactCommandLine } = suggestAutoApproveRuleKeys(approval.commandLine, unapproved);
-      const always: Bag[] = [];
       if (subCommandKeys.length > 0) {
         const commands = subCommandKeys.map((key) => `\`${key} …\``).join(', ');
         const label = subCommandKeys.length === 1 ? commands : `Commands ${commands}`;
-        const prefixes = subCommandKeys.map(shellPrefixRule);
-        options.push(grantOption(`Allow ${label} in this Session`, prefixes));
-        always.push(grantOption(`Always Allow ${label}`, prefixes, 'host'));
+        offers.push({ session: `Allow ${label} in this Session`, always: `Always Allow ${label}`, rules: subCommandKeys.map(shellPrefixRule) });
       }
       const exact = unapproved.map(shellExactRule);
       if (offerExactCommandLine && exact.every((one): one is string => one !== undefined)) {
-        options.push(grantOption('Allow Exact Command in this Session', exact));
-        always.push(grantOption('Always Allow Exact Command', exact, 'host'));
+        offers.push({ session: 'Allow Exact Command in this Session', always: 'Always Allow Exact Command', rules: exact });
       }
-      options.push(...always);
     }
   }
   else if (request.kind === 'url' && request.url !== undefined) {
@@ -611,16 +660,13 @@ const scopedConfirmationOptions = (approval: ToolApproval): Bag[] | undefined =>
       const url = new URL(request.url);
       if (url.hostname !== '') {
         const pattern = url.protocol === 'https:' ? url.hostname : `${url.protocol}//${url.hostname}`;
-        const fetches = [webFetchRule(pattern)];
-        options.push(grantOption(`Allow Fetching ${pattern} in this Session`, fetches));
-        options.push(grantOption(`Always Allow Fetching ${pattern}`, fetches, 'host'));
+        offers.push({ session: `Allow Fetching ${pattern} in this Session`, always: `Always Allow Fetching ${pattern}`, rules: [webFetchRule(pattern)] });
       }
     }
     catch { /* a URL that does not read offers the one-time answer alone */ }
   }
-  if (request.kind === 'read' || request.kind === 'write') options.push(...pathConfirmationOptions(approval));
-  options.push(SKIP_OPTION);
-  return options;
+  if (request.kind === 'read' || request.kind === 'write') offers.push(...pathConfirmationOffers(approval));
+  return levelled(offers, approval.levels, request.kind === 'shell' && approval.levels?.allowAll === true);
 };
 
 /**

@@ -1,6 +1,6 @@
 ---
 title: The question offers the approved levels
-status: todo
+status: implemented
 depends: [task-01-a-person-keeps-rules-of-their-own.md, task-02-the-hosts-rules-need-config-permissions.md]
 layer: sdk
 refs:
@@ -45,3 +45,12 @@ A question offers the options of the approved mockup, in its groups and with its
 
 ## Resume
 
+Built on 2026-11-16, awaiting review.
+
+- A line that the table denies gets no grant, only Allow Once, Allow All and Skip (Softov, 2026-11-16).
+- The host level is offered when this process knows that the session's owner holds `config:permissions`. An owner not seen since a restart is not offered it.
+- Allow All is offered on shell questions only, as its label says commands. The managed lock also takes it away.
+- On a host with users, the answer that turns on Allow All needs `session:configure`, as any change of the session's config does.
+- Each level is a group of its own, and Skip is in the group after the last one.
+- The two cases in `host-input.test.ts` that list the options of a host with no users file now include Allow All.
+- `agent-acp-rule.test.ts` reads Skip as the last option, in whichever group it falls.

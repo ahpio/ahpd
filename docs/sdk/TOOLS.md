@@ -166,7 +166,7 @@ A backend that cannot - an ACP agent, which asks its client for tools - is hande
 | `clientToolCallDisconnectTimeoutMs` | integer, milliseconds | `30000` (thirty seconds) | How long a client whose connections all closed keeps its place in a session and the tool calls it owes there. `0` releases it at once |
 | `plugins.<name>.hostTools` | `true` or `false` | `true` | Whether a plugin's sessions are offered this host's own tools as one MCP server |
 
-The first four are the daemon's keys and apply while it runs; a root config push of any needs `config:write`. `clientToolTimeoutMs` and `clientToolCallDisconnectTimeoutMs` are daemon keys and need `ahpd restart`. Every key with its values and its default is [HOST.md](HOST.md#configuration-keys) and [HOST.md](HOST.md#root-config).
+The first four are the daemon's keys and apply while it runs; a root config push of any needs `config:change`. `clientToolTimeoutMs` and `clientToolCallDisconnectTimeoutMs` are daemon keys and need `ahpd restart`. Every key with its values and its default is [HOST.md](HOST.md#configuration-keys) and [HOST.md](HOST.md#root-config).
 
 ## Commands
 
