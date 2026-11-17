@@ -152,6 +152,12 @@ export interface Service {
   remove(connector: string, port: number, keep: boolean): Promise<void>;
   /** Connect the connector's relay again. */
   restart(connector: string): Promise<void>;
+  /**
+   * Let go of a connector's Dev Tunnel, closing its host, without a call to
+   * the service: for a tunnel the service no longer has, so the next port put
+   * on the connector finds or makes one again.
+   */
+  forget(connector: string): Promise<void>;
   /** What a port on the connector's tunnel is doing now. */
   show(connector: string, port: number): Promise<Shown | undefined>;
   /** Close every host, leaving the tunnels in the service. */
@@ -240,6 +246,17 @@ async function writePort(
     return { ...(url === undefined ? {} : { url }), replaced: true };
   }
 }
+
+/** The HTTP status of an error the SDK threw, which it keeps on the error's `response`. */
+const statusOf = (error: unknown): number | undefined =>
+  (error as { response?: { status?: number } } | null)?.response?.status;
+
+/**
+ * Whether the service answered that it has no such tunnel or port, as it does
+ * for a tunnel somebody deleted: VS Code's CLI, at the account's limit, deletes
+ * an unused tunnel carrying the launcher label.
+ */
+export const notFound = (error: unknown): boolean => statusOf(error) === 404;
 
 /** The service over the SDK, with one management client and one host for each connector. */
 export function sdkService(options: ServiceOptions): Service {
@@ -383,6 +400,15 @@ export function sdkService(options: ServiceOptions): Service {
       await one.host.restart();
     },
 
+    forget: async (connector) => {
+      const one = served.get(connector);
+      served.delete(connector);
+      // The relay of a tunnel the service deleted may fail to close, and there
+      // is nothing to do about that but let it go.
+      try { await one?.host?.close(); }
+      catch (error) { options.log?.(`the host of a gone Dev Tunnel did not close: ${reason(error)}`, 'warn'); }
+    },
+
     show: async (connector, port) => {
       const one = served.get(connector);
       if (one === undefined) return undefined;
@@ -470,7 +496,8 @@ function sdkCloud(
   return {
     get: async (kept) => {
       // A tunnel the service no longer has (404) or no longer lets this account
-      // host (403) is made again, as the CLI's `get_or_create_tunnel` does.
+      // host (403) is made again, as the CLI's `get_or_create_tunnel` does. The
+      // SDK's `getTunnel` throws on a 404 rather than answering `null`.
       let found: DevTunnel | null;
       try {
         found = await management.getTunnel(
@@ -479,7 +506,7 @@ function sdkCloud(
         );
       }
       catch (error) {
-        if ((error as { response?: { status?: number } }).response?.status === 403) return undefined;
+        if (notFound(error) || statusOf(error) === 403) return undefined;
         throw error;
       }
       if (found === null) return undefined;

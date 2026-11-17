@@ -22,6 +22,7 @@ import type {
 } from '@ahpd/sdk';
 import { deriveConnectionToken, displayLabel, TUNNEL_PORT } from './discovery.js';
 import { carry, gate } from './forward.js';
+import { notFound } from './service.js';
 import type { Service, Shown } from './service.js';
 import { sameState, tunnelView } from './view.js';
 import type { TunnelState } from './view.js';
@@ -236,6 +237,10 @@ interface Running {
   /** The token a client over this tunnel presents, whatever port it is on. */
   derived?: string;
   hop?: Hop;
+  /** The record as it was started, so a tunnel the service lost can be started again. */
+  tunnel: Tunnel;
+  /** Where its start reports, which a start made again reports to as well. */
+  report: ReportTunnel;
 }
 
 /** A non-empty string, or nothing. */
@@ -288,6 +293,11 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
     try {
       shown = await options.service.show(at.connector, at.port);
     } catch (error) {
+      // The service no longer has the tunnel: it is made again, as at a start.
+      if (notFound(error)) {
+        void remake(at.connector);
+        return;
+      }
       if (!failing) {
         plugin.log.error(`${NAME}: ${reason(error)}`);
         plugin.alert({ level: 'warning', ref: 'read', text: 'The tunnel\'s status could not be checked, so this page may be out of date.' });
@@ -438,7 +448,7 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
   };
 
   /** Put one tunnel up, or say why it is not up. */
-  const start = async (tunnel: Tunnel, report: ReportTunnel): Promise<void> => {
+  const start = async (tunnel: Tunnel, report: ReportTunnel, again = false): Promise<void> => {
     const connector = textOf(tunnel.settings['connector']);
     const port = numberOf(tunnel.settings['port']);
     const anonymous = tunnel.settings['anonymous'] === true;
@@ -485,6 +495,8 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
         ...(person === undefined ? {} : { person }),
         derived,
         ...(hop === undefined ? {} : { hop }),
+        tunnel,
+        report,
       });
       plugin.clearAlert(REF);
 
@@ -511,6 +523,13 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
     } catch (error) {
       const message = reason(error);
       await hop?.close();
+      // The connector's tunnel was held when the service no longer had it: it
+      // is made again for every record on it, and this start is tried once more.
+      if (!again && notFound(error)) {
+        await remake(connector);
+        await start(tunnel, report, true);
+        return;
+      }
       plugin.log.error(`${NAME}: tunnel ${tunnel.id} did not start: ${message}`);
       if (tunnel.purpose === 'system' && port === TUNNEL_PORT) {
         plugin.alert({ level: 'error', ref: REF, text: `The tunnel could not use port ${TUNNEL_PORT}: ${message}` });
@@ -531,6 +550,14 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
       await one.hop?.close();
       await options.service.remove(one.connector, one.port, options.keep);
     } catch (error) {
+      // The port went with the tunnel the service no longer has: this record
+      // is stopped, and the others of its connector start again on a new one.
+      if (notFound(error)) {
+        if (tunnel.purpose === 'system') unwatch();
+        report({ status: 'stopped' });
+        await remake(one.connector);
+        return;
+      }
       const message = reason(error);
       plugin.log.error(`${NAME}: tunnel ${tunnel.id} did not stop: ${message}`);
       report({ status: 'error', error: message });
@@ -551,6 +578,12 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
       await options.service.restart(one.connector);
     } catch (error) {
       const message = reason(error);
+      // The service no longer has the tunnel: making it again is the restart.
+      if (notFound(error)) {
+        await remake(one.connector);
+        report(running.has(tunnel.id) ? { status: 'running' } : { status: 'error', error: message });
+        return;
+      }
       plugin.log.error(`${NAME}: tunnel ${tunnel.id} was not restarted: ${message}`);
       report({ status: 'error', error: message });
       return;
@@ -560,7 +593,7 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
   };
 
   /** Change who may reach a port, and keep it in the record. */
-  const access = async (tunnel: Tunnel, report: ReportTunnel, input: Record<string, unknown> | undefined): Promise<void> => {
+  const access = async (tunnel: Tunnel, report: ReportTunnel, input: Record<string, unknown> | undefined, again = false): Promise<void> => {
     const on = input?.['on'];
     if (typeof on !== 'boolean') throw new Error('anonymous access needs `on`, a boolean');
     const one = running.get(tunnel.id);
@@ -579,6 +612,13 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
       } catch (error) {
         const message = reason(error);
         if (one.hop !== undefined && was !== undefined) one.hop.anonymous = was;
+        // The service no longer has the tunnel: it is made again, and the
+        // change is asked of the new one once.
+        if (!again && notFound(error)) {
+          await remake(one.connector);
+          await access(tunnel, report, input, true);
+          return;
+        }
         plugin.log.warn(`${NAME}: tunnel ${tunnel.id} kept its access: ${message}`);
         report({ error: message });
         return;
@@ -587,6 +627,37 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
     }
     // Saved by the host, so the next start puts the port on with this access.
     report({ settings: { anonymous: on } });
+  };
+
+  /** The connectors whose tunnel is being made again, so two failures make it once. */
+  const remaking = new Set<string>();
+
+  /**
+   * Make a connector's Dev Tunnel again, for a tunnel the service no longer
+   * has: every record on it is taken down here, the held tunnel let go, and
+   * each record started again with the report it was started with. The start
+   * finds the tunnel by name or makes it, as at a daemon's start, so it has a
+   * new id, address and derived token. VS Code's CLI deletes an unused tunnel
+   * carrying the launcher label when an account is at its limit.
+   * https://github.com/microsoft/vscode/blob/53fa24195c2/cli/src/tunnels/dev_tunnels.rs#L808-L835
+   */
+  const remake = async (connector: string): Promise<void> => {
+    if (remaking.has(connector)) return;
+    remaking.add(connector);
+    try {
+      plugin.log.warn(`${NAME}: the Dev Tunnel of connector ${connector} is gone from the service; making it again`);
+      const ours = [...running.entries()].filter(([, one]) => one.connector === connector);
+      for (const [id, one] of ours) {
+        running.delete(id);
+        await one.hop?.close();
+        if (one.tunnel.purpose === 'system') unwatch();
+      }
+      await options.service.forget(connector);
+      for (const [, one] of ours) await start(one.tunnel, one.report, true);
+    }
+    finally {
+      remaking.delete(connector);
+    }
   };
 
   return {
@@ -672,11 +743,20 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
             ...(person === undefined ? {} : { person }),
             ...(one.derived === undefined ? {} : { derived: one.derived }),
             ...(hop === undefined ? {} : { hop }),
+            tunnel,
+            report: one.report,
           });
           report({ status: 'running', ...(url === undefined ? {} : { url }) });
           if (tunnel.purpose === 'system') await watch(connector, port);
         } catch (error) {
           await hop?.close();
+          // The service no longer has the tunnel: it is made again, the record
+          // starting on the port it now names.
+          if (notFound(error)) {
+            one.tunnel = tunnel;
+            await remake(connector);
+            return;
+          }
           report({ status: 'error', error: reason(error) });
         }
         return;
@@ -739,6 +819,8 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
           ...(person === undefined ? {} : { person }),
           ...(one.derived === undefined ? {} : { derived: one.derived }),
           ...(one.hop === undefined ? {} : { hop: one.hop }),
+          tunnel,
+          report: one.report,
         });
         report({ status: 'running' });
         return;
@@ -752,10 +834,18 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
         await options.service.access(connector, port, anonymous);
       } catch (error) {
         if (one.hop !== undefined && was !== undefined) one.hop.anonymous = was;
+        // The service no longer has the tunnel: it is made again with the
+        // record as it was saved, its new access among it.
+        if (notFound(error)) {
+          one.tunnel = tunnel;
+          await remake(connector);
+          return;
+        }
         report({ error: reason(error) });
         return;
       }
       if (!anonymous && one.hop !== undefined) one.hop.anonymous = false;
+      one.tunnel = tunnel;
       report({ status: 'running' });
     },
 

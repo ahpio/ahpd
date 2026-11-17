@@ -28,6 +28,7 @@ const unreached = (): Service => ({
   carry: () => { throw new Error('this test starts no tunnel'); },
   remove: async () => { throw new Error('this test starts no tunnel'); },
   restart: async () => { throw new Error('this test starts no tunnel'); },
+  forget: async () => {},
   show: async () => { throw new Error('this test starts no tunnel'); },
   close: async () => { throw new Error('this test starts no tunnel'); },
 });
@@ -49,6 +50,7 @@ const serving = (): {
       carry: () => {},
       remove: async () => {},
       restart: async () => {},
+      forget: async () => {},
       show: async () => undefined,
       close: async () => {},
     },
@@ -149,6 +151,7 @@ const puttingUp = (): Service => ({
   carry: () => {},
   remove: async () => {},
   restart: async () => {},
+  forget: async () => {},
   show: async () => undefined,
   close: async () => {},
 });
