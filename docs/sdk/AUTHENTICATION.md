@@ -256,7 +256,7 @@ When a session moves to a folder, the host asks the window that moved it, with `
 
 A worktree this host made in its repository's `<repo>.worktrees` is trusted when it or the repository it was cut from is, and one under a configured worktrees root by its own trust alone, as [VS Code's host](https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/copilot/copilotSessionLauncher.ts#L512-L520) grants a session's working directory its trust.
 
-`globalAutoApproveEnabled` is the neighbouring key. It is a boolean, off by default, and turning it on runs every tool call in every session on this host without asking. Pushing it needs `config:write`, which only `admin` holds among the built-in roles.
+`globalAutoApproveEnabled` is the neighbouring key. It is a boolean, off by default, and turning it on runs every tool call in every session on this host without asking. Pushing it needs `config:change`, which only `admin` holds among the built-in roles.
 
 ## Agent accounts
 

@@ -1,6 +1,6 @@
 ---
 title: A person keeps rules of their own
-status: todo
+status: implemented
 depends: []
 layer: sdk
 refs:
@@ -44,3 +44,9 @@ A question reads the session's rules, then the session owner's person rules, the
 
 ## Resume
 
+Built on 2026-11-16, awaiting review.
+
+- The store is `access/personrules.ts`. A file is `<folder>/<id>.json`, with the id URI-encoded, written with mode 0600.
+- Only a `user:` owner has a person store. The host's own owner holds every grant, so it gets the host level.
+- The host option is `personPermissionsDir`, and the daemon sets it to `<configDir>/permissions`.
+- Task 03 makes the table's deny list win, and the table denies `rm`. So the reading cases use `make`, not `rm`.

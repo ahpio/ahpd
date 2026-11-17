@@ -5,7 +5,8 @@ import { readMultiRoot } from '../sessions/remotesession.js';
 import { filesOf, needsAsyncRewrite, snapshot } from './attachments.js';
 import { chatUriFor, isRootChannel, RELAYED, ROOT, spaceOf, WORKER_ACTIONS } from './channels.js';
 import { HOSTS_OWN, HOSTS_TAKEN } from './common.js';
-import { grantOf, withGrant } from './permissions.js';
+import { ALLOW_ALL_SESSION_OPTION_ID, grantOf, withGrant } from './permissions.js';
+import { filePersonRules, personOf } from '../access/personrules.js';
 import { autoApproved, requireTrust, requireWorktreeTrust } from './trust.js';
 import { readAgentPermissionResponseMeta } from '../vscode/agentpermissionresponsemeta.js';
 import { filterChatConfigValues, validateChatConfigWrite } from '../vscode/chatconfig.js';
@@ -2240,6 +2241,22 @@ export function chatAction(
         no(`${toolCallId} is not a call this chat is waiting to have confirmed`);
         break;
       }
+      /*
+       * "Allow All Commands in this Session" turns on the session's
+       * `autoApprove`, a change of the session's config: refused where the
+       * operator took Allow All away, and from a person who may not change the
+       * session's config, and the call keeps asking.
+       */
+      const allowsAll = action.approved === true && action.selectedOptionId === ALLOW_ALL_SESSION_OPTION_ID;
+      if (allowsAll && (rootConfig.autoApprovePolicyRestricted === true
+        || ctx.options.managedSettingsPermissions?.disableBypassPermissionsMode === 'disable')) {
+        no('Allow All is turned off on this host');
+        break;
+      }
+      if (allowsAll && ctx.options.users !== undefined && connection.root !== true && connection.principal?.can('session:configure') !== true) {
+        no(`${connection.principal?.id ?? 'This connection'} may not session:configure here`);
+        break;
+      }
       // The decision the held state takes, said, and then handed to the
       // backend with who decided, as the client's `_meta` says it.
       dispatch(worker ? channel : session.chatUri, action, origin);
@@ -2254,11 +2271,12 @@ export function chatAction(
        * a scoped grant's rules, or for "Allow in this Session" the tool's
        * name, in the session's `permissions`, said on the session as this
        * host's config change, kept with the session and handed to every
-       * chat's backend as a key this host takes is; an "Always Allow" grant's
-       * rules in the host's own `permissions`, said on the root. The option
-       * is the one the held state resolved from the question's own options,
-       * so a question that offered none such keeps nothing, and neither does
-       * one that asked to leave the sandbox.
+       * chat's backend as a key this host takes is; a "for Me" grant's rules
+       * in the rules of the person who answered, said to nobody; an "Always
+       * Allow" grant's rules in the host's own `permissions`, said on the root.
+       * The option is the one the held state resolved from the question's own
+       * options, so a question that offered none such keeps nothing, and
+       * neither does one that asked to leave the sandbox.
        * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentSideEffects.ts#L1878-L1911
        * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/sessionPermissions.ts#L612-L650
        */
@@ -2267,10 +2285,34 @@ export function chatAction(
         .map((part) => part.toolCall as Bag | undefined)
         .find((one) => one !== undefined && one.toolCallId === toolCallId);
       const owning = sessions.get(session.uri);
+      if (allowsAll && owning !== undefined && call !== undefined && (call.selectedOption as Bag | undefined)?.id === ALLOW_ALL_SESSION_OPTION_ID) {
+        owning.config.autoApprove = 'autoApprove';
+        kept.setConfig(idOf(session.uri), { ...kept.config(idOf(session.uri)), autoApprove: 'autoApprove' });
+        decided.set(session.uri, { ...decided.get(session.uri), autoApprove: 'autoApprove' });
+        dispatch(session.uri, { type: 'session/configChanged', config: { autoApprove: 'autoApprove' } });
+        for (const chat of owning.chats.values()) void Promise.resolve(chat.setConfig?.('autoApprove', 'autoApprove'));
+        break;
+      }
       const grant = call === undefined || call.status !== 'running' ? undefined
         : grantOf(call, typeof action.selectedOptionId === 'string' ? action.selectedOptionId : undefined);
       if (owning === undefined || grant === undefined) break;
-      if (grant.scope === 'host') {
+      // A person's grant goes to the rules of the person who answered, on a
+      // host with users and a folder to keep them in, and nowhere else.
+      if (grant.scope === 'person') {
+        const person = personOf(ownerFor(connection));
+        const folder = ctx.options.personPermissionsDir;
+        if (ctx.options.users === undefined || folder === undefined || person === undefined) break;
+        filePersonRules(folder).grant(person, grant.rules);
+        break;
+      }
+      /*
+       * The host's rules apply to every session, so on a host with users only
+       * a person with `config:permissions` writes them; anyone else's host
+       * grant is kept in this session, as one for the session.
+       */
+      const writesHost = ctx.options.users === undefined || connection.root === true
+        || connection.principal?.can('config:permissions') === true;
+      if (grant.scope === 'host' && writesHost) {
         const permissions = withGrant(ctx.rootConfig.permissions, grant.rules);
         if (permissions === undefined) break;
         ctx.rootConfig.permissions = permissions;

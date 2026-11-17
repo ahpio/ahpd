@@ -1,6 +1,6 @@
 ---
 title: The host's rules need config:permissions
-status: todo
+status: implemented
 depends: [task-01-a-person-keeps-rules-of-their-own.md]
 layer: sdk
 refs:
@@ -40,3 +40,8 @@ A host grant from anyone else stays in the session.
 
 ## Resume
 
+Built on 2026-11-16, awaiting review.
+
+- A push that names `permissions` beside other keys needs `config:permissions` as well as `config:change`. Step 3 asked for `config:change` alone, which let a role with `config:change` and not `config:permissions` write the rules.
+- `pushedPermissionsNeed` in `gate.ts` adds the grant, and the dispatch check asks for each grant.
+- The cases are in `users-gate-dispatch.test.ts` and `host-permissions.test.ts`.

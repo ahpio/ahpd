@@ -5,7 +5,7 @@ import { idOf, Status } from '../sessions/catalog.js';
 import { disableConditionsProblem } from '../automations/automations.js';
 import { localPath } from '../resources/fileuri.js';
 import { reason } from '../utils/values.js';
-import { computerNeeds, dispatchNeeds, ownAgentExcused, ACTION_HOMES, ACTION_NEEDS, HOME_WORDS, ownIn } from './gate.js';
+import { computerNeeds, dispatchNeeds, ownAgentExcused, pushedPermissionsNeed, ACTION_HOMES, ACTION_NEEDS, HOME_WORDS, ownIn } from './gate.js';
 import { ANNOTATIONS_PATH_SEGMENT, AUTOMATIONS, chatUriFor, isAutomationResource, isRootChannel, ROOT, schemeOf, spaceOf, toolCallOfSubagentChat, WORKER_ACTIONS } from './channels.js';
 import { chatAction, chatFlag, readAggregate, sessionFlag } from './chatactions.js';
 import { HOSTS_OWN } from './common.js';
@@ -173,7 +173,7 @@ export function createActions(ctx: HostContext, conn: ConnectionContext): Action
        */
       // On a resource's comments, an action needs the resource's `comment`, not a session's review.
       const own = ctx.resourceAnnotations.isChannel(channel) ? ctx.resourceAnnotations.commentGrant(channel) : ownIn(ACTION_NEEDS, type);
-      const all = [...new Set([onRoot ? undefined : own, dispatchNeeds(asked, channelKind(asked), action), dispatchNeeds(channel, channelKind(channel), action), computerNeeds(action)])]
+      const all = [...new Set([onRoot ? undefined : own, dispatchNeeds(asked, channelKind(asked), action), dispatchNeeds(channel, channelKind(channel), action), pushedPermissionsNeed(asked, action), pushedPermissionsNeed(channel, action), computerNeeds(action)])]
         .filter((one): one is Grant => one !== undefined)
         .filter((one) => onRoot || !ownAgentExcused(ctx, connection.principal, channel, one));
       const needed = all.find((one) => connection.principal !== undefined && !connection.principal.can(one)) ?? all[0];

@@ -13,25 +13,37 @@ import { isUrlApproved } from '../vscode/urlapproval.js';
  * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/common/permissionRules.ts
  */
 
-/** Where a grant picked from a question's options is kept: the session's `permissions`, or the host's. */
-export type PermissionGrantScope = 'session' | 'host';
+/**
+ * Where a grant picked from a question's options is kept: the session's
+ * `permissions`, the rules of the person who answered, or the host's.
+ */
+export type PermissionGrantScope = 'session' | 'person' | 'host';
 
 const SESSION_GRANT_OPTION_PREFIX = 'allow-session-rules:';
+const PERSON_GRANT_OPTION_PREFIX = 'allow-person-rules:';
 const HOST_GRANT_OPTION_PREFIX = 'allow-always-rules:';
+
+/** The option id prefix of each scope. */
+const GRANT_OPTION_PREFIXES: Readonly<Record<PermissionGrantScope, string>> = {
+  session: SESSION_GRANT_OPTION_PREFIX,
+  person: PERSON_GRANT_OPTION_PREFIX,
+  host: HOST_GRANT_OPTION_PREFIX,
+};
 const SHELL_REGEX_SPECIFIER = /^\/(?<pattern>.*)\/(?<flags>[dgimsuvy]*)$/;
 
 /** A grant as the id of the option that offers it. */
 export const permissionGrantOptionId = (scope: PermissionGrantScope, rules: readonly string[]): string =>
-  (scope === 'session' ? SESSION_GRANT_OPTION_PREFIX : HOST_GRANT_OPTION_PREFIX) + JSON.stringify(rules);
+  GRANT_OPTION_PREFIXES[scope] + JSON.stringify(rules);
 
 /** The grant an option's id carries, or nothing for any other id or a payload that does not read. */
 export const parsePermissionGrantOptionId = (id: string): { scope: PermissionGrantScope; rules: string[] } | undefined => {
-  const prefix = [SESSION_GRANT_OPTION_PREFIX, HOST_GRANT_OPTION_PREFIX].find((one) => id.startsWith(one));
-  if (prefix === undefined) return undefined;
+  const scope = (Object.keys(GRANT_OPTION_PREFIXES) as PermissionGrantScope[]).find((one) => id.startsWith(GRANT_OPTION_PREFIXES[one]));
+  if (scope === undefined) return undefined;
+  const prefix = GRANT_OPTION_PREFIXES[scope];
   try {
     const rules: unknown = JSON.parse(id.slice(prefix.length));
     return Array.isArray(rules) && rules.every((one) => typeof one === 'string')
-      ? { scope: prefix === SESSION_GRANT_OPTION_PREFIX ? 'session' : 'host', rules: rules as string[] }
+      ? { scope, rules: rules as string[] }
       : undefined;
   }
   catch {

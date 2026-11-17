@@ -297,8 +297,11 @@ export const channelRead = (channel: string, kind: ChannelKind, served?: Grant):
  * session and every client reads, so a push changes the host for everybody and
  * needs `config:change`, and so does a `replace`. A push of `workspaceTrust`
  * alone needs `trust:push`, which the `trust:write` group covers: it is the
- * answer about the folders sessions load their projects from. A push that names
- * no key changes nothing, and needs a sign-in and no grant (`undefined`).
+ * answer about the folders sessions load their projects from. A push of
+ * `permissions` alone needs `config:permissions`, the host's permission rules
+ * applying to every session, and `pushedPermissionsNeed` asks it of any push
+ * that names them. A push that names no key changes nothing, and needs a
+ * sign-in and no grant (`undefined`).
  *
  * The other is `file:watch` for a channel that is neither a session's nor a
  * terminal's - a `file:` URI, a resource watch - the grant a watch is handed
@@ -308,6 +311,16 @@ export const channelRead = (channel: string, kind: ChannelKind, served?: Grant):
  * A dispatch is a notification, so what it gets on refusal is `rejectionReason`
  * on the channel rather than an error code.
  */
+/**
+ * `config:permissions` for a push on the root that names `permissions`, beside
+ * whatever its other keys need, and nothing for any other action.
+ */
+export const pushedPermissionsNeed = (channel: string, action?: Record<string, unknown>): Grant | undefined => {
+  if (!isRootChannel(channel) || action?.type !== 'root/configChanged') return undefined;
+  const config = action.config;
+  return typeof config === 'object' && config !== null && Object.hasOwn(config, 'permissions') ? 'config:permissions' : undefined;
+};
+
 export const dispatchNeeds = (channel: string, kind: ChannelKind, action?: Record<string, unknown>): Grant | undefined => {
   if (isRootChannel(channel)) {
     if (action?.type !== 'root/configChanged' || action.replace === true) return 'config:change';
@@ -316,7 +329,8 @@ export const dispatchNeeds = (channel: string, kind: ChannelKind, action?: Recor
       : {}) as Record<string, unknown>;
     const keys = Object.keys(config);
     if (keys.length === 0) return undefined;
-    return keys.every((key) => key === 'workspaceTrust') ? 'trust:push' : 'config:change';
+    if (keys.every((key) => key === 'workspaceTrust')) return 'trust:push';
+    return keys.every((key) => key === 'permissions') ? 'config:permissions' : 'config:change';
   }
   // A shared resource's actions say what they need in `ACTION_NEEDS`.
   if (schemeOf(channel) === SHARED_SCHEME || annotatedResourceOf(channel) !== undefined) return undefined;

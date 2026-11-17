@@ -1,6 +1,6 @@
 ---
 title: The deny list comes first
-status: todo
+status: implemented
 depends: []
 layer: sdk
 refs:
@@ -31,3 +31,6 @@ A command that the terminal table denies, such as `find -exec`, is refused even 
 
 ## Resume
 
+Built on 2026-11-16, awaiting review.
+
+- The case uses a classifier that allows `find`, in `commandautoapprover.test.ts`.

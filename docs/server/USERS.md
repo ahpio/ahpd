@@ -93,6 +93,24 @@ You can define your own roles in the file. See [sdk/USERS.md](../sdk/USERS.md).
 
 A session's approvals are its owner's: the permission allow rules, the terminal rules, the edit patterns, the reads in its working folders, auto-approve and workspace trust. A turn its owner sends gets them. A turn another person sends into the session gets none, so each call its agent asks about asks, and a person whose role holds `chat:answer` may answer it. A turn nobody at a keyboard sent, such as an automation's run or a resumed turn, gets the owner's approvals while `unattendedAutoApprove` is on, the default. See [Configure](CONFIGURE.md).
 
+## Who an Always Allow is for
+
+A question about a command, a file or a URL offers its grants at three levels on a host with users:
+
+| Level | Option | Kept in | Offered |
+| --- | --- | --- | --- |
+| The session | Allow `make …` in this Session | the session's `permissions` | always |
+| The person | Always Allow `make …` for Me | `permissions/<person>.json` in the config folder, for the person who answers | always |
+| The host | Always Allow `make …` for Everyone | the host's `permissions` | when the session's owner holds `config:permissions` |
+
+A question reads the session's rules, then the rules of the session's owner, then the host's. So a "for Me" answer approves calls in that person's own sessions, and in no one else's. `admin` holds `config:permissions`, and `member` and `guest` do not. A host grant from a person without it is kept in the session. A push of `permissions` needs `config:permissions` too.
+
+The terminal table's deny list comes before every allow rule, so a command the table denies, such as `rm`, is offered no grant.
+
+"Allow All Commands in this Session" turns on the session's auto-approve. It is not offered, and is refused, where `autoApprovePolicyRestricted` or the managed lock is set. Turning it on also needs `session:configure`.
+
+A host with no users file offers VS Code's options: the session's level and the host's, under VS Code's labels, and Allow All.
+
 ## Sign in with GitHub or OpenID Connect
 
 ```bash

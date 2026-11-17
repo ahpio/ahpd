@@ -9,11 +9,12 @@
  * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentSideEffects.ts#L1684-L1766
  */
 
-import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createHost } from '../src/host.js';
+import { filePersonRules } from '../src/access/personrules.js';
 import { ROOT } from '../src/host/channels.js';
 import { fileResources } from '../src/resources/resources.js';
 import { echo } from '../../../examples/echo/agent.js';
@@ -391,16 +392,11 @@ it('takes a question\'s host-only fields off before any client is sent it', asyn
   await host.close();
 });
 
-/*
- * A `Shell` rule with a specifier names the commands of a line, and one that
- * denies refuses the call before anybody is asked, as VS Code's host reads
- * its permission rules.
- * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/sessionPermissions.ts#L397-L425
- */
-/** A people directory of two admins, each signed in by the token that names them. */
+/** A people directory of two admins and a member who holds no `config` grant, each signed in by the token that names them. */
 const people = (): Users => ({
   resource: { resource: 'ahpd://users', resource_name: 'ahpd users', authorization_servers: ['ahpd://users'], required: false },
-  verify: async (token) => (token === 'ana' || token === 'bo' ? { id: token, roles: ['admin'], can: () => true } : undefined),
+  verify: async (token) => (token === 'ana' || token === 'bo' ? { id: token, roles: ['admin'], can: () => true }
+    : token === 'cy' ? { id: token, roles: ['member'], can: (grant: string) => !grant.startsWith('config:') } : undefined),
   list: async () => [],
   grantsOfRoles: async () => [],
   grantsOfPerson: async () => undefined,
@@ -425,11 +421,11 @@ const people = (): Users => ({
  * owner's as `unattendedAutoApprove` says, and none when a sender other than
  * the owner is known for it.
  */
-const whoseTurn = async (over: Partial<HostOptions> = {}) => {
+const whoseTurn = async (over: Partial<HostOptions> = {}, { command = 'ls', owner = 'ana' }: { command?: string; owner?: string } = {}) => {
   const answers: Answer[] = [];
   const host = createHost({
     path: dir, resources: fileResources(), users: people(),
-    agents: [asking(answers, 'bash', undefined, { permissionKind: 'shell', shellCommand: 'ls', shellLanguage: 'bash' })],
+    agents: [asking(answers, 'bash', undefined, { permissionKind: 'shell', shellCommand: command, shellLanguage: 'bash' })],
     ...over,
   });
   const signedIn = async (token: string) => {
@@ -441,12 +437,15 @@ const whoseTurn = async (over: Partial<HostOptions> = {}) => {
   };
   const ana = await signedIn('ana');
   const bo = await signedIn('bo');
-  await ana.client.handle({ method: 'createSession', params: { channel: SESSION, provider: 'echo' } });
-  // The chat the host minted for Ana's session, read off its state.
-  const chat = ((await ana.client.handle({ method: 'subscribe', params: { channel: SESSION } })) as { snapshot: { state: { defaultChat: string } } }).snapshot.state.defaultChat;
-  await ana.client.handle({ method: 'subscribe', params: { channel: chat } });
-  await bo.client.handle({ method: 'subscribe', params: { channel: SESSION } });
-  await bo.client.handle({ method: 'subscribe', params: { channel: chat } });
+  const cy = await signedIn('cy');
+  const owning = { ana, bo, cy }[owner as 'ana' | 'bo' | 'cy'];
+  await owning.client.handle({ method: 'createSession', params: { channel: SESSION, provider: 'echo' } });
+  // The chat the host minted for the owner's session, read off its state.
+  const chat = ((await owning.client.handle({ method: 'subscribe', params: { channel: SESSION } })) as { snapshot: { state: { defaultChat: string } } }).snapshot.state.defaultChat;
+  for (const one of [ana, bo, cy]) {
+    if (one !== owning) await one.client.handle({ method: 'subscribe', params: { channel: SESSION } });
+    await one.client.handle({ method: 'subscribe', params: { channel: chat } });
+  }
   /** The question a turn sent by `who`, with its message from `kind`, raised, once it is put. */
   const ask = async (who: typeof ana, turnId: string, kind = 'user'): Promise<Bag | undefined> => {
     await who.client.handle({
@@ -457,7 +456,15 @@ const whoseTurn = async (over: Partial<HostOptions> = {}) => {
     await until(() => ready() !== undefined, 'the question');
     return ready();
   };
-  return { host, ana, bo, ask, answers };
+  /** `who`'s answer to a turn's question, by the option it picks. */
+  const answer = async (who: typeof ana, turnId: string, selectedOptionId: string): Promise<void> => {
+    await who.client.handle({
+      method: 'dispatchAction',
+      params: { channel: chat, action: { type: 'chat/toolCallConfirmed', turnId, toolCallId: `call-${turnId}`, approved: true, confirmed: 'user-action', selectedOptionId } },
+    });
+    await settle();
+  };
+  return { host, ana, bo, cy, ask, answer, answers, chat };
 };
 
 it('asks about a command the terminal rules approve in a turn somebody other than the session\'s owner sent', async () => {
@@ -493,6 +500,166 @@ it('gives no approvals to a turn that is no person\'s when a sender other than t
   await host.close();
 });
 
+/*
+ * A question reads the session's rules, then the rules the session's owner
+ * keeps, then the host's: a person's own rule answers in the sessions they own
+ * and in nobody else's, and a deny there refuses the call.
+ */
+it('answers a command by the rules the session\'s owner keeps, and by nobody else\'s', async () => {
+  const kept = join(dir, 'permissions');
+  filePersonRules(kept).grant('bo', ['Shell(make *)']);
+  const others = await whoseTurn({ personPermissionsDir: kept }, { command: 'make build' });
+  expect((await others.ask(others.ana, 't1'))?.confirmed).toBeUndefined();
+  await others.host.close();
+
+  filePersonRules(kept).grant('ana', ['Shell(make *)']);
+  const own = await whoseTurn({ personPermissionsDir: kept }, { command: 'make build' });
+  expect((await own.ask(own.ana, 't1'))?.confirmed).toBe('not-needed');
+  await own.host.close();
+});
+
+it('refuses a command a rule the session\'s owner keeps denies', async () => {
+  const kept = join(dir, 'permissions');
+  mkdirSync(kept, { recursive: true });
+  writeFileSync(join(kept, 'ana.json'), JSON.stringify({ permissions: { allow: [], deny: ['Shell(make *)'] } }));
+  const { host, ana, answers, chat } = await whoseTurn({ personPermissionsDir: kept }, { command: 'make build' });
+  await ana.client.handle({
+    method: 'dispatchAction',
+    params: { channel: chat, action: { type: 'chat/turnStarted', turnId: 't1', startedAt: new Date().toISOString(), message: { text: 'a turn long enough to be asked about', origin: { kind: 'user' } } } },
+  });
+  await until(() => answers.length > 0, 'the refusal');
+  expect(answers).toEqual([['call-t1', false, undefined]]);
+  await host.close();
+});
+
+/** The options a question about `make build` offers, by level. */
+const MAKE_SESSION = [
+  { id: 'allow-session-rules:["Shell(make *)"]', label: 'Allow `make …` in this Session', kind: 'approve' },
+  { id: 'allow-session-rules:["Shell(make build)"]', label: 'Allow Exact Command in this Session', kind: 'approve' },
+];
+const MAKE_PERSON = [
+  { id: 'allow-person-rules:["Shell(make *)"]', label: 'Always Allow `make …` for Me', kind: 'approve' },
+  { id: 'allow-person-rules:["Shell(make build)"]', label: 'Always Allow Exact Command for Me', kind: 'approve' },
+];
+const MAKE_HOST = [
+  { id: 'allow-always-rules:["Shell(make *)"]', label: 'Always Allow `make …` for Everyone', kind: 'approve' },
+  { id: 'allow-always-rules:["Shell(make build)"]', label: 'Always Allow Exact Command for Everyone', kind: 'approve' },
+];
+const ALLOW_ALL = { id: 'allow-all-session', label: 'Allow All Commands in this Session', kind: 'approve' };
+const grouped = (group: number, options: Bag[]): Bag[] => options.map((one) => ({ ...one, group }));
+
+/*
+ * On a host with users a question offers the session's level, the level of
+ * the person who answers, "for Me", the host's, "for Everyone", only where the
+ * session's owner holds `config:permissions`, and Allow All last, each in a
+ * group of its own, as the approved mockup draws them.
+ */
+it('offers a member the session\'s level, their own and Allow All, and an admin the host\'s besides', async () => {
+  const member = await whoseTurn({}, { command: 'make build', owner: 'cy' });
+  expect((await member.ask(member.cy, 't1'))?.options).toEqual([
+    { id: 'allow-once', label: 'Allow Once', kind: 'approve' },
+    ...grouped(1, MAKE_SESSION), ...grouped(2, MAKE_PERSON), ...grouped(3, [ALLOW_ALL]),
+    { id: 'skip', label: 'Skip', kind: 'deny', group: 4 },
+  ]);
+  await member.host.close();
+
+  const admin = await whoseTurn({}, { command: 'make build' });
+  expect((await admin.ask(admin.ana, 't1'))?.options).toEqual([
+    { id: 'allow-once', label: 'Allow Once', kind: 'approve' },
+    ...grouped(1, MAKE_SESSION), ...grouped(2, MAKE_PERSON), ...grouped(3, MAKE_HOST), ...grouped(4, [ALLOW_ALL]),
+    { id: 'skip', label: 'Skip', kind: 'deny', group: 5 },
+  ]);
+  await admin.host.close();
+});
+
+it('offers no grant for a command the table denies, since no allow rule would approve it', async () => {
+  const { host, cy, ask } = await whoseTurn({}, { command: 'rm b.txt', owner: 'cy' });
+  expect((await ask(cy, 't1'))?.options).toEqual([
+    { id: 'allow-once', label: 'Allow Once', kind: 'approve' },
+    { ...ALLOW_ALL, group: 1 },
+    { id: 'skip', label: 'Skip', kind: 'deny', group: 2 },
+  ]);
+  await host.close();
+});
+
+it('offers VS Code\'s levels and labels on a host with no users file, and Allow All', async () => {
+  const { host, turn } = await serving(asking([], 'bash', undefined, { permissionKind: 'shell', shellCommand: 'make build', shellLanguage: 'bash' }));
+  expect((await turn('t1')).options).toEqual([
+    { id: 'allow-once', label: 'Allow Once', kind: 'approve' },
+    ...grouped(1, [...MAKE_SESSION,
+      { id: 'allow-always-rules:["Shell(make *)"]', label: 'Always Allow `make …`', kind: 'approve' },
+      { id: 'allow-always-rules:["Shell(make build)"]', label: 'Always Allow Exact Command', kind: 'approve' }]),
+    { ...ALLOW_ALL, group: 2 },
+    { id: 'skip', label: 'Skip', kind: 'deny', group: 3 },
+  ]);
+  await host.close();
+});
+
+/*
+ * "Allow All Commands in this Session" turns on the session's `autoApprove`,
+ * which answers the next question; where the operator sets
+ * `autoApprovePolicyRestricted` it is not offered, and an answer naming it is
+ * refused and the call keeps asking.
+ */
+it('turns on the session\'s autoApprove for Allow All, and refuses it where the policy is restricted', async () => {
+  const answers: Answer[] = [];
+  const shell = { permissionKind: 'shell', shellCommand: 'make build', shellLanguage: 'bash' };
+  const open = await serving(asking(answers, 'bash', undefined, shell));
+  await open.turn('t1');
+  await open.dispatch(CHAT, { type: 'chat/toolCallConfirmed', turnId: 't1', toolCallId: 'call-t1', approved: true, confirmed: 'user-action', selectedOptionId: 'allow-all-session' });
+  expect(open.p.heard.filter((one) => one.action.type === 'session/configChanged').map((one) => one.action.config)).toEqual([{ autoApprove: 'autoApprove' }]);
+  await until(() => open.p.heard.some((one) => one.action.type === 'chat/turnComplete' && one.action.turnId === 't1'), 'the first turn');
+  expect((await open.turn('t2')).confirmed).toBe('not-needed');
+  await open.host.close();
+
+  const restrictedAnswers: Answer[] = [];
+  const restricted = await serving(asking(restrictedAnswers, 'bash', undefined, shell));
+  await restricted.dispatch(ROOT, { type: 'root/configChanged', config: { autoApprovePolicyRestricted: true } });
+  expect(((await restricted.turn('t1')).options as Bag[]).map((one) => one.id)).not.toContain('allow-all-session');
+  await restricted.dispatch(CHAT, { type: 'chat/toolCallConfirmed', turnId: 't1', toolCallId: 'call-t1', approved: true, confirmed: 'user-action', selectedOptionId: 'allow-all-session' });
+  expect(restrictedAnswers).toEqual([]);
+  expect(restricted.p.heard.some((one) => one.action.type === 'session/configChanged')).toBe(false);
+  await restricted.host.close();
+});
+
+/*
+ * A "for Me" answer keeps its rules for the person who answered, and tells no
+ * other client. The host's rules apply to every session, so only a person with
+ * `config:permissions` writes them; anyone else's host grant stays in the
+ * session.
+ */
+it('keeps a for Me grant for the person who answered, and a host grant in the session without config:permissions', async () => {
+  const kept = join(dir, 'permissions');
+  const forMe = await whoseTurn({ personPermissionsDir: kept }, { command: 'make build' });
+  await forMe.ask(forMe.ana, 't1');
+  await forMe.answer(forMe.cy, 't1', 'allow-person-rules:["Shell(make *)"]');
+  expect(filePersonRules(kept).read('cy')).toEqual({ allow: ['Shell(make *)'], deny: [] });
+  expect(filePersonRules(kept).read('ana')).toBeUndefined();
+  expect(forMe.cy.p.heard.some((one) => one.action.type === 'root/configChanged' || one.action.type === 'session/configChanged')).toBe(false);
+  await forMe.host.close();
+
+  const member = await whoseTurn({ personPermissionsDir: kept }, { command: 'make build' });
+  await member.ask(member.ana, 't1');
+  await member.answer(member.cy, 't1', 'allow-always-rules:["Shell(make *)"]');
+  expect(member.cy.p.heard.filter((one) => one.action.type === 'root/configChanged')).toEqual([]);
+  expect(member.cy.p.heard.filter((one) => one.action.type === 'session/configChanged').map((one) => one.action.config))
+    .toEqual([{ permissions: { allow: ['Shell(make *)'], deny: [] } }]);
+  await member.host.close();
+
+  const admin = await whoseTurn({ personPermissionsDir: kept }, { command: 'make build' });
+  await admin.ask(admin.ana, 't1');
+  await admin.answer(admin.bo, 't1', 'allow-always-rules:["Shell(make *)"]');
+  expect(admin.bo.p.heard.filter((one) => one.action.type === 'root/configChanged').map((one) => one.action.config))
+    .toEqual([{ permissions: { allow: ['Shell(make *)'], deny: [] } }]);
+  await admin.host.close();
+});
+
+/*
+ * A `Shell` rule with a specifier names the commands of a line, and one that
+ * denies refuses the call before anybody is asked, as VS Code's host reads
+ * its permission rules.
+ * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/sessionPermissions.ts#L397-L425
+ */
 it('refuses a command a session\'s Shell rule denies before any client is asked', async () => {
   const answers: Answer[] = [];
   const { host, p, dispatch } = await serving(asking(answers, 'bash', undefined, { permissionKind: 'shell', shellCommand: 'git status && rm -rf build', shellLanguage: 'bash' }));
@@ -799,14 +966,16 @@ it('hands a backend the operator\'s per-call check under managedRules checked, a
  * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/common/agentHostManagedSettings.ts#L43-L47
  */
 it('checks no managed rule under managedRules handed, hands them on, and honours a backend\'s own mark and the lock', async () => {
-  const managed = { deny: ['Shell(curl)'], ask: ['Write(**/*.txt)'], disableBypassPermissionsMode: 'disable' as const };
+  const managed = { deny: ['Shell(make)'], ask: ['Write(**/*.txt)'], disableBypassPermissionsMode: 'disable' as const };
   const handed = { managedRules: 'handed' as const, managedSettingsPermissions: managed, eligibleForAutoApproval: { bash: false } };
 
-  // A command a managed deny rule names, of a tool the eligibility sets false: put, with a command's own grants.
+  // A command a managed deny rule names, of a tool the eligibility sets false: put, with a command's own grants, and
+  // no Allow All under the lock.
   const starts: Start[] = [];
-  const shell = await serving(asking([], 'bash', undefined, { permissionKind: 'shell', shellCommand: 'curl https://example.com', shellLanguage: 'bash' }, starts), handed);
+  const shell = await serving(asking([], 'bash', undefined, { permissionKind: 'shell', shellCommand: 'make test', shellLanguage: 'bash' }, starts), handed);
   expect(((await shell.turn('t1')).options as { id: string }[]).map((one) => one.id)).toEqual([
-    'allow-once', 'allow-session-rules:["Shell(curl https://example.com)"]', 'allow-always-rules:["Shell(curl https://example.com)"]', 'skip',
+    'allow-once', 'allow-session-rules:["Shell(make *)"]', 'allow-session-rules:["Shell(make test)"]',
+    'allow-always-rules:["Shell(make *)"]', 'allow-always-rules:["Shell(make test)"]', 'skip',
   ]);
   expect(starts[0]?.managedSettings).toEqual({ permissions: managed, eligibleForAutoApproval: { bash: false } });
   await shell.host.close();

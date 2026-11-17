@@ -1024,6 +1024,14 @@ export interface HostOptions {
    */
   unattendedAutoApprove?: boolean;
   /**
+   * The folder each person's own permission rules are kept in, a file per
+   * person, on a host with users: an "Always Allow ... for Me" answer writes
+   * the rules of the person who answered there, and a question reads the
+   * session owner's between the session's rules and the host's. Absent keeps
+   * no person's rules, and a host with no users file reads none.
+   */
+  personPermissionsDir?: string;
+  /**
    * Who checks the managed rules, `managedSettingsPermissions` and
    * `eligibleForAutoApproval`, on a tool question.
    *
