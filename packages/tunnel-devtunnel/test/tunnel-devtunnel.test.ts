@@ -15,7 +15,7 @@ import {
   deriveConnectionToken, displayLabel, normalizeTunnelName, tunnelNameFromHostname,
   LAUNCHER_LABEL, MAX_TUNNEL_NAME_LENGTH, PROTOCOL_LABEL, TUNNEL_PORT,
 } from '../src/discovery.js';
-import { devtunnelKind } from '../src/kind.js';
+import { devtunnelKind, POLL_MS } from '../src/kind.js';
 import type { KindOptions } from '../src/kind.js';
 import { apply } from '../src/plugin.js';
 import { labelsOf, portOf, sdkService } from '../src/service.js';
@@ -129,6 +129,7 @@ const carrying = () => {
     },
     remove: async () => {},
     restart: async () => {},
+    forget: async () => {},
     show: async () => undefined,
     close: async () => {},
   };
@@ -597,6 +598,116 @@ it('refuses every token on a host that wired no check', async () => {
   expect(await visit(handlers.get(at('mine', app.port))!, 'GET /?tkn=good HTTP/1.1\r\nHost: example.com\r\n\r\n')).toContain('401 Unauthorized');
 });
 
+/*
+ * A Dev Tunnel the service deleted while the daemon runs is made again: the
+ * held tunnel is let go, and every record of its connector starts again on a
+ * new one, with a new id and a new derived token.
+ */
+
+/** A service whose held tunnel the service can lose, and which makes a new one once it is let go. */
+const losing = (heals = true) => {
+  let id = 'first-1';
+  let gone = false;
+  const forgot: string[] = [];
+  const handlers = new Map<string, Carried>();
+  const at = (connector: string, port: number): string => `${connector}:${String(port)}`;
+  const missing = (): Error => Object.assign(new Error('Tunnel service error: Not Found'), { response: { status: 404 } });
+  const service: Service = {
+    add: async (_connector, port) => {
+      if (gone) throw missing();
+      return { remote: { id, labels: [] }, url: `https://${id}-${String(port)}.example.test/` };
+    },
+    access: async () => { if (gone) throw missing(); },
+    replace: async () => undefined,
+    carry: (connector, port, handler) => {
+      if (handler === undefined) handlers.delete(at(connector, port));
+      else handlers.set(at(connector, port), handler);
+    },
+    remove: async () => { if (gone) throw missing(); },
+    restart: async () => { if (gone) throw missing(); },
+    forget: async (connector) => {
+      forgot.push(connector);
+      if (heals) { gone = false; id = 'made-2'; }
+    },
+    show: async () => {
+      if (gone) throw missing();
+      return { id, hosts: 1, clients: 0 };
+    },
+    close: async () => {},
+  };
+  return { service, handlers, at, forgot, lose: () => { gone = true; } };
+};
+
+it('makes a gone tunnel again at a restart, with the new id\'s derived token mapped', async () => {
+  const { service, handlers, at, forgot, lose } = losing();
+  const daemon = await daemonOn();
+  const { kind } = kindFor(service, { daemonPort: () => daemon.port, guarded: () => true, connectionToken: () => 's3cret' });
+  const started = reporting();
+  await kind.create(systemTunnel(), started.report);
+  lose();
+
+  await kind.invoke('restart', systemTunnel(), reporting().report);
+
+  expect(forgot).toEqual(['mine']);
+  expect(started.seen.at(-1)).toEqual({ status: 'running', url: `https://made-2-${String(TUNNEL_PORT)}.example.test/` });
+  const derived = await deriveConnectionToken('made-2');
+  await visit(handlers.get(at('mine', TUNNEL_PORT))!, `GET /?tkn=${derived} HTTP/1.1\r\nHost: example.com\r\n\r\n`);
+  expect(daemon.asked).toEqual([{ url: '/?tkn=s3cret' }]);
+});
+
+it('reports a second 404 as the error it is, and makes nothing in a loop', async () => {
+  const { service, forgot, lose } = losing(false);
+  const { kind } = kindFor(service, { guarded: () => true });
+  const started = reporting();
+  await kind.create(systemTunnel(), started.report);
+  lose();
+
+  const restarted = reporting();
+  await kind.invoke('restart', systemTunnel(), restarted.report);
+
+  expect(forgot).toEqual(['mine']);
+  expect(started.seen.at(-1)).toMatchObject({ status: 'error', error: expect.stringContaining('Not Found') });
+  expect(restarted.seen.at(-1)).toMatchObject({ status: 'error' });
+});
+
+it('reports a record whose tunnel is gone stopped at a stop', async () => {
+  const { service, forgot, lose } = losing();
+  const { kind } = kindFor(service, { guarded: () => true });
+  await kind.create(systemTunnel(), reporting().report);
+  lose();
+
+  const stopped = reporting();
+  await kind.invoke('stop', systemTunnel(), stopped.report);
+
+  expect(stopped.seen).toEqual([{ status: 'stopped' }]);
+  expect(forgot).toEqual(['mine']);
+});
+
+it('makes a gone tunnel again when the page reads it', async () => {
+  vi.useFakeTimers();
+  try {
+    const { service, forgot, lose } = losing();
+    const { kind } = kindFor(service, { guarded: () => true });
+    const started = reporting();
+    await kind.create(systemTunnel(), started.report);
+    lose();
+
+    await vi.advanceTimersByTimeAsync(POLL_MS);
+    // The read starts the remake and does not wait for it, so the case does.
+    vi.useRealTimers();
+    for (let i = 0; i < 200 && started.seen.at(-1)?.url !== `https://made-2-${String(TUNNEL_PORT)}.example.test/`; i++) {
+      await new Promise((done) => { setTimeout(done, 5); });
+    }
+
+    expect(forgot).toEqual(['mine']);
+    expect(started.seen.at(-1)).toEqual({ status: 'running', url: `https://made-2-${String(TUNNEL_PORT)}.example.test/` });
+    await kind.invoke('stop', systemTunnel(), reporting().report);
+  }
+  finally {
+    vi.useRealTimers();
+  }
+});
+
 // The fake SDK ------------------------------------------------------------
 
 /** A made-up Dev Tunnel, which no service ever made. */
@@ -726,6 +837,7 @@ const unusedService = (): Service => ({
   carry: () => {},
   remove: async () => {},
   restart: async () => {},
+  forget: async () => {},
   show: async () => undefined,
   close: async () => {},
 });

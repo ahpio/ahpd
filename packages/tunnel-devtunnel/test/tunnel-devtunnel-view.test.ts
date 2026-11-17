@@ -51,6 +51,7 @@ const scripted = (answers: Answer[]) => {
     carry: () => {},
     remove: async () => {},
     restart: async () => {},
+    forget: async () => {},
     show: next,
     close: async () => {},
   };
@@ -226,6 +227,7 @@ it('starts no poll when the tunnel stops during its first read', async () => {
     carry: () => {},
     remove: async () => {},
     restart: async () => {},
+    forget: async () => {},
     show: async () => { shown.push(UP); return await pending; },
     close: async () => {},
   };
