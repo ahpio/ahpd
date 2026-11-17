@@ -69,9 +69,9 @@ visitor on 31546 -> hop -> signed in: swap the derived token as today
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - an anonymous hop swaps no token](task-01-an-anonymous-hop-swaps-no-token.md) | todo | - |
-| [02 - anonymous is refused without a token](task-02-anonymous-is-refused-without-a-token.md) | todo | 01 |
-| [03 - the docs say anonymous needs a token](task-03-the-docs-say-anonymous-needs-a-token.md) | todo | 02 |
+| [01 - an anonymous hop swaps no token](task-01-an-anonymous-hop-swaps-no-token.md) | implemented | - |
+| [02 - anonymous is refused without a token](task-02-anonymous-is-refused-without-a-token.md) | implemented | 01 |
+| [03 - the docs say anonymous needs a token](task-03-the-docs-say-anonymous-needs-a-token.md) | implemented | 02 |
 
 ## Risks and tradeoffs
 
@@ -80,8 +80,8 @@ visitor on 31546 -> hop -> signed in: swap the derived token as today
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-an-anonymous-hop-swaps-no-token.md](task-01-an-anonymous-hop-swaps-no-token.md).
+- **Done so far:** tasks 01 to 03 are `implemented` on 2026-11-17, on the branch `plugin/20261117-0701-anonymous-31546-requires-a-token`.
+- **Next action:** Softov's review, then the checks of *Final verification checklist* on the test daemon.
 - **Open questions:** none.
 - **Watch out for:** `guarded` is known only after `listening`, and the system tunnel starts after it. A record started before `listening` has no hop, since `hopFor` needs the daemon's port.
 

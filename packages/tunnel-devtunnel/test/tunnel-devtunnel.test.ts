@@ -384,6 +384,127 @@ it('leaves a port other than the well-known one to the service, and stops carryi
   expect(handlers.has(at('mine', TUNNEL_PORT))).toBe(false);
 });
 
+/*
+ * An anonymous port on 31546 is reached by anyone, and the derived token is
+ * the hash of the id in its address, so it maps to nobody: a visitor brings a
+ * token the daemon accepts. A daemon that asks for no token is not opened to
+ * everyone that way.
+ */
+
+/** The system tunnel on 31546, anonymous or not. */
+const anonymousTunnel = (anonymous: boolean, person?: string): Tunnel => tunnel({
+  purpose: 'system',
+  settings: { connector: 'mine', port: TUNNEL_PORT, anonymous, ...(person === undefined ? {} : { person }) },
+});
+
+it('carries the derived token unchanged on an anonymous 31546, with users and without', async () => {
+  const derived = await deriveConnectionToken(REMOTE.id);
+  const request = `GET /?tkn=${derived} HTTP/1.1\r\nHost: example.com\r\n\r\n`;
+
+  const people = carrying();
+  const withUsers = await daemonOn();
+  const users = kindFor(people.service, { person: 'user:ada', daemonPort: () => withUsers.port }, { users: true, key: 'key-for-ada' });
+  await users.kind.create(anonymousTunnel(true, 'user:ada'), reporting().report);
+  await visit(people.handlers.get(people.at('mine', TUNNEL_PORT))!, request);
+  expect(withUsers.asked).toEqual([{ url: `/?tkn=${derived}` }]);
+
+  const own = carrying();
+  const guarded = await daemonOn();
+  const host = kindFor(own.service, { daemonPort: () => guarded.port, guarded: () => true, connectionToken: () => 's3cret' });
+  await host.kind.create(anonymousTunnel(true), reporting().report);
+  await visit(own.handlers.get(own.at('mine', TUNNEL_PORT))!, request);
+  expect(guarded.asked).toEqual([{ url: `/?tkn=${derived}` }]);
+});
+
+it('carries a visitor\'s own token unchanged on an anonymous 31546', async () => {
+  const { service, handlers, at } = carrying();
+  const daemon = await daemonOn();
+  const { kind } = kindFor(service, { daemonPort: () => daemon.port, guarded: () => true, connectionToken: () => 's3cret' });
+  await kind.create(anonymousTunnel(true), reporting().report);
+
+  await visit(handlers.get(at('mine', TUNNEL_PORT))!, 'GET /?tkn=s3cret HTTP/1.1\r\nHost: example.com\r\n\r\n');
+
+  expect(daemon.asked).toEqual([{ url: '/?tkn=s3cret' }]);
+});
+
+it('stops mapping when the anonymous operation opens 31546, and maps again once it closes it', async () => {
+  const { service, handlers, at } = carrying();
+  const daemon = await daemonOn();
+  const { kind } = kindFor(service, { daemonPort: () => daemon.port, guarded: () => true, connectionToken: () => 's3cret' });
+  const derived = await deriveConnectionToken(REMOTE.id);
+  const request = `GET /?tkn=${derived} HTTP/1.1\r\nHost: example.com\r\n\r\n`;
+  await kind.create(anonymousTunnel(false), reporting().report);
+  const handler = handlers.get(at('mine', TUNNEL_PORT))!;
+
+  await visit(handler, request);
+  expect(daemon.asked.at(-1)).toEqual({ url: '/?tkn=s3cret' });
+
+  await kind.invoke('anonymous', anonymousTunnel(false), reporting().report, { on: true });
+  await visit(handler, request);
+  expect(daemon.asked.at(-1)).toEqual({ url: `/?tkn=${derived}` });
+
+  await kind.invoke('anonymous', anonymousTunnel(true), reporting().report, { on: false });
+  await visit(handler, request);
+  expect(daemon.asked.at(-1)).toEqual({ url: '/?tkn=s3cret' });
+});
+
+it('stops mapping when a saved record makes a running 31546 anonymous', async () => {
+  const { service, handlers, at } = carrying();
+  const daemon = await daemonOn();
+  const { kind } = kindFor(service, { daemonPort: () => daemon.port, guarded: () => true, connectionToken: () => 's3cret' });
+  const derived = await deriveConnectionToken(REMOTE.id);
+  await kind.create(anonymousTunnel(false), reporting().report);
+
+  await kind.update!(anonymousTunnel(true), { connector: 'mine', port: TUNNEL_PORT, anonymous: true }, reporting().report);
+  await visit(handlers.get(at('mine', TUNNEL_PORT))!, `GET /?tkn=${derived} HTTP/1.1\r\nHost: example.com\r\n\r\n`);
+
+  expect(daemon.asked).toEqual([{ url: `/?tkn=${derived}` }]);
+});
+
+it('does not start an anonymous 31546 on a daemon with no token and no users, and says why', async () => {
+  const { service, handlers, at } = carrying();
+  const { kind, alerts } = kindFor(service);
+  const report = reporting();
+
+  await kind.create(anonymousTunnel(true), report.report);
+
+  expect(report.seen.at(-1)).toMatchObject({ status: 'error', error: expect.stringContaining('connection token') });
+  expect(alerts).toContainEqual({ level: 'error', ref: 'tunnel', text: expect.stringContaining('anyone') });
+  expect(handlers.has(at('mine', TUNNEL_PORT))).toBe(false);
+});
+
+it('refuses to open 31546 to anyone on a daemon with no token and no users, and keeps the record', async () => {
+  const { cloud, calls } = fakeCloud({ found: REMOTE });
+  const { kind } = kindFor(serviceOver(cloud));
+  await kind.create(anonymousTunnel(false), reporting().report);
+
+  const invoked = reporting();
+  await kind.invoke('anonymous', anonymousTunnel(false), invoked.report, { on: true });
+  expect(invoked.seen).toEqual([{ error: expect.stringContaining('connection token') }]);
+
+  const saved = reporting();
+  await kind.update!(anonymousTunnel(true), { connector: 'mine', port: TUNNEL_PORT, anonymous: true }, saved.report);
+  expect(saved.seen).toEqual([{ error: expect.stringContaining('connection token') }]);
+  expect(calls.access).toEqual([]);
+});
+
+it('starts an anonymous 31546 where the daemon asks for a token, and an anonymous port that is not the daemon\'s anywhere', async () => {
+  const guarded = kindFor(carrying().service, { guarded: () => true });
+  const withToken = reporting();
+  await guarded.kind.create(anonymousTunnel(true), withToken.report);
+  expect(withToken.seen.at(-1)).toMatchObject({ status: 'running' });
+
+  const users = kindFor(carrying().service, {}, { users: true });
+  const withUsers = reporting();
+  await users.kind.create(anonymousTunnel(true), withUsers.report);
+  expect(withUsers.seen.at(-1)).toMatchObject({ status: 'running' });
+
+  const open = kindFor(carrying().service);
+  const other = reporting();
+  await open.kind.create(tunnel({ settings: { connector: 'mine', port: 9101, anonymous: true } }), other.report);
+  expect(other.seen.at(-1)).toMatchObject({ status: 'running' });
+});
+
 // The fake SDK ------------------------------------------------------------
 
 /** A made-up Dev Tunnel, which no service ever made. */
