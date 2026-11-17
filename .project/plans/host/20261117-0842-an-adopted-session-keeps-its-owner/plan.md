@@ -69,7 +69,7 @@ chat/turnStarted from a person -> lifecycle: who = ownerFor(sender)
 
 ## Risks and tradeoffs
 
-- The five ownerless records of 2026-10-20 are gone, so this path is not proven for them - a new sighting of a session with no owner gets a problem file.
+- This path is not proven for the five ownerless records of 2026-10-20, which are gone - a new sighting gets a problem file.
 - A session adopted before this change keeps no owner - nothing writes it back, and the next adoption cannot happen, since it is no longer external.
 
 ## Resume state
