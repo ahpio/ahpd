@@ -38,9 +38,15 @@ Partly known.
 
 A person's turn on an external session adopts it, as VS Code's host does.
 `adoptExternalSession` makes it the host's own session, and no code on that path writes an owner.
+
+A test proved it on 2026-11-17, at `25654afe8`, in `/github/ahpd.worktrees/external-owner` and not committed.
+On a host with users, ana signs in, makes a session with `createSession`, and sends a turn on an external session.
+The session she made is kept with the owner `user:ana`.
+The external session she adopted is kept with no owner.
+
 The five ids of 2026-10-20 each have a folder in `~/.claude/session-env/` dated 2026-10-20.
-Claude Code makes that folder for any session it runs, so it does not prove they were external.
-Their records and transcripts are gone, so this path is the likely one, not a proven one.
+Claude Code makes that folder for any session it runs, so that does not prove they were external.
+Their records and transcripts are gone, so other paths are not ruled out for them.
 With a `users` file, `getAutoApproval` approves only when the sender owns the session.
 A session with no owner never matches, so every command asks.
 
@@ -69,7 +75,7 @@ None. Approve each command by hand.
 
 ## Fix
 
-No fix is chosen, because the cause is not found.
+No fix is chosen.
 
-1. Send a turn on an external session in a test, and read the record's owner. A record with no owner proves the path.
-2. Write the owner on every path that makes a record, so a session with no owner is only one that nobody owns.
+1. Write the owner of the person whose turn adopts an external session, as `createSession` writes the connection's owner.
+2. Write the owner on every other path that makes a record, so a session with no owner is only one that nobody owns.
