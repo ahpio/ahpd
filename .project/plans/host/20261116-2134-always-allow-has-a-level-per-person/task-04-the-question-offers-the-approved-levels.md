@@ -53,3 +53,4 @@ Built on 2026-11-16, awaiting review.
 - On a host with users, the answer that turns on Allow All needs `session:configure`, as any change of the session's config does.
 - Each level is a group of its own, and Skip is in the group after the last one.
 - The two cases in `host-input.test.ts` that list the options of a host with no users file now include Allow All.
+- `agent-acp-rule.test.ts` reads Skip as the last option, in whichever group it falls.
