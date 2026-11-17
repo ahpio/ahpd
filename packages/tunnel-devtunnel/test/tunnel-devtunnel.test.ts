@@ -88,6 +88,8 @@ afterEach(async () => {
 interface Asked {
   url: string;
   authorization?: string;
+  cookie?: string;
+  connection?: string;
 }
 
 /** A daemon on loopback that answers each request `plain`, and records what it was asked. */
@@ -97,6 +99,8 @@ const daemonOn = async (upgrade = false) => {
     asked.push({
       url: request.url ?? '',
       ...(request.headers.authorization === undefined ? {} : { authorization: request.headers.authorization }),
+      ...(request.headers.cookie === undefined ? {} : { cookie: request.headers.cookie }),
+      ...(request.headers.connection === undefined ? {} : { connection: request.headers.connection }),
     });
   };
   const server = createHttpServer((request, answer) => { remember(request); answer.end('plain'); });
@@ -366,7 +370,7 @@ it('carries a WebSocket upgrade with the derived token to the daemon as the pers
   );
 
   expect(answer).toContain('101 Switching Protocols');
-  expect(daemon.asked).toEqual([{ url: '/?tkn=key-for-ada' }]);
+  expect(daemon.asked).toEqual([{ url: '/?tkn=key-for-ada', connection: 'Upgrade' }]);
 });
 
 it('leaves a port other than the well-known one to the service, and stops carrying the one it took', async () => {
@@ -503,6 +507,94 @@ it('starts an anonymous 31546 where the daemon asks for a token, and an anonymou
   const other = reporting();
   await open.kind.create(tunnel({ settings: { connector: 'mine', port: 9101, anonymous: true } }), other.report);
   expect(other.seen.at(-1)).toMatchObject({ status: 'running' });
+});
+
+/*
+ * A port that is not the daemon's, with `requireToken` on, is gated: a request
+ * reaches the port's app only with a token the daemon accepts, which a visitor
+ * brings once as `?tkn=` and then as the cookie the gate sets.
+ */
+
+/** A gated tunnel on the app's port. */
+const gated = (port: number, requireToken = true): Tunnel => tunnel({
+  settings: { connector: 'mine', port, ...(requireToken ? { requireToken: true } : {}) },
+});
+
+/** A kind with a gate in front of an app on loopback, which accepts the token `good`. */
+const gateOn = async (upgrade = false) => {
+  const { service, handlers, at } = carrying();
+  const app = await daemonOn(upgrade);
+  const { kind } = kindFor(service, {}, { accepts: ['good'] });
+  await kind.create(gated(app.port), reporting().report);
+  const handler = handlers.get(at('mine', app.port));
+  expect(handler).toBeDefined();
+  return { kind, handlers, at, app, handler: handler! };
+};
+
+it('answers 401 to a request on a gated port with no token, and the app hears nothing', async () => {
+  const { app, handler } = await gateOn();
+  const answer = await visit(handler, 'GET /page HTTP/1.1\r\nHost: example.com\r\n\r\n');
+  expect(answer).toContain('401 Unauthorized');
+  expect(app.asked).toEqual([]);
+});
+
+it('answers an accepted ?tkn= with the cookie and the same address without it', async () => {
+  const { app, handler } = await gateOn();
+  const answer = await visit(handler, 'GET /page?a=1&tkn=good HTTP/1.1\r\nHost: example.com\r\n\r\n');
+  expect(answer).toContain('302 Found');
+  expect(answer).toContain('location: /page?a=1\r\n');
+  expect(answer).toContain('set-cookie: ahpd-tkn=good; Path=/; Max-Age=604800; HttpOnly; Secure; SameSite=Lax');
+  expect(app.asked).toEqual([]);
+});
+
+it('carries a request with an accepted cookie to the app, without the cookie and for one request', async () => {
+  const { app, handler } = await gateOn();
+  const answer = await visit(handler, 'GET /page HTTP/1.1\r\nHost: example.com\r\nCookie: theme=dark; ahpd-tkn=good\r\nConnection: keep-alive\r\n\r\n');
+  expect(answer.slice(answer.indexOf('\r\n\r\n') + 4)).toBe('plain');
+  expect(app.asked).toEqual([{ url: '/page', cookie: 'theme=dark', connection: 'close' }]);
+});
+
+it('keeps an upgrade an upgrade through the gate', async () => {
+  const { app, handler } = await gateOn(true);
+  const answer = await visit(
+    handler,
+    'GET /socket HTTP/1.1\r\nHost: example.com\r\nCookie: ahpd-tkn=good\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: x\r\nSec-WebSocket-Version: 13\r\n\r\n',
+  );
+  expect(answer).toContain('101 Switching Protocols');
+  expect(app.asked).toEqual([{ url: '/socket', connection: 'Upgrade' }]);
+});
+
+it('answers 401 to a token the daemon does not accept, as tkn or as the cookie', async () => {
+  const { app, handler } = await gateOn();
+  expect(await visit(handler, 'GET /?tkn=bad HTTP/1.1\r\nHost: example.com\r\n\r\n')).toContain('401 Unauthorized');
+  expect(await visit(handler, 'GET / HTTP/1.1\r\nHost: example.com\r\nCookie: ahpd-tkn=bad\r\n\r\n')).toContain('401 Unauthorized');
+  expect(app.asked).toEqual([]);
+});
+
+it('closes a stream on a gated port that does not speak HTTP', async () => {
+  const { app, handler } = await gateOn();
+  const stream = new Duplex({ read: () => {}, write: (_chunk, _encoding, callback) => { callback(); } });
+  const closed = new Promise<void>((done) => { stream.on('close', () => { done(); }); });
+  handler(stream);
+  stream.push('SSH-2.0-OpenSSH_9.6\r\n');
+  await closed;
+  expect(app.asked).toEqual([]);
+});
+
+it('takes the gate off when a saved record turns requireToken off, and puts it back when it is on', async () => {
+  const { kind, handlers, at, app } = await gateOn();
+  await kind.update!(gated(app.port, false), { connector: 'mine', port: app.port }, reporting().report);
+  expect(handlers.has(at('mine', app.port))).toBe(false);
+  await kind.update!(gated(app.port), { connector: 'mine', port: app.port }, reporting().report);
+  expect(handlers.has(at('mine', app.port))).toBe(true);
+});
+
+it('refuses every token on a host that wired no check', async () => {
+  const { service, handlers, at } = carrying();
+  const app = await daemonOn();
+  const { kind } = kindFor(service);
+  await kind.create(gated(app.port), reporting().report);
+  expect(await visit(handlers.get(at('mine', app.port))!, 'GET /?tkn=good HTTP/1.1\r\nHost: example.com\r\n\r\n')).toContain('401 Unauthorized');
 });
 
 // The fake SDK ------------------------------------------------------------
@@ -661,6 +753,8 @@ interface People {
   users?: boolean;
   /** The key `personKey` answers, which is a made-up one. */
   key?: string;
+  /** The tokens `acceptsToken` answers true for. */
+  accepts?: string[];
 }
 
 /** The kind over a service, with the lines, alerts and page it made kept. */
@@ -676,6 +770,7 @@ const kindFor = (service: Service, over: Partial<KindOptions> = {}, people: Peop
     log: loggerOf((line: string) => { logged.push(line); }),
   }), {
     ...(people.key === undefined ? {} : { personKey: async () => people.key }),
+    ...(people.accepts === undefined ? {} : { acceptsToken: async (token: string) => people.accepts!.includes(token) }),
     alert: (alert) => { alerts.push(alert); },
     clearAlert: (ref) => { cleared.push(ref); },
     showView: (_surface, view) => { views.push(view); },

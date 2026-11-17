@@ -1,6 +1,6 @@
 ---
 title: A gate checks each request
-status: todo
+status: implemented
 depends: [task-01-the-plugin-host-checks-a-token.md]
 layer: "tunnel-devtunnel"
 refs:
@@ -46,3 +46,9 @@ With `requireToken` on, a port other than 31546 is answered by a gate that admit
 - Run the tunnel-devtunnel suite as HANDOFF *Tests* says.
 
 ## Resume
+
+Built on 2026-11-17.
+The gate is a hop that maps nothing, made by `gateFor`, so every path that closes a hop takes the gate down too.
+`carry` and `gate` share `dial`.
+`headFrom` now closes a stream whose first line is not an HTTP request line, on 31546 too, rather than wait for a head.
+The test daemon records `cookie` and `connection`, so the upgrade case on 31546 now expects `connection: Upgrade`.

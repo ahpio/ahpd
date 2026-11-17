@@ -1081,6 +1081,13 @@ export interface HostRecordingOptions {
    */
   personKey?: (person: string) => Promise<string | undefined>;
   /**
+   * Where a plugin's `acceptsToken` is answered, read when it is called.
+   *
+   * The daemon's own door options answer it. Absent, every token is refused,
+   * so a gate in a test host admits nobody.
+   */
+  acceptsToken?: (token: string) => Promise<boolean>;
+  /**
    * Where an `alert` goes, for the daemon to serve on the plugin's row.
    *
    * Collected rather than written, because the person who has to read it is the
@@ -1494,6 +1501,7 @@ export function pluginHost(by: string, given: LoaderContext, options: HostRecord
      * nobody for a key to name and nothing a plugin can do with one.
      */
     personKey: async (person) => await options.personKey?.(person),
+    acceptsToken: async (token) => (await options.acceptsToken?.(token)) === true,
     /*
      * The store is keyed by id and keeps the name the host holds the session
      * under, so a machine's recorded URI is compared with that name. `false`

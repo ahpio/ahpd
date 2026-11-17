@@ -1,6 +1,6 @@
 ---
 title: The plugin host checks a token
-status: todo
+status: implemented
 depends: []
 layer: "sdk, server"
 refs:
@@ -42,3 +42,7 @@ A plugin asks `acceptsToken(token)`, and the daemon answers true for its own tok
 - Run the sdk, computer and server suites one at a time, as HANDOFF *Tests* says.
 
 ## Resume
+
+Built on 2026-11-17.
+`tokenAcceptedBy` is exported from the sdk, and `run.ts` hands `tokenAcceptedBy(door)` to the plugin set as `acceptsToken`.
+The cases are in `packages/server/test/plugin-person-key.test.ts`, which has a users directory and a minted key to test with, not in an sdk test.

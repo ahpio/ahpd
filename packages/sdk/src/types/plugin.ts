@@ -1175,6 +1175,16 @@ export interface PluginHost extends PluginContext {
    */
   personKey(person: string): Promise<string | undefined>;
   /**
+   * Whether this daemon accepts a token: its own connection token, or one that
+   * names a person, a key from `personKey` among them.
+   *
+   * A plugin that puts the daemon's sign-in in front of something else asks
+   * here, since only the daemon knows its tokens. A person whose record
+   * requires the issuer is not named by a local token, so theirs answers
+   * false, and a host that wired no check answers false for every token.
+   */
+  acceptsToken(token: string): Promise<boolean>;
+  /**
    * Whether this daemon keeps one session, read when called.
    *
    * The computer plugin asks at startup about a disposable machine it found,

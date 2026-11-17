@@ -1,6 +1,6 @@
 ---
 title: The docs say what a gate does
-status: todo
+status: implemented
 depends: [task-02-a-gate-checks-each-request.md]
 layer: "docs"
 refs:
@@ -34,3 +34,6 @@ The README, the setting's description and the 0.15 notes say what `requireToken`
 - The `plugin-load.test.ts` case of the first-party options passes, since the schema text changes.
 
 ## Resume
+
+Built on 2026-11-17.
+`docs/plugins/PLUGINS.md` gained *Checking a token*, the place task 01 named.
