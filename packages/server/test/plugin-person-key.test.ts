@@ -12,7 +12,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { doorOf, fileUsers } from '@ahpd/sdk';
+import { doorOf, fileUsers, tokenAcceptedBy } from '@ahpd/sdk';
 import { pluginSet } from '../src/plugins.js';
 import { identifyWith } from '../src/commands/run.js';
 import type { PluginSet, StagedPlugin } from '../src/plugins.js';
@@ -126,5 +126,39 @@ describe('a key a plugin mints', () => {
 
     const door = doorOf({ token: DEPLOYMENT, root: true, identify: identifyWith(users, () => set) });
     expect(await door(`ws://host.example.com/?tkn=${encodeURIComponent(held!.key)}`, null)).toEqual({ admitted: false });
+  });
+});
+
+/*
+ * What a plugin's `acceptsToken` answers: the daemon's own token, or a token
+ * that names a person. The door alone would not do, since a daemon with no
+ * token of its own admits any connection.
+ */
+describe('a token the daemon accepts', () => {
+  it('is its own token, a person\'s token, or a key a plugin minted', async () => {
+    const users = directory();
+    const set = setOf(users);
+    await load(set, 'ada');
+    const accepts = tokenAcceptedBy({ token: DEPLOYMENT, root: true, identify: identifyWith(users, () => set) });
+
+    expect(await accepts(DEPLOYMENT)).toBe(true);
+    expect(await accepts(await users.mint('bo'))).toBe(true);
+    expect(await accepts(minted()!.key)).toBe(true);
+    expect(await accepts('not-a-token')).toBe(false);
+    expect(await accepts('')).toBe(false);
+
+    await set.unload(PLUGIN);
+  });
+
+  it('is not the token of a person whose record requires the issuer', async () => {
+    const users = directory([{ id: 'ada', roles: ['keeper'], requireIssuer: true }]);
+    const accepts = tokenAcceptedBy({ root: true, identify: identifyWith(users, () => setOf(users)) });
+    expect(await accepts(await users.mint('ada'))).toBe(false);
+  });
+
+  it('is nothing on a daemon with no token of its own and no users', async () => {
+    const accepts = tokenAcceptedBy({});
+    expect(await accepts(DEPLOYMENT)).toBe(false);
+    expect(await accepts('anything')).toBe(false);
   });
 });

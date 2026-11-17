@@ -21,7 +21,7 @@ import type {
   KindOperation, PluginHost, ReportTunnel, Tunnel, TunnelKind,
 } from '@ahpd/sdk';
 import { deriveConnectionToken, displayLabel, TUNNEL_PORT } from './discovery.js';
-import { carry } from './forward.js';
+import { carry, gate } from './forward.js';
 import type { Service, Shown } from './service.js';
 import { sameState, tunnelView } from './view.js';
 import type { TunnelState } from './view.js';
@@ -113,7 +113,7 @@ export const SCHEMA: Record<string, unknown> = {
     requireToken: {
       type: 'boolean',
       title: 'Require a token',
-      description: 'Visitors must bring a token this host accepts. VS Code over the tunnel cannot connect.',
+      description: 'Visitors must bring a token this host accepts. On port 31546 the derived token is not mapped, so VS Code over the tunnel cannot connect. On another port, a visitor opens the URL once with ?tkn=<token> and then carries a cookie.',
       default: false,
     },
   },
@@ -167,7 +167,7 @@ export interface KindOptions {
   /** The plugin's host: the lines, alerts, page and people the kind keeps there. */
   plugin: Pick<
     PluginHost,
-    'say' | 'log' | 'alert' | 'clearAlert' | 'showView' | 'clearView' | 'hasUsers' | 'personKey'
+    'say' | 'log' | 'alert' | 'clearAlert' | 'showView' | 'clearView' | 'hasUsers' | 'personKey' | 'acceptsToken'
   >;
   /** The service its ports are put on. */
   service: Service;
@@ -364,7 +364,7 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
     requireToken: boolean,
     anonymous: boolean,
   ): Promise<Hop | undefined> => {
-    if (port !== TUNNEL_PORT) return undefined;
+    if (port !== TUNNEL_PORT) return requireToken ? gateFor(connector, port, anonymous) : undefined;
     const daemon = options.daemonPort();
     if (daemon === undefined) return undefined;
     const key = person === undefined ? undefined : await plugin.personKey(person);
@@ -415,6 +415,26 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
   const refuseOpen = (report: ReportTunnel, starting: boolean): void => {
     plugin.alert({ level: 'error', ref: REF, text: OPEN_TO_ANYONE });
     report(starting ? { status: 'error', error: OPEN_TO_ANYONE } : { error: OPEN_TO_ANYONE });
+  };
+
+  /**
+   * The gate in front of a port that is not the daemon's: each request is
+   * carried to that port on this machine only with a token the daemon
+   * accepts. It is a hop that maps nothing, so a stop, a move and a restart
+   * take it down as they take down the daemon's.
+   */
+  const gateFor = (connector: string, port: number, anonymous: boolean): Hop => {
+    const hop: Hop = {
+      requireToken: true,
+      anonymous,
+      close: async () => { options.service.carry(connector, port, undefined); },
+    };
+    options.service.carry(connector, port, (stream) => {
+      void gate(stream, port, (token) => plugin.acceptsToken(token), plugin.log).catch((error: unknown) => {
+        plugin.log.warn(`${NAME}: a gated connection was not carried: ${reason(error)}`);
+      });
+    });
+    return hop;
   };
 
   /** Put one tunnel up, or say why it is not up. */
@@ -668,6 +688,18 @@ export function devtunnelKind(options: KindOptions): TunnelKind {
        * without a new key: the setting only decides whether a token is mapped.
        */
       if (one.hop !== undefined) one.hop.requireToken = requireToken;
+      /*
+       * On a port that is not the daemon's, `requireToken` is the gate itself:
+       * turned on, the gate goes in front of the port, and turned off, the port
+       * is piped as it is again.
+       */
+      if (port !== TUNNEL_PORT) {
+        if (requireToken && one.hop === undefined) one.hop = gateFor(connector, port, anonymous);
+        else if (!requireToken && one.hop !== undefined) {
+          await one.hop.close();
+          delete one.hop;
+        }
+      }
 
       // A person named or changed on the running port is who the next visitor
       // is admitted as. The handler reads the hop, so the key changes in place

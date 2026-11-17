@@ -31,6 +31,7 @@ import {
   createHost,
   createMinuteMeter,
   doorOf,
+  tokenAcceptedBy,
   fileResources,
   ripgrepFiles,
   fileSessions,
@@ -1829,6 +1830,7 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
   });
   const holding: LoadOptions = {
     base,
+    acceptsToken: tokenAcceptedBy(door),
     paths: options.paths,
     configDir: configDir(),
     hostId: hostId(),

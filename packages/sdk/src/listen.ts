@@ -194,6 +194,22 @@ export const doorOf = (options: DoorOptions): Door => {
   };
 };
 
+/**
+ * Whether a token is one this daemon accepts: its own token, or one that
+ * names a person, which is what a plugin's gate in front of another port asks.
+ *
+ * Not the door's answer: a daemon with no token of its own opens its door to
+ * any connection, so being admitted says nothing about the token. A person's
+ * token that opens the socket and names nobody, because their record requires
+ * the issuer, is not accepted either, since nobody signed in with it.
+ */
+export const tokenAcceptedBy = (options: DoorOptions) => async (token: string): Promise<boolean> => {
+  if (token === '') return false;
+  if (options.token !== undefined && same(options.token, token)) return true;
+  if (options.identify === undefined) return false;
+  return (await options.identify(token))?.principal !== undefined;
+};
+
 /** The sentence a refused token is answered with, on the handshake and on a plain request. */
 const TOKEN_REQUIRED = 'A connection token is required';
 

@@ -1292,6 +1292,16 @@ Nobody but your own plugin ever sees the value: it comes from the vault at the c
 
 `registerVault(vault, 'replace')` takes the port over, for a store of your own: a keychain, a secrets manager, an encrypted file. The host's own is `vault.json` in the config folder, plain JSON at mode 0600, and `ahpd vault set|delete|list` is how a person fills it. A plugin listed first can take it over with `'replace'`; one that does not is refused, and one listed after the plugins that already named a secret never gets to be the vault they resolved against, so list a vault plugin first. Its own options cannot name a secret: a vault that had to read itself to build is a vault nothing can check.
 
+### Checking a token
+
+`host.acceptsToken(token)` answers whether this daemon accepts a token: its own connection token, or one that names a person, a key from `host.personKey` among them. A plugin that puts the daemon's sign-in in front of something else asks here, since only the daemon knows its tokens:
+
+```ts
+if (!(await host.acceptsToken(presented))) return refuse();
+```
+
+It is not the door's answer. A daemon with no connection token opens its door to any connection, so on a host with no token and no users every token answers `false`. A person whose record requires the issuer is not signed in by a local token, so theirs answers `false` too. The check is made at each call, so a token revoked since the last call answers `false` at the next one.
+
 ### A new chat's preamble
 
 `host.registerChatPreamble(preamble)` gives text to each new chat that a person or a tool opens.

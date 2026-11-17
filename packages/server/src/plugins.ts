@@ -958,6 +958,8 @@ export interface LoadOneOptions {
    * person it stands for. Absent on a host with no users directory.
    */
   personKey?: (person: string) => Promise<string | undefined>;
+  /** Where a plugin's `acceptsToken` is answered: the daemon's door options. Absent, every token is refused. */
+  acceptsToken?: (token: string) => Promise<boolean>;
   /**
    * The hosts that joined this daemon, handed to every plugin as `host.nodes`.
    *
@@ -1572,6 +1574,7 @@ export async function loadOne(resolved: Resolved, options: LoadOneOptions, impor
     ...(options.usage === undefined ? {} : { usage: options.usage }),
     ...(options.vault === undefined ? {} : { vault: options.vault }),
     ...(options.personKey === undefined ? {} : { personKey: options.personKey }),
+    ...(options.acceptsToken === undefined ? {} : { acceptsToken: options.acceptsToken }),
     ...(options.nodes === undefined ? {} : { nodes: options.nodes }),
     ...(options.alert === undefined ? {} : { alert: options.alert }),
     ...(options.clearAlert === undefined ? {} : { clearAlert: options.clearAlert }),
@@ -1717,6 +1720,8 @@ export const optionsSchemaLoaded = (name: string): Record<string, unknown> | und
 export interface LoadOptions {
   /** The options the daemon already built, which every contribution folds into. */
   base: HostOptions;
+  /** Whether the daemon accepts a token, which a plugin asks through `acceptsToken`. */
+  acceptsToken?: (token: string) => Promise<boolean>;
   /** The directory a bare spec resolves from, and where `npm i` is the install. */
   configDir: string;
   /** The directory a relative path is tried against first. */
@@ -2229,6 +2234,7 @@ export const pluginSet = (options: LoadOptions): PluginSet => {
       usage: () => reached?.usage,
       vault: vaultInForce,
       personKey: (person) => mintPersonKey(id, person),
+      ...(options.acceptsToken === undefined ? {} : { acceptsToken: options.acceptsToken }),
       ...(options.base.nodes === undefined ? {} : { nodes: options.base.nodes }),
       sessions: () => hosted.then((host) => host.sessions),
       records: () => hosted.then((host) => host.records),

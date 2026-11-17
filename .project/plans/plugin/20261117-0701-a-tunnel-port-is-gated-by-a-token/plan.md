@@ -79,9 +79,9 @@ visitor -> relay -> gate: tkn or ahpd-tkn cookie -> plugin.acceptsToken -> daemo
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - the plugin host checks a token](task-01-the-plugin-host-checks-a-token.md) | todo | - |
-| [02 - a gate checks each request](task-02-a-gate-checks-each-request.md) | todo | 01 |
-| [03 - the docs say what a gate does](task-03-the-docs-say-what-a-gate-does.md) | todo | 02 |
+| [01 - the plugin host checks a token](task-01-the-plugin-host-checks-a-token.md) | implemented | - |
+| [02 - a gate checks each request](task-02-a-gate-checks-each-request.md) | implemented | 01 |
+| [03 - the docs say what a gate does](task-03-the-docs-say-what-a-gate-does.md) | implemented | 02 |
 
 ## Risks and tradeoffs
 
@@ -91,8 +91,8 @@ visitor -> relay -> gate: tkn or ahpd-tkn cookie -> plugin.acceptsToken -> daemo
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-the-plugin-host-checks-a-token.md](task-01-the-plugin-host-checks-a-token.md), on the branch of plugin/20261117-0701-anonymous-31546-requires-a-token.
+- **Done so far:** tasks 01 to 03 are `implemented` on 2026-11-17, on the branch `plugin/20261117-0701-a-tunnel-port-is-gated-by-a-token`, stacked on plan 1's branch.
+- **Next action:** Softov's review, then the checks of *Final verification checklist* on the test daemon.
 - **Open questions:** none.
 - **Watch out for:** an sdk host change runs the computer suite too, as HANDOFF *Tests* says.
 
