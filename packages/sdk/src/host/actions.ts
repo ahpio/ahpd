@@ -1,3 +1,4 @@
+import { APPROVAL_KEYS, filePersonRules } from '../access/personrules.js';
 import { isDeepStrictEqual } from 'node:util';
 import { IS_CLIENT_DISPATCHABLE } from '@microsoft/agent-host-protocol';
 import type { AnnotationsAction } from '@microsoft/agent-host-protocol';
@@ -348,7 +349,33 @@ export function createActions(ctx: HostContext, conn: ConnectionContext): Action
       const account = Object.keys(pushed).find((key) => [...agents.values()].some((agent) => accountKey(agent.provider) === key)
         && !isDeepStrictEqual(pushed[key], held[key]));
       if (account !== undefined) return Promise.reject(new Error(`Host configuration property is read-only: ${account}`));
-      const config = pushed;
+      /*
+       * A person's own approval settings, out of the push.
+       *
+       * On a host with users, the keys that decide what runs or is written
+       * without a question are each person's own: VS Code pushes them at every
+       * connect, and one value for the whole host would let the last window to
+       * connect approve commands in everybody's sessions. So a person's push
+       * of them goes to their file in the person store, and the rest of the
+       * push to the root as before. A root connection, a `replace` and a host
+       * with no users set the host's value, as VS Code's host with its one
+       * person does. A host with users and no person store has nowhere to keep
+       * them, and refuses them rather than set them for everybody: a push of
+       * nothing else is refused, and the rest of a push beside them is applied
+       * without them, so the window's other keys, its trust among them, still
+       * hold.
+       */
+      const pusher = options.users !== undefined && connection.root !== true && action.replace !== true ? connection.principal?.id : undefined;
+      const own = pusher === undefined ? {} : Object.fromEntries(Object.entries(pushed).filter(([key]) => APPROVAL_KEYS.includes(key)));
+      const config = Object.keys(own).length === 0 ? pushed : Object.fromEntries(Object.entries(pushed).filter(([key]) => !APPROVAL_KEYS.includes(key)));
+      if (pusher !== undefined && Object.keys(own).length > 0) {
+        const folder = options.personPermissionsDir;
+        const refused = `This host keeps no settings per person, so ${Object.keys(own).join(', ')} cannot be pushed`;
+        if (folder === undefined && Object.keys(config).length === 0) return Promise.reject(new Error(refused));
+        if (folder === undefined) log.warn(`root config: ${refused}; the rest of the push is applied`);
+        else filePersonRules(folder).keep(pusher, own);
+        if (Object.keys(config).length === 0) return;
+      }
       /*
        * A `changeWords` naming a backend this host cannot ask, refused before
        * anything is applied.
@@ -408,11 +435,12 @@ export function createActions(ctx: HostContext, conn: ConnectionContext): Action
         if (ctx.changesNothing(echoed, action.replace === true)) return;
         /*
          * The host's keys are kept, and the daemon's are not. Every key a
-         * client pushes, the window's own among them - the shell, the trust,
-         * and the command and edit rules - is one value for the whole host,
-         * which the last push sets and every session and every client reads,
-         * as the reference host keeps one root config for every window
-         * connected to it.
+         * client pushes, the window's own among them - the shell and the
+         * trust - is one value for the whole host, which the last push sets
+         * and every session and every client reads, as the reference host
+         * keeps one root config for every window connected to it. The
+         * approval keys of a person's push on a host with users were taken
+         * out above, into that person's own settings.
          * https://github.com/microsoft/vscode/blob/a12547442f722dfe0a6ec105f986cfe65b8d6f22/src/vs/platform/agentHost/common/agentHostConfigurationSync.ts#L47-L55
          * https://github.com/microsoft/vscode/blob/a12547442f722dfe0a6ec105f986cfe65b8d6f22/src/vs/platform/agentHost/node/agentHostStateManager.ts#L2888-L2899
          *

@@ -1,6 +1,6 @@
 ---
 title: The docs say whose settings apply
-status: todo
+status: implemented
 depends: [task-02-a-question-reads-the-owners-settings.md]
 layer: "docs"
 refs:
@@ -33,3 +33,6 @@ The docs say that on a host with users each person's window settings apply to th
 - The `users.test.ts` case of the docs table passes.
 
 ## Resume
+
+Built on 2026-11-17.
+`docs/sdk/AHP.md` says the same in its `root/configChanged` row, beyond the task's files.

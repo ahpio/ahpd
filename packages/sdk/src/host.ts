@@ -19,6 +19,7 @@
 
 import { resolve } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
+import { filePersonRules } from './access/personrules.js';
 import { ACTION_INTRODUCED_IN, annotationsReducer, chatReducer, isActionKnownToVersion, rootReducer, sessionReducer } from '@microsoft/agent-host-protocol';
 import type {
   Annotation, AnnotationsAction, AnnotationsState, ChatAction, ChatState, RootAction, RootState, SessionAction, SessionInputRequestKind, SessionState, StateAction,
@@ -820,9 +821,22 @@ export function createHost(options: HostOptions): Host {
      * is the rule the daemon's keys already take - decision
      * `an-agent-account-is-shown-to-account-readers`.
      */
-    const shown = seesAccount(connection, directory)
+    const accounted = seesAccount(connection, directory)
       ? mine
       : Object.fromEntries(Object.entries(mine).filter(([key]) => !isAccountKey(key)));
+    /*
+     * And a person's own approval settings kept in place of the host's: a
+     * change of the host's value of one, or a `replace` carrying it, is not
+     * that person's value, so the connection is sent theirs and keeps reading
+     * what its person pushed.
+     */
+    const person = directory && connection.root !== true ? connection.principal?.id : undefined;
+    const own = person === undefined || options.personPermissionsDir === undefined
+      ? {}
+      : filePersonRules(options.personPermissionsDir).settings(person);
+    const shown = Object.keys(own).some((key) => Object.hasOwn(accounted, key) || action.replace === true)
+      ? { ...accounted, ...own }
+      : accounted;
     return shown === config ? envelope : { ...envelope, action: { ...action, config: shown } };
   };
   /**

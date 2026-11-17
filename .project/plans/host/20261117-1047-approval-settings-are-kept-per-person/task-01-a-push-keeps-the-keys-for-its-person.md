@@ -1,6 +1,6 @@
 ---
 title: A push keeps the approval keys for its person
-status: todo
+status: implemented
 depends: []
 layer: "sdk"
 refs:
@@ -43,3 +43,12 @@ On a host with users, a person's push of the three approval keys is kept in thei
 - Run the sdk, computer and server suites one at a time, as HANDOFF *Tests* says.
 
 ## Resume
+
+Built on 2026-11-17.
+A host with users and no `personPermissionsDir` refuses a person's push of the approval keys.
+It has nowhere to keep them, and setting them for everybody is the problem this plan fixes.
+The rest of a push beside them is applied without them, so a VS Code connect push keeps its trust.
+`wire.test.ts` echoes every key of VS Code's connect push but these three on a host with users, and lists `x-ahpd-scope` among its widenings.
+`commandparser.test.ts` and `agent-acp-ports.test.ts` give their hosts a person folder, since they push rules on a host with users.
+`grant` now keeps the other keys of a person's file, where it wrote only `permissions` before.
+`autoapproval.test.ts` and `root-config.test.ts` were written for one host value, and now read each person's own.

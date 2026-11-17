@@ -555,6 +555,12 @@ export function createSpawn(ctx: HostContext): Spawn {
     return person === undefined ? undefined : personRules?.read(person);
   };
 
+  /** The approval settings the session's owner keeps, which come before the host's; none for a session no person owns. */
+  const personSettingsOf = (session: string): Bag => {
+    const person = personOf(kept.owner(idOf(session)));
+    return person === undefined ? {} : personRules?.settings(person) ?? {};
+  };
+
   const approvesFor = (session: string, turn: Bag | undefined, turnId: string): boolean => {
     if (options.users === undefined) return true;
     const owner = kept.owner(idOf(session));
@@ -585,17 +591,21 @@ export function createSpawn(ctx: HostContext): Spawn {
     const commandLine = shell ? signal.shellCommand ?? (typeof action.toolInput === 'string' ? action.toolInput : undefined) : undefined;
     const subCommands = commandLine === undefined ? [] : splitForRules(commandLine, signal.shellLanguage ?? 'bash')?.subCommands ?? [];
     /*
-     * The terminal rules and the edit patterns are the host's one value each,
-     * read for every question whoever sent its turn, as VS Code's host reads
-     * them from its root config for every question.
+     * The terminal rules, the edit patterns and whether the table is on, read
+     * for every question, as VS Code's host reads them from its root config.
+     * On a host with users the session's owner may keep their own, which come
+     * before the host's: a person's window decides for their own sessions and
+     * for nobody else's.
      * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/sessionPermissions.ts#L380
      * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/sessionPermissions.ts#L875
      */
-    const pushed = ctx.rootConfig['terminalAutoApproveRules'];
+    const ownSettings = personSettingsOf(session);
+    const setting = (key: string): unknown => (Object.hasOwn(ownSettings, key) ? ownSettings[key] : ctx.rootConfig[key]);
+    const pushed = setting('terminalAutoApproveRules');
     const terminalRules = pushed !== null && typeof pushed === 'object'
       ? pushed as TerminalAutoApproveRules
       : options.terminalAutoApproveDefaults === 'none' ? {} : DEFAULT_TERMINAL_AUTO_APPROVE_RULES;
-    const patterns = ctx.rootConfig['editAutoApprovePatterns'];
+    const patterns = setting('editAutoApprovePatterns');
     const editPatterns = (patterns !== null && typeof patterns === 'object' ? patterns : vscodeRootProperties.editAutoApprovePatterns?.default ?? {}) as TerminalAutoApprovePatterns;
     const held: unknown = owning?.config['sensitiveEditLocations'];
     const sensitive = Array.isArray(held) && held.every((one: unknown) => typeof one === 'object' && one !== null && !Array.isArray(one)
@@ -626,7 +636,7 @@ export function createSpawn(ctx: HostContext): Spawn {
       globalAutoApprove: ctx.rootConfig.globalAutoApproveEnabled === true,
       sessionAutoApprove: ctx.rootConfig.autoApprovePolicyRestricted !== true && owning?.config.autoApprove === 'autoApprove',
       bypassLocked: managedSettings?.disableBypassPermissionsMode === 'disable',
-      terminalAutoApprove: ctx.rootConfig.terminalAutoApproveEnabled !== false,
+      terminalAutoApprove: setting('terminalAutoApproveEnabled') !== false,
       editPatterns,
       sensitive,
       ...(commandLine === undefined ? {} : {

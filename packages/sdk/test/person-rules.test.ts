@@ -52,3 +52,31 @@ it('names a person only for a signed-in user', () => {
   expect(personOf('team:ops')).toBeUndefined();
   expect(personOf(undefined)).toBeUndefined();
 });
+
+/*
+ * A person's window settings, the three approval keys, kept in the same file
+ * beside their rules: a write of one never loses the other.
+ */
+it('keeps a person\'s approval settings beside their rules, and nothing else a push carried', () => {
+  const at = folder();
+  const rules = filePersonRules(at);
+  rules.grant('bob', ['Shell(make *)']);
+  expect(rules.keep('bob', { terminalAutoApproveRules: { 'make test': true }, editAutoApprovePatterns: { '**/*': true }, defaultShell: '/bin/sh' })).toBe(true);
+  expect(rules.settings('bob')).toEqual({ terminalAutoApproveRules: { 'make test': true }, editAutoApprovePatterns: { '**/*': true } });
+  expect(rules.read('bob')).toEqual({ allow: ['Shell(make *)'], deny: [] });
+
+  // A grant after them keeps them, and a null takes one back.
+  rules.grant('bob', ['Shell(ls *)']);
+  expect(rules.keep('bob', { editAutoApprovePatterns: null })).toBe(true);
+  expect(rules.settings('bob')).toEqual({ terminalAutoApproveRules: { 'make test': true } });
+  expect(rules.read('bob')).toEqual({ allow: ['Shell(make *)', 'Shell(ls *)'], deny: [] });
+  expect(readdirSync(at)).toEqual(['bob.json']);
+});
+
+it('reads no approval settings for a person with none, and keeps one person\'s from another\'s', () => {
+  const rules = filePersonRules(folder());
+  expect(rules.settings('alice')).toEqual({});
+  rules.keep('bob', { terminalAutoApproveEnabled: false });
+  expect(rules.settings('alice')).toEqual({});
+  expect(rules.keep('..', { terminalAutoApproveEnabled: false })).toBe(false);
+});

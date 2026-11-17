@@ -63,7 +63,9 @@ question in a session -> spawn: the owner's approval settings where they have on
 | A session with no owner, or a `root:` owner, reads the host's value | (defaulted: nobody's settings apply to it) | 02 |
 | A push of `null` for a key clears the person's value, so the host's applies again | (defaulted: a push of `null` clears a root key today) | 01 |
 | A push from a root connection, and any push on a host with no users, sets the host's value as today | (defaulted: one person, as VS Code) | 01 |
-| The root's state keeps the host's value; a person's own values are not shown there | (defaulted: the root is one value every connection reads) | 01 |
+| The root's state keeps the host's value, and each person's connection reads their own values in its place | Softov, 2026-11-17: "we replace the ones that are user facing" | 04 |
+| The person keys are marked `x-ahpd-scope: "person"` in the schema a person's connection reads | Softov, 2026-11-17: "In this build" | 04 |
+| A person's push of only the approval keys gets no echo on the root | (defaulted: an echo through `dispatch` would reduce their values into everybody's root) | 04 |
 | A `replace` push still needs `config:change` | (defaulted: it clears the host's keys) | 01 |
 
 ## Proposed architecture
@@ -77,20 +79,21 @@ question in a session -> spawn: the owner's approval settings where they have on
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a push keeps the approval keys for its person](task-01-a-push-keeps-the-keys-for-its-person.md) | todo | - |
-| [02 - a question reads the owner's settings](task-02-a-question-reads-the-owners-settings.md) | todo | 01 |
-| [03 - the docs say whose settings apply](task-03-the-docs-say-whose-settings-apply.md) | todo | 02 |
+| [01 - a push keeps the approval keys for its person](task-01-a-push-keeps-the-keys-for-its-person.md) | implemented | - |
+| [02 - a question reads the owner's settings](task-02-a-question-reads-the-owners-settings.md) | implemented | 01 |
+| [03 - the docs say whose settings apply](task-03-the-docs-say-whose-settings-apply.md) | implemented | 02 |
+| [04 - a person reads their own settings back](task-04-a-person-reads-their-own-settings.md) | implemented | 01 |
 
 ## Risks and tradeoffs
 
 - On a host with users, no window sets the host's approval settings - the docs say so, and the stored root value stays the host's.
 - A value an admin pushed before this change stays the host's - the 0.15 notes say to read it once.
-- VS Code reads the root's value back, not the person's - a person's window shows its own settings anyway, since it pushed them.
+- A person's other windows read a push of theirs only at their next connect - the pushing window keeps its own values.
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-push-keeps-the-keys-for-its-person.md](task-01-a-push-keeps-the-keys-for-its-person.md).
+- **Done so far:** tasks 01 to 04 are `implemented` on 2026-11-17, on the branch `host/20261117-1047-approval-settings-are-kept-per-person`. Task 04 is Softov's idea of 2026-11-17, added during the build.
+- **Next action:** Softov's review, then the checks of *Final verification checklist* on the test daemon.
 - **Open questions:** none.
 - **Watch out for:** an sdk host change runs the computer suite too, as HANDOFF *Tests* says. `host-permissions.test.ts` and `users-gate-dispatch.test.ts` hold the cases of host/20261116-2134 to extend.
 

@@ -14,6 +14,7 @@ import type { Peer } from '../src/types/rpc.js';
 import type { Principal, Users } from '../src/types/users.js';
 import type { PluginSpec } from '../src/types/plugin.js';
 import { WORK, WORK_URI } from './support/work.js';
+import { APPROVAL_KEYS } from '../src/access/personrules.js';
 
 /*
  * Everything this host sends, against everything the protocol declares.
@@ -317,6 +318,7 @@ it('sends nothing the protocol does not declare, and nothing short of what it re
     tools: hostTools(),
     users: people(),
     rootConfig: daemonRootConfig(optionsFrom({ configFile: config })),
+    personPermissionsDir: join(home, 'people'),
   });
   const client = host.accept(peer(), ana);
   const ask = asking(client);
@@ -365,15 +367,16 @@ it('sends nothing the protocol does not declare, and nothing short of what it re
   /*
    * The echo, which is every frame of this action the host sent back.
    *
-   * One action, one echo, every key in it: the host applies a root patch
-   * whatever keys it carries, as VS Code's host does, the four 1.140 dropped
-   * among them.
+   * One action, one echo, every key in it but the three a person keeps as
+   * their own on a host with users: the host applies a root patch whatever
+   * keys it carries, as VS Code's host does, the four 1.140 dropped among
+   * them. The three are kept for the person and read back in their root.
    */
   const echoed = wire.slice(before)
     .filter((one) => one.method === 'action' && (one.params as { action?: { type?: string } }).action?.type === 'root/configChanged')
     .map((one) => (one.params as { action: { config: Record<string, unknown> } }).action.config);
   expect(echoed).toHaveLength(1);
-  expect(Object.keys(echoed[0] ?? {}).sort()).toEqual(Object.keys(patch).sort());
+  expect(Object.keys(echoed[0] ?? {}).sort()).toEqual(Object.keys(patch).filter((key) => !APPROVAL_KEYS.includes(key)).sort());
   expect(declared.length).toBe(43);
 
   const rootState = await ask('subscribe', { channel: 'ahp-root://' }) as {
@@ -782,6 +785,10 @@ it('sends nothing the protocol does not declare, and nothing short of what it re
     'ChatState / undeclared key `config`': 'SESSIONS.md',
     'ResolveSessionConfigResult /schema/properties/effortLevel undeclared key `chatMutable`': 'SESSIONS.md',
     'SessionState /config/schema/properties/effortLevel undeclared key `chatMutable`': 'SESSIONS.md',
+    // A root config key a person keeps their own value of, on a host with users.
+    'RootState /config/schema/properties/editAutoApprovePatterns undeclared key `x-ahpd-scope`': 'USERS.md',
+    'RootState /config/schema/properties/terminalAutoApproveEnabled undeclared key `x-ahpd-scope`': 'USERS.md',
+    'RootState /config/schema/properties/terminalAutoApproveRules undeclared key `x-ahpd-scope`': 'USERS.md',
   };
 
   /*

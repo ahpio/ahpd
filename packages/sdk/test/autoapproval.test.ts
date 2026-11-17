@@ -102,6 +102,8 @@ function serving(
   } : {});
   const host = createHost({
     path: DIR, agents: [backend.agent], users: directory(), terminalAutoApproveDefaults,
+    // Each person's window settings are kept here, a folder of this host's own.
+    personPermissionsDir: mkdtempSync(`${DIR}-people-`),
     ...(store === undefined ? {} : { sessions: store }),
     ...(eligibleForAutoApproval === undefined ? {} : { eligibleForAutoApproval }),
   });
@@ -184,7 +186,7 @@ it('answers a command from the rules a window pushed', async () => {
   expect(await command(ana, 'ana-one', 'rm -rf /')).not.toBe('approved');
 });
 
-it('reads the last push of any window when two windows push rules', async () => {
+it('keeps each person\'s pushed rules for their own sessions when two windows push rules', async () => {
   const { signedIn, pushing, opening, command } = serving();
   const ana = await signedIn('admin', 'ana');
   const bo = await signedIn('admin-two', 'bo');
@@ -192,11 +194,11 @@ it('reads the last push of any window when two windows push rules', async () => 
   await opening(ana, 'ana-one');
   expect(await command(ana, 'ana-one', 'make test')).toBe('approved');
 
-  // Bo's push is the host's table now, Ana's session's among them: one value,
-  // which the last push set.
+  // Bo's push is Bo's own, so Ana's session keeps Ana's table: on a host with
+  // users, no window decides for another person's sessions.
   await pushing(bo, { terminalAutoApproveRules: { 'make build': true } });
-  expect(await command(ana, 'ana-one', 'make build')).toBe('approved');
-  expect(await command(ana, 'ana-one', 'make test')).not.toBe('approved');
+  expect(await command(ana, 'ana-one', 'make build')).not.toBe('approved');
+  expect(await command(ana, 'ana-one', 'make test')).toBe('approved');
 
   // An empty table pushed is a table with nothing in it, not a window that
   // never spoke: the answers above fall back to none, and the default table

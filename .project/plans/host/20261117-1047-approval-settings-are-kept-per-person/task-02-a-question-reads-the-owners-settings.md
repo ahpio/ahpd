@@ -1,6 +1,6 @@
 ---
 title: A question reads the owner's settings
-status: todo
+status: implemented
 depends: [task-01-a-push-keeps-the-keys-for-its-person.md]
 layer: "sdk"
 refs:
@@ -34,3 +34,6 @@ A question in a session answers by its owner's approval settings where they keep
 - Run the sdk and computer suites one at a time, as HANDOFF *Tests* says.
 
 ## Resume
+
+Built on 2026-11-17.
+`spawn.ts` is the only reader of the three keys in every package.
