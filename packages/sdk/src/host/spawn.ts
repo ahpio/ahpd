@@ -518,6 +518,32 @@ export function createSpawn(ctx: HostContext): Spawn {
    * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentSideEffects.ts#L1684-L1766
    * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/sessionPermissions.ts#L566-L610
    */
+  /**
+   * Whether a question in a turn of `session` gets the session's approvals:
+   * its permission allow rules, the terminal rules and the edit patterns, the
+   * reads in its working folders and its attachments, and the global and the
+   * session's auto-approve.
+   *
+   * A host with no users file is one person's, and every turn gets them. On a
+   * host with users, a person's turn - its message from `user` - gets them only
+   * when its sender, held while the turn runs or kept with the session, owns
+   * the session, as `getAutoApproval` answered at e388d12f5. Any other turn,
+   * an automation's, a resumed one, one an agent or a tool started, is nobody's
+   * at the keyboard: it gets them as `unattendedAutoApprove` says, on unless the
+   * operator turned it off, and never when a sender other than the owner is
+   * known for it. A turn with no approvals still meets every deny and the
+   * operator's rules, which are read before this.
+   */
+  const approvesFor = (session: string, turn: Bag | undefined, turnId: string): boolean => {
+    if (options.users === undefined) return true;
+    const owner = kept.owner(idOf(session));
+    const sender = senderOf(turnId) ?? kept.sender(idOf(session), turnId);
+    const origin = ((turn?.message as Bag | undefined)?.origin as Bag | undefined)?.kind;
+    if (origin === 'user') return sender !== undefined && sender === owner;
+    if (sender !== undefined && sender !== owner) return false;
+    return options.unattendedAutoApprove !== false;
+  };
+
   const toolReady = (session: string, chat: string, given: Bag, backend: () => Session | undefined): Bag | undefined => {
     if (given.type !== 'chat/toolCallReady') return given;
     // The question's host-only fields, read here and sent to no client.
@@ -611,7 +637,7 @@ export function createSpawn(ctx: HostContext): Spawn {
       return undefined;
     }
     const asked = { ...approval, ...(managed ? { managedApprovalRequired: true } : {}) };
-    const approved = managed ? undefined : autoApprovalOf(asked);
+    const approved = managed || !approvesFor(session, turn, String(action.turnId ?? turn?.id ?? '')) ? undefined : autoApprovalOf(asked);
     // A client's tool keeps its question, which the client that runs it answers, marked approved by the setting.
     const marked = approved !== undefined && contributor?.kind === 'client'
       ? { ...(call?._meta as Bag | undefined), ...(action._meta as Bag | undefined), autoApproveBySetting: true }
@@ -1226,9 +1252,11 @@ export function createSpawn(ctx: HostContext): Spawn {
      * What this backend is told about the folders it is handed.
      *
      * Read from the host's one `workspaceTrust`, which the last push from any
-     * window set. Every start reads it, whoever sent the turn and when nobody
-     * did, as VS Code's host reads its one trust value for every session it
-     * starts and every hook it runs.
+     * window set, as VS Code's host reads its one trust value for every session
+     * it starts and every hook it runs. On a host with users, `startTrusts`
+     * says whether this start reads it: the session's owner's start does,
+     * another person's does not, and one no window sent reads it as
+     * `unattendedAutoApprove` says, as `trustedBy` answered at e388d12f5.
      * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostSessionPrewarmer.ts#L166-L169
      * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/codex/codexAgent.ts#L8621
      *
@@ -1245,9 +1273,16 @@ export function createSpawn(ctx: HostContext): Spawn {
      * alone, compared as the folder it names, and no folder under it: what the
      * grant bought is one folder, not a tree.
      */
+    const startTrusts = (): boolean => {
+      if (options.users === undefined) return true;
+      if (sender === undefined) return options.unattendedAutoApprove !== false;
+      const who = ctx.ownerFor(sender);
+      return who !== undefined && who === kept.owner(idOf(uri));
+    };
     const trustedBy = (folder: string): boolean => {
       const asked = kept.trustedFolder?.(idOf(uri));
       if (asked !== undefined && sameFolder(asked, folder)) return true;
+      if (!startTrusts()) return false;
       const trust = ctx.rootConfig.workspaceTrust;
       const made = ctx.worktreeOf(uri);
       return trusted(folder, trust)

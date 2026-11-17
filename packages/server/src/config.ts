@@ -546,6 +546,12 @@ export interface Config {
    */
   managedRules?: 'checked' | 'handed';
   /**
+   * On a host with users, whether a turn nobody at a keyboard sent - an
+   * automation's run, a resumed turn, one an agent or a tool started - gets
+   * the session owner's approvals and trust. On by default.
+   */
+  unattendedAutoApprove?: boolean;
+  /**
    * How long a streamed delta waits for the next one before it is sent.
    *
    * Milliseconds, a whole number from 0 to 1000. Within the window the deltas

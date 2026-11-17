@@ -1,6 +1,6 @@
 ---
 title: A setting for turns nobody sent
-status: todo
+status: implemented
 depends: [task-01-the-owners-turns-get-the-approvals.md]
 layer: sdk, server
 refs:
@@ -39,4 +39,9 @@ On, the default, it gets the owner's approvals; off, it gets none.
 - The sdk suite and the server suite pass, one at a time.
 
 ## Resume
+
+Built on 2026-11-16, awaiting review.
+
+- The key is also on the file's `Config` type, which `config-check.test.ts` holds equal to the schema.
+- `host-trust.test.ts` covers an automation's trust with the setting on and off.
 

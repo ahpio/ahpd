@@ -1,6 +1,6 @@
 ---
 title: The docs say whose turns are approved
-status: todo
+status: implemented
 depends: [task-01-the-owners-turns-get-the-approvals.md, task-02-a-setting-for-turns-nobody-sent.md]
 layer: docs
 refs:
@@ -33,4 +33,6 @@ The configuration reference names `unattendedAutoApprove`, and the 0.15 notes sa
 - The row and the item read in their files.
 
 ## Resume
+
+Built on 2026-11-16, awaiting review. The section *Whose turns are approved* in `docs/server/USERS.md` holds the rule, and the row and the note link to it.
 

@@ -207,11 +207,10 @@ it('reads the last push of any window when two windows push rules', async () => 
 });
 
 /*
- * The rules answer a session's lines whoever sent the turn that started it, as
- * VS Code's host reads its one value of each for every question.
- * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/sessionPermissions.ts#L380
+ * On a host with users the rules answer only the turns of the session's owner,
+ * so a turn somebody else sent in a session read back from the store asks.
  */
-it('answers a command by the host\'s rules in a session somebody other than its owner started again', async () => {
+it('asks for a command in a session somebody other than its owner started again', async () => {
   const store = memorySessions();
   const first = serving('vscode', { store });
   const bo = await first.signedIn('admin-two', 'bo');
@@ -236,7 +235,7 @@ it('answers a command by the host\'s rules in a session somebody other than its 
   });
   await settle();
 
-  expect(await second.command(ana, 'bo-one', 'make test')).toBe('approved');
+  expect(await second.command(ana, 'bo-one', 'make test')).not.toBe('approved');
 });
 
 it('approves VS Code\'s table when the window pushed no rules', async () => {

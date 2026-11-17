@@ -62,6 +62,7 @@ start -> trustedBy -> the start's sender, by the same rule -> workspaceTrust, or
 | The setting is in `config.json` only, and no client can push it | (defaulted: a security setting, as `eligibleForAutoApproval` is file-only) | 02 |
 | A turn with no approval still meets the deny rules, the managed rules and the operator's always-ask | (defaulted: a deny is no approval, and dropping it would widen what the turn may do) | 01 |
 | A turn whose sender the session's record keeps counts as that person's, also after a restart | (defaulted: the record says who sent it, and `kept.sender` is what the host reads today) | 01 |
+| A turn is a person's when its message comes from `user`; any other kind is unattended | (defaulted: an automation's turn carries its owner as sender, so only the origin tells the two apart) | 01 |
 | A host with no users file is unchanged | (defaulted: at `e388d12f5` the check ran only with `options.users`) | 01 |
 
 ## Proposed architecture
@@ -75,9 +76,9 @@ start -> trustedBy -> the start's sender, by the same rule -> workspaceTrust, or
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - the owner's turns get the approvals](task-01-the-owners-turns-get-the-approvals.md) | todo | - |
-| [02 - a setting for turns nobody sent](task-02-a-setting-for-turns-nobody-sent.md) | todo | 01 |
-| [03 - the docs say whose turns are approved](task-03-the-docs-say-whose-turns-are-approved.md) | todo | 01, 02 |
+| [01 - the owner's turns get the approvals](task-01-the-owners-turns-get-the-approvals.md) | implemented | - |
+| [02 - a setting for turns nobody sent](task-02-a-setting-for-turns-nobody-sent.md) | implemented | 01 |
+| [03 - the docs say whose turns are approved](task-03-the-docs-say-whose-turns-are-approved.md) | implemented | 01, 02 |
 
 ## Risks and tradeoffs
 
@@ -86,8 +87,8 @@ start -> trustedBy -> the start's sender, by the same rule -> workspaceTrust, or
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-the-owners-turns-get-the-approvals.md](task-01-the-owners-turns-get-the-approvals.md).
+- **Done so far:** tasks 01 to 03 built on 2026-11-16 on branch `host/20261116-2126-approvals-follow-the-sessions-owner`, awaiting review.
+- **Next action:** Softov reviews the PR, then the checks of *Final verification checklist* on the test daemon.
 - **Open questions:** none.
 - **Watch out for:** a host with no users file has no owner to compare; leave it as it is today.
 

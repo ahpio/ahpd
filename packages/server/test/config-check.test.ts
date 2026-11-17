@@ -517,6 +517,18 @@ describe('the managedSettingsSandbox key', () => {
 });
 
 /*
+ * Whether a turn nobody at a keyboard sent gets the session owner's approvals
+ * is a daemon setting, on unless the file turns it off.
+ */
+describe('the unattendedAutoApprove key', () => {
+  it('is on unless the file turns it off, and takes a boolean alone', () => {
+    expect(folded({}).unattendedAutoApprove).toBe(true);
+    expect(folded({ unattendedAutoApprove: false }).unattendedAutoApprove).toBe(false);
+    expect(refusal({ unattendedAutoApprove: 'no' })).toMatch(/unattendedAutoApprove/u);
+  });
+});
+
+/*
  * Who checks the managed rules is a daemon setting: this host's own check, or
  * VS Code's, which hands them to the backends and checks none.
  * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/common/agentHostManagedSettings.ts#L43-L47
