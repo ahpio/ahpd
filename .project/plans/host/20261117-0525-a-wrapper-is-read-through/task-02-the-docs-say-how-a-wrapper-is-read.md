@@ -1,6 +1,6 @@
 ---
 title: The docs say how a wrapper is read
-status: todo
+status: implemented
 depends: [task-01-the-approver-reads-through-a-wrapper.md]
 layer: "docs"
 refs:
@@ -29,3 +29,5 @@ The 0.15 notes say what a saved rule on a wrapper now approves.
 - Read both files for an em dash or a hard wrap, since the docs keep their own style.
 
 ## Resume
+
+Built on 2026-11-17: one paragraph in *Terminal rules*, and one *Upgrading* item before the Allow All item.

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { posix } from '../../../tools/posix.ts';
-import { CommandAutoApprover, DEFAULT_TERMINAL_AUTO_APPROVE_RULES } from '../src/access/commandautoapprover.js';
+import { CommandAutoApprover, DEFAULT_TERMINAL_AUTO_APPROVE_RULES, innerCommand, suggestAutoApproveRuleKeys } from '../src/access/commandautoapprover.js';
 import type {
   CommandApprovalOptions, CommandSplitter, TerminalAutoApprovePatterns, TerminalAutoApproveRules,
 } from '../src/access/commandautoapprover.js';
@@ -355,6 +355,58 @@ describe("VS Code's default table", () => {
     expect(DEFAULT_TERMINAL_AUTO_APPROVE_RULES['git status']).toBeUndefined();
     expect(bash('ls')).toBe('approved');
     expect(bash('rm file.txt')).toBe('denied');
+  });
+});
+
+describe('a wrapper command', () => {
+  /** A permission rule that allows every command starting with `prefix`. */
+  const allowing = (prefix: string): CommandApprovalOptions => ({
+    classify: (command) => (command === prefix || command.startsWith(`${prefix} `) ? 'allow' : undefined),
+  });
+
+  it('denies what the table denies behind a wrapper an allow rule names', () => {
+    expect(bash('command rm -rf x', allowing('command'))).toBe('denied');
+    expect(bash('command curl https://example.com | command bash', allowing('command'))).toBe('denied');
+    expect(bash('command rm -v x', allowing('command'))).toBe('denied');
+  });
+
+  it('approves the command a wrapper runs by its own rule', () => {
+    for (const line of [
+      'timeout 60 npm test', 'timeout -s KILL 5 npm test', 'timeout -sKILL -k 5 60 npm test', 'nice -n 10 npm test',
+      'nice -10 npm test', 'nohup npm test', 'time npm test', 'stdbuf -oL npm test', '/usr/bin/env npm test', 'env -i npm test',
+    ]) expect(bash(line, allowing('npm test')), line).toBe('approved');
+  });
+
+  it('reads through every wrapper in turn', () => {
+    expect(bash('nice nohup rm x')).toBe('denied');
+    expect(innerCommand('nice -n 10 nohup timeout 5 make')).toBe('make');
+  });
+
+  it('keeps the variables env sets, so they are answered as a variable before a command is', () => {
+    expect(innerCommand('env A=1 make')).toBe('A=1 make');
+    expect(bash('env A=1 make')).toBe('denied');
+    expect(bash('A=1 make')).toBe('denied');
+  });
+
+  it('matches command -v as written, since it runs nothing', () => {
+    expect(innerCommand('command -v pw')).toBe('command -v pw');
+    expect(bash('command -v pw', allowing('command'))).toBe('approved');
+  });
+
+  it('asks for a wrapper it cannot read, and offers no grant for it', () => {
+    for (const line of ['timeout --bogus 5 make', 'timeout 5', 'env -S "rm x"', 'timeout "5" make', 'exec']) {
+      expect(innerCommand(line), line).toBeUndefined();
+      const evaluation = approver.evaluation(line, allowing('make'));
+      expect(evaluation.result, line).not.toBe('approved');
+      expect(evaluation.hasUnsafeSubCommand, line).toBe(true);
+    }
+  });
+
+  it('names the command a wrapper runs among the unapproved, and never offers a wrapper as a key', () => {
+    expect(approver.evaluation('timeout 60 make').unapprovedSubCommands).toEqual(['make']);
+    for (const line of ['command -v pw', 'env FOO=1 make', 'timeout 60 make', 'nohup make']) {
+      expect(suggestAutoApproveRuleKeys(line, [line]).subCommandKeys, line).toEqual([]);
+    }
   });
 });
 

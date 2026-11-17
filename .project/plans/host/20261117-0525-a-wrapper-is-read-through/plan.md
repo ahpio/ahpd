@@ -57,21 +57,22 @@ unapproved inner commands -> suggestAutoApproveRuleKeys -> grant keys, never a w
 | `env` keeps its `A=1` assignments, so the transient variable check applies as for `A=1 make` | (defaulted: the same command, the same answer) | 01 |
 | A wrapper with an option not read, or with no command after it, asks and offers no grant | (defaulted: a command not read is not approved) | 01 |
 | Bash family only; PowerShell has no wrapper here | (defaulted: none of the list is a PowerShell command) | 01 |
+| A `permissions` deny rule matches a command as written and as the command its wrappers run | (defaulted: the answer of 2026-11-17 names the rules, and `isDeniedByPermissions` is a second entry point) | 01 |
 | The docs and the 0.15 notes say how a wrapper is read | (defaulted: a rule that matched before may match less now) | 02 |
 
 ## Proposed architecture
 
 - **Data flow** - `evaluation` reads each split command through `innerCommand` before `classify`, the deny table and the allow rules. The inner command goes into `unapprovedSubCommands`, so the grant keys name it.
 - **State flow** - none. Saved rules stay as they are and match the inner command.
-- **Layer responsibilities** - sdk: `commandautoapprover.ts` only · docs: `CONFIGURE.md` and `v0_15.md`.
+- **Layer responsibilities** - sdk: `commandautoapprover.ts`, and `isDeniedByPermissions` in `permissions.ts` · docs: `CONFIGURE.md` and `v0_15.md`.
 - **Source-of-truth files** - [`code://packages/sdk/src/access/commandautoapprover.ts`](../../../../packages/sdk/src/access/commandautoapprover.ts)
 
 ## Tasks
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - the approver reads through a wrapper](task-01-the-approver-reads-through-a-wrapper.md) | todo | - |
-| [02 - the docs say how a wrapper is read](task-02-the-docs-say-how-a-wrapper-is-read.md) | todo | 01 |
+| [01 - the approver reads through a wrapper](task-01-the-approver-reads-through-a-wrapper.md) | implemented | - |
+| [02 - the docs say how a wrapper is read](task-02-the-docs-say-how-a-wrapper-is-read.md) | implemented | 01 |
 
 ## Risks and tradeoffs
 
@@ -81,8 +82,8 @@ unapproved inner commands -> suggestAutoApproveRuleKeys -> grant keys, never a w
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-the-approver-reads-through-a-wrapper.md](task-01-the-approver-reads-through-a-wrapper.md).
+- **Done so far:** tasks 01 and 02 are `implemented` on 2026-11-17, on the branch `host/20261117-0525-a-wrapper-is-read-through`.
+- **Next action:** Softov's review, then the checks of *Final verification checklist* on the test daemon.
 - **Open questions:** none.
 - **Watch out for:** `commandParser` may hand in its own split, so the reading through goes after the split, not inside `splitCommand`.
 
