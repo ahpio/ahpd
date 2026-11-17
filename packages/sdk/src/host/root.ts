@@ -1,6 +1,7 @@
 import { availableParallelism, totalmem } from 'node:os';
 import { isDeepStrictEqual } from 'node:util';
 import { seesAccount, seesConfig } from './gate.js';
+import { APPROVAL_KEYS, SCOPE_MARK, filePersonRules } from '../access/personrules.js';
 import { OPERATIONS, operationsOf } from '../access/users.js';
 import { REMOTE_SESSIONS_META } from '../sessions/remotesession.js';
 import { sdkVersion } from '../version.js';
@@ -787,6 +788,14 @@ export function createRoot(ctx: HostContext): Root {
     if (Object.keys(moved).length > 0) ctx.dispatch(ROOT, { type: 'root/configChanged', config: moved });
   };
 
+  /**
+   * The person whose own approval settings a connection reads and writes: a
+   * signed-in person on a host with users, and nobody for the host's own
+   * connection or a host with no users.
+   */
+  const personOfConnection = (connection?: Connection): string | undefined =>
+    (options.users !== undefined && connection !== undefined && connection.root !== true ? connection.principal?.id : undefined);
+
   const rootFor = (held: Bag, connection?: Connection): Bag => {
     const config = (held.config ?? { schema: ROOT_CONFIG_SCHEMA, values: {} }) as { schema: Bag; values: Bag };
     /*
@@ -800,9 +809,20 @@ export function createRoot(ctx: HostContext): Root {
      */
     const directory = options.users !== undefined;
     const reads = seesConfig(connection, directory);
-    const values = Object.fromEntries(Object.entries(config.values).filter(([key]) =>
-      (reads || !daemonHeld(key)) && (seesAccount(connection, directory) || !isAccountKey(key))));
-    const properties = (config.schema.properties ?? {}) as Bag;
+    /*
+     * And a person's own approval settings in place of the host's, the keys
+     * each person keeps for their own sessions on a host with users, so a
+     * window reads back what its person pushed. Each is marked
+     * `x-ahpd-scope: "person"` in the schema this connection reads, so a
+     * client can say whose value it shows without knowing the keys by name.
+     */
+    const person = personOfConnection(connection);
+    const own = person === undefined || options.personPermissionsDir === undefined ? {} : filePersonRules(options.personPermissionsDir).settings(person);
+    const values = { ...Object.fromEntries(Object.entries(config.values).filter(([key]) =>
+      (reads || !daemonHeld(key)) && (seesAccount(connection, directory) || !isAccountKey(key)))), ...own };
+    const declared = (config.schema.properties ?? {}) as Bag;
+    const properties = person === undefined ? declared : Object.fromEntries(Object.entries(declared).map(([key, value]) =>
+      [key, APPROVAL_KEYS.includes(key) && typeof value === 'object' && value !== null ? { ...value as Bag, [SCOPE_MARK]: 'person' } : value]));
     const meta = metaFor(connection);
     return {
       ...held,
@@ -810,9 +830,7 @@ export function createRoot(ctx: HostContext): Root {
       // use is listed with no models.
       agents: connection === undefined ? held.agents : ctx.agentsFor(connection, held.agents),
       config: {
-        schema: reads
-          ? config.schema
-          : { ...config.schema, properties: Object.fromEntries(Object.entries(properties).filter(([key]) => !daemonHeld(key))) },
+        schema: { ...config.schema, properties: reads ? properties : Object.fromEntries(Object.entries(properties).filter(([key]) => !daemonHeld(key))) },
         values,
       },
       ...(Object.keys(meta).length === 0 ? {} : { _meta: meta }),

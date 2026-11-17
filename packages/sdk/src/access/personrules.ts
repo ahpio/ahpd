@@ -12,6 +12,9 @@ import { withGrant } from '../host/permissions.js';
  */
 export const APPROVAL_KEYS: readonly string[] = ['terminalAutoApproveRules', 'terminalAutoApproveEnabled', 'editAutoApprovePatterns'];
 
+/** The schema mark a root config key a person keeps their own value of carries, with the value `person`. */
+export const SCOPE_MARK = 'x-ahpd-scope';
+
 /**
  * The permission rules and approval settings each person keeps for their own
  * sessions, a file per person in one folder: `<folder>/<person>.json`, holding

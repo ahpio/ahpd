@@ -376,12 +376,13 @@ it('keeps a person\'s three approval keys as their own, and out of the root', as
   await settle();
   expect(filePersonRules(people).settings('ana')).toEqual(pushed);
   expect(filePersonRules(people).settings('bo')).toEqual({});
-  for (const one of [ana, bo]) {
-    const { values } = (await rootOf(one.client)).config as { values: Record<string, unknown> };
-    // The rest of the push is the host's, as before.
-    expect(values.defaultShell).toBe('/bin/sh');
-    for (const key of Object.keys(pushed)) expect(values).not.toHaveProperty(key);
-  }
+  // The rest of the push is the host's, as before, and Bo reads none of Ana's.
+  const theirs = (await rootOf(bo.client)).config as { values: Record<string, unknown> };
+  expect(theirs.values.defaultShell).toBe('/bin/sh');
+  for (const key of Object.keys(pushed)) expect(theirs.values).not.toHaveProperty(key);
+  // Ana reads her own back.
+  const mine = (await rootOf(ana.client)).config as { values: Record<string, unknown> };
+  expect(mine.values).toMatchObject({ ...pushed, defaultShell: '/bin/sh' });
 });
 
 /*
@@ -443,6 +444,42 @@ it('declares no eligibleForAutoApproval in root config, as VS Code\'s host decla
   expect(held.values.eligibleForAutoApproval).toEqual(pushed.eligibleForAutoApproval);
 });
 
+/*
+ * Served as well as kept: a person's connection reads their own values of the
+ * three keys in place of the host's, each marked as a person's in the schema
+ * it reads, and a change of the host's value sent to them keeps theirs.
+ */
+it('serves each person their own approval settings, marked as a person\'s, and keeps them through a change of the host\'s', async () => {
+  const { signedIn, asRoot, rootOf, heardOnRoot } = served(false);
+  const ana = await signedIn('admin', 'ana');
+  const bo = await signedIn('member', 'bo');
+  const door = await asRoot('door');
+  const mine = { terminalAutoApproveRules: { 'make test': true } };
+  await ana.client.handle({ method: 'dispatchAction', params: { channel: ROOT, action: { type: 'root/configChanged', config: mine } } });
+  await settle();
+
+  type Config = { schema: { properties: Record<string, Record<string, unknown>> }; values: Record<string, unknown> };
+  const anaRoot = (await rootOf(ana.client)).config as Config;
+  expect(anaRoot.values.terminalAutoApproveRules).toEqual(mine.terminalAutoApproveRules);
+  expect(anaRoot.schema.properties.terminalAutoApproveRules?.['x-ahpd-scope']).toBe('person');
+  expect(anaRoot.schema.properties.defaultShell?.['x-ahpd-scope']).toBeUndefined();
+  const boRoot = (await rootOf(bo.client)).config as Config;
+  expect(boRoot.values.terminalAutoApproveRules).toBeUndefined();
+  // The host's own connection reads the host's values, with no mark.
+  const doorRoot = (await rootOf(door.client)).config as Config;
+  expect(doorRoot.values.terminalAutoApproveRules).toBeUndefined();
+  expect(doorRoot.schema.properties.terminalAutoApproveRules?.['x-ahpd-scope']).toBeUndefined();
+
+  // The host's value moves; Ana is sent hers, and Bo the host's.
+  const hosts = { terminalAutoApproveRules: { 'make build': true } };
+  await door.client.handle({ method: 'dispatchAction', params: { channel: ROOT, action: { type: 'root/configChanged', config: hosts } } });
+  await settle();
+  const last = (who: typeof ana): Record<string, unknown> | undefined =>
+    heardOnRoot(who.heard).filter((one) => one.action.type === 'root/configChanged').at(-1)?.action.config as Record<string, unknown> | undefined;
+  expect(last(ana)?.terminalAutoApproveRules).toEqual(mine.terminalAutoApproveRules);
+  expect(last(bo)?.terminalAutoApproveRules).toEqual(hosts.terminalAutoApproveRules);
+});
+
 it('takes a member\'s three approval keys as their own, and a new expression only with config:change', async () => {
   const { signedIn, rootOf, heardOnRoot, people } = served(false);
   const member = await signedIn('member', 'member');
@@ -455,12 +492,12 @@ it('takes a member\'s three approval keys as their own, and a new expression onl
     await settle();
   };
   // A member's own rules change only the member's own sessions, so a sign-in
-  // is enough, and nothing reaches the root.
+  // is enough, and the member reads them back as their own.
   await push(pushed);
   expect(heardOnRoot(member.heard).filter((one) => one.rejectionReason !== undefined)).toEqual([]);
   expect(filePersonRules(people).settings('bo')).toEqual(pushed);
   const { values } = (await rootOf(member.client)).config as { values: Record<string, unknown> };
-  expect(values).not.toHaveProperty('terminalAutoApproveRules');
+  expect(values).toMatchObject(pushed);
   // An expression VS Code's table does not have runs in the daemon's one
   // thread for every person, so it needs config:change, and is not kept.
   await push({ terminalAutoApproveRules: { '/(a+)+$/': true } });

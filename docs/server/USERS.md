@@ -113,7 +113,7 @@ A host with no users file offers VS Code's options: the session's level and the 
 
 ## Whose approval settings apply
 
-VS Code pushes three settings from the window at every connect: `terminalAutoApproveRules`, `terminalAutoApproveEnabled` and `editAutoApprovePatterns`. They decide which commands run and which files are written without a question. On a host with users each person's push of them is their own, kept in `permissions/<person>.json` beside their "for Me" rules, and the root config keeps the host's value.
+VS Code pushes three settings from the window at every connect: `terminalAutoApproveRules`, `terminalAutoApproveEnabled` and `editAutoApprovePatterns`. They decide which commands run and which files are written without a question. On a host with users each person's push of them is their own, kept in `permissions/<person>.json` beside their "for Me" rules, and the root config keeps the host's value. Each person's window reads their own values back in the root config, in place of the host's, and the schema it reads marks the three keys `x-ahpd-scope: "person"`. A person's push of only these settings is not said on the root, so their other windows read it at their next connect.
 
 A question in a session reads the session owner's value of each setting, and the host's where the owner keeps none. A session with no owner, or one the host's own connection made, reads the host's. So an admin's window changes the admin's own sessions and nobody else's, and a member's window applies to the member's sessions.
 
