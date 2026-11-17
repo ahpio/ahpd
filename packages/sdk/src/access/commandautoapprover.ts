@@ -534,6 +534,109 @@ const matchesLine = (line: string, rules: readonly CompiledRule[]): boolean => r
 const TRANSIENT_VARIABLE = /^[A-Z_][A-Z0-9_]*=/iu;
 
 /**
+ * How a wrapper is read: the options it takes alone, the options that take an
+ * argument (a short one attached or as the next word, a long one after `=` or
+ * as the next word), and how many words come before the command it runs.
+ */
+interface WrapperGrammar {
+  flags: readonly string[];
+  withArgument: readonly string[];
+  operands: number;
+  /** A number written as an option, as `nice -10` is. */
+  numericOption?: boolean;
+  /** Options that make the wrapper run no command, so it is matched as written. */
+  noCommand?: readonly string[];
+}
+
+/** The commands that run the command after them, each with its options. */
+const WRAPPERS: Readonly<Record<string, WrapperGrammar>> = {
+  command: { flags: ['-p'], withArgument: [], operands: 0, noCommand: ['-v', '-V'] },
+  builtin: { flags: [], withArgument: [], operands: 0 },
+  exec: { flags: ['-c', '-l'], withArgument: ['-a'], operands: 0 },
+  env: { flags: ['-', '-i', '-0', '--ignore-environment', '--null'], withArgument: ['-u', '--unset', '-C', '--chdir'], operands: 0 },
+  nice: { flags: [], withArgument: ['-n', '--adjustment'], operands: 0, numericOption: true },
+  nohup: { flags: [], withArgument: [], operands: 0 },
+  time: { flags: ['-p', '-v', '--verbose', '--portability'], withArgument: [], operands: 0 },
+  timeout: { flags: ['-v', '--verbose', '--preserve-status', '--foreground'], withArgument: ['-s', '--signal', '-k', '--kill-after'], operands: 1 },
+  stdbuf: { flags: [], withArgument: ['-i', '-o', '-e', '--input', '--output', '--error'], operands: 0 },
+  setsid: { flags: ['-c', '-f', '-w', '--ctty', '--fork', '--wait'], withArgument: [], operands: 0 },
+  ionice: { flags: ['-t', '--ignore'], withArgument: ['-c', '-n', '--class', '--classdata'], operands: 0 },
+};
+
+/** The wrappers' names, which a grant never offers, since a wrapper runs whatever follows it. */
+const WRAPPER_COMMANDS = Object.keys(WRAPPERS);
+
+/**
+ * The command a wrapper runs, read through every wrapper in front of it:
+ * `nice -n 10 nohup rm x` is `rm x`, and `env A=1 make` is `A=1 make`, which
+ * the transient variable check then answers. A command with no wrapper is
+ * itself, and so is `command -v`, which runs nothing.
+ *
+ * `undefined` is a wrapper this cannot read: an option it does not know, a
+ * quote, an escape or an expansion before the command, or no command at all.
+ * A rule cannot speak for what it cannot read, so that command asks.
+ */
+export const innerCommand = (subCommand: string): string | undefined => {
+  let command = subCommand.trim();
+  for (;;) {
+    const words = [...command.matchAll(/\S+/gu)];
+    const first = words[0]?.[0];
+    if (first === undefined) return command;
+    const name = first.replace(/^\\/u, '').replace(/^.*\//u, '');
+    const grammar = Object.hasOwn(WRAPPERS, name) ? WRAPPERS[name] : undefined;
+    if (grammar === undefined) return command;
+    const kept: string[] = [];
+    let operands = grammar.operands;
+    let options = true;
+    let start: number | undefined;
+    for (let at = 1; at < words.length && start === undefined;) {
+      const word = words[at]![0];
+      if (/["'\\$`]/u.test(word)) return undefined;
+      if (options && grammar.noCommand?.includes(word) === true) return command;
+      if (options && grammar.flags.includes(word)) at += 1;
+      else if (options && word === '--') {
+        options = false;
+        at += 1;
+      }
+      else if (options && word.startsWith('--')) {
+        const [option, attached] = word.split('=', 2) as [string, string | undefined];
+        if (!grammar.withArgument.includes(option)) return undefined;
+        at += attached === undefined ? 2 : 1;
+      }
+      else if (options && word.startsWith('-') && word.length > 1) {
+        if (grammar.numericOption === true && /^-\d+$/u.test(word)) {
+          at += 1;
+          continue;
+        }
+        let next = at + 1;
+        for (let i = 1; i < word.length; i++) {
+          const option = `-${word[i]!}`;
+          if (grammar.noCommand?.includes(option) === true) return command;
+          if (grammar.flags.includes(option)) continue;
+          if (!grammar.withArgument.includes(option)) return undefined;
+          if (i === word.length - 1) next += 1;
+          break;
+        }
+        at = next;
+      }
+      else if (name === 'env' && TRANSIENT_VARIABLE.test(word)) {
+        kept.push(word);
+        options = false;
+        at += 1;
+      }
+      else if (operands > 0) {
+        operands -= 1;
+        options = false;
+        at += 1;
+      }
+      else start = words[at]!.index;
+    }
+    if (start === undefined) return undefined;
+    command = [...kept, command.slice(start)].join(' ');
+  }
+};
+
+/**
  * Whether a command is a `sed` that edits its files in place.
  *
  * An in-place edit writes a file without naming it in a redirect, so no rule
@@ -774,11 +877,18 @@ export class CommandAutoApprover {
     let denied = false;
     let hasUnsafeSubCommand = false;
     let hasAskRule = lineDecision === 'ask';
-    for (const subCommand of read.subCommands) {
+    for (const written of read.subCommands) {
+      // A wrapper runs the command after it, so the rules judge that command.
+      const inner = powershell ? written : innerCommand(written);
+      const subCommand = inner ?? written;
       const decision = options.classify?.(subCommand);
       hasAskRule ||= decision === 'ask';
       let result: CommandApprovalResult;
-      if (sedWritesInPlace(subCommand) || TRANSIENT_VARIABLE.test(subCommand)) {
+      if (inner === undefined) {
+        hasUnsafeSubCommand = true;
+        result = lineDenied || matchesRule(written, rules.deny, powershell) ? 'denied' : 'noMatch';
+      }
+      else if (sedWritesInPlace(subCommand) || TRANSIENT_VARIABLE.test(subCommand)) {
         hasUnsafeSubCommand = true;
         result = 'denied';
       }
@@ -1018,6 +1128,7 @@ const NEVER_AUTO_APPROVE_COMMANDS = new Set([
   'python', 'python3', 'node', 'ruby', 'perl', 'php', 'lua',
   'eval', 'exec', 'source', 'sudo', 'su', 'doas',
   'curl', 'wget', 'invoke-restmethod', 'invoke-webrequest', 'irm', 'iwr',
+  ...WRAPPER_COMMANDS,
 ]);
 /** Commands a grant names with their sub-command, and the two it names one level further. */
 const COMMANDS_WITH_SUBCOMMANDS = new Set(['git', 'npm', 'npx', 'yarn', 'docker', 'kubectl', 'cargo', 'dotnet', 'mvn', 'gradle']);

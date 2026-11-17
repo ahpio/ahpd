@@ -1,6 +1,6 @@
 ---
 title: The approver reads through a wrapper
-status: todo
+status: implemented
 depends: []
 layer: "sdk"
 refs:
@@ -16,6 +16,7 @@ Each command of a line is matched as the command its wrappers run, and no grant 
 
 - `UPDATE: packages/sdk/src/access/commandautoapprover.ts:776-792` - read each command through `innerCommand` before it is matched.
 - `UPDATE: packages/sdk/src/access/commandautoapprover.ts:1015-1021` - add the wrappers to `NEVER_AUTO_APPROVE_COMMANDS`.
+- `UPDATE: packages/sdk/src/host/permissions.ts:362-364` - a `permissions` deny rule also matches the inner command.
 - `UPDATE: packages/sdk/test/commandautoapprover.test.ts` - the wrapper cases.
 - `UPDATE: packages/sdk/test/host-permissions.test.ts` - a question on a wrapped command offers the inner command's key.
 
@@ -30,6 +31,7 @@ Each command of a line is matched as the command its wrappers run, and no grant 
 7. Return `noMatch` when `innerCommand` returns `undefined`, and set `hasUnsafeSubCommand` so the question offers no grant.
 8. Add every wrapper of the plan's *Answers* to `NEVER_AUTO_APPROVE_COMMANDS`.
 9. Leave the PowerShell path as it is.
+10. In `isDeniedByPermissions`, match each deny rule on the written command and on its inner command.
 
 ## Validation
 
@@ -42,3 +44,9 @@ Each command of a line is matched as the command its wrappers run, and no grant 
 - Run the sdk, computer and agent-acp suites one at a time, as HANDOFF *Tests* says.
 
 ## Resume
+
+Built on 2026-11-17.
+`innerCommand` reads each wrapper by the grammar in `WRAPPERS`, and the wrapper names join `NEVER_AUTO_APPROVE_COMMANDS`.
+The plan did not know that `isDeniedByPermissions` also matches the written command, so `command make` evaded a person's `Shell(make *)` deny.
+It now matches the inner command too, and a case fails without that change.
+A quoted or expanded word before the command makes it unread, so `exec -a "npm test" rm` cannot pass for `npm test`.

@@ -582,6 +582,40 @@ it('offers no grant for a command the table denies, since no allow rule would ap
   await host.close();
 });
 
+/*
+ * A wrapper runs the command after it, so a question names that command in
+ * its grants, and a denied command behind a wrapper is offered none.
+ */
+it('offers the grant of the command a wrapper runs, never the wrapper\'s', async () => {
+  const wrapped = await whoseTurn({}, { command: 'timeout 60 make build', owner: 'cy' });
+  const ids = ((await wrapped.ask(wrapped.cy, 't1'))?.options as Bag[]).map((one) => one.id);
+  expect(ids).toContain('allow-session-rules:["Shell(make *)"]');
+  expect(ids.filter((id) => String(id).includes('Shell(timeout *)'))).toEqual([]);
+  await wrapped.host.close();
+
+  const denied = await whoseTurn({}, { command: 'command rm b.txt', owner: 'cy' });
+  expect((await denied.ask(denied.cy, 't1'))?.options).toEqual([
+    { id: 'allow-once', label: 'Allow Once', kind: 'approve' },
+    { ...ALLOW_ALL, group: 1 },
+    { id: 'skip', label: 'Skip', kind: 'deny', group: 2 },
+  ]);
+  await denied.host.close();
+});
+
+it('refuses a command behind a wrapper that a rule the session\'s owner keeps denies', async () => {
+  const kept = join(dir, 'permissions');
+  mkdirSync(kept, { recursive: true });
+  writeFileSync(join(kept, 'ana.json'), JSON.stringify({ permissions: { allow: [], deny: ['Shell(make *)'] } }));
+  const { host, ana, answers, chat } = await whoseTurn({ personPermissionsDir: kept }, { command: 'command make build' });
+  await ana.client.handle({
+    method: 'dispatchAction',
+    params: { channel: chat, action: { type: 'chat/turnStarted', turnId: 't1', startedAt: new Date().toISOString(), message: { text: 'a turn long enough to be asked about', origin: { kind: 'user' } } } },
+  });
+  await until(() => answers.length > 0, 'the refusal');
+  expect(answers).toEqual([['call-t1', false, undefined]]);
+  await host.close();
+});
+
 it('offers VS Code\'s levels and labels on a host with no users file, and Allow All', async () => {
   const { host, turn } = await serving(asking([], 'bash', undefined, { permissionKind: 'shell', shellCommand: 'make build', shellLanguage: 'bash' }));
   expect((await turn('t1')).options).toEqual([

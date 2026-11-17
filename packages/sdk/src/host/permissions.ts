@@ -1,5 +1,5 @@
 import { basename, dirname, isAbsolute, join, normalize, relative, sep } from 'node:path';
-import { realPathOf, suggestAutoApproveRuleKeys } from '../access/commandautoapprover.js';
+import { innerCommand, realPathOf, suggestAutoApproveRuleKeys } from '../access/commandautoapprover.js';
 import {
   isExactAbsolutePathRule, matchesPermissionRule, matchesShellCommandLine, matchesShellSubCommand, parsePermissionGrantOptionId,
   pathRule, permissionGrantOptionId, shellExactRule, shellPrefixRule, webFetchRule,
@@ -359,7 +359,9 @@ export const isDeniedByPermissions = (approval: ToolApproval, subCommands: reado
   if (request.kind === 'shell' && approval.commandLine !== undefined) {
     const language = shellOf(approval);
     if (rules.deny.some((rule) => matchesShellCommandLine(rule, approval.commandLine ?? '', language))) return true;
-    const commands = subCommands.length > 0 ? subCommands : [approval.commandLine.trim()];
+    const written = subCommands.length > 0 ? subCommands : [approval.commandLine.trim()];
+    // A deny rule names a command as written and as the command its wrappers run.
+    const commands = language === 'powershell' ? written : written.flatMap((command) => [command, innerCommand(command) ?? command]);
     return commands.some((command) => rules.deny.some((rule) => matchesShellSubCommand(rule, command, language)));
   }
   if ((request.kind === 'read' || request.kind === 'write') && request.path !== undefined) {
