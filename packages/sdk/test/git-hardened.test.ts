@@ -90,6 +90,22 @@ const versionOf = (): Promise<void> => new Promise((resolve) => {
 /** Let the call's close, and the timing behind it, come to. */
 const closedNow = (): Promise<void> => new Promise((resolve) => { setTimeout(resolve, 50); });
 
+/**
+ * Run with `AHPD_GIT_SLOW_MS` as a case needs it, and put back after. A Windows
+ * CI job sets it, and a stood-in slow call would otherwise reach that job's
+ * log as a `slow git:` line no git call made.
+ */
+const withSlowLimit = async (limit: string | undefined, run: () => Promise<void>): Promise<void> => {
+  const before = process.env['AHPD_GIT_SLOW_MS'];
+  if (limit === undefined) delete process.env['AHPD_GIT_SLOW_MS'];
+  else process.env['AHPD_GIT_SLOW_MS'] = limit;
+  try { await run(); }
+  finally {
+    if (before === undefined) delete process.env['AHPD_GIT_SLOW_MS'];
+    else process.env['AHPD_GIT_SLOW_MS'] = before;
+  }
+};
+
 it('says a git call slower than the limit once, with its arguments and its time', async () => {
   const heard: string[] = [];
   onSlowGit((line) => { heard.push(line); });
@@ -100,8 +116,10 @@ it('says a git call slower than the limit once, with its arguments and its time'
     return 1_000 + SLOW_GIT_MS + 500;
   });
   try {
-    await versionOf();
-    await closedNow();
+    await withSlowLimit(undefined, async () => {
+      await versionOf();
+      await closedNow();
+    });
   }
   finally {
     now.mockRestore();
@@ -115,8 +133,10 @@ it('says nothing of a git call within the limit', async () => {
   const heard: string[] = [];
   onSlowGit((line) => { heard.push(line); });
   try {
-    await versionOf();
-    await closedNow();
+    await withSlowLimit(undefined, async () => {
+      await versionOf();
+      await closedNow();
+    });
   }
   finally {
     onSlowGit(undefined);
@@ -125,8 +145,6 @@ it('says nothing of a git call within the limit', async () => {
 });
 
 it('writes a slow git call to stderr where AHPD_GIT_SLOW_MS is set', async () => {
-  const before = process.env['AHPD_GIT_SLOW_MS'];
-  process.env['AHPD_GIT_SLOW_MS'] = '1';
   const written: string[] = [];
   const write = vi.spyOn(process.stderr, 'write').mockImplementation((chunk: string | Uint8Array) => {
     written.push(String(chunk));
@@ -138,14 +156,14 @@ it('writes a slow git call to stderr where AHPD_GIT_SLOW_MS is set', async () =>
     return 1_010;
   });
   try {
-    await versionOf();
-    await closedNow();
+    await withSlowLimit('1', async () => {
+      await versionOf();
+      await closedNow();
+    });
   }
   finally {
     now.mockRestore();
     write.mockRestore();
-    if (before === undefined) delete process.env['AHPD_GIT_SLOW_MS'];
-    else process.env['AHPD_GIT_SLOW_MS'] = before;
   }
   expect(written.filter((line) => line.startsWith('slow git: '))).toEqual([`slow git: 10 ms for git --version in ${root}\n`]);
 });

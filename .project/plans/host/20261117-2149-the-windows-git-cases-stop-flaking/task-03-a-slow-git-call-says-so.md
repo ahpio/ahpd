@@ -43,3 +43,5 @@ Built on 2026-11-17.
 `createHost` points the listener at `log.debug`; the last host made in a process is the one that hears.
 The tests stand in for the clock, so `git --version` reads as slow or fast as a case needs.
 `DEVELOPER.md` says what `AHPD_GIT_SLOW_MS` does, beyond the task's files.
+The first Windows run after the merge printed one `slow git:` line, made by the first case's stood-in clock under the job's `AHPD_GIT_SLOW_MS`.
+A follow-up clears the variable in the cases that stand in for it, so the job's log holds only real calls.
