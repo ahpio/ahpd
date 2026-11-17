@@ -39,5 +39,12 @@ None. Running the job again is not a fix.
 
 ## Fix
 
-- Take the timings of each case on a Windows runner, and count its `git` calls.
-- In the third case, wait for the host to say the worktree exists before the test reads it with `git`.
+No fix is chosen for the two cases left.
+They are changes-refresh, "re-reads a changeset when git is changed outside the host", and worktrees, "answers the branches a client types for".
+
+- Each passes in about a second, and failed once after more than 20 s, so something stalled rather than ran slow. The host already reads a changeset again once its watch is armed, so a late watch is not the first case's cause.
+- Since host/20261117-2149, a Windows CI job writes each `git` call over 2 s to stderr as a `slow git:` line. The next failure of either case says which call stalled, if one did, and that decides the fix.
+
+The third case is fixed by host/20261113-2331.
+The moved-tree case, "takes away and puts back a tree a move left the session", is fixed by host/20261117-2149.
+Its git work outgrew the 20 s budget on a slow runner, so it now waits by `WAIT_MS` and has 60 s on Windows.

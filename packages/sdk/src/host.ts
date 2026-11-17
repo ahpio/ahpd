@@ -110,7 +110,7 @@ import { createAutomationMethods } from './host/automations.js';
 import { createVscodeMethods } from './host/vscodemethods.js';
 import { createActions } from './host/actions.js';
 import { reservedName } from './plugins/validate.js';
-import { gitSettled } from './repo/hardened.js';
+import { gitSettled, onSlowGit } from './repo/hardened.js';
 import type { ConnectionContext, DetachedWorktree, HostContext } from './host/context.js';
 import { HOST_CATALOGS } from './i18n.js';
 import type { Catalogs } from './i18n.js';
@@ -1819,6 +1819,8 @@ export function createHost(options: HostOptions): Host {
     history, subHistory, titles, refresh,
     snapshotOf, value,
   } = ctx;
+  // A git call slower than `SLOW_GIT_MS` is said in this host's log, at debug level.
+  onSlowGit((line) => { log.debug(line); });
   /*
    * Everything known about every directory served, before anything asks.
    *

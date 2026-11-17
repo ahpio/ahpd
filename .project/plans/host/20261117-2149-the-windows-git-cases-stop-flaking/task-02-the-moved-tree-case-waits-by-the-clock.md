@@ -1,6 +1,6 @@
 ---
 title: The moved-tree case waits by the clock
-status: todo
+status: implemented
 depends: []
 layer: "sdk tests"
 refs:
@@ -28,3 +28,7 @@ refs:
 - Run the sdk suite as HANDOFF *Tests* says.
 
 ## Resume
+
+Built on 2026-11-17.
+`logged` polls every 25 ms until `WAIT_MS`, and looks once more before it fails.
+The case takes 370 ms on this machine; its Windows budget is 60 s.

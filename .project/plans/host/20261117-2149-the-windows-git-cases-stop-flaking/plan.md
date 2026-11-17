@@ -27,7 +27,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 | Case | Passing runs | Failure | Cause |
 | --- | --- | --- | --- |
-| changes-refresh, "re-reads a changeset when git is changed outside the host" | 0.9 s to 2.8 s | 23.8 s, timeout | the watch arms after two git processes, and `git add` can come first |
+| changes-refresh, "re-reads a changeset when git is changed outside the host" | 0.9 s to 2.8 s | 23.8 s, timeout | unknown; the host already reads again once the watch is armed |
 | worktrees, "takes away and puts back a tree a move left the session" | 2.6 s to 9.6 s | 20.6 s, `never logged` | its git work outgrew the 20 s budget on a slow runner |
 | worktrees, "answers the branches a client types for" | 0.5 s to 1.2 s | 24.6 s, timeout | unknown; no log of the failed run survives |
 
@@ -38,7 +38,6 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ### Gaps
 
-- A change between a changeset's first read and its watch being armed is not read until the next trigger.
 - `logged` waits a fixed number of tries, where the suite waits by `WAIT_MS`.
 - No log says which git call was slow.
 
@@ -46,37 +45,36 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 | What | Source | Task |
 | --- | --- | --- |
-| The git watch fires its change once when it is armed | Softov, 2026-11-17: "Re-read once when armed" | 01 |
+| The changes-refresh case is treated as the branches case: kept in the problem file, named by the slow-git line | Softov, 2026-11-17: "Treat it like the branches case" | 03 |
 | `logged` waits by `WAIT_MS`, and the moved-tree case has 60 s on Windows | Softov, 2026-11-17: "Wait by the clock, bigger budget" | 02 |
 | Each git call over 2 s is logged at debug level, with its arguments and its time | Softov, 2026-11-17: "Log each git call's time" | 03 |
 | The slow call also goes to stderr where `AHPD_GIT_SLOW_MS` is set, and the Windows CI jobs set it to 2000 | (defaulted: nothing prints a test host's log on CI, and the next failure has to name the call) | 03 |
 | The branches case stays in the problem file until it fails again | Softov, 2026-11-17: "Log each git call's time" | 03 |
+| No change to the git watch: `facts.ts` reads a directory again once its watch is armed | [code://packages/sdk/src/host/facts.ts#L694-L701](../../../../packages/sdk/src/host/facts.ts#L694-L701) | - |
 
 ## Proposed architecture
 
-- **Data flow** - the watch's `ready` ends with one `onChange`, through the same 150 ms debounce as a file event.
-- **Event flow** - `runGit` times each call from start to close, and says one over the limit to its listener.
-- **Layer responsibilities** - sdk: `changes.ts`, `hardened.ts`, `host.ts` · tests: `changes-refresh.test.ts`, `worktrees.test.ts` · CI: the Windows jobs' env.
+- **Data flow** - `runGit` times each call from start to close, and says one over the limit to its listener.
+- **Layer responsibilities** - sdk: `hardened.ts`, `host.ts` · tests: `changes-refresh.test.ts`, `worktrees.test.ts` · CI: the Windows jobs' env.
 - **Source-of-truth files** - [`code://packages/sdk/src/repo/hardened.ts`](../../../../packages/sdk/src/repo/hardened.ts)
 
 ## Tasks
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - the git watch reads once when armed](task-01-the-git-watch-reads-once-when-armed.md) | todo | - |
-| [02 - the moved-tree case waits by the clock](task-02-the-moved-tree-case-waits-by-the-clock.md) | todo | - |
-| [03 - a slow git call says so](task-03-a-slow-git-call-says-so.md) | todo | - |
+| [01 - the git watch reads once when armed](task-01-the-git-watch-reads-once-when-armed.md) | dropped | - |
+| [02 - the moved-tree case waits by the clock](task-02-the-moved-tree-case-waits-by-the-clock.md) | implemented | - |
+| [03 - a slow git call says so](task-03-a-slow-git-call-says-so.md) | implemented | - |
 
 ## Risks and tradeoffs
 
-- Each watched directory reads its changeset once more, when its watch is armed - one read, coalesced with any event in the same 150 ms.
 - The moved-tree case may take up to 60 s on a slow Windows runner - the archive work is not made faster here.
-- The branches case is not fixed - its next failure names the slow call, and a plan follows from that.
+- The changes-refresh and branches cases are not fixed - their next failure names a slow git call, if one stalled.
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-the-git-watch-reads-once-when-armed.md](task-01-the-git-watch-reads-once-when-armed.md).
+- **Done so far:** task 01 is `dropped`, and tasks 02 and 03 are `implemented` on 2026-11-17, on the branch `host/20261117-2149-the-windows-git-cases-stop-flaking`.
+- **Next action:** Softov's review; the CI runs after the merge are the check.
 - **Open questions:** none.
 - **Watch out for:** a case that is green once on Windows proves little; the CI runs after the merge are what count.
 

@@ -38,6 +38,36 @@ export const gitArgv = (dir: string, args: readonly string[]): string[] => {
 /** Every `git` this process started through `runGit` that has not closed yet. */
 const running = new Set<Promise<void>>();
 
+/** How long a `git` runs before it is said to be slow, in milliseconds. */
+export const SLOW_GIT_MS = 2000;
+
+/** Who hears of a slow `git`: the host's log at debug level, once a host has said so. */
+let slowGitListener: ((line: string) => void) | undefined;
+
+/**
+ * Hear of every `git` that runs longer than `SLOW_GIT_MS`, as one line naming
+ * the folder, the arguments and the time. One listener for the process,
+ * because `runGit` is one for the process; `undefined` stops hearing.
+ *
+ * A git call that stalls on a Windows runner leaves a case that times out with
+ * nothing to say which call it was, and this is what says it.
+ */
+export const onSlowGit = (listener: ((line: string) => void) | undefined): void => {
+  slowGitListener = listener;
+};
+
+/**
+ * The line for a slow `git`, said to the listener when it ran longer than
+ * `SLOW_GIT_MS`, and written to stderr when it ran longer than
+ * `AHPD_GIT_SLOW_MS`, which a CI job sets so a failing run's log names it.
+ */
+const timed = (dir: string, args: readonly string[], ms: number): void => {
+  const line = `slow git: ${String(ms)} ms for git ${args.join(' ')} in ${dir}`;
+  if (ms > SLOW_GIT_MS) slowGitListener?.(line);
+  const limit = Number(process.env['AHPD_GIT_SLOW_MS']);
+  if (Number.isFinite(limit) && limit > 0 && ms > limit) process.stderr.write(`${line}\n`);
+};
+
 /**
  * `git` with `gitArgv`'s argv, run in `dir` and kept among the ones running
  * until it closes.
@@ -52,11 +82,13 @@ export const runGit = (
   options: ExecFileOptions,
   done: (error: ExecFileException | null, out: string, err: string) => void,
 ): ChildProcess => {
+  const started = Date.now();
   const child = execFile('git', gitArgv(dir, args), { ...options, encoding: 'utf8' }, (error, out, err) => done(error, out, err));
   const closed = new Promise<void>((resolve) => {
     child.once('close', () => resolve());
     child.once('error', () => resolve());
   });
+  void closed.then(() => { timed(dir, args, Date.now() - started); });
   running.add(closed);
   void closed.then(() => running.delete(closed));
   return child;
