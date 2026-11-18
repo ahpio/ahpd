@@ -57,7 +57,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ## Risks and tradeoffs
 
-- A connector that posts more than 20 calls an hour to one automation loses the rest - the cap is the point, and the log says each drop.
+- A connector past 20 calls an hour to one automation loses the rest - the cap is the point, and the log says each drop.
 
 ## Resume state
 
