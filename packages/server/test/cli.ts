@@ -141,9 +141,18 @@ export const alive = (pid: number): boolean => {
   catch { return false; }
 };
 
-/** Wait, briefly, for a stopped daemon to leave. */
+/**
+ * How long a stopped daemon is given to leave.
+ *
+ * A restart spends 3 s of it on `restartDelayMs` before the old daemon starts
+ * to stop, and a busy machine takes longer than the 2 s a 5 s wait left for
+ * the rest. The same 20 s the restart case gives its successor to appear.
+ */
+const GONE_MS = 20_000;
+
+/** Wait for a stopped daemon to leave, for up to `GONE_MS`. */
 export const gone = async (pid: number): Promise<void> => {
-  const until = Date.now() + 5000;
+  const until = Date.now() + GONE_MS;
   while (alive(pid) && Date.now() < until) await new Promise((wait) => setTimeout(wait, 50));
 };
 
