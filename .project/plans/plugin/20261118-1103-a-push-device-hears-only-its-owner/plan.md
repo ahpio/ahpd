@@ -1,7 +1,7 @@
 ---
 title: A push device hears only its owner's openings
 domain: plugin
-status: active
+status: built
 priority: high
 created: 2026-11-18
 revalidated: 2026-11-18
@@ -65,7 +65,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 ## Resume state
 
 - **Done so far:** task 01. The host raises `session_opened` once per client, session and owner, so a second person under the same client id is heard.
-- **Next action:** review.
+- **Next action:** none, the plan is built.
 - **Open questions:** none.
 - **Watch out for:** an opening is raised once per session and client, so the owner of that first opening is the one kept.
 

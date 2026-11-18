@@ -1,7 +1,7 @@
 ---
 title: A plugin that failed to load can be updated from a client
 domain: daemon
-status: active
+status: built
 priority: high
 created: 2026-11-18
 revalidated: 2026-11-18
@@ -41,7 +41,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 | What | Source | Task |
 | --- | --- | --- |
-| A plugin that did not load is named by its package name without its scope or its version, such as `agent-claude` | Softov, 2026-11-18: "agent-claude (Recommended)" | 01 |
+| A plugin that did not load is named by its package name without its scope or its version, such as `agent-claude` | Softov, 2026-11-18: "agent-claude (Recommended)", in [decisions/a-refused-plugin-is-named-without-its-scope.md](../../../decisions/a-refused-plugin-is-named-without-its-scope.md) | 01 |
 | `idParam` takes an id that a row of the plugins list answers, a `/` included | (defaulted: the problem's second step) | 01 |
 | An id with a `?`, or one no row answers, is refused as today | (defaulted: only a row's own id is newly taken) | 01 |
 
@@ -64,7 +64,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 ## Resume state
 
 - **Done so far:** task 01. The loader names a refused plugin too, so `refusedId` is used there and in `unimportedId`.
-- **Next action:** review.
+- **Next action:** none, the plan is built.
 - **Open questions:** none.
 - **Watch out for:** a spec that is a path or a URL has no package name, and keeps the id it has today.
 

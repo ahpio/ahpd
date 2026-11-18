@@ -37,7 +37,7 @@ ahpw draws its Clients area from that channel with no code per field, so a field
 ## Who writes
 
 - No open PR on `ahpio/ahpd` at `8b7e8a6bd`.
-- The 0.15.0 fix "A removed node is cut off at once", in [0-15-blockers.md](../working/0-15-blockers.md), changes how a removed node is dropped. That fix and this channel both touch the hub's live registry of nodes.
+- The 0.15.0 fix "A removed node is cut off at once", built as [container/20261118-1107](../plans/container/20261118-1107-a-removed-node-is-cut-off-at-once/plan.md), changes how a removed node is dropped. That fix and this channel both touch the hub's live registry of nodes.
 - `/github/ahpw` is on another session's branch, and ahpw's main is `8eafeaf`. No ahpw branch names nodes.
 
 ## The change

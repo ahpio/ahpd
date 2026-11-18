@@ -1,7 +1,7 @@
 ---
 title: A removed node is cut off at once
 domain: container
-status: active
+status: built
 priority: high
 created: 2026-11-18
 revalidated: 2026-11-18
@@ -70,7 +70,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 ## Resume state
 
 - **Done so far:** tasks 01 and 02. The commands forward only when no `--users` and no `--config-file` is given, as `paths` does.
-- **Next action:** the checks by hand of *Final verification checklist* on a test hub, then review.
+- **Next action:** none, the plan is built.
 - **Open questions:** none.
 - **Watch out for:** a node's own reconnect is not a removal; only `drop` closes the session sockets.
 

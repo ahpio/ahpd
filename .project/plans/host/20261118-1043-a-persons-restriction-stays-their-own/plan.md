@@ -1,7 +1,7 @@
 ---
 title: A person's restriction and answer stay their own
 domain: host
-status: active
+status: built
 priority: high
 created: 2026-11-18
 revalidated: 2026-11-18
@@ -47,7 +47,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 | What | Source | Task |
 | --- | --- | --- |
-| `autoApprovePolicyRestricted` is kept per person, as host/20261117-1047 keeps its three keys | Softov, 2026-11-18: "Per person, like #367's keys" | 01 |
+| `autoApprovePolicyRestricted` is kept per person, as host/20261117-1047 keeps its three keys | Softov, 2026-11-18: "Per person, like #367's keys", in [decisions/the-auto-approve-restriction-is-kept-per-person.md](../../../decisions/the-auto-approve-restriction-is-kept-per-person.md) | 01 |
 | A session reads its owner's value, and the host's where the owner keeps none | (defaulted: the rule of the three keys) | 01 |
 | Every read of the key takes the owner's value: the two in `spawn.ts`, the Allow All refusal in `chatactions.ts`, and the policy a session starts with | (defaulted: one read left on the host's value lets another person's push lift the restriction there) | 01 |
 | A host with no users is unchanged | (defaulted: the rule of the three keys) | 01 |
@@ -75,7 +75,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 ## Resume state
 
 - **Done so far:** tasks 01 and 02. Beyond task 01, the Allow All refusal in `chatactions.ts` and the policy a session starts with also read the owner's value, through `approvalSetting`.
-- **Next action:** the checks by hand of *Final verification checklist* on the test daemon, then review.
+- **Next action:** none, the plan is built.
 - **Open questions:** none.
 - **Watch out for:** `readOnly` means a settings page draws no control, not that no push writes it.
 

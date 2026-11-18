@@ -141,6 +141,12 @@ WHEN either check fails
 THEN the plugin leaves the machine alone with a log line.
 The reason: two daemons on one Docker keep sessions under the same ids, so the session id alone does not say whose a machine is.
 
+### A session nobody resumed is disposed
+
+WHEN a client disposes a session that this process keeps but does not hold, because nobody resumed it after a restart
+THEN the host reads the machine from the session's config before it forgets the row
+AND it tells the plugin the session left that machine, so a disposable machine is removed as after any last session.
+
 ### A session runs in a machine
 
 WHEN a session names `computer://<id>` at create, or a change of its config names one

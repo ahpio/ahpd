@@ -1,7 +1,7 @@
 ---
 title: A tunnel refused at its start is tried again
 domain: plugin
-status: active
+status: built
 priority: high
 created: 2026-11-18
 revalidated: 2026-11-18
@@ -70,7 +70,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 ## Resume state
 
 - **Done so far:** task 01. The waits are a kind option, `retryMs`, so the cases run in milliseconds.
-- **Next action:** review.
+- **Next action:** none, the plan is built.
 - **Open questions:** none.
 - **Watch out for:** a retry must not run after the plugin stops or the record is stopped; clear each timer there.
 

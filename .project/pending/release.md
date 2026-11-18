@@ -12,17 +12,17 @@ A pushed `v*` tag runs [release.yml](../../.github/workflows/release.yml) and st
 
 What 0.15.0 waits for, as Softov chose on 2026-11-18. rc.4 is the last release candidate on npm.
 
-1. *The fixes.* Nine problems are fixed before 0.15.0, through seven plans. [working/0-15-blockers.md](../working/0-15-blockers.md) follows each one to its plan.
-2. *The checks by hand.* Softov runs the rest of [tunnel-token-checks.md](tunnel-token-checks.md), and makes `compclau` again on the parts of #336 with a Claude session in it.
-3. *A working day on the daemon* on the release candidate that holds the fixes.
-4. *The web UI.* `@ahpd/web` declares its sdk peer as `>=0.9`, which npm does not match to a prerelease, so npm refuses it beside rc.4. The fix is in ahpw.
-5. *The built plans close* after their checks: the three tunnel plans, daemon/20261118-0603, host/20261118-0603, host/20261116-1714 and plugin/20261116-1816.
-6. *The release.* The notes' summary covers the whole of 0.15, and the release candidate sections join under `0.15.0`. The bump, a dry run, the tag on Softov's word, and npm's `latest` once he approves the staged packages.
+1. *The checks by hand.* Softov runs the rest of [tunnel-token-checks.md](tunnel-token-checks.md), and makes `compclau` again on the parts of #336 with a Claude session in it.
+2. *A working day on the daemon* on main after #383, which holds the fixes. rc.4 does not.
+3. *The web UI.* `@ahpd/web` declares its sdk peer as `>=0.9`, which npm does not match to a prerelease, so npm refuses it beside rc.4. The fix is in ahpw.
+4. *The release.* The notes' summary covers the whole of 0.15, and the release candidate sections join under `0.15.0`. The bump, a dry run, the tag on Softov's word, and npm's `latest` once he approves the staged packages.
 
 Seven major problems wait for 0.16 by the same choice, and each says so in its *Fix*. `globalAutoApproveEnabled` keeps VS Code's meaning: [global-auto-approve-keeps-vs-codes-meaning.md](../decisions/global-auto-approve-keeps-vs-codes-meaning.md).
 
 ## Done
 
+- **The fixes before 0.15.0.** Nine problems were fixed by seven plans, merged on 2026-11-18 as #377 to #383. Each plan is `built`, and its `implemented.md` holds the checks: host/20261118-1043, plugin/20261118-1103, host/20261118-1104, daemon/20261118-1105, plugin/20261118-1106, container/20261118-1107 and container/20261118-1108.
+- **The built plans closed** on 2026-11-18, on Softov's word: the three tunnel plans, daemon/20261118-0603, host/20261118-0603, host/20261116-1714 and plugin/20261116-1816. The tunnel plans' checks by hand that are left stay in [tunnel-token-checks.md](tunnel-token-checks.md).
 - **The rc.4 release.** #376 sets `0.15.0-rc.4` and holds the notes for #321 to #375. Dry run 44258114344 passed on its branch. Its PR's `image` failed only because npm did not serve `@ahpd/sdk@0.15.0-rc.4` yet. After the update, npm warns of one zod advisory in `@vscode/sandbox-runtime`: [the-sandbox-runtime-carries-a-zod-advisory.md](../problems/the-sandbox-runtime-carries-a-zod-advisory.md).
 - **After rc.3.** Four PRs merged on 2026-11-13:
   - PR #321 makes a bot talk one session, with a Back chat for each bot and person.

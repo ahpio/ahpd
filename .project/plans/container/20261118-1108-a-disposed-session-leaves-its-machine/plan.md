@@ -1,7 +1,7 @@
 ---
 title: A disposed session leaves its machine
 domain: container
-status: active
+status: built
 priority: high
 created: 2026-11-18
 revalidated: 2026-11-18
@@ -62,7 +62,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 ## Resume state
 
 - **Done so far:** task 01. The cases list the session on a second host over the same store and backend, then dispose it unopened.
-- **Next action:** review.
+- **Next action:** none, the plan is built.
 - **Open questions:** none.
 - **Watch out for:** read the config before `kept.forget`, as the prune does; after it the config is gone.
 

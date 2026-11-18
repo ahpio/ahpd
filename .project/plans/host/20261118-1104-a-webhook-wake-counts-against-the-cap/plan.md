@@ -1,7 +1,7 @@
 ---
 title: A connector's wake counts against the cap
 domain: host
-status: active
+status: built
 priority: high
 created: 2026-11-18
 revalidated: 2026-11-18
@@ -62,7 +62,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 ## Resume state
 
 - **Done so far:** task 01.
-- **Next action:** review.
+- **Next action:** none, the plan is built.
 - **Open questions:** none.
 - **Watch out for:** `skip` drops a wake before it is counted, so a skipped call is not one of the 20.
 

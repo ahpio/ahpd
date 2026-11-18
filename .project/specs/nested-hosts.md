@@ -133,4 +133,4 @@ The machine gets its keys as the agent's machine needs say.
 
 A nested host does not yet get the session's proxy token and URL, and `NestedStart` carries no environment.
 [A machine off this host reaches its models through the proxy](../plans/container/05-p12-off-host-machine-reaches-models-via-proxy/plan.md) plans this.
-`ahpd join <url>`, where one ahpd dials another that then lists it as a computer, is planned in [a host joins a hub](../plans/container/05-p10-a-host-joins-a-hub/plan.md).
+`ahpd join <url>` is built by [a host joins a hub](../plans/container/05-p10-a-host-joins-a-hub/plan.md), and this spec does not describe it yet. One rule of it: a node removed from the hub, or given a new token, loses its control socket at once. Every session socket it dialled closes with it. `ahpd node rm` and `ahpd node add` at the hub's terminal reach the running daemon when no `--users` or `--config-file` is given.
