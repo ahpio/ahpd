@@ -109,6 +109,8 @@ The store and the switch are separate. A daemon that is switched off, or that ha
 | A turn starts | `agent`, for the harness, the session's machine and the model the turn named; then the agent limits | A client's start is said, then ended in `chat/error` with the same words or the limit sentence below, as VS Code's host ends a turn its admission refuses; a queued message is said, and the turn the host starts for it is ended the same way |
 | A gateway call ([GATEWAY.md](../server/GATEWAY.md)) | `model`, for the name called and each provider entry that serves it, and the model limits; the first entry allowed is called | 403 in the caller's dialect, naming the row; a session's call is checked as the person it runs for unless `modelGateway.sessionCalls` is `skip` |
 
+A session needs both rows: an `agent` row for the harness, and a `computer` row for the machine. A `computer` value in an `agent` row narrows where that harness runs, and allows no machine by itself. A session that names no computer is checked as `computer host`, the machine this daemon runs on. `ahpd configure` offers an `all` row for each kind that has none, as [CONFIGURE.md](../server/CONFIGURE.md#first-setup) says.
+
 The session's checks run **before** the machine is made, so a refused session leaves nothing behind.
 
 Each check runs the same four steps:

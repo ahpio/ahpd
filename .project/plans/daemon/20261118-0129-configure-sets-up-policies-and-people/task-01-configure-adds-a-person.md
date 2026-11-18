@@ -1,6 +1,6 @@
 ---
 title: Configure adds a person and prints the next commands
-status: todo
+status: implemented
 depends: []
 layer: "server"
 refs:
@@ -49,4 +49,7 @@ The run ends with the commands to run next.
 - The server suite passes, run alone as HANDOFF *Tests* says.
 
 ## Resume
+
+Built on 2026-11-17. `people` in `user.ts` and `configure` open the users file through one helper, `usersAt`, so both read `issuer` and `tokensPerPerson` the same way.
+`roleNames` is optional on `Users`, because the test stand-ins of `Users` in other packages do not have it.
 

@@ -72,14 +72,20 @@ export function people(
     host: typeof input['host'] === 'string' ? input['host'] : typeof from.host === 'string' ? from.host : '127.0.0.1',
     port: typeof input['port'] === 'number' ? input['port'] : typeof from.port === 'number' ? from.port : 9187,
   };
-  const directory = fileUsers({
-    path,
-    ...(typeof from.issuer === 'string' ? { issuer: from.issuer } : {}),
-    ...(typeof from.tokensPerPerson === 'number' ? { tokensPerPerson: from.tokensPerPerson } : {}),
-    onProblem: (line) => { context.error(line); },
-  });
+  const directory = usersAt(path, from, (line) => { context.error(line); });
   return { path, where, directory };
 }
+
+/**
+ * The users file at `path`, opened with what the configuration says of its
+ * issuer and its tokens per person, as the daemon opens it.
+ */
+export const usersAt = (path: string, from: { readonly issuer?: unknown; readonly tokensPerPerson?: unknown }, onProblem: (line: string) => void): Users => fileUsers({
+  path,
+  ...(typeof from.issuer === 'string' ? { issuer: from.issuer } : {}),
+  ...(typeof from.tokensPerPerson === 'number' ? { tokensPerPerson: from.tokensPerPerson } : {}),
+  onProblem,
+});
 
 /** The id a sub-command was given; one spelled like an option is refused as an unknown flag would be. */
 export const idOf = (context: { value<T = string>(name: string): T }, command: string): string => {

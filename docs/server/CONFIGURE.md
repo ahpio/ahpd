@@ -25,6 +25,15 @@ Then it asks for the host, port, token and folders. Each question shows the curr
 | An agent that is not on PATH | Its install line or page in the output; no question |
 | Enter at the token | A new token in `connection-token`, mode 0600 |
 | No to a folder | Leaves it out of `paths` |
+| Yes to "Add a person now?" | The person in the users file, with the roles typed, `member` on Enter; `users` set to `users.json` beside `config.json` when it names no file |
+| Yes to "Turn the policy checks on?" | `policies.check: true`, the other `policies` keys kept |
+| Yes to "Allow every person every ...?" | One row per kind in `policies.json`: `everyone-agent`, `everyone-computer` and `everyone-model`, scope `all`, `*` for the kind |
+
+After the marketplaces it asks whether to add a person. Enter is No. A yes asks for the id, then the roles as a comma-separated list. The question lists the roles the host defines, and a role it does not define is asked again. One run can add more than one person.
+
+On a host with a users file it then asks whether to turn the [policy checks](../sdk/POLICY.md#the-switch) on. With the checks on, a kind that no `all` row allows refuses every person. So it offers one row for each such kind, and Enter writes them. A row with an id the store already holds is not written, and the run says so. A running daemon reads the rows when it starts again.
+
+It ends with what to run next: `ahpd user token <id> --url` for each person it added, which prints how they connect, and `ahpd start`.
 
 `ahpd` and `ahpd start` offer to run it when there is no `config.json`. They never ask without a terminal.
 

@@ -559,6 +559,12 @@ export interface Users {
    */
   roles(): Promise<Role[]>;
   /**
+   * Every role name a person may be given here: the file's own and the
+   * built-ins beside them, sorted. What a prompt offers before an add, so the
+   * names it lists are the ones the add accepts.
+   */
+  roleNames?(): Promise<string[]>;
+  /**
    * Name a role, or set the grants of one already named.
    *
    * A role in the file overrides a built-in of the same name, which is the
