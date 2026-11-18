@@ -1,7 +1,7 @@
 ---
 title: Configure sets up policies and people
 domain: daemon
-status: planned
+status: active
 priority: medium
 created: 2026-11-17
 revalidated: 2026-11-17
@@ -76,8 +76,8 @@ The brief that this plan covers held the research; its last commit is the first 
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - configure adds a person](task-01-configure-adds-a-person.md) | todo | - |
-| [02 - configure turns the policy checks on](task-02-configure-turns-the-policy-checks-on.md) | todo | 01 |
+| [01 - configure adds a person](task-01-configure-adds-a-person.md) | implemented | - |
+| [02 - configure turns the policy checks on](task-02-configure-turns-the-policy-checks-on.md) | implemented | 01 |
 
 ## Risks and tradeoffs
 
@@ -87,8 +87,8 @@ The brief that this plan covers held the research; its last commit is the first 
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-configure-adds-a-person.md](task-01-configure-adds-a-person.md).
+- **Done so far:** tasks 01 and 02 are `implemented` on 2026-11-17, on the branch `daemon/20261118-0129-configure-sets-up-policies-and-people`.
+- **Next action:** Softov's review, and the check on the test daemon in *Final verification checklist*.
 - **Open questions:** none.
 - **Watch out for:** the test terminal answers Enter past the answers a case names. Each new question must keep what is there on Enter.
 

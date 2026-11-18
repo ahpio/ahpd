@@ -936,7 +936,7 @@ export const sessionsPath = (): string => join(configDir(), 'sessions.json');
  * small file beside a hand-edited `config.json`, written whenever an operator
  * changes a policy through the `policy:` scheme.
  */
-export const policiesPath = (): string => join(configDir(), 'policies.json');
+export const policiesPath = (dir: string = configDir()): string => join(dir, 'policies.json');
 
 /**
  * Where the secrets this host's work needs are kept.

@@ -664,3 +664,86 @@ describe('a start in a folder nothing serves', () => {
     expect(read().paths).toEqual(['/tmp/one']);
   });
 });
+describe('people and policies', () => {
+  /** Enter at each question of today, which the people and policy questions follow. */
+  const today = (): string[] => Array.from({ length: 9 }, () => '');
+  const usersOf = (path: string): { id: string; roles: string[] }[] =>
+    (JSON.parse(readFileSync(path, 'utf8')) as { users: { id: string; roles: string[] }[] }).users;
+  const rowsOf = (): { id: string; kind: string; match: Record<string, string[]> }[] =>
+    (JSON.parse(readFileSync(join(configDir, 'policies.json'), 'utf8')) as { policies: { id: string; kind: string; match: Record<string, string[]> }[] }).policies;
+
+  it('adds nobody and writes no users file on Enter', async () => {
+    const { answered, said } = await asked(...today());
+    expect(said).toContain('Add a person now? [y/N]: ');
+    expect(answered.added).toEqual([]);
+    expect(read().users).toBeUndefined();
+    expect(said).not.toContain('ahpd user token');
+    // A host with no people is never checked, so it is not asked.
+    expect(said).not.toContain('Turn the policy checks on?');
+  });
+
+  it('adds a person as member on Enter, in a users file beside the configuration, and says how they connect', async () => {
+    const { answered, said } = await asked(...today(), 'y', 'alice', '');
+    const file = join(configDir, 'users.json');
+    expect(read().users).toBe(file);
+    expect(usersOf(file)).toEqual([expect.objectContaining({ id: 'alice', roles: ['member'] })]);
+    expect(answered.added).toEqual(['alice']);
+    // The roles offered are the ones the host defines.
+    expect(said).toContain('Roles (admin, guest, member; comma-separated) [member]: ');
+    expect(said).toContain('Add another person? [y/N]: ');
+    expect(said).toContain('To connect as alice: ahpd user token alice --url');
+  });
+
+  it('gives every role a comma-separated answer names', async () => {
+    await asked(...today(), 'y', 'bob', 'member, guest');
+    expect(usersOf(join(configDir, 'users.json'))[0]?.roles).toEqual(['member', 'guest']);
+  });
+
+  it('asks the roles again after one the host does not define', async () => {
+    const { said } = await asked(...today(), 'y', 'carol', 'chief', '');
+    expect(said).toContain('no role called chief; this host has admin, guest, member');
+    expect(usersOf(join(configDir, 'users.json'))[0]?.roles).toEqual(['member']);
+  });
+
+  it('turns the checks on, keeps the other policy keys, and writes a starter row for each kind on Enter', async () => {
+    put({ users: join(configDir, 'users.json'), policies: { payOrder: 'regular' } });
+    const { said } = await asked(...today(), '', 'y', '');
+    expect(read().policies).toEqual({ payOrder: 'regular', check: true });
+    expect(said).toContain('Allow every person every agent, computer, model? A model row opens every model to every person. [Y/n]: ');
+    expect(rowsOf().map((row) => [row.id, row.kind, row.match])).toEqual([
+      ['everyone-agent', 'agent', { agent: ['*'] }],
+      ['everyone-computer', 'computer', { computer: ['*'] }],
+      ['everyone-model', 'model', { model: ['*'] }],
+    ]);
+    expect(said).toContain('A running daemon reads them when it starts again.');
+  });
+
+  it('offers only the kinds no row allows to everyone', async () => {
+    put({ users: join(configDir, 'users.json'), policies: { check: true } });
+    writeFileSync(join(configDir, 'policies.json'), JSON.stringify({ version: 1, policies: [
+      { id: 'all', scope: 'all', kind: 'agent', effect: 'allow', match: { agent: ['*'], computer: ['*'] } },
+    ] }));
+    const { said } = await asked(...today(), '', '', '');
+    expect(said).toContain('Allow every person every computer, model?');
+    expect(rowsOf().map((row) => row.id)).toEqual(['all', 'everyone-computer', 'everyone-model']);
+  });
+
+  it('keeps a different row under a starter id, and says the kind was skipped', async () => {
+    put({ users: join(configDir, 'users.json'), policies: { check: true } });
+    writeFileSync(join(configDir, 'policies.json'), JSON.stringify({ version: 1, policies: [
+      { id: 'everyone-agent', scope: 'user:dave', kind: 'agent', effect: 'allow', match: { agent: ['claude'] } },
+    ] }));
+    const { said } = await asked(...today(), '', '', '');
+    expect(said).toContain('The store already has a row everyone-agent, so no agent row was written.');
+    expect(rowsOf().find((row) => row.id === 'everyone-agent')?.match).toEqual({ agent: ['claude'] });
+  });
+
+  it('offers no row and writes no store with the checks off', async () => {
+    put({ users: join(configDir, 'users.json') });
+    const { said } = await asked(...today());
+    expect(said).toContain('Turn the policy checks on? A person no policy allows is refused. [y/N]: ');
+    expect(said).not.toContain('Allow every person');
+    expect(read().policies).toBeUndefined();
+    expect(existsSync(join(configDir, 'policies.json'))).toBe(false);
+  });
+});

@@ -24,10 +24,10 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { output } from '@cofold/commands';
 import type { Command, Registry } from '@cofold/commands';
-import { isRecord, knownAgents, sdkVersion } from '@ahpd/sdk';
-import type { RecordCollection } from '@ahpd/sdk';
+import { filePolicies, isRecord, knownAgents, sdkVersion } from '@ahpd/sdk';
+import type { Policy, PolicyKind, RecordCollection } from '@ahpd/sdk';
 import { ask, answering, confirm, here, type Term } from '../ask.js';
-import { asSpec, configDir, configPath } from '../config.js';
+import { asSpec, configDir, configPath, policiesPath } from '../config.js';
 import { marketplacesOf } from '../pluginlist.js';
 import { AGENT_PLUGIN, agentLines, alsoLines, configuredAgents, findAgents, findAlso, findRuntimes, missingLines, runtimeLines } from '../found.js';
 import { editableEntry, installPlugins, readEntry, run as runProgram, writeEntry, type Runner } from '../install.js';
@@ -35,6 +35,7 @@ import { isNamed, sourceOf, pluginIdOf } from '../plugins.js';
 import { fileRecords } from '../records.js';
 import type { Fetch } from '../update.js';
 import { serverFields, stop, type Options } from './options.js';
+import { usersAt } from './user.js';
 
 /**
  * The backends this daemon can be given, and the package each is.
@@ -72,6 +73,29 @@ const OTHERS = [
   { name: 'Web UI', package: '@ahpd/web' },
 ] as const;
 
+/** The users file a run that adds a person writes, beside the configuration, when the configuration names none. */
+const USERS = 'users.json';
+
+/**
+ * The role Enter gives a person added here.
+ *
+ * The one built-in role that can start a session: `guest` only reads, and
+ * `admin` holds `*:*`, which no policy is ever checked against.
+ */
+const ROLE = 'member';
+
+/** The kinds a starter row is offered for, which are the kinds a person's work is checked for. */
+const STARTER_KINDS: readonly PolicyKind[] = ['agent', 'computer', 'model'];
+
+/**
+ * Whether a row lets every person use everything of its kind: an active allow
+ * of scope `all` whose match names `*` for the kind's own value type. A kind
+ * with none refuses every person whom no narrower row covers.
+ */
+const coversAll = (row: Policy, kind: PolicyKind): boolean => row.kind === kind && row.effect === 'allow'
+  && row.scope === 'all' && row.from === undefined && row.until === undefined
+  && (row.match[kind]?.includes('*') ?? false);
+
 /** The file the token is written to, beside the configuration that names it. */
 const TOKEN = 'connection-token';
 
@@ -103,6 +127,8 @@ export interface Configured {
   backends: string[];
   /** The folders this host will serve. */
   paths: string[];
+  /** The people this run added to the users file, by id. */
+  added: string[];
 }
 
 /** Every name `plugins` already holds, as a spec and as an id, whether an entry is a string or an object. */
@@ -425,6 +451,86 @@ export async function configure(options: ConfigureOptions): Promise<Configured> 
     held.pluginMarketplaces = typedLists === 'none' ? [] : typedLists.split(',').map((one) => one.trim()).filter((one) => one !== '');
   }
 
+  /*
+   * The people, after the questions a daemon cannot start without.
+   *
+   * No is what Enter keeps, as `askToServe` keeps it for a folder: a person is
+   * a grant, and Enter should not make one. A host with no users file is
+   * given one beside the configuration, since a person needs a file to be
+   * kept in, and `ahpd user add` refuses without one.
+   */
+  const added: string[] = [];
+  let more = 'Add a person now?';
+  while (await confirm(more, false, options.term)) {
+    more = 'Add another person?';
+    const id = (await ask('Their id', '', options.term)).trim();
+    if (id === '' || id.startsWith('-')) {
+      options.say('A person needs an id, such as alice. Nobody was added.');
+      continue;
+    }
+    const file = typeof held.users === 'string' ? held.users : join(options.configDir, USERS);
+    held.users = file;
+    const directory = usersAt(file, held, (line) => { options.say(line); });
+    const names = await directory.roleNames?.() ?? [];
+    // A role the host does not define is refused by the directory, in words
+    // that name the ones it has, and asked again.
+    for (;;) {
+      const typedRoles = await ask(`Roles (${names.join(', ')}; comma-separated)`, ROLE, options.term);
+      const roles = typedRoles.split(',').map((one) => one.trim()).filter((one) => one !== '');
+      try {
+        await directory.add(id, roles.length === 0 ? [ROLE] : roles, {});
+        added.push(id);
+        options.say(`Added ${id} to ${file}.`);
+        break;
+      }
+      catch (error) {
+        options.say(error instanceof Error ? error.message : String(error));
+      }
+    }
+  }
+
+  /*
+   * The policy checks, on a host with people.
+   *
+   * A host with no users file is never checked, so it is not asked. Enter
+   * keeps what the file holds, and the other keys of `policies` stay.
+   */
+  const policies = isRecord(held.policies) ? { ...held.policies } : {};
+  if (typeof held.users === 'string') {
+    const was = policies['check'] === true;
+    const check = await confirm('Turn the policy checks on? A person no policy allows is refused.', was, options.term);
+    // Written only where it says something: a No on a file that never named
+    // the key leaves the file without it, as Enter at every question should.
+    if (check !== was || Object.hasOwn(policies, 'check')) {
+      policies['check'] = check;
+      held.policies = policies;
+    }
+  }
+  /*
+   * One starter row for each kind that would refuse every person.
+   *
+   * Asked only with the checks on, which is when an empty kind refuses, so
+   * Enter writes them. The rows are written after the file, and a daemon
+   * reads them at its next start.
+   */
+  const starters: Policy[] = [];
+  const store = policies['check'] === true ? filePolicies({ file: policiesPath(options.configDir), onProblem: (line) => { options.say(line); } }) : undefined;
+  if (store !== undefined) {
+    const rows = await store.list();
+    const missing = STARTER_KINDS.filter((kind) => !rows.some((row) => coversAll(row, kind)));
+    const opens = missing.includes('model') ? ' A model row opens every model to every person.' : '';
+    if (missing.length > 0 && await confirm(`Allow every person every ${missing.join(', ')}?${opens}`, true, options.term)) {
+      for (const kind of missing) {
+        const id = `everyone-${kind}`;
+        if (await store.get(id) !== undefined) {
+          options.say(`The store already has a row ${id}, so no ${kind} row was written.`);
+          continue;
+        }
+        starters.push({ id, scope: 'all', kind, effect: 'allow', match: { [kind]: ['*'] } });
+      }
+    }
+  }
+
   held.host = host;
   held.port = port;
   held.paths = paths;
@@ -433,6 +539,17 @@ export async function configure(options: ConfigureOptions): Promise<Configured> 
   if (plugins.length > 0) held.plugins = plugins;
   writeEntry(options.configFile, held);
   options.say(`Wrote ${options.configFile}.`);
+  if (store !== undefined && starters.length > 0) {
+    for (const row of starters) {
+      try {
+        await store.put(row);
+      }
+      catch (error) {
+        stop(`The row ${row.id} could not be written: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    options.say(`Wrote ${starters.map((row) => row.id).join(', ')} to ${policiesPath(options.configDir)}. A running daemon reads them when it starts again.`);
+  }
 
   const missing = [
     ...backends.filter((one) => !installed.has(one)),
@@ -449,7 +566,15 @@ export async function configure(options: ConfigureOptions): Promise<Configured> 
   }
   else if (backends.length > 0) options.say(`Every backend is already named in ${options.configFile}.`);
 
-  return { path: options.configFile, backends, paths };
+  /*
+   * What to run next, as `kubeadm init` ends.
+   *
+   * The command that prints a person's credential, and not the credential: a
+   * secret is printed when somebody asks for it.
+   */
+  for (const id of added) options.say(`To connect as ${id}: ahpd user token ${id} --url`);
+
+  return { path: options.configFile, backends, paths, added };
 }
 
 /**
@@ -560,6 +685,11 @@ export const declareConfigure = (registry: Registry<object>): Command => registr
         else context.write(`${line}\n`);
       },
     });
+    // The offer at a first start starts the daemon next, so only the command
+    // says how to.
+    const next = 'Start the daemon: ahpd start';
+    if (payload) context.error(next);
+    else context.write(`${next}\n`);
     return output(done, '');
   },
 });

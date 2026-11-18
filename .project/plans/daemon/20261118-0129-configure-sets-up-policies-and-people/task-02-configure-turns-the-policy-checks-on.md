@@ -1,6 +1,6 @@
 ---
 title: Configure turns the policy checks on and writes starter rows
-status: todo
+status: implemented
 depends: [task-01-configure-adds-a-person.md]
 layer: "server"
 refs:
@@ -52,4 +52,7 @@ With the check on, it offers one starter row for each kind that would refuse eve
 - The server suite passes, run alone as HANDOFF *Tests* says.
 
 ## Resume
+
+Built on 2026-11-17. A No on a file that never named `policies.check` writes no `policies` key, so Enter at every question leaves the file as before.
+A row with a `from` or an `until` does not count as one that allows every person, since it is not active at all times.
 

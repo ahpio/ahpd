@@ -39,6 +39,10 @@ const BUILT_IN: Record<string, Grant[]> = {
   guest: ['session:read', 'automation:read'],
 };
 
+/** Every role name a host defines: the file's own and the built-in ones, sorted. */
+const definedRoles = (roles: Readonly<Record<string, unknown>> | undefined): string[] =>
+  [...new Set([...Object.keys(roles ?? {}), ...Object.keys(BUILT_IN)])].sort();
+
 /**
  * How a token is checked, as a configuration or a record spells it.
  *
@@ -1300,7 +1304,7 @@ export function fileUsers(options: FileUserOptions): Users {
     const values = typeof held === 'string' ? [held] : strings(held);
     if (values.length === 0) return [];
     const { file } = read();
-    const defined = new Set([...Object.keys(file.roles ?? {}), ...Object.keys(BUILT_IN)]);
+    const defined = new Set(definedRoles(file.roles));
     return values.filter((one) => {
       if (defined.has(one)) return true;
       once(`user ${record.id} has ${claim} ${one}, which names no role this host defines`);
@@ -1556,8 +1560,7 @@ export function fileUsers(options: FileUserOptions): Users {
         const unknown = roles.find((role) => !was.has(role)
           && roleIn(file.roles, role) === undefined && roleIn(BUILT_IN, role) === undefined);
         if (unknown !== undefined) {
-          const has = [...new Set([...Object.keys(file.roles ?? {}), ...Object.keys(BUILT_IN)])].sort();
-          throw new Error(`no role called ${unknown}; this host has ${has.join(', ')}`);
+          throw new Error(`no role called ${unknown}; this host has ${definedRoles(file.roles).join(', ')}`);
         }
         // A provider nothing can resolve is refused here for the same reason:
         // a record that names one can only ever be reached by a minted secret,
@@ -1619,6 +1622,8 @@ export function fileUsers(options: FileUserOptions): Users {
       }
       write({ ...file, users });
     },
+
+    roleNames: async () => definedRoles(read().file.roles),
 
     roles: async () => Object.entries(read().file.roles ?? {}).map(([id, grants]) => ({ id, grants: [...grants] })),
 
