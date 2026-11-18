@@ -1,7 +1,7 @@
 ---
 title: A disposed session leaves its machine
 domain: container
-status: planned
+status: active
 priority: high
 created: 2026-11-18
 revalidated: 2026-11-18
@@ -53,7 +53,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a dispose not held lets the machine go](task-01-a-dispose-not-held-lets-the-machine-go.md) | todo | - |
+| [01 - a dispose not held lets the machine go](task-01-a-dispose-not-held-lets-the-machine-go.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -61,8 +61,8 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-dispose-not-held-lets-the-machine-go.md](task-01-a-dispose-not-held-lets-the-machine-go.md).
+- **Done so far:** task 01. The cases list the session on a second host over the same store and backend, then dispose it unopened.
+- **Next action:** review.
 - **Open questions:** none.
 - **Watch out for:** read the config before `kept.forget`, as the prune does; after it the config is gone.
 
