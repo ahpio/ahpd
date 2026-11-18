@@ -44,6 +44,8 @@ On 2026-11-17 the adopted container case timed out at 5000 ms twice in full runs
 On 2026-11-18, a computer run at `2946984b6` ran beside a test daemon with Claude turns, at a load average near 12. It timed out on six cases of this file. It also timed out on `computer-uptime.test.ts`: `charges a relay container to whoever connected and metered it from the connect`. The same suite passed alone at a load average near 5.
 The branch was host/20261116-1714, which does not change `packages/computer`.
 
+On 2026-11-18, the adopted container case and `reads a dev container's vault-named need again after a restart` timed out at 5000 ms in a full run on host/20261118-1043. They timed out again with the file run alone, on that branch and on host/20261118-1104, which does not change `packages/computer`. The adopted container case passed alone with a 60 s limit, in 6.7 s.
+
 On 2026-11-16, `computer-plugin.test.ts`: `starts, stops and restarts a machine by writing what it should be` timed out at 5000 ms again in a full run, at a load average near 8.
 The branch was host/20261116-2126 from `fd236e8ec`, which does not change `packages/computer`.
 
