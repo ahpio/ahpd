@@ -1,7 +1,7 @@
 ---
 title: A plugin that failed to load can be updated from a client
 domain: daemon
-status: planned
+status: active
 priority: high
 created: 2026-11-18
 revalidated: 2026-11-18
@@ -41,13 +41,13 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 | What | Source | Task |
 | --- | --- | --- |
-| A plugin that did not load gets its slug from its package name, unscoped and without its version | (defaulted: the problem's first step, and the rule a loaded plugin's slug follows) | 01 |
+| A plugin that did not load is named by its package name without its scope or its version, such as `agent-claude` | Softov, 2026-11-18: "agent-claude (Recommended)" | 01 |
 | `idParam` takes an id that a row of the plugins list answers, a `/` included | (defaulted: the problem's second step) | 01 |
 | An id with a `?`, or one no row answers, is refused as today | (defaulted: only a row's own id is newly taken) | 01 |
 
 ## Proposed architecture
 
-- **Data flow** - `unimportedId` answers `unscoped(packageNameOf(spec))` for a refused package spec. `idParam` checks an id against the rows before it refuses a `/`.
+- **Data flow** - `unimportedId` and the loader answer the package name without its scope for a refused package spec. `idParam` checks an id against the rows before it refuses a `/`.
 - **Layer responsibilities** - server: `plugins.ts`, `pluginschannel.ts` · docs: the notes.
 - **Source-of-truth files** - [`code://packages/server/src/plugins.ts`](../../../../packages/server/src/plugins.ts)
 
@@ -55,7 +55,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a refused plugin has an id a client can name](task-01-a-refused-plugin-has-a-usable-id.md) | todo | - |
+| [01 - a refused plugin has an id a client can name](task-01-a-refused-plugin-has-a-usable-id.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -63,8 +63,8 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-refused-plugin-has-a-usable-id.md](task-01-a-refused-plugin-has-a-usable-id.md).
+- **Done so far:** task 01. The loader names a refused plugin too, so `refusedId` is used there and in `unimportedId`.
+- **Next action:** review.
 - **Open questions:** none.
 - **Watch out for:** a spec that is a path or a URL has no package name, and keeps the id it has today.
 
