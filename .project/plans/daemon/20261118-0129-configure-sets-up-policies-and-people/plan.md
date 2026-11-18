@@ -88,12 +88,14 @@ The brief that this plan covers held the research; its last commit is the first 
 ## Resume state
 
 - **Done so far:** tasks 01 and 02 are `implemented` on 2026-11-17, on the branch `daemon/20261118-0129-configure-sets-up-policies-and-people`.
-- **Next action:** Softov's review, and the check on the test daemon in *Final verification checklist*.
+- **Next action:** Softov's review. Merged in #372 on 2026-11-18.
+- **Check on the test daemon, 2026-11-18:** `configure` asked every new question and wrote the three rows, and a `member` started a Claude session. Without `everyone-computer`, the same create was refused with `no policy allows computer host`.
+- **Found in the check:** [configure-reads-a-relative-path-from-the-current-folder.md](../../../problems/configure-reads-a-relative-path-from-the-current-folder.md).
 - **Open questions:** none.
 - **Watch out for:** the test terminal answers Enter past the answers a case names. Each new question must keep what is there on Enter.
 
 ## Final verification checklist
 
-- [ ] The server suite passes, and `check` and `check-windows` are green.
+- [x] The server suite passes, and `check` and `check-windows` are green.
 - [ ] A first `ahpd configure` with Enter at every question writes what it wrote before this plan, and adds no person and no row.
-- [ ] On the test daemon on 39200, a person added by `configure` with `member`, the check on and the starter rows starts a Claude session.
+- [x] On the test daemon on 39200, a `member` with the check on and the starter rows starts a Claude session.
