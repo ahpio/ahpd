@@ -1,6 +1,6 @@
 ---
 title: A start the service refused is tried again
-status: todo
+status: done
 depends: []
 layer: "tunnel-devtunnel"
 refs:
@@ -18,6 +18,8 @@ It goes on until it runs or a person stops it.
 - `UPDATE: packages/tunnel-devtunnel/src/adapter.ts:146-175` - `OpenTunnels` gains `onHold`, a listener told each time a token is held.
 - `UPDATE: packages/tunnel-devtunnel/src/kind.ts:451-540` - a 401 schedules a retry, and a held token starts the records that wait.
 - `UPDATE: packages/tunnel-devtunnel/test/tunnel-devtunnel-kind.test.ts` - the cases of a retry.
+- `UPDATE: packages/tunnel-devtunnel/src/service.ts:259` - `unauthorized`, the 401 check beside `notFound`.
+- `UPDATE: packages/tunnel-devtunnel/src/plugin.ts:241` - the kind is handed `onHold`.
 - `UPDATE: packages/tunnel-devtunnel/README.md:148` - a start refused with 401 is tried again.
 - `UPDATE: docs/updates/v0_15.md` - a line in the unreleased notes.
 

@@ -155,7 +155,7 @@ With the `connector` option set, the host adds one system tunnel of the `devtunn
 4. Carries each connection on 31546 to the port the daemon bound, in the daemon's own process, with no local listener.
 5. Hosts the Dev Tunnel and prints its address.
 
-If any step fails, the daemon keeps running without the tunnel.
+If any step fails, the daemon keeps running without the tunnel. A start the service refuses with 401 is tried again after 30 s, then after twice the last wait, up to 10 min, and at once when the connector holds a new token. It goes on until the tunnel runs or a person stops it, and the row's error says when the next try is. This holds for every record of the kind, not only the system tunnel.
 
 It claims `protocolv5` and not 6, because protocol 6 clients also expect a selection gateway at `/agent-host/select`, which a plain port forward does not serve.
 
