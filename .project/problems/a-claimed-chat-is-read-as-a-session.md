@@ -11,3 +11,7 @@ A chat a client created under a name of its own, such as `peer:/two`, is gated a
 A default or worker `ahp-chat:` chat correctly needs `chat:turns`.
 Found in the 2026-10-06 review of host/30; it matters only for custom roles, since the built-in groups hold both.
 Undecided: whether a claimed chat is a chat for the gate, which would change the test at line 42.
+
+## Fix
+
+Softov chose on 2026-11-18 that this waits for 0.16, and does not block 0.15.0.

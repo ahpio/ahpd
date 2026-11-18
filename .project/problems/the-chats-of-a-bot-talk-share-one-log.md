@@ -33,3 +33,5 @@ Set `threadSessions` to `true` on the webhook entry.
 
 - Name the log of a chat that is not the default chat by its `chatId`. Keep it out of the folder that the session list reads.
 - Add a case with two Front chats in one session and a restart.
+
+Softov chose on 2026-11-18 that this waits for 0.16, and does not block 0.15.0.

@@ -39,3 +39,5 @@ none.
 - For the restart, keep the true owner where a file edit does not reach, such as the host's records.
 - Or accept the file as the truth after a restart, and log the change. Softov chooses between the two.
 - Set `updatedAt` from the file's change time when a hand edit is taken.
+
+Softov chose on 2026-11-18 that this waits for 0.16, and does not block 0.15.0.

@@ -13,3 +13,7 @@ The `ahpc prompt` client that sent it exited at 20:26 with no end line, and a cl
 A slash command sent next became a new turn, and the remaining output of the lost turn was drawn under it.
 The daemon did not restart.
 Cause unknown; the 20:26 compaction is a guess. Softov could not reproduce it.
+
+## Fix
+
+Softov chose on 2026-11-18 that this waits for 0.16, and does not block 0.15.0.

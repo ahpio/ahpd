@@ -40,3 +40,5 @@ Make a file edit in the session, or restart the daemon.
 - Run `refresh` for the directory when the host makes a worktree or opens a session in a new directory.
 - Run `refresh` for the session's directory at the end of each turn.
 - Related: [a-sessions-changes-are-kept-under-two-keys.md](a-sessions-changes-are-kept-under-two-keys.md), where a file a shell command wrote is missing from the `session` scope.
+
+Softov chose on 2026-11-18 that this waits for 0.16, and does not block 0.15.0.
