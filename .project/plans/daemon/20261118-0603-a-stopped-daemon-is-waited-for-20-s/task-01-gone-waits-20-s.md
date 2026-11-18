@@ -1,6 +1,6 @@
 ---
 title: gone waits 20 s for a stopped daemon
-status: todo
+status: implemented
 depends: []
 layer: "tests"
 refs:
@@ -30,4 +30,6 @@ refs:
 - The server suite passes, run alone as HANDOFF *Tests* says.
 
 ## Resume
+
+Built on 2026-11-18, as the steps say.
 
