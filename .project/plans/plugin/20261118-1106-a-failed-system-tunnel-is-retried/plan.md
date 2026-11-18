@@ -17,7 +17,8 @@ refs:
 ## Goal
 
 A tunnel whose start the Dev Tunnels service refused with 401 starts again by itself.
-It is tried again after a delay, and again when its connector holds a new token, so a restart no longer leaves the host's own tunnel down.
+It is tried again after a delay, and when its connector holds a new token.
+So a restart no longer leaves the host's own tunnel down.
 
 ## Reconnaissance
 
@@ -51,7 +52,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ## Proposed architecture
 
-- **Data flow** - a 401 in `start` sets a timer for that record, and the record joins the set to start again on its connector's next held token.
+- **Data flow** - a 401 in `start` sets a timer for that record. The record also waits for its connector's next held token.
 - **Event flow** - `OpenTunnels` tells its listeners each time it holds a token, and the kind starts the records of that connector that wait.
 - **Layer responsibilities** - tunnel-devtunnel: `kind.ts`, `adapter.ts`, `README.md` · docs: the notes.
 - **Source-of-truth files** - [`code://packages/tunnel-devtunnel/src/kind.ts`](../../../../packages/tunnel-devtunnel/src/kind.ts)
@@ -64,7 +65,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ## Risks and tradeoffs
 
-- A 401 that no new token cures is tried every 10 min - each try is one call to the service, and the row says why it waits.
+- A 401 that no new token cures is tried every 10 min - one call to the service each time, and the row says why.
 
 ## Resume state
 

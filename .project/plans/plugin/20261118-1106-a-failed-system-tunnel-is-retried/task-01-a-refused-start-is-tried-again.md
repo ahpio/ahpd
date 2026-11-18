@@ -10,7 +10,8 @@ refs:
 
 ## Objective
 
-A record whose start failed with 401 starts again after a delay, and again when its connector holds a new token, until it runs or a person stops it.
+A record whose start failed with 401 starts again after a delay, and when its connector holds a new token.
+It goes on until it runs or a person stops it.
 
 ## Files
 
@@ -26,13 +27,13 @@ A record whose start failed with 401 starts again after a delay, and again when 
 2. In `start`, on an error whose status is 401, schedule `start` for the record again after the delay in force.
 3. Start the delay at 30 s, double it after each refused try, and stop at 10 min.
 4. Keep each waiting record by its connector, and start it again when `onHold` names that connector.
-5. Clear a record's timer and drop it from the waiting set when it runs, stops, is disabled or is removed.
+5. Clear a record's timer and its wait when it runs, or when a person stops or removes it.
 6. Clear every timer and the listener when the plugin stops.
 7. Report the row's error with the time of the next try.
 8. Add a case: a service that answers 401 once, then serves, sees the record running after the first retry.
 9. Add a case: a waiting record starts when its connector holds a new token.
 10. Add a case: a stopped record is not tried again.
-11. Say in *What the system tunnel does at startup* that a start refused with 401 is tried again.
+11. Say in *What the system tunnel does at startup* that the kind tries a start again after a 401.
 12. Add a line to the unreleased notes.
 
 ## Validation
