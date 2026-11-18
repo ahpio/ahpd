@@ -1,7 +1,7 @@
 ---
 title: A tunnel refused at its start is tried again
 domain: plugin
-status: planned
+status: active
 priority: high
 created: 2026-11-18
 revalidated: 2026-11-18
@@ -61,7 +61,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a refused start is tried again](task-01-a-refused-start-is-tried-again.md) | todo | - |
+| [01 - a refused start is tried again](task-01-a-refused-start-is-tried-again.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -69,8 +69,8 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-refused-start-is-tried-again.md](task-01-a-refused-start-is-tried-again.md).
+- **Done so far:** task 01. The waits are a kind option, `retryMs`, so the cases run in milliseconds.
+- **Next action:** review.
 - **Open questions:** none.
 - **Watch out for:** a retry must not run after the plugin stops or the record is stopped; clear each timer there.
 
