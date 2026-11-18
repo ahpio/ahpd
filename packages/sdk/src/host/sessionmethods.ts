@@ -756,7 +756,7 @@ export function createSessionMethods(ctx: HostContext, conn: ConnectionContext):
       // reaches whoever is working in one hears about. Said after the
       // snapshot, so a subscription that was refused for the session it named
       // has opened nothing.
-      openedBy(meant, connection.clientId);
+      openedBy(meant, connection.clientId, ownerFor(connection));
       // The session it is of is the most recent, and one it opened may put
       // another past the residency limit.
       // https://github.com/microsoft/vscode/blob/a4e689ae13ef7a1fe9b515656b51c9be7c274294/src/vs/platform/agentHost/node/agentService.ts#L11633-L11634

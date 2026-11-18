@@ -116,7 +116,7 @@ The plugin watches each session's status as VS Code's sessions window reads it: 
 
 ## Which devices are told
 
-Each device chooses with its `audience`. A `person` device, which is one that says nothing, hears every session of its person, as VS Code's window tells its user: on a daemon where people sign in, the sessions whose owner registered it, and on a daemon where nobody signs in, every session, its one person's. A `device` device hears only the sessions its own client created or opened. Every device also hears the sessions its own client created or opened, whoever's they are.
+Each device chooses with its `audience`. A `person` device, which is one that says nothing, hears every session of its person, as VS Code's window tells its user: on a daemon where people sign in, the sessions whose owner registered it, and on a daemon where nobody signs in, every session, its one person's. A `device` device hears only the sessions its own client created or opened. Every device also hears the sessions its own client created or opened, whoever's they are. On a daemon where people sign in, that is a session its own person created or opened through that client: a client id is the client's own word, so a device that gives another person's id hears nothing of that person's sessions.
 
 ## How a notification is sent
 

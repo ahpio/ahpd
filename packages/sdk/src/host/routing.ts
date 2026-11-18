@@ -38,7 +38,7 @@ export interface Routing {
   chatShown(connection: Connection, chat: unknown, session: string): boolean;
   claimable(name: string, kind: NameKind): void;
   unheld(uri: string): void;
-  openedBy(channel: string, client: string): void;
+  openedBy(channel: string, client: string, owner?: string): void;
 }
 
 export function createRouting(ctx: HostContext): Routing {
@@ -330,17 +330,19 @@ export function createRouting(ctx: HostContext): Routing {
    * hold, is nothing to note: only a session a plugin could reach with a
    * message is worth one.
    */
-  const openedBy = (channel: string, client: string): void => {
+  const openedBy = (channel: string, client: string, owner?: string): void => {
     if (client === '') return;
     // A session's own channel, or the session a chat, an annotation or a
     // changeset of it belongs to. `ownerUriOf` is what keeps a session's marks
     // from being raised as a session of their own.
     const session = spaceOf(channel) === 'chat' ? sessionFor(channel) : ownerUriOf(channel);
     if (spaceOf(session) === 'chat' || !sessionChannel(session)) return;
-    const key = `${session}\u0000${client}`;
+    // The owner is part of the pair: a second person who gives the same id
+    // opens the session as somebody else.
+    const key = `${session}\u0000${client}\u0000${owner ?? ''}`;
     if (opened.has(key)) return;
     opened.add(key);
-    void fire({ type: 'session_opened', session, client });
+    void fire({ type: 'session_opened', session, client, ...(owner === undefined ? {} : { owner }) });
   };
   /** The kind of channel a channel is, as `ACTION_HOMES` names it, or nothing an action belongs on. */
   const homeOf = (channel: string): Home | undefined => {

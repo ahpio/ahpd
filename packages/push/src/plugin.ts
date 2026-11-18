@@ -199,15 +199,24 @@ export const apply: Plugin['apply'] = (host, options) => {
     ...(contact === undefined || contact.trim() === '' ? {} : { contact: contact.trim() }),
   });
 
-  /** The clients that created or opened each session, as the host says them. */
-  const opened = new Map<string, Set<string>>();
+  /**
+   * The clients that created or opened each session, as the host says them,
+   * each with the person who opened it through that client. A creator has none
+   * here: whoever created a session is its owner.
+   */
+  const opened = new Map<string, { client: string; owner?: string }[]>();
+  const keep = (session: string, client: string, owner?: string): void => {
+    const held = opened.get(session) ?? [];
+    if (!held.some((one) => one.client === client && one.owner === owner)) held.push({ client, ...(owner === undefined ? {} : { owner }) });
+    opened.set(session, held);
+  };
   host.on('session_start', (event) => {
     if (event.client === undefined || event.client === '') return;
-    opened.set(event.session, (opened.get(event.session) ?? new Set()).add(event.client));
+    keep(event.session, event.client);
   });
   host.on('session_opened', (event) => {
     if (event.client === '') return;
-    opened.set(event.session, (opened.get(event.session) ?? new Set()).add(event.client));
+    keep(event.session, event.client, event.owner);
   });
   host.on('session_end', (event) => { opened.delete(event.session); });
 
@@ -215,7 +224,9 @@ export const apply: Plugin['apply'] = (host, options) => {
    * The devices that hear about a session, as each registration chose
    * (Softov 2026-10-31: "A setting per device").
    *
-   * Every device hears the sessions its own client created or opened. A
+   * Every device hears the sessions its own client created or opened. On a
+   * host with people that is a client the device's owner created or opened
+   * the session through, since a client id is the client's own word. A
    * `person` device, which is one that says nothing, also hears every session
    * of its person: on a host with people the ones the session's owner
    * registered, and on a host with none every session, its one person's.
@@ -226,7 +237,8 @@ export const apply: Plugin['apply'] = (host, options) => {
     return store.ids().flatMap((id) => {
       const device = store.get(id);
       if (device === undefined) return [];
-      const byClient = device.client !== undefined && clients?.has(device.client) === true;
+      const byClient = device.client !== undefined && clients?.some((one) => one.client === device.client
+        && (host.hasUsers !== true || (device.owner !== undefined && (one.owner ?? owner) === device.owner))) === true;
       const byPerson = device.audience !== 'device'
         && (host.hasUsers !== true || (owner !== undefined && device.owner === owner));
       return byClient || byPerson ? [{ id, device }] : [];
