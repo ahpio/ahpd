@@ -73,6 +73,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ## Resume state
 
+- **Checks, 2026-11-18:** every item of *Final verification checklist* passed, on the test daemon and the suites at `2946984b6`.
 - **Done so far:** task 01 is `dropped`, and tasks 02 and 03 are `implemented` on 2026-11-17, on the branch `host/20261117-2149-the-windows-git-cases-stop-flaking`.
 - **Next action:** Softov's review; the CI runs after the merge are the check.
 - **Open questions:** none.
@@ -80,5 +81,5 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ## Final verification checklist
 
-- [ ] The sdk and computer suites pass, and `check-windows` is green.
-- [ ] A run with `AHPD_GIT_SLOW_MS=1` prints a slow-git line to stderr for a case that runs git.
+- [x] The sdk and computer suites pass, and `check-windows` is green.
+- [x] A run with `AHPD_GIT_SLOW_MS=1` prints a slow-git line to stderr for a case that runs git.

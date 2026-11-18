@@ -92,6 +92,7 @@ question in a session -> spawn: the owner's approval settings where they have on
 
 ## Resume state
 
+- **Checks, 2026-11-18:** every item of *Final verification checklist* passed, on the test daemon and the suites at `2946984b6`.
 - **Done so far:** tasks 01 to 04 are `implemented` on 2026-11-17, on the branch `host/20261117-1047-approval-settings-are-kept-per-person`. Task 04 is Softov's idea of 2026-11-17, added during the build.
 - **Next action:** Softov's review, then the checks of *Final verification checklist* on the test daemon.
 - **Open questions:** none.
@@ -99,7 +100,7 @@ question in a session -> spawn: the owner's approval settings where they have on
 
 ## Final verification checklist
 
-- [ ] On the test daemon, carol pushes `{"rm": true}`, and `rm` still asks in alice's session.
-- [ ] The same push makes `rm` run with no question in carol's own session.
-- [ ] bob, a member, pushes rules, and they apply in bob's sessions.
-- [ ] The sdk, computer and server suites pass.
+- [x] On the test daemon, carol pushes `{"rm": true}`, and `rm` still asks in alice's session.
+- [x] The same push makes `rm` run with no question in carol's own session.
+- [x] bob, a member, pushes rules, and they apply in bob's sessions.
+- [x] The sdk, computer and server suites pass.

@@ -89,6 +89,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ## Resume state
 
+- **Checks, 2026-11-18:** every item of *Final verification checklist* passed, on the test daemon and the suites at `2946984b6`.
 - **Done so far:** tasks 01 and 02 are `implemented` on 2026-11-17, on the branch `host/20261117-2336-a-test-git-call-says-where-it-stalled`.
 - **Next action:** Softov's review; the next Windows stall of a test's own git call is the check.
 - **Open questions:** none.
@@ -96,6 +97,6 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ## Final verification checklist
 
-- [ ] `rg "execFileSync\('git'|spawnSync\('git'" packages/*/test` finds nothing.
-- [ ] The sdk and computer suites pass, and `check-windows` is green.
-- [ ] A run with `AHPD_GIT_SLOW_MS=1` prints a `slow git:` line for a test's own git call.
+- [x] `rg "execFileSync\('git'|spawnSync\('git'" packages/*/test` finds nothing.
+- [x] The sdk and computer suites pass, and `check-windows` is green.
+- [x] A run with `AHPD_GIT_SLOW_MS=1` prints a `slow git:` line for a test's own git call.

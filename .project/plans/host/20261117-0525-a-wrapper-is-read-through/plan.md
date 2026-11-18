@@ -82,6 +82,7 @@ unapproved inner commands -> suggestAutoApproveRuleKeys -> grant keys, never a w
 
 ## Resume state
 
+- **Checks, 2026-11-18:** every item of *Final verification checklist* passed, on the test daemon and the suites at `2946984b6`.
 - **Done so far:** tasks 01 and 02 are `implemented` on 2026-11-17, on the branch `host/20261117-0525-a-wrapper-is-read-through`.
 - **Next action:** Softov's review, then the checks of *Final verification checklist* on the test daemon.
 - **Open questions:** none.
@@ -89,7 +90,7 @@ unapproved inner commands -> suggestAutoApproveRuleKeys -> grant keys, never a w
 
 ## Final verification checklist
 
-- [ ] With `Shell(command *)` in a person's rules, `command rm -rf x` asks and offers no grant, on the test daemon.
-- [ ] With `Shell(npm test)`, `timeout 60 npm test` runs with no question.
-- [ ] A question on `timeout 60 make` offers `make`, never `timeout`.
-- [ ] The sdk, computer and agent-acp suites pass.
+- [x] With `Shell(command *)` in a person's rules, `command rm -rf x` asks and offers no grant, on the test daemon.
+- [x] With `Shell(npm test)`, `timeout 60 npm test` runs with no question.
+- [x] A question on `timeout 60 make` offers `make`, never `timeout`.
+- [x] The sdk, computer and agent-acp suites pass.

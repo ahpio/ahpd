@@ -40,6 +40,8 @@ A run of those four files at a load average of 7 passed all of them, and timed o
 On 2026-11-16, `reads a dev container's vault-named need again after a restart, for the owner in its record` timed out at 5000 ms in a full run, at a load average near 10.
 
 On 2026-11-17 the adopted container case timed out at 5000 ms twice in full runs, at load averages near 9 and near 15. The second run was on host/20261117-2336, which changes only how a test calls git, and the case calls no git.
+
+On 2026-11-18, a computer run at `2946984b6` ran beside a test daemon with Claude turns, at a load average near 12. It timed out on six cases of this file. It also timed out on `computer-uptime.test.ts`: `charges a relay container to whoever connected and metered it from the connect`. The same suite passed alone at a load average near 5.
 The branch was host/20261116-1714, which does not change `packages/computer`.
 
 On 2026-11-16, `computer-plugin.test.ts`: `starts, stops and restarts a machine by writing what it should be` timed out at 5000 ms again in a full run, at a load average near 8.

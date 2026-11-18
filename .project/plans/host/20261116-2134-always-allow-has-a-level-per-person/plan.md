@@ -104,6 +104,7 @@ next question -> rules of the session, then the session owner's person rules, th
 
 ## Resume state
 
+- **Checks, 2026-11-18:** every item of *Final verification checklist* passed, on the test daemon and the suites at `2946984b6`.
 - **Done so far:** tasks 01 to 05 built on 2026-11-16 on branch `host/20261116-2134-always-allow-has-a-level-per-person`, from the branch of host/20261116-2128, awaiting review.
 - **Next action:** Softov reviews the PR, then the checks of *Final verification checklist* on the test daemon.
 - **Open questions:** none.
@@ -111,7 +112,7 @@ next question -> rules of the session, then the session owner's person rules, th
 
 ## Final verification checklist
 
-- [ ] The sdk suite and the computer suite pass, one at a time.
-- [ ] On the test daemon, bob's "for Me" answer leaves alice's `make` asking, and alice's "for Everyone" answer approves it in bob's session. The table denies `rm`, so `rm` asks for both.
-- [ ] A member's push of `permissions` is refused.
-- [ ] Each label matches the approved mockup.
+- [x] The sdk suite and the computer suite pass, one at a time.
+- [x] On the test daemon, bob's "for Me" answer leaves alice's `make` asking, and alice's "for Everyone" answer approves it in bob's session. The table denies `rm`, so `rm` asks for both.
+- [x] A member's push of `permissions` is refused.
+- [x] Each label matches the approved mockup.

@@ -89,6 +89,7 @@ The brief that this plan covers held the research; its last commit is the first 
 
 ## Resume state
 
+- **Checks, 2026-11-18:** every item of *Final verification checklist* passed, on the test daemon and the suites at `2946984b6`.
 - **Done so far:** tasks 01 and 02 are `implemented` on 2026-11-17, on the branch `daemon/20261118-0129-configure-sets-up-policies-and-people`.
 - **Next action:** Softov's review. Merged in #372 on 2026-11-18.
 - **Check on the test daemon, 2026-11-18:** `configure` asked every new question and wrote the three rows, and a `member` started a Claude session. Without `everyone-computer`, the same create was refused with `no policy allows computer host`.
@@ -99,5 +100,5 @@ The brief that this plan covers held the research; its last commit is the first 
 ## Final verification checklist
 
 - [x] The server suite passes, and `check` and `check-windows` are green.
-- [ ] A first `ahpd configure` with Enter at every question writes what it wrote before this plan, and adds no person and no row.
+- [x] A first `ahpd configure` with Enter at every question writes what it wrote before this plan, and adds no person and no row.
 - [x] On the test daemon on 39200, a `member` with the check on and the starter rows starts a Claude session.

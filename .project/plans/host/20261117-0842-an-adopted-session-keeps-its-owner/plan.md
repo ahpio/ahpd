@@ -74,6 +74,7 @@ chat/turnStarted from a person -> lifecycle: who = ownerFor(sender)
 
 ## Resume state
 
+- **Checks, 2026-11-18:** every item of *Final verification checklist* passed, on the test daemon and the suites at `2946984b6`.
 - **Done so far:** task 01 is `implemented` on 2026-11-17, on the branch `host/20261117-0842-an-adopted-session-keeps-its-owner`.
 - **Next action:** Softov's review, then the check of *Final verification checklist* on the test daemon.
 - **Open questions:** none.
@@ -81,5 +82,5 @@ chat/turnStarted from a person -> lifecycle: who = ownerFor(sender)
 
 ## Final verification checklist
 
-- [ ] On the test daemon with users, a turn on an external Claude session writes the sender as its owner in `sessions/<id>.json`.
-- [ ] The sdk and computer suites pass.
+- [x] On the test daemon with users, a turn on an external Claude session writes the sender as its owner in `sessions/<id>.json`.
+- [x] The sdk and computer suites pass.

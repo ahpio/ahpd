@@ -80,6 +80,7 @@ visitor on 31546 -> hop -> signed in: swap the derived token as today
 
 ## Resume state
 
+- **Checks, 2026-11-18:** the suites passed at `2946984b6`. The checks that need the Dev Tunnel account are in [pending/tunnel-token-checks.md](../../../pending/tunnel-token-checks.md).
 - **Done so far:** tasks 01 to 03 are `implemented` on 2026-11-17, on the branch `plugin/20261117-0701-anonymous-31546-requires-a-token`.
 - **Next action:** Softov's review, then the checks of *Final verification checklist* on the test daemon.
 - **Open questions:** none.
@@ -90,4 +91,4 @@ visitor on 31546 -> hop -> signed in: swap the derived token as today
 - [ ] On the test daemon with a token, an anonymous 31546 refuses the derived token and admits `?tkn=<token>`.
 - [ ] A signed-in 31546 still admits VS Code by the derived token.
 - [ ] On a daemon with no token and no users, the `anonymous` operation is refused, and the row says why.
-- [ ] The tunnel-devtunnel and server suites pass.
+- [x] The tunnel-devtunnel and server suites pass.

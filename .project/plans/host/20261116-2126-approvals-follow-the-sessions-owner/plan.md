@@ -87,6 +87,7 @@ start -> trustedBy -> the start's sender, by the same rule -> workspaceTrust, or
 
 ## Resume state
 
+- **Checks, 2026-11-18:** every item of *Final verification checklist* passed, on the test daemon and the suites at `2946984b6`.
 - **Done so far:** tasks 01 to 03 built on 2026-11-16 on branch `host/20261116-2126-approvals-follow-the-sessions-owner`, awaiting review.
 - **Next action:** Softov reviews the PR, then the checks of *Final verification checklist* on the test daemon.
 - **Open questions:** none.
@@ -94,6 +95,6 @@ start -> trustedBy -> the start's sender, by the same rule -> workspaceTrust, or
 
 ## Final verification checklist
 
-- [ ] The sdk suite and the computer suite pass, one at a time.
-- [ ] On the test daemon, dave's `rm` in alice's `autoApprove` session asks, and alice's own does not.
-- [ ] With `unattendedAutoApprove` off, an automation's `pnpm ls` asks; with it on, it runs.
+- [x] The sdk suite and the computer suite pass, one at a time.
+- [x] On the test daemon, dave's `rm` in alice's `autoApprove` session asks, and alice's own does not.
+- [x] With `unattendedAutoApprove` off, an automation's `pnpm ls` asks; with it on, it runs.

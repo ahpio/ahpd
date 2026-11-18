@@ -76,6 +76,7 @@ running op or page read -> 404 -> kind: service.forget(connector) -> every recor
 
 ## Resume state
 
+- **Checks, 2026-11-18:** the suites passed at `2946984b6`. The checks that need the Dev Tunnel account are in [pending/tunnel-token-checks.md](../../../pending/tunnel-token-checks.md).
 - **Done so far:** tasks 01 to 03 are `implemented` on 2026-11-17, on the branch `plugin/20261117-2030-a-deleted-tunnel-is-made-again`.
 - **Next action:** Softov's review; the dev daemon's restart on main is the first check of *Final verification checklist*.
 - **Open questions:** none.
@@ -85,4 +86,4 @@ running op or page read -> 404 -> kind: service.forget(connector) -> every recor
 
 - [ ] The dev daemon, restarted on this fix, makes its tunnel again, and the record reports `running` with a new URL.
 - [ ] A tunnel deleted with `devtunnel delete` while the daemon runs comes back within one page read.
-- [ ] The tunnel-devtunnel and server suites pass.
+- [x] The tunnel-devtunnel and server suites pass.

@@ -88,6 +88,7 @@ false or absent -> the backend's mode and confirm: false, as today
 
 ## Resume state
 
+- **Checks, 2026-11-18:** every item of *Final verification checklist* passed, on the test daemon and the suites at `2946984b6`.
 - **Done so far:** tasks 01 to 04 built on 2026-11-16 on branch `host/20261116-2128-backends-ask-what-the-operator-asks`, from the branch of host/20261116-2126, awaiting review.
 - **Next action:** Softov reviews the PR, then the checks of *Final verification checklist* on the test daemon.
 - **Open questions:** none.
@@ -95,5 +96,5 @@ false or absent -> the backend's mode and confirm: false, as today
 
 ## Final verification checklist
 
-- [ ] The sdk, computer, agent-claude, agent-pi and agent-cofold suites pass, one at a time.
-- [ ] On the test daemon, `mcp__host__list_bash` set `false` asks in a Claude session.
+- [x] The sdk, computer, agent-claude, agent-pi and agent-cofold suites pass, one at a time.
+- [x] On the test daemon, `mcp__host__list_bash` set `false` asks in a Claude session.

@@ -91,6 +91,7 @@ visitor -> relay -> gate: tkn or ahpd-tkn cookie -> plugin.acceptsToken -> daemo
 
 ## Resume state
 
+- **Checks, 2026-11-18:** the suites passed at `2946984b6`. The checks that need the Dev Tunnel account are in [pending/tunnel-token-checks.md](../../../pending/tunnel-token-checks.md).
 - **Done so far:** tasks 01 to 03 are `implemented` on 2026-11-17, on the branch `plugin/20261117-0701-a-tunnel-port-is-gated-by-a-token`, stacked on plan 1's branch.
 - **Next action:** Softov's review, then the checks of *Final verification checklist* on the test daemon.
 - **Open questions:** none.
@@ -101,4 +102,4 @@ visitor -> relay -> gate: tkn or ahpd-tkn cookie -> plugin.acceptsToken -> daemo
 - [ ] On the test daemon, a gated port answers `401` with no token, and `302` with a cookie for `?tkn=<token>`.
 - [ ] A browser on the gated URL loads the app after the redirect, and the app sees no `tkn` and no `ahpd-tkn`.
 - [ ] A revoked person's token stops passing at the next request.
-- [ ] The sdk, computer, server and tunnel-devtunnel suites pass.
+- [x] The sdk, computer, server and tunnel-devtunnel suites pass.
