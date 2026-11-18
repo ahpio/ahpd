@@ -54,7 +54,7 @@ On 2026-11-13 `computer-disposable.test.ts`: `takes the machine's own git volume
 
 On 2026-11-16, in CI run 43952762220 for ahpio/ahpd#356, the `processes (1/2)` job failed on one case at 5000 ms: `computer-servercheck.test.ts`: `runs its own script under sh, and reads what this host has`. The same job passed on the run before, and the change does not touch `packages/computer`.
 
-On 2026-11-17, main's CI run 44030269573 at `19ed69394` failed `processes (1/2)` on the same case, at 5000 ms. The run before it was cancelled, and the run after it at `f65b24112` passed.
+On 2026-11-17, main's CI run 44030269573 at `19ed69394` failed `processes (1/2)` on the same case, at 5000 ms. On 2026-11-18, CI run 44411897897 for ahpio/ahpd#382 failed `processes (1/2)` on it again, at 5000 ms. That change does not touch `packages/computer`. The run before it was cancelled, and the run after it at `f65b24112` passed.
 
 On 2026-11-16, on Softov's machine with a load average near 17, a full run timed out 15 cases in `packages/computer` and `plugin-load.test.ts`. The 8 files run again alone timed out 4 cases, 2 of them not in the first set.
 
