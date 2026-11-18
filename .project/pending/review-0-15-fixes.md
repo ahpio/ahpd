@@ -16,52 +16,35 @@ The seven plans merged on 2026-11-18 as #377 to #383, all green on `check` and `
 
 ## How to review one
 
-1. Read the plan's *Answers* table, and its *Resume state*, which names where the build went past the plan.
-2. Run `gh pr diff <PR> -R ahpio/ahpd`, and read it against the task's *Steps*.
-3. Read the check named in the plan's section here. Pass: what it says holds in the diff. Fail: say what differs, and I fix it in a new PR.
-4. Say "close <plan id>" when it passes. I then write `implemented.md` and set the plan to `built`.
+The agent checked on main at `2e81c97ea` that each fix is in the code. *Code checks* lists them. What is left is a read of the design.
 
-## host/20261118-1043, #377, a person's restriction
+1. Read the plan's *Answers* table. Each `(defaulted: ...)` row is a choice the agent made, which you may change.
+2. Run `gh pr diff <PR> -R ahpio/ahpd`. Pass: you agree with how the change does what the plan says. Fail: say what to change, and the agent fixes it in a new PR.
+3. Say "close <plan id>" when it passes. The agent then writes `implemented.md` and sets the plan to `built`.
 
-1. Check that `APPROVAL_KEYS` in `packages/sdk/src/access/personrules.ts` holds `autoApprovePolicyRestricted`.
-2. Check that every read of the key takes the owner's value: `setting(...)` twice in `spawn.ts`, and `approvalSetting(...)` in `chatactions.ts` and the start policy.
-3. Check that `chatactions.ts` passes `undefined` in place of a client's `host_policy`.
-4. Read the result of the manual check in *Manual checks*.
+| Plan | PR | Read for |
+| --- | --- | --- |
+| host/20261118-1043 | #377 | The Allow All refusal and a session's start policy also read the owner's value, past the plan's two reads in `spawn.ts`. |
+| plugin/20261118-1103 | #378 | `session_opened` is raised again for a second person under one client id. |
+| host/20261118-1104 | #379 | The queue case checks that later asks start nothing while a run goes, not that the held run starts. |
+| daemon/20261118-1105 | #380 | The refused id drops the scope, as you chose. Say if `a-plugin-that-does-not-resolve-has-an-id-with-a-slash.md` should close: a URL id with a `?` is still refused. |
+| plugin/20261118-1106 | #381 | Every record of the kind is tried again, not only the system tunnel, and the waits are a kind option, `retryMs`. |
+| container/20261118-1107 | #382 | The node commands go to the daemon only with no `--users` and no `--config-file`, as `paths` does. |
+| container/20261118-1108 | #383 | One call, `ctx.leaveForgotten`, in the branch for a session not held. |
 
-## plugin/20261118-1103, #378, a push device
+## Code checks
 
-1. Check that `session_opened` carries `owner` in `packages/sdk/src/types/events.ts`.
-2. Check that `routing.ts` keys an opening by session, client and owner, so a second person under one client id is raised again.
-3. Check that `byClient` in `packages/push/src/plugin.ts` compares the device's owner with the opener's, and with the session owner for a creator.
+Done by the agent on 2026-11-18 at `2e81c97ea`, each with `grep` on main. All passed.
 
-## host/20261118-1104, #379, the wake cap
-
-1. Check that `runOne` in `packages/sdk/src/host/automations.ts` calls `request(..., true)` in place of `fly`.
-2. Check the queue case in `plugin-triggers.test.ts`: it checks that the later asks start nothing while a run goes. The fixture's run never ends, so the held run is not seen to start.
-
-## daemon/20261118-1105, #380, a refused plugin
-
-1. Check that `refusedId` in `packages/server/src/plugins.ts` drops the scope, as you chose: `@ahpd/agent-claude` is `agent-claude`.
-2. Check that both `unimportedId` and the loader use it.
-3. Check that `idParam` in `pluginschannel.ts` takes a row's own id with a `/`, and still refuses `?`.
-4. The problem `a-plugin-that-does-not-resolve-has-an-id-with-a-slash.md` stays open for a URL id with a `?`. Say if it should close.
-
-## plugin/20261118-1106, #381, the tunnel retry
-
-1. Check that a 401 in `start` in `packages/tunnel-devtunnel/src/kind.ts` sets a timer, 30 s doubling to 10 min, and waits on `onHold`.
-2. Check that a run, a stop, a removal, another error and the plugin's close each clear the timer.
-3. Check that the row's error names the time of the next try.
-
-## container/20261118-1107, #382, a removed node
-
-1. Check that `drop` in `packages/sdk/src/nodes.ts` closes each session socket of the node, and that a control socket that closes by itself does not.
-2. Check that `node rm` and `node add` in `packages/server/src/commands/nodes.ts` go to the running daemon only with no `--users` and no `--config-file`.
-3. Check that `tokenIn` and `API_PREFIX` now come from `paths.ts`, and that `plugin.ts` lost its own copy of `tokenIn`.
-4. Read the result of the manual check in *Manual checks*.
-
-## container/20261118-1108, #383, a disposed session
-
-1. Check that the branch for a session not held in `packages/sdk/src/host/lifecycle.ts` reads the config before `kept.forget`, and calls `ctx.leaveForgotten` after.
+| Plan | What was checked |
+| --- | --- |
+| host/20261118-1043 | `APPROVAL_KEYS` holds `autoApprovePolicyRestricted`. `spawn.ts` and `chatactions.ts` read the host's value nowhere. `spawn.ts` reads it with `setting` twice and `approvalSetting` once, and `chatactions.ts` with `approvalSetting`. A client's `host_policy` becomes `undefined`. |
+| plugin/20261118-1103 | `SessionOpenedEvent` has `owner?`. `routing.ts` keys an opening by session, client and owner. The three `openedBy` calls pass `ownerFor(connection)`. `byClient` compares the opener's owner, or the session's for a creator. |
+| host/20261118-1104 | `runOne` calls `request(..., true)` at `automations.ts:1399`, and no longer calls `fly`. |
+| daemon/20261118-1105 | `refusedId` drops the scope, and `unimportedId` and the loader both call it. `idParam` takes a row's own id and refuses `?`. |
+| plugin/20261118-1106 | A 401 sets a retry of 30 s up to 10 min and waits on `onHold`. A run, a stop, a removal and another error clear it, and so does the plugin's close. The error names the next try. |
+| container/20261118-1107 | `drop` closes each session socket of the node. The commands forward only with no `--users` and no `--config-file`. `tokenIn` and `API_PREFIX` come from `paths.ts`, and `plugin.ts` has no copy of `tokenIn`. |
+| container/20261118-1108 | The branch reads `kept.config` before `kept.forget`, and calls `ctx.leaveForgotten` after. |
 
 ## Manual checks
 
@@ -84,7 +67,9 @@ The client `host_policy` source was not checked by hand. A client sends it in `_
 
 ### container/20261118-1107, a removed node
 
-The test daemon ran with `httpApi` on and the `computer` plugin. A node joined it from its own XDG folders.
+What it shows: `ahpd node rm` at the hub's terminal reaches the running daemon, and the daemon closes the node's connection and the session the node runs. Before #382, the command wrote the file only, and a node kept running its sessions.
+
+The hub and the node both ran on this workstation, as two processes over the loopback. The hub was the test daemon, with `httpApi` on and the `computer` plugin. The node was `ahpd join` with its own XDG folders. A run with the node on another box is not done yet.
 
 | Step | Seen | Result |
 | --- | --- | --- |
