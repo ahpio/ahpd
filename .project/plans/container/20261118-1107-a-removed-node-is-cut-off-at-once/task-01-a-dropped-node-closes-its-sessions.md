@@ -1,6 +1,6 @@
 ---
 title: A dropped node closes its sessions
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:

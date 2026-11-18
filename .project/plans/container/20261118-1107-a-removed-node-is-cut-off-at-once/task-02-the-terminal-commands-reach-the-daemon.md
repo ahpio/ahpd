@@ -1,6 +1,6 @@
 ---
 title: The node commands at the terminal reach the running daemon
-status: todo
+status: done
 depends: [task-01-a-dropped-node-closes-its-sessions.md]
 layer: "server"
 refs:
@@ -15,7 +15,9 @@ At the hub's terminal, `ahpd node rm` and `ahpd node add` go to the running daem
 ## Files
 
 - `UPDATE: packages/server/src/commands/nodes.ts:52-125` - a `forward` as `paths` has one, used by `add` and `rm` with no `served` facts.
-- `UPDATE: packages/server/test/server-commands.test.ts` - the cases of the two commands with a daemon up and with none.
+- `CREATE: packages/server/test/server-node-forward.test.ts` - the cases of the two commands with a daemon up and with none, on the shape of `server-paths.test.ts`.
+- `UPDATE: packages/server/src/commands/paths.ts` - `tokenIn` and `API_PREFIX` are exported for the node commands.
+- `UPDATE: packages/server/src/commands/plugin.ts` - its own copy of `tokenIn` goes, and it imports the one in `paths.ts`.
 - `UPDATE: docs/plugins/COMPUTERS.md:428` - `node rm` and `node add` reach a running daemon.
 - `UPDATE: docs/updates/v0_15.md` - a line in the unreleased notes.
 
