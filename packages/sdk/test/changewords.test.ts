@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -15,6 +14,7 @@ import type { NewPullRequest, PullRequests } from '../src/types/github.js';
 import type { HostOptions } from '../src/types/host.js';
 import type { Peer } from '../src/types/rpc.js';
 import type { Session } from '../src/types/session.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /*
  * Where a commit message and a pull request's words come from when the person
@@ -36,13 +36,13 @@ afterEach(async () => {
 });
 
 const git = (dir: string, ...args: string[]): string =>
-  execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' }).toString().trim();
+  gitSync(['-C', dir, ...args]).trim();
 
 /** A repository on `main` with one committed file. */
 const repository = (): string => {
   const dir = mkdtempSync(join(tmpdir(), 'ahpd-words-'));
   made.push(dir);
-  execFileSync('git', ['init', '-q', '-b', 'main', dir]);
+  gitSync(['init', '-q', '-b', 'main', dir]);
   git(dir, 'config', 'user.email', 'test@example.com');
   git(dir, 'config', 'user.name', 'Test');
   writeFileSync(join(dir, 'tracked.txt'), 'one\n');
@@ -63,9 +63,9 @@ const wired = (): string => {
   const root = mkdtempSync(join(tmpdir(), 'ahpd-words-'));
   made.push(root);
   const origin = join(root, 'origin.git');
-  execFileSync('git', ['init', '-q', '--bare', '-b', 'main', origin]);
+  gitSync(['init', '-q', '--bare', '-b', 'main', origin]);
   const dir = join(root, 'work');
-  execFileSync('git', ['clone', '-q', origin, dir], { stdio: 'pipe' });
+  gitSync(['clone', '-q', origin, dir]);
   git(dir, 'config', 'user.email', 'test@example.com');
   git(dir, 'config', 'user.name', 'Test');
   git(dir, 'checkout', '-q', '-b', 'main');

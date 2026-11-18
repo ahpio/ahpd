@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -7,6 +6,7 @@ import { BASELINE_TURN } from '../src/types/changes.js';
 import { baselineOf, captureBaseline, captureTurn, latestOf, removeAll } from '../src/sessions/checkpoints.js';
 import { gitChanges } from '../src/sessions/changes.js';
 import { uriOf } from '../src/resources/fileuri.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /*
  * What a turn leaves behind in the folder it ran in.
@@ -26,12 +26,12 @@ afterEach(() => {
 
 /** Git's own answer, which is what the assertions are about. */
 const gitIn = (dir: string, ...args: string[]): string =>
-  execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' }).toString();
+  gitSync(['-C', dir, ...args]);
 
 const repository = (): string => {
   const dir = mkdtempSync(join(tmpdir(), 'ahpd-checkpoint-'));
   made.push(dir);
-  const run = (...args: string[]): void => { execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' }); };
+  const run = (...args: string[]): void => { gitSync(['-C', dir, ...args]); };
   run('init', '-q', '-b', 'main');
   run('config', 'user.email', 'test@example.com');
   run('config', 'user.name', 'Test');
@@ -84,7 +84,7 @@ describe('what a session leaves in its folder', () => {
 
   it('writes a checkpoint where git has no identity configured', async () => {
     const dir = repository();
-    const run = (...args: string[]): void => { execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' }); };
+    const run = (...args: string[]): void => { gitSync(['-C', dir, ...args]); };
     run('config', '--unset', 'user.email');
     run('config', '--unset', 'user.name');
     // Git would otherwise make one up from the machine's name.
@@ -201,8 +201,8 @@ describe('what a session changed', () => {
     await source.checkpoint?.(dir, 's1', '1');
     const before = await source.sessionSummary?.(dir, 's1');
 
-    execFileSync('git', ['-C', dir, 'add', '-A'], { stdio: 'pipe' });
-    execFileSync('git', ['-C', dir, 'commit', '-q', '-m', 'the work'], { stdio: 'pipe' });
+    gitSync(['-C', dir, 'add', '-A']);
+    gitSync(['-C', dir, 'commit', '-q', '-m', 'the work']);
 
     expect(await source.sessionSummary?.(dir, 's1')).toEqual(before);
     expect((await source.state(dir, 's1', 'session'))?.files).toHaveLength(1);

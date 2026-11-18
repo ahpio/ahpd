@@ -1,11 +1,11 @@
 import { posix } from '../../../tools/posix.ts';
 import { machinePathOf } from '@ahpd/sdk';
-import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { GITFILE, MACHINE_GIT_TARGET, MACHINE_OBJECTS, gitMounts } from '../src/gitdir.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /*
  * The git directory the runtime is handed, checked before it makes anything.
@@ -37,7 +37,7 @@ const twoRepositories = () => {
   const made = (name: string) => {
     const repo = join(loose as string, name);
     mkdirSync(repo);
-    const run = (...args: string[]) => execFileSync('git', ['-C', repo, ...args], { stdio: 'pipe' });
+    const run = (...args: string[]) => gitSync(['-C', repo, ...args]);
     run('init', '-q', '-b', 'main');
     run('config', 'user.email', 'test@example.com');
     run('config', 'user.name', 'Test');
@@ -47,7 +47,7 @@ const twoRepositories = () => {
     return repo;
   };
   const repo = made('repo');
-  const run = (...args: string[]) => execFileSync('git', ['-C', repo, ...args], { stdio: 'pipe' });
+  const run = (...args: string[]) => gitSync(['-C', repo, ...args]);
   const tree = join(loose, 'tree');
   run('worktree', 'add', '-q', '-b', 'work', tree);
   const elsewhere = join(made('elsewhere'), '.git');

@@ -1,10 +1,10 @@
-import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { gitBranches } from '../src/repo/git.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /*
  * What a client reads about a repository, in the words it reads them in.
@@ -24,7 +24,7 @@ afterEach(() => {
 const repository = (remote?: string): string => {
   const dir = mkdtempSync(join(tmpdir(), 'ahpd-git-'));
   made.push(dir);
-  const run = (...args: string[]) => execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' });
+  const run = (...args: string[]) => gitSync(['-C', dir, ...args]);
   run('init', '-q', '-b', 'main');
   run('config', 'user.email', 'test@example.com');
   run('config', 'user.name', 'Test');
@@ -72,7 +72,7 @@ describe('what git can say about a served directory', () => {
   it('counts the drift once there is something to drift from', async () => {
     const facts = gitBranches();
     const dir = repository();
-    const run = (...args: string[]) => execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' });
+    const run = (...args: string[]) => gitSync(['-C', dir, ...args]);
     run('branch', 'upstream');
     run('branch', '--set-upstream-to=upstream', 'main');
     writeFileSync(join(dir, 'tracked.txt'), 'two\n');
@@ -119,7 +119,7 @@ describe('what git can say about a served directory', () => {
   it('names the project the repository\'s primary checkout, from a folder inside it and from a worktree of it, as VS Code\'s agents do', async () => {
     const facts = gitBranches();
     const dir = realpathSync(repository());
-    const run = (...args: string[]) => execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' });
+    const run = (...args: string[]) => gitSync(['-C', dir, ...args]);
     const inside = join(dir, 'src');
     mkdirSync(inside);
     const tree = `${dir}-feature`;

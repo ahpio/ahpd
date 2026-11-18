@@ -44,6 +44,8 @@ They are changes-refresh, "re-reads a changeset when git is changed outside the 
 
 - Each passes in about a second, and failed once after more than 20 s, so something stalled rather than ran slow. The host already reads a changeset again once its watch is armed, so a late watch is not the first case's cause.
 - Since host/20261117-2149, a Windows CI job writes each `git` call over 2 s to stderr as a `slow git:` line. The next failure of either case says which call stalled, if one did, and that decides the fix.
+- Each case was reported about 4 s after its 20 s timeout, which says that a synchronous call blocked the event loop. The synchronous calls of each case are its own git setup.
+- Since host/20261117-2336, a test runs its own git through `gitSync`, with a timeout of `WAIT_MS` and the same `slow git:` line. A stall in that setup fails at the call and names it.
 
 The third case is fixed by host/20261113-2331.
 The moved-tree case, "takes away and puts back a tree a move left the session", is fixed by host/20261117-2149.

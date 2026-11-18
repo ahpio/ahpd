@@ -1,5 +1,4 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
-import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, realpathSync, writeFileSync, existsSync, lstatSync, mkdirSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -16,6 +15,7 @@ import type { ComputerPort, MachineSource } from '../src/types/computers.js';
 import type { GitDir, Worktrees } from '../src/types/worktrees.js';
 import type { Agent, Start } from '../src/types/agent.js';
 import type { HostOptions } from '../src/types/host.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /*
  * A working tree of a session's own.
@@ -58,7 +58,7 @@ function repository(): string {
   made.push(root);
   const dir = join(root, 'project');
   mkdirSync(dir);
-  const run = (...args: string[]) => execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' });
+  const run = (...args: string[]) => gitSync(['-C', dir, ...args]);
   run('init', '-q', '-b', 'main');
   run('config', 'user.email', 'test@example.com');
   run('config', 'user.name', 'Test');
@@ -133,7 +133,7 @@ const joined = async (root: string, worktrees?: Worktrees) => {
 const project = (root: string) => join(root, 'project');
 
 /** The branch checked out in a working tree. */
-const branchOf = (where: string) => execFileSync('git', ['-C', where, 'rev-parse', '--abbrev-ref', 'HEAD']).toString().trim();
+const branchOf = (where: string) => gitSync(['-C', where, 'rev-parse', '--abbrev-ref', 'HEAD']).trim();
 
 /**
  * Wait until git has finished taking a session's tree away: the repository
@@ -148,9 +148,9 @@ const branchOf = (where: string) => execFileSync('git', ['-C', where, 'rev-parse
 const cleared = async (repository: string, branch: string): Promise<void> => {
   const finished = (): boolean => {
     try {
-      const trees = execFileSync('git', ['-C', repository, 'worktree', 'list', '--porcelain'], { stdio: 'pipe' })
+      const trees = gitSync(['-C', repository, 'worktree', 'list', '--porcelain'])
         .toString().split('\n').filter((line) => line.startsWith('worktree ')).length;
-      const left = execFileSync('git', ['-C', repository, 'branch', '--list', branch], { stdio: 'pipe' }).toString().trim();
+      const left = gitSync(['-C', repository, 'branch', '--list', branch]).trim();
       return trees === 1 && left === '';
     } catch {
       return false;
@@ -324,7 +324,7 @@ describe('a session with a working tree of its own', () => {
 
     // Its own branch, which is what stops two sessions committing over each
     // other. `--no-track`, so a push inside it does not go at `main`.
-    const said = execFileSync('git', ['-C', where, 'rev-parse', '--abbrev-ref', 'HEAD']).toString().trim();
+    const said = gitSync(['-C', where, 'rev-parse', '--abbrev-ref', 'HEAD']).trim();
     expect(said).toMatch(/^agents\//);
   });
 
@@ -429,7 +429,7 @@ describe('a session with a working tree of its own', () => {
     // knows, and the session runs in what it made.
     expect(existsSync(join(where, 'tracked.txt'))).toBe(true);
     // git lists a Windows path with forward slashes.
-    expect(execFileSync('git', ['-C', project(root), 'worktree', 'list']).toString()).toContain(where.replaceAll('\\', '/'));
+    expect(gitSync(['-C', project(root), 'worktree', 'list'])).toContain(where.replaceAll('\\', '/'));
   });
 
   it('brings along the files a checkout leaves behind', async () => {
@@ -838,7 +838,7 @@ describe('a session with a working tree of its own', () => {
 
   it('answers the branches a client types for, not the whole list', async () => {
     const root = repository();
-    const run = (...args: string[]) => execFileSync('git', ['-C', project(root), ...args], { stdio: 'pipe' });
+    const run = (...args: string[]) => gitSync(['-C', project(root), ...args]);
     run('branch', 'feature/parser');
     run('branch', 'feature/reducer');
     run('branch', 'chore/deps');
@@ -883,7 +883,7 @@ describe('a session with a working tree of its own', () => {
 
   it('offers the branch as a choice for either isolation, a folder from the branch checked out and a worktree from the default branch, as VS Code\'s host', async () => {
     const root = repository();
-    const run = (...args: string[]) => execFileSync('git', ['-C', project(root), ...args], { stdio: 'pipe' });
+    const run = (...args: string[]) => gitSync(['-C', project(root), ...args]);
     // A remote whose `HEAD` is `main`, which `main` tracks, and `release`
     // checked out.
     run('clone', '-q', '--bare', project(root), join(root, 'remote.git'));
@@ -1063,7 +1063,7 @@ describe('a session with a working tree of its own', () => {
     }).snapshot.state.workingDirectories[0] ?? '');
     // `agents/` is the built-in prefix and the client's goes in front of it,
     // so the branch sorts where the person's other tools expect it to.
-    const on = execFileSync('git', ['-C', where, 'rev-parse', '--abbrev-ref', 'HEAD']).toString().trim();
+    const on = gitSync(['-C', where, 'rev-parse', '--abbrev-ref', 'HEAD']).trim();
     expect(on).toBe(`softov/agents/${'prefixed'.slice(0, 8)}`);
   });
 
@@ -1086,7 +1086,7 @@ describe('a session with a working tree of its own', () => {
     // Isolated in a directory of its own, and on the branch that was picked
     // rather than one made for it.
     expect(where.startsWith(worktreesOf(project(root)))).toBe(true);
-    const on = execFileSync('git', ['-C', where, 'rev-parse', '--abbrev-ref', 'HEAD']).toString().trim();
+    const on = gitSync(['-C', where, 'rev-parse', '--abbrev-ref', 'HEAD']).trim();
     expect(on).toBe('release');
   });
 
@@ -1160,7 +1160,7 @@ describe('a session with a working tree of its own', () => {
     expect(watched.removed).toEqual([]);
     expect(existsSync(join(where, 'unsaved.txt'))).toBe(true);
     // Still a worktree of the repository, so `git worktree list` finds it.
-    const listed = execFileSync('git', ['-C', project(root), 'worktree', 'list']).toString();
+    const listed = gitSync(['-C', project(root), 'worktree', 'list']);
     expect(listed).toContain(where.replaceAll('\\', '/'));
   });
 
@@ -1186,7 +1186,7 @@ describe('a session with a working tree of its own', () => {
     const branch = branchOf(where);
     // The commit it was cut from, which is where this session's work counts
     // from: the record keeps it so the counts survive a restart too.
-    const commit = execFileSync('git', ['-C', where, 'rev-parse', 'HEAD']).toString().trim();
+    const commit = gitSync(['-C', where, 'rev-parse', 'HEAD']).trim();
     expect(store.worktree?.('restarted')).toEqual({ repository: project(root), path: where, base: 'main', branch, commit });
 
     // A second host over the same store knows the tree only from the record.
@@ -1292,9 +1292,9 @@ describe('an archived session\'s tree', () => {
 
   /** The subjects of a branch's commits, newest first. */
   const subjects = (root: string, branch: string): string[] =>
-    execFileSync('git', ['-C', project(root), 'log', '--format=%s', branch]).toString().trim().split('\n');
+    gitSync(['-C', project(root), 'log', '--format=%s', branch]).trim().split('\n');
 
-  const branches = (root: string): string => execFileSync('git', ['-C', project(root), 'branch', '--list']).toString();
+  const branches = (root: string): string => gitSync(['-C', project(root), 'branch', '--list']);
 
   it('takes a clean tree away when the archived session sleeps, and keeps its branch', async () => {
     const root = repository();
@@ -1328,7 +1328,7 @@ describe('an archived session\'s tree', () => {
     const { store, logged, open, archive } = await archiving(root);
     const one = await open('linked', { worktreeSymlinkFolders: ['node_modules'] });
     const branch = branchOf(one.where);
-    execFileSync('git', ['-C', one.where, 'commit', '-q', '--allow-empty', '-m', 'the session\'s own'], { stdio: 'pipe' });
+    gitSync(['-C', one.where, 'commit', '-q', '--allow-empty', '-m', 'the session\'s own']);
     expect(lstatSync(join(one.where, 'node_modules')).isSymbolicLink()).toBe(true);
     await archive(one.channel, true);
     await logged(`removed ${one.where}`);
@@ -1340,7 +1340,7 @@ describe('an archived session\'s tree', () => {
     await archive(one.channel, false);
     await logged(`put ${one.where} back on ${branch}`);
     expect(branchOf(one.where)).toBe(branch);
-    expect(execFileSync('git', ['-C', one.where, 'log', '-1', '--format=%s']).toString().trim()).toBe('the session\'s own');
+    expect(gitSync(['-C', one.where, 'log', '-1', '--format=%s']).trim()).toBe('the session\'s own');
     expect(lstatSync(join(one.where, 'node_modules')).isSymbolicLink()).toBe(true);
     expect(readFileSync(join(one.where, 'node_modules', 'dep', 'index.js'), 'utf8')).toBe('installed\n');
     expect(store.worktree?.('linked')).toMatchObject({ path: one.where, branch });
@@ -1354,7 +1354,7 @@ describe('an archived session\'s tree', () => {
     const one = await open('moved');
     // The tree the session worked in before a move took it to the one it runs in.
     const left = join(`${project(root)}.worktrees`, 'left');
-    execFileSync('git', ['-C', project(root), 'worktree', 'add', '-q', '-b', 'agents/left', left, 'main'], { stdio: 'pipe' });
+    gitSync(['-C', project(root), 'worktree', 'add', '-q', '-b', 'agents/left', left, 'main']);
     store.setAdditionalWorktrees?.('moved', [{ repository: project(root), path: left, base: 'main', branch: 'agents/left' }]);
 
     await archive(one.channel, true);
@@ -1462,11 +1462,11 @@ describe('an archived session\'s tree', () => {
     const root = repository();
     const { logged, open, archive } = await archiving(root);
     const one = await open('wandered');
-    execFileSync('git', ['-C', one.where, 'checkout', '-q', '--detach'], { stdio: 'pipe' });
-    execFileSync('git', ['-C', one.where, 'commit', '-q', '--allow-empty', '-m', 'only here'], { stdio: 'pipe' });
+    gitSync(['-C', one.where, 'checkout', '-q', '--detach']);
+    gitSync(['-C', one.where, 'commit', '-q', '--allow-empty', '-m', 'only here']);
     await archive(one.channel, true);
     await logged(`kept ${one.where}: its HEAD is not on a branch`);
-    expect(execFileSync('git', ['-C', one.where, 'log', '-1', '--format=%s']).toString().trim()).toBe('only here');
+    expect(gitSync(['-C', one.where, 'log', '-1', '--format=%s']).trim()).toBe('only here');
   });
 
   it('keeps a tree with another branch checked out, and says why', async () => {
@@ -1474,7 +1474,7 @@ describe('an archived session\'s tree', () => {
     const { logged, open, archive } = await archiving(root);
     const one = await open('elsewhere');
     const branch = branchOf(one.where);
-    execFileSync('git', ['-C', one.where, 'checkout', '-q', '-b', 'side'], { stdio: 'pipe' });
+    gitSync(['-C', one.where, 'checkout', '-q', '-b', 'side']);
     await archive(one.channel, true);
     await logged(`kept ${one.where}: it has side checked out rather than ${branch}`);
     expect(existsSync(join(one.where, 'tracked.txt'))).toBe(true);
@@ -1518,11 +1518,11 @@ describe('an archived session\'s tree', () => {
     const root = repository();
     const { client, logged, open } = await archiving(root);
     const one = await open('detachedgone');
-    execFileSync('git', ['-C', one.where, 'checkout', '-q', '--detach'], { stdio: 'pipe' });
-    execFileSync('git', ['-C', one.where, 'commit', '-q', '--allow-empty', '-m', 'only here'], { stdio: 'pipe' });
+    gitSync(['-C', one.where, 'checkout', '-q', '--detach']);
+    gitSync(['-C', one.where, 'commit', '-q', '--allow-empty', '-m', 'only here']);
     await client.handle({ method: 'disposeSession', params: { channel: one.channel } });
     await logged(`kept ${one.where}: its HEAD is not on a branch`);
-    expect(execFileSync('git', ['-C', one.where, 'log', '-1', '--format=%s']).toString().trim()).toBe('only here');
+    expect(gitSync(['-C', one.where, 'log', '-1', '--format=%s']).trim()).toBe('only here');
   });
 
   it('keeps a deleted session\'s tree with another branch checked out', async () => {
@@ -1530,7 +1530,7 @@ describe('an archived session\'s tree', () => {
     const { client, logged, open } = await archiving(root);
     const one = await open('sidegone');
     const branch = branchOf(one.where);
-    execFileSync('git', ['-C', one.where, 'checkout', '-q', '-b', 'side'], { stdio: 'pipe' });
+    gitSync(['-C', one.where, 'checkout', '-q', '-b', 'side']);
     await client.handle({ method: 'disposeSession', params: { channel: one.channel } });
     await logged(`kept ${one.where}: it has side checked out rather than ${branch}`);
     expect(existsSync(join(one.where, 'tracked.txt'))).toBe(true);
@@ -1553,7 +1553,7 @@ describe('an archived session\'s tree', () => {
     const branch = branchOf(one.where);
     await archive(one.channel, true);
     await logged(`removed ${one.where}`);
-    execFileSync('git', ['-C', project(root), 'branch', '-D', branch], { stdio: 'pipe' });
+    gitSync(['-C', project(root), 'branch', '-D', branch]);
     await archive(one.channel, false);
     await logged(`could not put ${one.where} back`);
     expect(existsSync(one.where)).toBe(false);
@@ -1583,7 +1583,7 @@ describe('an archived session\'s tree', () => {
     await logged(`removed ${one.where}`);
     expect(existsSync(one.where)).toBe(false);
     expect(subjects(root, branch)[0]).toBe('Saving uncommitted changes before archiving session');
-    const shown = (file: string): string => execFileSync('git', ['-C', project(root), 'show', `${branch}:${file}`]).toString();
+    const shown = (file: string): string => gitSync(['-C', project(root), 'show', `${branch}:${file}`]);
     expect(shown('unsaved.txt')).toBe('the whole point\n');
     expect(shown('tracked.txt')).toBe('changed\n');
     // And back with the work in it.
@@ -1600,10 +1600,10 @@ describe('an archived session\'s tree', () => {
     writeFileSync(join(one.where, 'unsaved.txt'), 'the whole point\n');
     await archive(one.channel, true);
     await logged(`removed ${one.where}`);
-    const files = execFileSync('git', ['-C', project(root), 'show', '--name-only', '--format=', branch]).toString().trim().split('\n');
+    const files = gitSync(['-C', project(root), 'show', '--name-only', '--format=', branch]).trim().split('\n');
     expect(subjects(root, branch)[0]).toBe('Saving uncommitted changes before archiving session');
     expect(files).toEqual(['unsaved.txt']);
-    expect(execFileSync('git', ['-C', project(root), 'ls-tree', branch, 'node_modules']).toString()).toBe('');
+    expect(gitSync(['-C', project(root), 'ls-tree', branch, 'node_modules'])).toBe('');
   });
 
   it('makes no commit for a clean tree under commit, and still gives it back', async () => {
@@ -1708,7 +1708,7 @@ describe('a worktree the window makes for itself', () => {
     await firstSent(client, uri);
   };
 
-  const branches = (root: string): string => execFileSync('git', ['-C', project(root), 'branch', '--list']).toString();
+  const branches = (root: string): string => gitSync(['-C', project(root), 'branch', '--list']);
 
   it('says so on initialize, and cuts a tree of its own for a creating session whose tree is pending, refusing the rest in VS Code\'s words', async () => {
     const root = repository();
@@ -1776,7 +1776,7 @@ describe('a worktree the window makes for itself', () => {
     writeFileSync(join(where, 'work.txt'), 'kept\n');
     await reconcile();
     expect(existsSync(join(where, 'work.txt'))).toBe(true);
-    execFileSync('git', ['-C', where, 'clean', '-fq'], { stdio: 'pipe' });
+    gitSync(['-C', where, 'clean', '-fq']);
     await reconcile();
     expect(existsSync(where)).toBe(false);
     expect(branches(root)).toContain(branch);
@@ -1809,7 +1809,7 @@ describe('a worktree the window makes for itself', () => {
 });
 
 describe('the git directory a folder belongs to', () => {
-  const run = (dir: string, ...args: string[]) => execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' });
+  const run = (dir: string, ...args: string[]) => gitSync(['-C', dir, ...args]);
 
   it('answers the main repository\'s .git for a linked worktree, and the worktree as its root', async () => {
     const root = repository();

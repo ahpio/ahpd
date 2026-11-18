@@ -1,6 +1,6 @@
 ---
 title: Every test runs its own git through gitSync
-status: todo
+status: implemented
 depends: [task-01-a-test-git-call-has-a-timeout.md]
 layer: "tests"
 refs:
@@ -66,4 +66,7 @@ The problem files say that a stall in a test's own git call now names the call.
 - `AHPD_GIT_SLOW_MS=1` on `packages/sdk/test/worktrees.test.ts` prints `slow git:` lines for the case's own `git branch` calls.
 
 ## Resume
+
+Built on 2026-11-17. The check case builds its probe strings from parts, because the literal calls in its own file matched the pattern. With one direct call put back in `computer-plugin.test.ts`, the case failed and named that file.
+The `{ stdio: 'pipe' }` and `{ encoding: 'utf8' }` options went with the calls, since `gitSync` sets both. The same options on `docker` calls stay.
 

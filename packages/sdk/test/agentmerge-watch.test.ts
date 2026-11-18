@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -12,6 +11,7 @@ import type { HostContext } from '../src/host/context.js';
 import type { PullRequestDetail, PullRequestJob, PullRequestMergeResult } from '../src/types/github.js';
 import type { ToolCall } from '../src/types/host.js';
 import type { Owner } from '../src/types/usage.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /*
  * The watch behind Agent Merge.
@@ -34,9 +34,7 @@ afterEach(() => {
 });
 
 const git = (dir: string, ...args: string[]): string =>
-  execFileSync('git', ['-C', dir, '-c', 'user.name=Agent Merge', '-c', 'user.email=agent@example.com', ...args], {
-    encoding: 'utf8', stdio: 'pipe',
-  });
+  gitSync(['-C', dir, '-c', 'user.name=Agent Merge', '-c', 'user.email=agent@example.com', ...args]);
 
 /** A folder with one commit, so the watch can read a local HEAD there. */
 const repository = (): string => {

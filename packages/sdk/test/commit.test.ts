@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,6 +7,7 @@ import { posix } from '../../../tools/posix.ts';
 import { uriOf } from '../src/resources/fileuri.js';
 import { gitChanges } from '../src/sessions/changes.js';
 import type { ChangeWords, ChangeWordsMode, ChangesetOperationContext } from '../src/types/changes.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /*
  * Staging and the commit form's arguments, on a real repository.
@@ -25,17 +25,17 @@ afterEach(() => {
 });
 
 const git = (dir: string, ...args: string[]): string =>
-  execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' }).toString().trim();
+  gitSync(['-C', dir, ...args]).trim();
 
 /** Porcelain status with its two columns kept, which `git`'s trim would eat. */
 const porcelain = (dir: string): string =>
-  execFileSync('git', ['-C', dir, 'status', '--porcelain'], { stdio: 'pipe' }).toString().trimEnd();
+  gitSync(['-C', dir, 'status', '--porcelain']).trimEnd();
 
 /** A repository on `main` with one committed file. */
 const repository = (): string => {
   const dir = mkdtempSync(join(tmpdir(), 'ahpd-commit-'));
   made.push(dir);
-  execFileSync('git', ['init', '-q', '-b', 'main', dir]);
+  gitSync(['init', '-q', '-b', 'main', dir]);
   git(dir, 'config', 'user.email', 'test@example.com');
   git(dir, 'config', 'user.name', 'Test');
   writeFileSync(join(dir, 'tracked.txt'), 'one\n');
@@ -272,7 +272,7 @@ describe('committing what is staged', () => {
   it('counts any staged entry in a repository with no commit yet', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'ahpd-commit-'));
     made.push(dir);
-    execFileSync('git', ['init', '-q', '-b', 'main', dir]);
+    gitSync(['init', '-q', '-b', 'main', dir]);
     git(dir, 'config', 'user.email', 'test@example.com');
     git(dir, 'config', 'user.name', 'Test');
     writeFileSync(join(dir, 'first.txt'), 'one\n');
@@ -467,7 +467,7 @@ describe('staging from the changeset', () => {
   it('unstages in a repository with no commit yet', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'ahpd-commit-'));
     made.push(dir);
-    execFileSync('git', ['init', '-q', '-b', 'main', dir]);
+    gitSync(['init', '-q', '-b', 'main', dir]);
     git(dir, 'config', 'user.email', 'test@example.com');
     git(dir, 'config', 'user.name', 'Test');
     writeFileSync(join(dir, 'first.txt'), 'one\n');
@@ -548,7 +548,7 @@ describe('the whole changeset as a target', () => {
   it('refuses to discard every change in a repository with no commit yet', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'ahpd-commit-'));
     made.push(dir);
-    execFileSync('git', ['init', '-q', '-b', 'main', dir]);
+    gitSync(['init', '-q', '-b', 'main', dir]);
     writeFileSync(join(dir, 'first.txt'), 'one\n');
     writeFileSync(join(dir, 'second.txt'), 'two\n');
     git(dir, 'add', 'first.txt');

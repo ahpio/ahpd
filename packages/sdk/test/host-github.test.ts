@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { memorySessions } from '../src/sessions/sessions.js';
-import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
@@ -12,6 +11,7 @@ import {
 } from './support/host.js';
 import { uriOf } from '../src/resources/fileuri.js';
 import { WORK, WORK_URI } from './support/work.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /** The folder the hosts here serve, as its URI on this system. */
 const HOME = WORK_URI;
@@ -635,16 +635,16 @@ describe('the pull request a create-pr recorded', () => {
   });
 
   const git = (dir: string, ...args: string[]): string =>
-    execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' }).toString().trim();
+    gitSync(['-C', dir, ...args]).trim();
 
   /** A repository with a bare `origin` beside it, on `main`, with one commit. */
   const repository = (): string => {
     const root = mkdtempSync(join(tmpdir(), 'ahpd-host-pr-'));
     here.push(root);
     const origin = join(root, 'origin.git');
-    execFileSync('git', ['init', '-q', '--bare', '-b', 'main', origin]);
+    gitSync(['init', '-q', '--bare', '-b', 'main', origin]);
     const dir = join(root, 'work');
-    execFileSync('git', ['clone', '-q', origin, dir], { stdio: 'pipe' });
+    gitSync(['clone', '-q', origin, dir]);
     git(dir, 'config', 'user.email', 'test@example.com');
     git(dir, 'config', 'user.name', 'Test');
     git(dir, 'checkout', '-q', '-b', 'main');
@@ -889,12 +889,12 @@ describe('what GitHub says of each pull request a session shows', () => {
     const root = mkdtempSync(join(tmpdir(), 'ahpd-host-pr-details-'));
     here.push(root);
     const dir = join(root, 'work');
-    execFileSync('git', ['init', '-q', '-b', 'main', dir]);
-    execFileSync('git', ['-C', dir, 'config', 'user.email', 'test@example.com']);
-    execFileSync('git', ['-C', dir, 'config', 'user.name', 'Test']);
+    gitSync(['init', '-q', '-b', 'main', dir]);
+    gitSync(['-C', dir, 'config', 'user.email', 'test@example.com']);
+    gitSync(['-C', dir, 'config', 'user.name', 'Test']);
     writeFileSync(join(dir, 'tracked.txt'), 'one\n');
-    execFileSync('git', ['-C', dir, 'add', '-A']);
-    execFileSync('git', ['-C', dir, 'commit', '-q', '-m', 'first']);
+    gitSync(['-C', dir, 'add', '-A']);
+    gitSync(['-C', dir, 'commit', '-q', '-m', 'first']);
     return dir;
   };
 

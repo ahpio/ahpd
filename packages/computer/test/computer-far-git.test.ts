@@ -7,6 +7,7 @@ import { afterEach, expect, it } from 'vitest';
 import { originOf, SEED_BUNDLE } from '../src/clone.js';
 import { fetchedInto } from '../src/machinegit.js';
 import { dockerRuntime } from '../src/runtime.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /*
  * A session's code on another box's Docker, on a real Docker.
@@ -43,7 +44,7 @@ const repository = () => {
   loose = mkdtempSync(join(tmpdir(), 'ahpd-far-git-'));
   const repo = join(loose, 'repo');
   mkdirSync(repo);
-  const run = (...args: string[]) => execFileSync('git', ['-C', repo, ...args], { stdio: 'pipe' });
+  const run = (...args: string[]) => gitSync(['-C', repo, ...args]);
   run('init', '-q', '-b', 'main');
   run('config', 'user.email', 'test@example.com');
   run('config', 'user.name', 'Test');
@@ -55,7 +56,7 @@ const repository = () => {
 };
 
 const headOf = (repo: string, ref: string): string =>
-  execFileSync('git', ['-C', repo, 'rev-parse', ref], { stdio: 'pipe' }).toString().trim();
+  gitSync(['-C', repo, 'rev-parse', ref]).trim();
 
 const far = (state: string) => dockerRuntime({ command: 'docker', label: LABEL, configDir: state, remote: true });
 

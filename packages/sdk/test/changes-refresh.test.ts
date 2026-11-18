@@ -1,5 +1,4 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
-import { execFileSync } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { existsSync, mkdirSync, mkdtempSync, realpathSync, writeFileSync, type FSWatcher } from 'node:fs';
 import { rm } from 'node:fs/promises';
@@ -20,6 +19,7 @@ import { BASELINE_TURN } from '../src/types/changes.js';
 import type { ChangesetSource } from '../src/types/changes.js';
 import type { Peer } from '../src/types/rpc.js';
 import type { Session } from '../src/types/session.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /*
  * The source opens a real `fs.watch` handle, and one case below asks what it
@@ -74,12 +74,12 @@ afterEach(async () => {
 });
 
 const git = (dir: string, ...args: string[]): string =>
-  execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' }).toString().trim();
+  gitSync(['-C', dir, ...args]).trim();
 
 const repository = (): string => {
   const dir = mkdtempSync(join(tmpdir(), 'ahpd-refresh-'));
   made.push(dir);
-  execFileSync('git', ['init', '-q', '-b', 'main', dir]);
+  gitSync(['init', '-q', '-b', 'main', dir]);
   git(dir, 'config', 'user.email', 'test@example.com');
   git(dir, 'config', 'user.name', 'Test');
   writeFileSync(join(dir, 'tracked.txt'), 'one\n');
@@ -1252,7 +1252,7 @@ const insideAProject = (): string => {
   made.push(root);
   const dir = join(root, 'project');
   mkdirSync(dir);
-  execFileSync('git', ['init', '-q', '-b', 'main', dir]);
+  gitSync(['init', '-q', '-b', 'main', dir]);
   git(dir, 'config', 'user.email', 'test@example.com');
   git(dir, 'config', 'user.name', 'Test');
   writeFileSync(join(dir, 'tracked.txt'), 'one\n');

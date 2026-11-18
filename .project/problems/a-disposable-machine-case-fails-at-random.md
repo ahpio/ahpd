@@ -34,3 +34,4 @@ None. Running the job again is not a fix.
 - Record which daemon called `rm` in the first case, and when, against the line that says the machine is held.
 - If the second daemon removes a machine before it adopts it, the fix is in the plugin, not in the case.
 - Take the timings of the second case on a Windows runner.
+- The second case was reported 4.6 s after its timeout, which says that a synchronous call blocked the event loop. Its own git setup now runs through `gitSync`, so a stall there fails at the call and names it.

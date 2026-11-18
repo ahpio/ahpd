@@ -22,6 +22,7 @@ import type { Agent } from '../../sdk/src/types/agent.js';
 import type { HostOptions } from '../../sdk/src/types/host.js';
 import type { MachineNeed } from '../../sdk/src/types/machine.js';
 import type { Peer } from '../../sdk/src/types/rpc.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /*
  * A disposable machine: offered as a source, made when a session starts, and
@@ -1434,7 +1435,7 @@ it('loads the disposable example from docs/plugins/COMPUTERS.md', async () => {
 const repositoryIn = (dir: string) => {
   const repo = join(dir, 'repo');
   mkdirSync(repo);
-  const run = (...args: string[]) => execFileSync('git', ['-C', repo, ...args], { stdio: 'pipe' });
+  const run = (...args: string[]) => gitSync(['-C', repo, ...args]);
   run('init', '-q', '-b', 'main');
   run('config', 'user.email', 'test@example.com');
   run('config', 'user.name', 'Test');
@@ -1453,7 +1454,7 @@ const repositoryIn = (dir: string) => {
 /** A repository at `at`, with one commit, every path resolved. */
 const repositoryUnder = (at: string) => {
   mkdirSync(at, { recursive: true });
-  const run = (...args: string[]) => execFileSync('git', ['-C', at, ...args], { stdio: 'pipe' });
+  const run = (...args: string[]) => gitSync(['-C', at, ...args]);
   run('init', '-q', '-b', 'main');
   run('config', 'user.email', 'test@example.com');
   run('config', 'user.name', 'Test');
@@ -1467,7 +1468,7 @@ const repositoryUnder = (at: string) => {
 const elsewhereIn = (dir: string) => {
   const repo = join(dir, 'elsewhere');
   mkdirSync(repo);
-  const run = (...args: string[]) => execFileSync('git', ['-C', repo, ...args], { stdio: 'pipe' });
+  const run = (...args: string[]) => gitSync(['-C', repo, ...args]);
   run('init', '-q', '-b', 'main');
   run('config', 'user.email', 'test@example.com');
   run('config', 'user.name', 'Test');
@@ -2081,10 +2082,10 @@ it('takes the machine\'s own git volume with it, and asks for none where the pro
  * write to stdout for it.
  */
 const machineRepository = (dir: string, repo: string, branch: string, bundled: string) => {
-  const seed = execFileSync('git', ['-C', repo, 'rev-parse', branch], { stdio: 'pipe' }).toString().trim();
+  const seed = gitSync(['-C', repo, 'rev-parse', branch]).trim();
   const machine = join(dir, 'machine');
   mkdirSync(machine);
-  const run = (...args: string[]) => execFileSync('git', ['-C', machine, ...args], { stdio: 'pipe' });
+  const run = (...args: string[]) => gitSync(['-C', machine, ...args]);
   run('init', '-q', '-b', branch);
   run('config', 'user.email', 'agent@example.com');
   run('config', 'user.name', 'Agent');
@@ -2144,7 +2145,7 @@ const leftOver = async (): Promise<string[]> => {
 
 /** The commit a ref is at, as the host's own git answers it, and nothing where there is no such ref. */
 const refOf = (repo: string, ref: string): string =>
-  execFileSync('git', ['-C', repo, 'for-each-ref', '--format=%(objectname)', ref], { stdio: 'pipe' }).toString().trim();
+  gitSync(['-C', repo, 'for-each-ref', '--format=%(objectname)', ref]).trim();
 
 /** What the machine's git was asked for its bundle, as the scripted docker recorded it. */
 const bundleAsked = (state: string): string[] | undefined =>
@@ -2188,8 +2189,8 @@ it('brings a machine\'s commit back through a bundle, and the host\'s git reads 
 
   // The branch is at the machine's commit and the host's index agrees: the
   // agent's file reads as committed work and not as a change nobody made.
-  expect(execFileSync('git', ['-C', repo, 'rev-parse', 'work'], { stdio: 'pipe' }).toString().trim()).toBe(made);
-  expect(execFileSync('git', ['-C', tree, 'status', '--porcelain'], { stdio: 'pipe' }).toString()).toBe('');
+  expect(gitSync(['-C', repo, 'rev-parse', 'work']).trim()).toBe(made);
+  expect(gitSync(['-C', tree, 'status', '--porcelain'])).toBe('');
   // What the machine's git was asked: its branch, bundled to stdout - which is
   // what the `-` says - and nothing but what the host does not have already.
   expect(bundleAsked(state)).toEqual(['git', '-C', machinePathOf(tree), 'bundle', 'create', '-', 'refs/heads/work', '--not', seed]);
@@ -2218,7 +2219,7 @@ it('fetches a machine on no branch to the hidden ref, and moves no branch of the
   const dir = realpathSync(temp());
   const state = join(dir, 'docker.json');
   const { repo, tree } = repositoryIn(dir);
-  const before = execFileSync('git', ['-C', repo, 'rev-parse', 'work'], { stdio: 'pipe' }).toString().trim();
+  const before = gitSync(['-C', repo, 'rev-parse', 'work']).trim();
   const { made, bundle } = machineRepository(dir, repo, 'work', 'HEAD');
   writeFileSync(join(tree, 'agent.txt'), 'from the machine\n');
   writeFileSync(state, JSON.stringify({
@@ -2243,7 +2244,7 @@ it('fetches a machine on no branch to the hidden ref, and moves no branch of the
   // The work is under the hidden ref and the branch is where it was: a machine
   // on no branch has no branch of the host's to move.
   expect(refOf(repo, hidden)).toBe(made);
-  expect(execFileSync('git', ['-C', repo, 'rev-parse', 'work'], { stdio: 'pipe' }).toString().trim()).toBe(before);
+  expect(gitSync(['-C', repo, 'rev-parse', 'work']).trim()).toBe(before);
   // And what was bundled is what the machine's HEAD was, since that is the only
   // name a repository with no branch checked out has for it.
   expect(bundleAsked(state)).toEqual(['git', '-C', machinePathOf(tree), 'bundle', 'create', '-', 'HEAD', '--not', before]);
@@ -2307,7 +2308,7 @@ it('fetches what a machine committed before the machine goes', async () => {
   expect(calls.some((one) => one[0] === 'volume' && one[1] === 'rm' && one[2] === 'ahpd-git-leftover')).toBe(true);
   // The host has the work: a commit that was only in a volume the removal has
   // since taken away is on the branch.
-  expect(execFileSync('git', ['-C', repo, 'rev-parse', 'work'], { stdio: 'pipe' }).toString().trim()).toBe(made);
+  expect(gitSync(['-C', repo, 'rev-parse', 'work']).trim()).toBe(made);
   expect(await leftOver()).toEqual([]);
 });
 
@@ -2595,7 +2596,7 @@ it('gives a machine a copy of the tree where the profile says sessionTree copy',
   // own path instead.
   const state = join(dir, 'docker.json');
   const copied = await room(await withRepository(state, { sessionTree: 'copy' }));
-  const branches = (): string => execFileSync('git', ['-C', repo, 'for-each-ref', '--format=%(refname) %(objectname)'], { encoding: 'utf8' });
+  const branches = (): string => gitSync(['-C', repo, 'for-each-ref', '--format=%(refname) %(objectname)']);
   const before = branches();
   await copied.open('ahp-session:/two', { computer: 'disposable:claude' }, repo);
 
@@ -2638,8 +2639,8 @@ it('gives a machine a copy of the tree where the profile says sessionTree copy',
   const volume = held(state).volumes?.[`ahpd-git-${box.name}`];
   const file = join(dir, 'seeded-config');
   writeFileSync(file, volume?.contents?.['.git/config'] ?? '');
-  const inMachine = (key: string): string => execFileSync('git', ['config', '--file', file, '--get', key], { encoding: 'utf8' });
-  const onHost = (key: string): string => execFileSync('git', ['-C', repo, 'config', '--get', key], { encoding: 'utf8' });
+  const inMachine = (key: string): string => gitSync(['config', '--file', file, '--get', key]);
+  const onHost = (key: string): string => gitSync(['-C', repo, 'config', '--get', key]);
   for (const key of ['core.repositoryformatversion', 'core.filemode', 'core.bare', 'user.name', 'user.email']) {
     expect(inMachine(key)).toBe(onHost(key));
   }
@@ -2823,7 +2824,7 @@ const CLONING = { ...FAR_PROFILE, code: 'clone' };
 /** The repository `repositoryIn` makes, with an SSH `origin` on a forge of its own. */
 const withOrigin = (dir: string) => {
   const made = repositoryIn(dir);
-  execFileSync('git', ['-C', made.repo, 'remote', 'add', 'origin', 'git@git.example.com:team/repo.git'], { stdio: 'pipe' });
+  gitSync(['-C', made.repo, 'remote', 'add', 'origin', 'git@git.example.com:team/repo.git']);
   return made;
 };
 

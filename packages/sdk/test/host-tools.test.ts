@@ -1,6 +1,5 @@
 import { loggerOf } from '../src/log.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
-import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -33,6 +32,7 @@ import {
   machine, peer, sdk, sendAnswered, serving, sessionQueries, settle, running,
 } from './support/host.js';
 import { WORK, WORK_URI } from './support/work.js';
+import { gitSync } from '../../../tools/git.ts';
 
 vi.mock('@anthropic-ai/claude-agent-sdk', async () => (await import('./support/claude-sdk.js')).fake);
 
@@ -760,7 +760,7 @@ describe('tools the host contributes', () => {
       dirs.push(root);
       const repo = join(root, 'project');
       mkdirSync(repo);
-      const git = (...args: string[]) => execFileSync('git', ['-C', repo, ...args], { stdio: 'pipe' });
+      const git = (...args: string[]) => gitSync(['-C', repo, ...args]);
       git('init', '-q', '-b', 'main');
       git('config', 'user.email', 'test@example.com');
       git('config', 'user.name', 'Test');

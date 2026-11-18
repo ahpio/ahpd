@@ -8,6 +8,7 @@ import { MACHINE_OBJECTS } from '../src/gitdir.js';
 import { dockerRuntime } from '../src/runtime.js';
 import { computerTools } from '../src/tools.js';
 import type { HostTool, ToolCall } from '../../sdk/src/types/host.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /*
  * What a machine with a repository can reach of the host's git directory, on a
@@ -66,7 +67,7 @@ const repository = () => {
   loose = mkdtempSync(join(tmpdir(), 'ahpd-git-fetch-'));
   const repo = join(loose, 'repo');
   mkdirSync(repo);
-  const run = (...args: string[]) => execFileSync('git', ['-C', repo, ...args], { stdio: 'pipe' });
+  const run = (...args: string[]) => gitSync(['-C', repo, ...args]);
   run('init', '-q', '-b', 'main');
   run('config', 'user.email', 'test@example.com');
   run('config', 'user.name', 'Test');
@@ -81,7 +82,7 @@ const repository = () => {
 
 /** The commit a branch is at, as the host's own git answers it. */
 const headOf = (repo: string, branch: string): string =>
-  execFileSync('git', ['-C', repo, 'rev-parse', branch], { stdio: 'pipe' }).toString().trim();
+  gitSync(['-C', repo, 'rev-parse', branch]).trim();
 
 /** One git command in the machine, in the tree the machine was given, at its path in there. */
 const inMachine = (docker: ReturnType<typeof dockerRuntime>, name: string, tree: string, args: string[]) =>
@@ -244,7 +245,7 @@ const forceRemove = (name: string): void => {
 
 /** The commit a ref is at, as the host's own git answers it, and nothing where there is no such ref. */
 const refOf = (repo: string, ref: string): string =>
-  execFileSync('git', ['-C', repo, 'for-each-ref', '--format=%(objectname)', ref], { stdio: 'pipe' }).toString().trim();
+  gitSync(['-C', repo, 'for-each-ref', '--format=%(objectname)', ref]).trim();
 
 /** One commit in the machine: a file in the tree it was given, staged and committed there. */
 const commitIn = async (
@@ -283,9 +284,9 @@ const breakBranch = async (
 /** One commit on the host, in the tree, while the machine is up. */
 const hostCommitIn = (tree: string, file: string, subject: string): string => {
   writeFileSync(join(tree, file), `${subject}\n`);
-  execFileSync('git', ['-C', tree, 'add', file], { stdio: 'pipe' });
-  execFileSync('git', ['-C', tree, 'commit', '-q', '-m', subject], { stdio: 'pipe' });
-  return execFileSync('git', ['-C', tree, 'rev-parse', 'HEAD'], { stdio: 'pipe' }).toString().trim();
+  gitSync(['-C', tree, 'add', file]);
+  gitSync(['-C', tree, 'commit', '-q', '-m', subject]);
+  return gitSync(['-C', tree, 'rev-parse', 'HEAD']).trim();
 };
 
 it.skipIf(!DOCKER)('brings what a machine committed back onto the host\'s branch', async () => {
@@ -308,7 +309,7 @@ it.skipIf(!DOCKER)('brings what a machine committed back onto the host\'s branch
     // the agent wrote reads as committed work rather than as a change nobody
     // made, and the tree is clean.
     expect(headOf(repo, 'work')).toBe(made);
-    expect(execFileSync('git', ['-C', tree, 'status', '--porcelain'], { stdio: 'pipe' }).toString()).toBe('');
+    expect(gitSync(['-C', tree, 'status', '--porcelain'])).toBe('');
     // Nothing was fetched twice: the branch holds the machine's work already.
     expect(await docker.bringBack(name)).toEqual({ moved: false });
     // And the file the work came through is gone: what came back is in the
@@ -386,14 +387,14 @@ it.skipIf(!DOCKER)('leaves the work under the hidden ref where the host has stag
     // it, and a person's staged work is not ahpd's to throw away.
     const made = await commitIn(docker, name, tree, 'agent.txt', 'from the machine');
     writeFileSync(join(tree, 'staged.txt'), 'staged\n');
-    execFileSync('git', ['-C', tree, 'add', 'staged.txt'], { stdio: 'pipe' });
+    gitSync(['-C', tree, 'add', 'staged.txt']);
 
     expect(await docker.bringBack(name)).toEqual({ moved: false, waiting: hidden });
 
     expect(headOf(repo, 'work')).toBe(before);
     expect(refOf(repo, hidden)).toBe(made);
     // And what was staged is still staged, exactly as it was.
-    expect(execFileSync('git', ['-C', tree, 'diff', '--cached', '--name-only'], { stdio: 'pipe' }).toString()).toBe('staged.txt\n');
+    expect(gitSync(['-C', tree, 'diff', '--cached', '--name-only'])).toBe('staged.txt\n');
     expect(leftOver()).toEqual([]);
   }
   finally {
@@ -579,7 +580,7 @@ it.skipIf(!DOCKER)('keeps the uncommitted files of a stopped copy machine before
     // under the ref ahpd keeps such work in: both were read out of a machine
     // that was not running when the removal began.
     expect(headOf(repo, 'main')).not.toBe(before);
-    expect(execFileSync('git', ['-C', repo, 'show', `${kept}:src/tracked.txt`], { stdio: 'pipe' }).toString()).toBe('never committed\n');
+    expect(gitSync(['-C', repo, 'show', `${kept}:src/tracked.txt`])).toBe('never committed\n');
   }
   finally {
     await docker.remove(name).catch(() => {});
@@ -636,7 +637,7 @@ it.skipIf(!DOCKER)('release_computer answers the refusal and the machine is stil
 
 it.skipIf(!DOCKER)('gives a machine a detached HEAD where the host\'s tree has one', async () => {
   const { repo, tree, gitDir, state } = repository();
-  execFileSync('git', ['-C', tree, 'checkout', '-q', '--detach'], { stdio: 'pipe' });
+  gitSync(['-C', tree, 'checkout', '-q', '--detach']);
   const docker = dockerRuntime({ command: 'docker', label: LABEL, configDir: state });
   const name = `ahpd-gitfetch-seed-detached-${String(process.pid)}`;
   const head = headOf(repo, 'work');
@@ -692,7 +693,7 @@ it.skipIf(!DOCKER)('moves a machine to the commit the host made between turns', 
     // and its files are what its own git left, and no object was copied - the
     // host's objects are already readable in the machine through the alternates.
     expect(headOf(repo, 'work')).toBe(moved);
-    expect(execFileSync('git', ['-C', tree, 'status', '--porcelain'], { stdio: 'pipe' }).toString()).toBe('');
+    expect(gitSync(['-C', tree, 'status', '--porcelain'])).toBe('');
   }
   finally {
     await docker.remove(name).catch(() => {});
@@ -711,7 +712,7 @@ it.skipIf(!DOCKER)('moves a machine onto the branch the host checks out', async 
      * work is fetched to the host under - a machine left on the branch it was
      * seeded at would fetch its next commit to a branch the host is not on.
      */
-    execFileSync('git', ['-C', tree, 'checkout', '-q', '-b', 'other'], { stdio: 'pipe' });
+    gitSync(['-C', tree, 'checkout', '-q', '-b', 'other']);
     expect((await inMachine(docker, name, tree, ['branch', '--show-current'])).output).toBe('work');
 
     await docker.follow(name);
@@ -731,7 +732,7 @@ it.skipIf(!DOCKER)('moves a machine onto the branch the host checks out', async 
 
 it.skipIf(!DOCKER)('moves a machine on no branch to a commit made on a host on no branch', async () => {
   const { repo, tree, gitDir, state } = repository();
-  execFileSync('git', ['-C', tree, 'checkout', '-q', '--detach'], { stdio: 'pipe' });
+  gitSync(['-C', tree, 'checkout', '-q', '--detach']);
   const docker = dockerRuntime({ command: 'docker', label: LABEL, configDir: state });
   const name = `ahpd-gitfetch-follow-detached-${String(process.pid)}`;
   await docker.run({ name, image: IMAGE, label: LABEL, folder: tree, gitDir, gitGuard: 'fetch', ...AS_ME });
@@ -843,7 +844,7 @@ it.skipIf(!DOCKER)('keeps what a copy machine wrote out of the host\'s folder un
     await writeInside(docker, name, join(repo, 'copy.txt'), 'the machine wrote this');
     expect((await inMachine(docker, name, repo, ['status', '--porcelain'])).output).toBe('?? copy.txt');
     expect(existsSync(join(repo, 'copy.txt'))).toBe(false);
-    expect(execFileSync('git', ['-C', repo, 'status', '--porcelain'], { stdio: 'pipe' }).toString()).toBe('');
+    expect(gitSync(['-C', repo, 'status', '--porcelain'])).toBe('');
 
     // And a commit of it is in the machine's own git directory: the host's
     // branch has never heard of it, and the file is still not in its folder.
@@ -859,7 +860,7 @@ it.skipIf(!DOCKER)('keeps what a copy machine wrote out of the host\'s folder un
     // is, which is the whole of what `copy` promises to hand over.
     expect(headOf(repo, 'main')).toBe(made);
     expect(readFileSync(join(repo, 'copy.txt'), 'utf8')).toBe('from the machine\n');
-    expect(execFileSync('git', ['-C', repo, 'status', '--porcelain'], { stdio: 'pipe' }).toString()).toBe('');
+    expect(gitSync(['-C', repo, 'status', '--porcelain'])).toBe('');
   }
   finally {
     await docker.remove(name).catch(() => {});
@@ -913,7 +914,7 @@ it.skipIf(!DOCKER)('keeps what a copy machine never committed when the machine g
     await docker.remove(name);
 
     expect(refOf(repo, kept)).not.toBe('');
-    expect(execFileSync('git', ['-C', repo, 'show', `${kept}:src/tracked.txt`], { stdio: 'pipe' }).toString()).toBe('never committed\n');
+    expect(gitSync(['-C', repo, 'show', `${kept}:src/tracked.txt`])).toBe('never committed\n');
     // And what was committed is on the branch, as it is for any machine that
     // goes: the fetch happens before the removal, whatever else it keeps.
     expect(headOf(repo, 'main')).not.toBe(before);
