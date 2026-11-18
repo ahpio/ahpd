@@ -1,6 +1,6 @@
 {
   "name": "@ahpd/agent-pi",
-  "version": "0.15.0-rc.3",
+  "version": "0.15.0-rc.4",
   "type": "module",
   "description": "Pi coding agent integration for the Agent Host Protocol. Run it in process as an ahpd plugin or use it directly with @ahpd/sdk.",
   "keywords": [
@@ -60,7 +60,7 @@
     "@earendil-works/pi-coding-agent": "^1.5.2"
   },
   "peerDependencies": {
-    "@ahpd/sdk": ">=0.15.0-rc.3 <0.16.0-0"
+    "@ahpd/sdk": ">=0.15.0-rc.4 <0.16.0-0"
   },
   "devDependencies": {
     "@ahpd/sdk": "workspace:*"
