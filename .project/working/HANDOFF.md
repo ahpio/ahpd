@@ -120,7 +120,7 @@ Current progress and pending items only, as of 2026-11-16. *Outside this reposit
 
 Remove each only on Softov's word.
 
-- On 2026-11-14, Softov had the merged worktrees removed. On 2026-11-15, `/github/ahpd.worktrees/claude-history` (merged in #338), `/github/ahpd.worktrees/handoff` (detached, for HANDOFF commits on main), `/github/ahpd.worktrees/plugin-list-review` (detached, for the plan review) were added. `plugin-list` and `cofold-print` were removed after #339 and #340 merged, with ahpw's `plugin-browse`.
+- On 2026-11-18, on Softov's word, the 11 worktrees on merged branches were removed with their branches. Left: `handoff` and `pending-check`, both in use, and `docs-plan` and `plugin-list-review`, detached and with no changes. `computer-facts-brief` is detached and holds a change that is not committed, so it stays.
 - About 60 local branches have no worktree, from plans built before 2026-11-12. `git branch` lists them, and deleting them waits for Softov's word.
 - Another session left changes in `/github/ahpd` that are not committed. They are the brief `a-cloudflare-tunnel-publishes-the-daemon.md` and the new brief `the-agents-are-listed-by-provider.md`. Leave them.
 - `/github/ahpw` is on `host-refine-ui`, from another session. Its local main is fast-forwarded with `git fetch origin main:main`.
