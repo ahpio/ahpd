@@ -66,3 +66,32 @@ The seven plans merged on 2026-11-18 as #377 to #383, all green on `check` and `
 ## Manual checks
 
 Run by the agent on the test daemon, `ws://127.0.0.1:39200`, at main after #383. The results go here.
+
+Done on 2026-11-18 at `947f91721`. Both passed.
+
+### host/20261118-1043, a person's restriction
+
+alice and carol are admins. Each session had `autoApprove` on. The command was `python3 -c "print(41+1)"`, which the default terminal rules do not approve.
+
+| Step | Seen | Result |
+| --- | --- | --- |
+| alice pushes `autoApprovePolicyRestricted: true`, then carol pushes `false` | `permissions/alice.json` holds `true`, `carol.json` holds `false`, and the root config is unchanged | pass |
+| A turn in alice's session | The command asked | pass |
+| A turn in carol's session | The command ran with no question | pass |
+| alice pushes `false`, and a turn in her session | The command ran with no question | pass |
+
+The client `host_policy` source was not checked by hand. A client sends it in `_meta` only, and its case in `host-permissions.test.ts` covers it.
+
+### container/20261118-1107, a removed node
+
+The test daemon ran with `httpApi` on and the `computer` plugin. A node joined it from its own XDG folders.
+
+| Step | Seen | Result |
+| --- | --- | --- |
+| `ahpd node add box` at the terminal, with no daemon API | The file was written | pass |
+| `ahpd node rm box`, with no daemon API | It said the running daemon was not told and the node stays until a restart, and the join kept running | pass |
+| `ahpd node add box`, with the API | It said the change was made on the running daemon | pass |
+| A session on `computer://node.box`, with one turn | The turn completed, and one `--stdio` host ran on the node | pass |
+| `ahpd node rm box`, with the API | It said the token is refused and the connection is closed. The node's host stopped, and no `--stdio` host was left | pass |
+| A turn in that session after the removal | It ended in `chat/error` | pass |
+| The node joined again | The hub refused it | pass |
