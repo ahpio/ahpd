@@ -1,6 +1,6 @@
 ---
 title: The limit cases count to a few
-status: todo
+status: implemented
 depends: [task-01-the-counts-are-a-host-option.md]
 layer: "tests"
 refs:
@@ -34,4 +34,6 @@ The seven limit cases set small counts through `orchestrationLimits`, and one ca
 - The sdk suite and the computer suite pass, one at a time, as HANDOFF *Tests* says.
 
 ## Resume
+
+Built on 2026-11-18. The case that sends to two targets sets 6 messages, so its two sends a round come out even. The session cases went from about 3.5 s to under 0.6 s.
 

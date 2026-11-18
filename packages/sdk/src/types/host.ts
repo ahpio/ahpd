@@ -907,6 +907,14 @@ export interface HostOptions {
    */
   agentOrchestrationLimitsScope?: 'sessionTree' | 'session';
   /**
+   * How many sessions and chats the session tools may make, and how many
+   * messages they may send, per budget over the sliding hour. Each count left
+   * out is VS Code's: 50 sessions, 50 chats and 100 messages. A count that is
+   * not a positive integer refuses the host. `ahpd` does not read it from its
+   * configuration, so the daemon keeps VS Code's.
+   */
+  orchestrationLimits?: { sessions?: number; chats?: number; messages?: number };
+  /**
    * What archiving a session does with a working tree that has changes
    * nobody committed.
    *
