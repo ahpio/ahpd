@@ -462,6 +462,7 @@ it('serves each person their own approval settings, marked as a person\'s, and k
   const anaRoot = (await rootOf(ana.client)).config as Config;
   expect(anaRoot.values.terminalAutoApproveRules).toEqual(mine.terminalAutoApproveRules);
   expect(anaRoot.schema.properties.terminalAutoApproveRules?.['x-ahpd-scope']).toBe('person');
+  expect(anaRoot.schema.properties.autoApprovePolicyRestricted?.['x-ahpd-scope']).toBe('person');
   expect(anaRoot.schema.properties.defaultShell?.['x-ahpd-scope']).toBeUndefined();
   const boRoot = (await rootOf(bo.client)).config as Config;
   expect(boRoot.values.terminalAutoApproveRules).toBeUndefined();

@@ -786,6 +786,7 @@ it('sends nothing the protocol does not declare, and nothing short of what it re
     'ResolveSessionConfigResult /schema/properties/effortLevel undeclared key `chatMutable`': 'SESSIONS.md',
     'SessionState /config/schema/properties/effortLevel undeclared key `chatMutable`': 'SESSIONS.md',
     // A root config key a person keeps their own value of, on a host with users.
+    'RootState /config/schema/properties/autoApprovePolicyRestricted undeclared key `x-ahpd-scope`': 'USERS.md',
     'RootState /config/schema/properties/editAutoApprovePatterns undeclared key `x-ahpd-scope`': 'USERS.md',
     'RootState /config/schema/properties/terminalAutoApproveEnabled undeclared key `x-ahpd-scope`': 'USERS.md',
     'RootState /config/schema/properties/terminalAutoApproveRules undeclared key `x-ahpd-scope`': 'USERS.md',
