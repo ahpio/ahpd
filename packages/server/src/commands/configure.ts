@@ -27,7 +27,7 @@ import type { Command, Registry } from '@cofold/commands';
 import { filePolicies, isRecord, knownAgents, sdkVersion } from '@ahpd/sdk';
 import type { Policy, PolicyKind, RecordCollection } from '@ahpd/sdk';
 import { ask, answering, confirm, here, type Term } from '../ask.js';
-import { asSpec, configDir, configPath, policiesPath } from '../config.js';
+import { asSpec, besideFile, configDir, configPath, policiesPath } from '../config.js';
 import { marketplacesOf } from '../pluginlist.js';
 import { AGENT_PLUGIN, agentLines, alsoLines, configuredAgents, findAgents, findAlso, findRuntimes, missingLines, runtimeLines } from '../found.js';
 import { editableEntry, installPlugins, readEntry, run as runProgram, writeEntry, type Runner } from '../install.js';
@@ -378,7 +378,11 @@ export async function configure(options: ConfigureOptions): Promise<Configured> 
    * there is none and keeps the one there is, and anything else typed is the
    * token itself.
    */
-  const tokenFile = typeof held.connectionTokenFile === 'string' ? held.connectionTokenFile : join(options.configDir, TOKEN);
+  // A relative path is the configuration folder's, as the daemon reads it,
+  // and the file keeps it as it was written.
+  const tokenFile = typeof held.connectionTokenFile === 'string'
+    ? besideFile(options.configFile, held.connectionTokenFile)
+    : join(options.configDir, TOKEN);
   const fileToken = heldToken(tokenFile);
   /*
    * A token written as a literal is a token clients are already presenting, so
@@ -413,7 +417,7 @@ export async function configure(options: ConfigureOptions): Promise<Configured> 
     writeFileSync(tokenFile, `${secret}\n`, { mode: 0o600 });
     options.say(`${typed === make ? 'Wrote a new token to' : 'Wrote the token to'} ${tokenFile}.`);
   }
-  held.connectionTokenFile = tokenFile;
+  if (typeof held.connectionTokenFile !== 'string') held.connectionTokenFile = tokenFile;
   // Two spellings of one secret is what `secret()` refuses, so the token this
   // run just placed in a file takes the literal one out.
   delete held.connectionToken;
@@ -468,8 +472,10 @@ export async function configure(options: ConfigureOptions): Promise<Configured> 
       options.say('A person needs an id, such as alice. Nobody was added.');
       continue;
     }
-    const file = typeof held.users === 'string' ? held.users : join(options.configDir, USERS);
-    held.users = file;
+    // Read against the configuration folder, as the daemon reads it, and kept
+    // in the file as it was written.
+    const file = typeof held.users === 'string' ? besideFile(options.configFile, held.users) : join(options.configDir, USERS);
+    if (typeof held.users !== 'string') held.users = file;
     const directory = usersAt(file, held, (line) => { options.say(line); });
     const names = await directory.roleNames?.() ?? [];
     // A role the host does not define is refused by the directory, in words

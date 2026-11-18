@@ -64,6 +64,7 @@ The brief that this plan covers held the research; its last commit is the first 
 | Enter on the starter rows question is Yes | (defaulted: it is asked only when the check is on and a kind would refuse every person) | 02 |
 | The starter rows are `everyone-agent`, `everyone-computer` and `everyone-model`; a taken id is said and skipped | (defaulted: `put` refuses a different row under an id the store holds) | 02 |
 | `policiesPath` takes the folder, with `configDir()` as its default | (defaulted: `configure` is given its folder, and its tests pass their own) | 02 |
+| `configure` reads a relative `users` and `connectionTokenFile` against the configuration folder, and keeps them as written | Softov, 2026-11-18: "Fix both paths now" | 03 |
 
 ## Proposed architecture
 
@@ -78,6 +79,7 @@ The brief that this plan covers held the research; its last commit is the first 
 | --- | --- | --- |
 | [01 - configure adds a person](task-01-configure-adds-a-person.md) | implemented | - |
 | [02 - configure turns the policy checks on](task-02-configure-turns-the-policy-checks-on.md) | implemented | 01 |
+| [03 - configure reads paths from its folder](task-03-configure-reads-paths-from-its-folder.md) | implemented | 01 |
 
 ## Risks and tradeoffs
 
@@ -90,7 +92,7 @@ The brief that this plan covers held the research; its last commit is the first 
 - **Done so far:** tasks 01 and 02 are `implemented` on 2026-11-17, on the branch `daemon/20261118-0129-configure-sets-up-policies-and-people`.
 - **Next action:** Softov's review. Merged in #372 on 2026-11-18.
 - **Check on the test daemon, 2026-11-18:** `configure` asked every new question and wrote the three rows, and a `member` started a Claude session. Without `everyone-computer`, the same create was refused with `no policy allows computer host`.
-- **Found in the check:** [configure-reads-a-relative-path-from-the-current-folder.md](../../../problems/configure-reads-a-relative-path-from-the-current-folder.md).
+- **Found in the check:** `configure` read a relative `users` and `connectionTokenFile` from the current folder. Task 03 fixes it, on the branch `daemon/20261118-0129-configure-reads-paths-from-its-folder`.
 - **Open questions:** none.
 - **Watch out for:** the test terminal answers Enter past the answers a case names. Each new question must keep what is there on Enter.
 
