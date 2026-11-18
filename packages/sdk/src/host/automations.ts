@@ -1394,7 +1394,9 @@ export function createAutomations(ctx: HostContext): Automations {
       data,
     };
     const origin = { kind: 'trigger', triggerId: String(trigger?.id ?? ''), event: data };
-    void fly(resource, origin, facts, `${by} asked for ${resource}`);
+    // Through `request`, as a fire's wake goes: a connector's run is an
+    // event's, so it counts against the hourly cap and obeys the overlap mode.
+    request(resource, origin, facts, `${by} asked for ${resource}`, true);
   };
 
   /** The rule engine, with the clock a test may hand it and the host's own answer. */

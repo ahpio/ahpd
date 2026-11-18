@@ -1,6 +1,6 @@
 ---
 title: A connector's wake goes through request
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:
@@ -15,7 +15,7 @@ refs:
 ## Files
 
 - `UPDATE: packages/sdk/src/host/automations.ts:1365-1398` - `runOne` calls `request` with `byEvent: true` in place of `fly`.
-- `UPDATE: packages/sdk/test/automation-wake.test.ts` - the cases of a plugin's `run` past the cap and under each overlap mode.
+- `UPDATE: packages/sdk/test/plugin-triggers.test.ts` - the cases of a plugin's `runAutomation` past the cap and under each overlap mode, where the plugin host is already driven.
 - `UPDATE: docs/sdk/AUTOMATIONS.md:183-188` - a run a connector asks for counts as an event's.
 - `UPDATE: docs/updates/v0_15.md` - a line in the unreleased notes.
 

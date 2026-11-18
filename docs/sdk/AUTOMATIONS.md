@@ -184,7 +184,7 @@ An automation that names no owner is the host's own work and has nobody to be. S
 
 - A rule only sees sessions its owner may `session:read`, and an owner this host has not met sees none. An automation that names no owner sees every session, unless the daemon was started with `unownedAutomations: "none"` - and an event a plugin fires is held to that same answer, whether or not it names a session.
 - A run's own sessions never wake the automation that made them, so an automation cannot feed itself.
-- An automation runs at most 20 times an hour. Past that an event is dropped and logged with the count, and the next one inside the hour is dropped too. Switching the automation off and on again does not start the hour over, and an event its own overlap mode dropped is not one of the twenty. A clock is not counted: a schedule's own cadence is the bound on it.
+- An automation runs at most 20 times an hour. Past that an event is dropped and logged with the count, and the next one inside the hour is dropped too. Switching the automation off and on again does not start the hour over, and an event its own overlap mode dropped is not one of the twenty. A run a plugin asks for by the automation's id, as the webhook connector does, counts as an event's, and obeys the overlap mode too. A clock is not counted: a schedule's own cadence is the bound on it.
 - Counts, timers and the hourly count live in memory and start again when the daemon restarts, so a wake that was halfway through is missed once. What somebody wrote down survives: with `automations: "file"` the definitions come back on a restart, and so does the occurrence each was waiting for.
 
 ## Configuration

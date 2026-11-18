@@ -1,7 +1,7 @@
 ---
 title: A connector's wake counts against the cap
 domain: host
-status: planned
+status: active
 priority: high
 created: 2026-11-18
 revalidated: 2026-11-18
@@ -53,7 +53,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a connector's wake goes through request](task-01-a-connectors-wake-goes-through-request.md) | todo | - |
+| [01 - a connector's wake goes through request](task-01-a-connectors-wake-goes-through-request.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -61,8 +61,8 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-connectors-wake-goes-through-request.md](task-01-a-connectors-wake-goes-through-request.md).
+- **Done so far:** task 01.
+- **Next action:** review.
 - **Open questions:** none.
 - **Watch out for:** `skip` drops a wake before it is counted, so a skipped call is not one of the 20.
 
