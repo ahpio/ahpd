@@ -28,6 +28,8 @@ try() { AHPD_URL=$U AHPD_TOKEN_FILE=$1 node .project/pending/rpc.mjs listSession
 
 ## An anonymous 31546 refuses the derived token
 
+Done on 2026-11-18 on the dev daemon, at `wss://hwnqpfb0-31546.brs.devtunnels.ms`: no token and both derived tokens got `401`, and Softov's own token got the session list. Only step 5, VS Code with `anonymous` off, is left.
+
 1. In ahpw, open the tunnels page, and on the row for port 31546 run the `anonymous` operation with `on` set.
 2. Run `try /tmp/derived-token`. Pass: `initialize failed` or `CLOSED`. Fail: `ANSWER`.
 3. Run `try /tmp/own-token`. Pass: `ANSWER`. Fail: anything else.
