@@ -1,7 +1,7 @@
 ---
 title: A removed node is cut off at once
 domain: container
-status: planned
+status: active
 priority: high
 created: 2026-11-18
 revalidated: 2026-11-18
@@ -45,6 +45,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 | `node rm` at the terminal goes to the running daemon when one is up | Softov, 2026-11-18: "Send it to the running daemon" | 02 |
 | It follows `paths`: the API when the daemon answers, the file when none does | [code://packages/server/src/commands/paths.ts#L150-L178](../../../../packages/server/src/commands/paths.ts#L150-L178) | 02 |
 | `node add` of a node that is there goes the same way | (defaulted: it replaces a token, and the old connection must go as with a removal) | 02 |
+| A command forwards only with no `--users` and no `--config-file`, since a named file may be one the daemon does not read | (defaulted: the rule `paths` follows) | 02 |
 | A running daemon with no HTTP API gets the file written, and the line says the node stays until a restart | (defaulted: the command cannot reach that daemon) | 02 |
 | `drop` closes every session socket of the node | (defaulted: the problem's one fix) | 01 |
 | A node whose control socket closes by itself keeps its session sockets | (defaulted: a node that dials again resumes them, as today) | 01 |
@@ -59,8 +60,8 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a dropped node closes its sessions](task-01-a-dropped-node-closes-its-sessions.md) | todo | - |
-| [02 - the terminal commands reach the daemon](task-02-the-terminal-commands-reach-the-daemon.md) | todo | 01 |
+| [01 - a dropped node closes its sessions](task-01-a-dropped-node-closes-its-sessions.md) | done | - |
+| [02 - the terminal commands reach the daemon](task-02-the-terminal-commands-reach-the-daemon.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -68,8 +69,8 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-dropped-node-closes-its-sessions.md](task-01-a-dropped-node-closes-its-sessions.md).
+- **Done so far:** tasks 01 and 02. The commands forward only when no `--users` and no `--config-file` is given, as `paths` does.
+- **Next action:** the checks by hand of *Final verification checklist* on a test hub, then review.
 - **Open questions:** none.
 - **Watch out for:** a node's own reconnect is not a removal; only `drop` closes the session sockets.
 

@@ -447,12 +447,14 @@ A session created with `computer: "computer://node.box"` runs on the node.
 | --- | --- |
 | `ahpd node add <name>` | Adds a node and mints its token, shown once. Adding it again replaces the token, and the old one stops working |
 | `ahpd node list` | The nodes in the file, one name per line |
-| `ahpd node rm <name>` | Removes a node. Its token is refused from its next connection on, and a joined one is dropped |
+| `ahpd node rm <name>` | Removes a node. Its token is refused from its next connection on, and a joined one is dropped with every session it runs |
 | `ahpd join <url>` | Dials the hub at a `ws://` or `http://` address, with `--token`, `--token-file` or `AHPD_TOKEN`. `--workdir` names the folder a session there starts in, and the current one is the default |
 
 `node:read` lists the nodes, and `node:write` adds and removes them ([Users and grants](../sdk/USERS.md)).
 The nodes file sits beside the users file, so `--users` or the `users` key names both.
 A host with no users file has nowhere to keep a node.
+
+With no `--users` and no `--config-file`, `ahpd node add` and `ahpd node rm` at the hub's terminal go to the running daemon, as `ahpd paths` does. So a removed node, or one whose token was replaced, is dropped at once. With no daemon answering, they write the file. A daemon that runs without the HTTP API keeps a joined node until it restarts, and the command says so.
 
 ### What runs there
 
