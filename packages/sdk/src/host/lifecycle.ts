@@ -851,10 +851,14 @@ export function createLifecycle(ctx: HostContext): Lifecycle {
     if (held === undefined) {
       // Nothing was held, so nothing was torn down and what this host kept
       // about the row is still here: the backend has it, and the host does
-      // not need to.
+      // not need to. The machine its config names is read before the row
+      // goes, and let go after, as the prune of forgotten rows does: no
+      // teardown ran to tell the port the session left it.
+      const config = kept.config(idOf(uri));
       forgetChats(idOf(uri));
       kept.forget(idOf(uri));
       owners.delete(uri);
+      ctx.leaveForgotten(uri, config);
     }
     /*
      * And its own scratch folder, where it worked in one, which goes with it

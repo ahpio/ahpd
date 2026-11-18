@@ -1,6 +1,6 @@
 ---
 title: A dispose of a session not held lets its machine go
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:
