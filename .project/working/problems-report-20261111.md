@@ -109,8 +109,8 @@ The audit of 2026-11-08 wrote these 11 problems and never committed them. Each w
 | backends-skip-the-operators-always-ask-rule.md, planned in [host/20261116-2128](../plans/host/20261116-2128-backends-ask-what-the-operator-asks/plan.md) | major |
 | Part images are pulled by a tag with no digest, planned as [container/20261113-0408](../plans/container/20261113-0408-a-part-is-pulled-by-its-digest/plan.md) | major |
 | [a-client-completes-a-call-it-does-not-run.md](../problems/a-client-completes-a-call-it-does-not-run.md) | minor |
-| [a-client-names-its-own-answer-host-policy.md](../problems/a-client-names-its-own-answer-host-policy.md) | minor |
-| [a-push-can-turn-off-the-auto-approval-restriction.md](../problems/a-push-can-turn-off-the-auto-approval-restriction.md) | minor |
+| [a-client-names-its-own-answer-host-policy.md](../plans/host/20261118-1043-a-persons-restriction-stays-their-own/plan.md), now planned | minor |
+| [a-push-can-turn-off-the-auto-approval-restriction.md](../plans/host/20261118-1043-a-persons-restriction-stays-their-own/plan.md), now planned | minor |
 | [a-push-device-hears-sessions-by-client-id-alone.md](../problems/a-push-device-hears-sessions-by-client-id-alone.md) | minor |
 | a-reader-of-a-bot-can-drive-its-trusted-session.md, now [this plan](../plans/bots/20261113-0817-a-bot-talk-is-one-session-with-back-chats/plan.md) | minor |
 | [global-auto-approve-approves-every-tool-call.md](../decisions/global-auto-approve-keeps-vs-codes-meaning.md), now a decision | minor |

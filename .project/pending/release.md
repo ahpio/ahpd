@@ -12,16 +12,7 @@ A pushed `v*` tag runs [release.yml](../../.github/workflows/release.yml) and st
 
 What 0.15.0 waits for, as Softov chose on 2026-11-18. rc.4 is the last release candidate on npm.
 
-1. *The fixes.* These nine problems are fixed before 0.15.0, each through a plan and a PR:
-   - [a-webhook-automation-skips-the-wake-cap.md](../problems/a-webhook-automation-skips-the-wake-cap.md)
-   - [a-push-device-hears-sessions-by-client-id-alone.md](../problems/a-push-device-hears-sessions-by-client-id-alone.md)
-   - [a-push-can-turn-off-the-auto-approval-restriction.md](../problems/a-push-can-turn-off-the-auto-approval-restriction.md)
-   - [a-client-names-its-own-answer-host-policy.md](../problems/a-client-names-its-own-answer-host-policy.md)
-   - [a-client-cannot-update-a-scoped-plugin-that-failed-to-load.md](../problems/a-client-cannot-update-a-scoped-plugin-that-failed-to-load.md)
-   - [a-system-tunnel-that-fails-at-start-is-not-retried.md](../problems/a-system-tunnel-that-fails-at-start-is-not-retried.md)
-   - [a-removed-node-keeps-serving-its-running-sessions.md](../problems/a-removed-node-keeps-serving-its-running-sessions.md)
-   - [node-rm-at-the-terminal-does-not-drop-a-joined-node.md](../problems/node-rm-at-the-terminal-does-not-drop-a-joined-node.md)
-   - [a-disposed-session-not-held-leaves-its-machine.md](../problems/a-disposed-session-not-held-leaves-its-machine.md)
+1. *The fixes.* Nine problems are fixed before 0.15.0, through seven plans. [working/0-15-blockers.md](../working/0-15-blockers.md) follows each one to its plan.
 2. *The checks by hand.* Softov runs the rest of [tunnel-token-checks.md](tunnel-token-checks.md), and makes `compclau` again on the parts of #336 with a Claude session in it.
 3. *A working day on the daemon* on the release candidate that holds the fixes.
 4. *The web UI.* `@ahpd/web` declares its sdk peer as `>=0.9`, which npm does not match to a prerelease, so npm refuses it beside rc.4. The fix is in ahpw.
