@@ -427,7 +427,7 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
           snapshots.push(snapshot);
           connection.activeSubscriptions.add(meant);
           ctx.clearBaselineDebt(connection.clientId, meant);
-          openedBy(meant, connection.clientId);
+          openedBy(meant, connection.clientId, ownerFor(connection));
           // Recent in the residency, as a subscribe makes it.
           // https://github.com/microsoft/vscode/blob/a4e689ae13ef7a1fe9b515656b51c9be7c274294/src/vs/platform/agentHost/node/agentService.ts#L11633-L11634
           ctx.touch(meant);
@@ -731,7 +731,7 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
        */
       for (const meant of resumed.keys()) {
         connection.activeSubscriptions.add(meant);
-        openedBy(meant, connection.clientId);
+        openedBy(meant, connection.clientId, ownerFor(connection));
         // Recent in the residency, as a subscribe makes it.
         // https://github.com/microsoft/vscode/blob/a4e689ae13ef7a1fe9b515656b51c9be7c274294/src/vs/platform/agentHost/node/agentService.ts#L11633-L11634
         ctx.touch(meant);

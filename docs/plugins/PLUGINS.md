@@ -1423,7 +1423,7 @@ does not stop the next handler or the action it observed.
 | --- | --- |
 | `session_start` | `session`, `provider`, and `client` when a client of this host created it |
 | `session_end` | `session`, `reason` |
-| `session_opened` | `session`, `client` |
+| `session_opened` | `session`, `client`, `owner` |
 | `turn_start` | `session`, `chat`, `turn`, `sender` (`user:<id>` or `root:<host>`) when the host knows who sent it, and `queuedMessageId` when the turn took up a queued message. Raised when the turn is handed to a session's chat: its backend, or the host's own `!` command. A worker's turn begins inside a call of its lead chat's turn, with none |
 | `turn_end` | The shape of [VS Code's `ITurnEnd`](https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/common/agentHostChatContributionsService.ts#L19-L49), which its host offers its chat contributions after every turn ends: `session`, `channel` (the chat the turn ran on, the session's default chat, a peer chat or a worker's), `turnId` and `reason`, and beside them `sender` as on `turn_start` and `queuedMessageId` where the queue drain that began the turn ended it itself. `reason.kind` is `success`, `cancelled`, `error` for a turn that ended in `chat/error`, a send that failed included, with `error` (`errorType` and `message`) and `resumable`, `rejected` for a start the host refused before handing it over, with `error` and `recoverable`, whether whoever sent it still holds the message (no `turn_start` comes before it), or `localCommand` for a `!` command the host ran. Raised on every chat, a worker's included, so a plugin waiting on one chat's turn reads `channel` |
 | `message` | `session`, `chat`, `turn`, `text` |
@@ -1457,6 +1457,10 @@ found in a list was created by nobody here, and a session an automation opened
 has no client at all. `session_opened` is raised once per client and session,
 so a client that subscribes to a session and then to a chat of it, or opens a
 second window under another id, is heard from once per window.
+
+On a host with users, `session_opened` also names the `owner` the opening
+connection signed in as. A client id is the client's own word, so a plugin that
+ties a client to a person checks `owner` as well.
 
 An event may repeat a state action a client also receives, and is added only
 for a moment a plugin acts on without watching the session - a turn's two ends,

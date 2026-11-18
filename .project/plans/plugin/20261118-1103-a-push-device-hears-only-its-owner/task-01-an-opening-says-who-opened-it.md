@@ -1,6 +1,6 @@
 ---
 title: An opening says who opened it, and a device hears only its owner's
-status: todo
+status: done
 depends: []
 layer: "sdk, push"
 refs:
@@ -20,6 +20,8 @@ On a host with users, a push device hears a session through its client only when
 - `UPDATE: packages/sdk/src/host/handshake.ts` - both calls of `openedBy` pass `ownerFor(connection)`.
 - `UPDATE: packages/sdk/src/host/sessionmethods.ts` - the call of `openedBy` passes `ownerFor(connection)`.
 - `UPDATE: packages/push/src/plugin.ts:209-234` - `opened` keeps each client's owner, and `byClient` checks it.
+- `UPDATE: packages/sdk/test/plugin-events-fire.test.ts` - the case of `session_opened` naming its owner, under the same client id or not.
+- `UPDATE: docs/plugins/PLUGINS.md:1426` - `session_opened` carries `owner`.
 - `UPDATE: packages/push/test/plugin.test.ts` - the cases of a borrowed client id and of an admin's opening.
 - `UPDATE: packages/push/README.md:119` - a device hears its client's openings only when its owner opened them.
 - `UPDATE: docs/updates/v0_15.md` - a line in the unreleased notes.
