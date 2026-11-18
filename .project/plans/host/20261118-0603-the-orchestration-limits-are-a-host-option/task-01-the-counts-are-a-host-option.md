@@ -1,6 +1,6 @@
 ---
 title: The counts are a host option
-status: todo
+status: implemented
 depends: []
 layer: "sdk"
 refs:
@@ -36,4 +36,6 @@ With no option, the counts are VS Code's 50, 50 and 100, as today.
 - The sdk suite passes, run alone as HANDOFF *Tests* says, before task 02 changes the cases.
 
 ## Resume
+
+Built on 2026-11-18. The refusal's action words moved to `ORCHESTRATION_ACTIONS`, and `orchestrationMaxima` merges the option over the default when the tooling is made.
 

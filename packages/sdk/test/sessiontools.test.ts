@@ -20,6 +20,7 @@ import { foldHostOptions, pluginHost } from '../src/plugins/plugins.js';
 import { sdkVersion } from '../src/version.js';
 import type { BoundTool } from '../src/types/agent.js';
 import type { HostEvent } from '../src/types/events.js';
+import { DEFAULT_ORCHESTRATION_LIMITS } from '../src/host/tooling.js';
 import type { HostOptions, HostTool, ToolCall, ToolCaller } from '../src/types/host.js';
 import type { Contribution, LoaderContext } from '../src/types/plugin.js';
 import type { Grant, Principal, Users } from '../src/types/users.js';
@@ -998,10 +999,10 @@ describe("VS Code's limits on spawning and messaging", () => {
   const said = (one: Answer): string => one.content[0]?.text ?? '';
 
   /** A host with nobody to ask, and a client on it, with the actions it is told. */
-  const topped = async (): Promise<{ client: Client; p: ReturnType<typeof peer> }> => {
+  const topped = async (extra: Partial<HostOptions> = {}): Promise<{ client: Client; p: ReturnType<typeof peer> }> => {
     const host = createHost({
       path: root, agents: [claude({ paths: [root] })], ...machine(), tools: hostTools(),
-      sleepAfterMinutes: 0,
+      sleepAfterMinutes: 0, ...extra,
     });
     hosts.push(host);
     const p = peer();
@@ -1011,7 +1012,7 @@ describe("VS Code's limits on spawning and messaging", () => {
   };
 
   /** A host with nobody to ask, and a client on it. */
-  const top = async (): Promise<Client> => (await topped()).client;
+  const top = async (extra: Partial<HostOptions> = {}): Promise<Client> => (await topped(extra)).client;
 
   type Said = { channel: string; action: { type?: string; kind?: string; id?: string; message?: unknown } };
   /** The actions a client was told, by channel. */
@@ -1176,15 +1177,15 @@ describe("VS Code's limits on spawning and messaging", () => {
     expect(refused.isError).toBe(true);
   });
 
-  it('refuses the 51st session in one tree, and still makes one in a second', async () => {
-    const client = await top();
+  it('refuses the session past its tree\'s limit, and still makes one in a second', async () => {
+    const client = await top({ orchestrationLimits: { sessions: 3 } });
     const first = await started(client, 'first');
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 3; i++) {
       expect(said(await spawn(first.at, `made ${i}`)), `made ${i}`).toMatch(/^New session created \(/);
     }
 
     const refused = await spawn(first.at, 'one more');
-    expect(said(refused)).toMatch(outOfRoom('create more sessions', 50));
+    expect(said(refused)).toMatch(outOfRoom('create more sessions', 3));
     expect(refused.isError).toBe(true);
 
     // A second tree is a session nothing started, and its budget is its own.
@@ -1197,25 +1198,25 @@ describe("VS Code's limits on spawning and messaging", () => {
   /*
    * The daemon's `agentOrchestrationLimitsScope` at `session`, VS Code's: each
    * session keeps its own count, so a session the first one made still makes
-   * one once the first has used its fifty, and the refusal is VS Code's own.
+   * one once the first has used its own, and the refusal is VS Code's own.
    * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/shared/sessionServerTools.ts#L46-L94
    */
   it('keeps each session\'s count where the daemon counts per session, and refuses in VS Code\'s words', async () => {
     const host = createHost({
       path: root, agents: [claude({ paths: [root] })], ...machine(), tools: hostTools(),
-      sleepAfterMinutes: 0, agentOrchestrationLimitsScope: 'session',
+      sleepAfterMinutes: 0, agentOrchestrationLimitsScope: 'session', orchestrationLimits: { sessions: 3 },
     });
     hosts.push(host);
     const client = host.accept(peer());
     await hello(client);
     const first = await started(client, 'first');
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 3; i++) {
       expect(said(await spawn(first.at, `made ${i}`)), `made ${i}`).toMatch(/^New session created \(/);
     }
     const child = builtCount('host') - 1;
 
     expect(said(await spawn(first.at, 'one more'))).toMatch(new RegExp(
-      '^Refusing to create more sessions: this session already used 50 of 50 allowed in the last 60 minutes\\.'
+      '^Refusing to create more sessions: this session already used 3 of 3 allowed in the last 60 minutes\\.'
       + ' The limit applies to each session separately and frees up as older actions leave that window\\.'
       + ' Retry after \\d+ seconds, or turn off agent orchestration limits in settings\\.$',
     ));
@@ -1227,13 +1228,13 @@ describe("VS Code's limits on spawning and messaging", () => {
    * as its oldest actions leave the window.
    * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/shared/sessionServerTools.ts#L43-L94
    */
-  it('makes a session again once the oldest of its tree\'s fifty has left the hour', async () => {
-    const client = await top();
+  it('makes a session again once the oldest its tree made has left the hour', async () => {
+    const client = await top({ orchestrationLimits: { sessions: 3 } });
     const first = await started(client, 'first');
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 3; i++) {
       expect(said(await spawn(first.at, `made ${i}`)), `made ${i}`).toMatch(/^New session created \(/);
     }
-    expect(said(await spawn(first.at, 'one more'))).toMatch(outOfRoom('create more sessions', 50));
+    expect(said(await spawn(first.at, 'one more'))).toMatch(outOfRoom('create more sessions', 3));
 
     vi.useFakeTimers({ toFake: ['Date'] });
     try {
@@ -1265,41 +1266,41 @@ describe("VS Code's limits on spawning and messaging", () => {
     }
   });
 
-  it('refuses the 51st chat in one tree, by either tool that makes one', async () => {
-    const client = await top();
+  it('refuses the chat past its tree\'s limit, by either tool that makes one', async () => {
+    const client = await top({ orchestrationLimits: { chats: 3 } });
     const first = await started(client, 'first');
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 3; i++) {
       expect(said(await call('create_chat', { prompt: `word ${i}` }, first.at)), `word ${i}`).toMatch(/^Chat created \(/);
     }
 
     const refused = await call('create_chat', { prompt: 'one more' }, first.at);
-    expect(said(refused)).toMatch(outOfRoom('create more chats', 50));
+    expect(said(refused)).toMatch(outOfRoom('create more chats', 3));
     expect(refused.isError).toBe(true);
 
     // `create_session` with `currentSession` makes a chat too, and spends the
     // same budget. The reference host counts them as one, and so does this.
     expect(said(await call('create_session', { relationship: 'currentSession', title: 'x', prompt: 'y' }, first.at)))
-      .toMatch(outOfRoom('create more chats', 50));
+      .toMatch(outOfRoom('create more chats', 3));
   });
 
-  it('refuses the 101st message sent through the tools', async () => {
-    const client = await top();
+  it('refuses the message past its tree\'s limit, sent through the tools', async () => {
+    const client = await top({ orchestrationLimits: { messages: 5 } });
     const from = await started(client, 'from');
     const to = await started(client, 'to');
     // The first message starts a turn in the target session and the rest are
     // queued behind it, which is one of the two ways a send is answered: both
     // are messages the host took, and both count.
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 5; i++) {
       expect(answered(await telling(from.at, to.held, `word ${i}`)).action, `word ${i}`).toMatch(/^(started|queued)$/);
     }
 
     const refused = await telling(from.at, to.held, 'one more');
-    expect(said(refused)).toMatch(outOfRoom('send more messages', 100));
+    expect(said(refused)).toMatch(outOfRoom('send more messages', 5));
     expect(refused.isError).toBe(true);
   });
 
   it('does not count a send that failed', async () => {
-    const client = await top();
+    const client = await top({ orchestrationLimits: { messages: 5 } });
     const from = await started(client, 'from');
     const to = await started(client, 'to');
     /*
@@ -1307,33 +1308,33 @@ describe("VS Code's limits on spawning and messaging", () => {
      * past the input and reaches the host, which is where the count would have
      * been taken - and a refusal is not a message sent, so the sender's tree
      * keeps its whole budget. Counted before the send instead, that tree would
-     * refuse the hundredth message below.
+     * refuse the last message of the five below.
      */
     const missed = await telling(from.at, openLink(to.held, 'claude', 'nope'), 'nowhere');
     expect(missed.isError).toBe(true);
     expect(said(missed)).toContain('is not a session this host is running');
 
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 5; i++) {
       expect(answered(await telling(from.at, to.held, `word ${i}`)).action, `word ${i}`).toMatch(/^(started|queued)$/);
     }
     expect(said(await telling(from.at, to.held, 'one more')))
-      .toMatch(outOfRoom('send more messages', 100));
+      .toMatch(outOfRoom('send more messages', 5));
   });
 
   it('counts messages sent to any session against the sender, not the target', async () => {
-    const client = await top();
+    const client = await top({ orchestrationLimits: { messages: 6 } });
     const from = await started(client, 'from');
     const one = await started(client, 'one');
     const two = await started(client, 'two');
     /*
      * Two sessions in trees of their own, neither of them the sender's. Counted
-     * where the message lands, each would hold its own budget of a hundred, and
-     * an agent could send a hundred into every session it can name and never
-     * meet a limit. The count is taken against the session the call is made
-     * from, so the hundred is the sender's however many sessions it spends them
-     * in - and it is that session's tree the refusal names.
+     * where the message lands, each would hold a budget of its own, and an
+     * agent could send a budget's worth into every session it can name and
+     * never meet a limit. The count is taken against the session the call is
+     * made from, so the budget is the sender's however many sessions it spends
+     * it in - and it is that session's tree the refusal names.
      */
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 3; i++) {
       expect(answered(await telling(from.at, one.held, `to one, ${i}`)).action, `to one, ${i}`)
         .toMatch(/^(started|queued)$/);
       expect(answered(await telling(from.at, two.held, `to two, ${i}`)).action, `to two, ${i}`)
@@ -1341,11 +1342,23 @@ describe("VS Code's limits on spawning and messaging", () => {
     }
 
     const refused = await telling(from.at, two.held, 'one more');
-    expect(said(refused)).toMatch(outOfRoom('send more messages', 100));
+    expect(said(refused)).toMatch(outOfRoom('send more messages', 6));
     expect(refused.isError).toBe(true);
     // And the sessions it was writing into are untouched by the refusal: what
     // ran out is the sender's budget, not theirs.
     expect(answered(await telling(two.at, from.held, 'and back again')).action).toMatch(/^(started|queued)$/);
+  });
+
+  // VS Code's counts are the default; the cases above set smaller ones so each
+  // reaches its limit in a few calls.
+  // https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/shared/sessionServerTools.ts#L46-L94
+  it('counts to VS Code\'s 50 sessions, 50 chats and 100 messages unless the host says otherwise', () => {
+    expect(DEFAULT_ORCHESTRATION_LIMITS).toEqual({ sessions: 50, chats: 50, messages: 100 });
+  });
+
+  it('refuses a host whose orchestration limit is not a positive integer, naming the count', () => {
+    expect(() => createHost({ path: root, agents: [claude({ paths: [root] })], orchestrationLimits: { sessions: 0 } }))
+      .toThrow('orchestrationLimits.sessions must be a positive integer, not 0');
   });
 
   it('steers the turn a chat runs, and answers the message it steered', async () => {

@@ -34,7 +34,7 @@ import type { Bag } from '../types/common.js';
 import type { Grant, Principal } from '../types/users.js';
 import type { Owner } from '../types/usage.js';
 import type { ClientPlugins, SyncedPlugin } from '../types/clientplugins.js';
-import type { Connection, HostTool, SendMessageAnswer, SendMessageRequest, SessionlessToolCall, ToolCall, ToolCaller, TitleStrategy, ToolSession } from '../types/host.js';
+import type { Connection, HostOptions, HostTool, SendMessageAnswer, SendMessageRequest, SessionlessToolCall, ToolCall, ToolCaller, TitleStrategy, ToolSession } from '../types/host.js';
 import type { Agent, BoundTool, McpServer, ToolCallFacts } from '../types/agent.js';
 import type { MessageFrom, Session, TurnOptions } from '../types/session.js';
 import type { DiscardedFileEdits } from '../types/changes.js';
@@ -55,14 +55,13 @@ import type { HostContext } from './context.js';
  */
 const MAX_SPAWN_DEPTH = 3;
 
-/** VS Code's `maxCreatedSessions`: how many sessions one budget may make. */
-const MAX_CREATED_SESSIONS = 50;
-
-/** VS Code's `maxCreatedChats`: how many chats one budget may make, by either tool. */
-const MAX_CREATED_CHATS = 50;
-
-/** VS Code's `maxSentMessages`: how many messages one budget may send. */
-const MAX_SENT_MESSAGES = 100;
+/**
+ * VS Code's counts, the default of `orchestrationLimits`: `maxCreatedSessions`,
+ * how many sessions one budget may make; `maxCreatedChats`, how many chats, by
+ * either tool; and `maxSentMessages`, how many messages it may send.
+ * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/shared/sessionServerTools.ts#L46-L94
+ */
+export const DEFAULT_ORCHESTRATION_LIMITS = { sessions: 50, chats: 50, messages: 100 } as const;
 
 /**
  * The most of one client rule's body this host puts in a system prompt, in characters.
@@ -91,14 +90,33 @@ const LIMIT_WINDOW_MS = 60 * 60 * 1000;
  * `agentOrchestrationLimitsScope`, and the sentence names whichever it is.
  * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/shared/sessionServerTools.ts#L46-L94
  */
-const ORCHESTRATION_LIMITS = {
-  sessions: { max: MAX_CREATED_SESSIONS, action: 'create more sessions' },
-  chats: { max: MAX_CREATED_CHATS, action: 'create more chats' },
-  messages: { max: MAX_SENT_MESSAGES, action: 'send more messages' },
+const ORCHESTRATION_ACTIONS = {
+  sessions: 'create more sessions',
+  chats: 'create more chats',
+  messages: 'send more messages',
 } as const;
 
 /** Which of the three a budget is being asked about. */
-type Made = keyof typeof ORCHESTRATION_LIMITS;
+type Made = keyof typeof ORCHESTRATION_ACTIONS;
+
+/**
+ * The counts in force: what `orchestrationLimits` names, over VS Code's.
+ *
+ * A count that is not a positive integer is refused when the host is made,
+ * since a zero or a fraction would refuse every session tool call it counts.
+ */
+const orchestrationMaxima = (asked: HostOptions['orchestrationLimits']): Record<Made, number> => {
+  const maxima: Record<Made, number> = { ...DEFAULT_ORCHESTRATION_LIMITS };
+  for (const what of Object.keys(ORCHESTRATION_ACTIONS) as Made[]) {
+    const value = asked?.[what];
+    if (value === undefined) continue;
+    if (!Number.isInteger(value) || value < 1) {
+      throw new Error(`orchestrationLimits.${what} must be a positive integer, not ${String(value)}`);
+    }
+    maxima[what] = value;
+  }
+  return maxima;
+};
 
 /**
  * What a host says about a client's plugin when it has nowhere to keep one.
@@ -442,6 +460,7 @@ export function createTooling(ctx: HostContext): Tooling {
     resolveCreatedSessionConfig, createProviderSession, backendsOwn, removeSession, scratchFolder, spawn,
   } = ctx;
   ctx.agentOrchestrationLimitsScope = options.agentOrchestrationLimitsScope ?? 'sessionTree';
+  const maxima = orchestrationMaxima(options.orchestrationLimits);
   /**
    * Where a decision that outlives one session is kept, or nothing for a host
    * that keeps none: one embedded in a single session has nowhere to put a
@@ -1347,12 +1366,12 @@ export function createTooling(ctx: HostContext): Tooling {
    */
   const room = (budget: string, what: Made): void => {
     if (!enforced()) return;
-    const limit = ORCHESTRATION_LIMITS[what];
+    const max = maxima[what];
     const recent = recentIn(budget, what);
-    if (recent.length < limit.max) return;
+    if (recent.length < max) return;
     const retryAfterSeconds = Math.max(1, Math.ceil(((recent[0] ?? Date.now()) + LIMIT_WINDOW_MS - Date.now()) / 1000));
     const per = ctx.agentOrchestrationLimitsScope === 'session' ? 'session' : 'session tree';
-    throw new Error(`Refusing to ${limit.action}: this ${per} already used ${recent.length} of ${limit.max}`
+    throw new Error(`Refusing to ${ORCHESTRATION_ACTIONS[what]}: this ${per} already used ${recent.length} of ${max}`
       + ` allowed in the last ${Math.round(LIMIT_WINDOW_MS / 60000)} minutes. The limit applies to each ${per}`
       + ' separately and frees up as older actions leave that window.'
       + ` Retry after ${retryAfterSeconds} seconds, or turn off agent orchestration limits in settings.`);
