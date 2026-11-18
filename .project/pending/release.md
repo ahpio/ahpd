@@ -4,7 +4,7 @@ title: What a release needs before its tag
 
 # What a release needs before its tag
 
-`v0.15.0-rc.3` is tagged on `28dd315e0` (#320) on 2026-11-13, and its release run 43394827388 staged the packages under `next`. `v0.15.0-rc.2` is on npm under `next`, and `latest` stays on `0.14.0`. Status at 2026-11-13.
+`v0.15.0-rc.4` is tagged on `e5776651c` (#376) on 2026-11-18. Its release run 44267371516 passed `parts`, `release` and `image`, and Softov approved the staged packages: npm serves `next: 0.15.0-rc.4`, and `latest` stays on `0.14.0`. Status at 2026-11-18.
 
 A pushed `v*` tag runs [release.yml](../../.github/workflows/release.yml) and stages every package. The tag comes last, and only on Softov's word.
 
@@ -18,6 +18,7 @@ A pushed `v*` tag runs [release.yml](../../.github/workflows/release.yml) and st
 
 ## Done
 
+- **The rc.4 release.** #376 sets `0.15.0-rc.4` and holds the notes for #321 to #375. Dry run 44258114344 passed on its branch. Its PR's `image` failed only because npm did not serve `@ahpd/sdk@0.15.0-rc.4` yet. After the update, npm warns of one zod advisory in `@vscode/sandbox-runtime`: [the-sandbox-runtime-carries-a-zod-advisory.md](../problems/the-sandbox-runtime-carries-a-zod-advisory.md).
 - **After rc.3.** Four PRs merged on 2026-11-13:
   - PR #321 makes a bot talk one session, with a Back chat for each bot and person.
   - PR #322 lets a bot answer on a host with no users.
