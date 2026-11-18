@@ -111,6 +111,6 @@ The audit of 2026-11-08 wrote these 11 problems and never committed them. Each w
 | [a-client-completes-a-call-it-does-not-run.md](../problems/a-client-completes-a-call-it-does-not-run.md) | minor |
 | [a-client-names-its-own-answer-host-policy.md](../plans/host/20261118-1043-a-persons-restriction-stays-their-own/plan.md), now planned | minor |
 | [a-push-can-turn-off-the-auto-approval-restriction.md](../plans/host/20261118-1043-a-persons-restriction-stays-their-own/plan.md), now planned | minor |
-| [a-push-device-hears-sessions-by-client-id-alone.md](../problems/a-push-device-hears-sessions-by-client-id-alone.md) | minor |
+| [a-push-device-hears-sessions-by-client-id-alone.md](../plans/plugin/20261118-1103-a-push-device-hears-only-its-owner/plan.md), now planned | minor |
 | a-reader-of-a-bot-can-drive-its-trusted-session.md, now [this plan](../plans/bots/20261113-0817-a-bot-talk-is-one-session-with-back-chats/plan.md) | minor |
 | [global-auto-approve-approves-every-tool-call.md](../decisions/global-auto-approve-keeps-vs-codes-meaning.md), now a decision | minor |
