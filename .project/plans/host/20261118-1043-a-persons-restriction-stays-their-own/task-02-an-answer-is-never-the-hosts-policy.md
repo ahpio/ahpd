@@ -1,6 +1,6 @@
 ---
 title: A client's answer is never the host's policy
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:

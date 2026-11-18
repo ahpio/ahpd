@@ -31,10 +31,10 @@ import { PENDING_CONFIRMATION_FIELDS } from '../types/agent.js';
 import type { PendingConfirmation } from '../types/agent.js';
 import { sameFolder, trusted } from './trust.js';
 import { isWorktreeUnderRepository } from '../repo/worktrees.js';
-import { filePersonRules, personOf } from '../access/personrules.js';
+import { approvalSetting, filePersonRules, personOf } from '../access/personrules.js';
 import { BASELINE_TURN } from '../types/changes.js';
 import type { Bag } from '../types/common.js';
-import type { Agent, BoundTool, Start } from '../types/agent.js';
+import type { Agent, BoundTool, SchemaPolicy, Start } from '../types/agent.js';
 import type { TurnEndEvent, TurnEndReason } from '../types/events.js';
 import type { RunEnding } from '../types/automations.js';
 import type { Owner } from '../types/usage.js';
@@ -155,6 +155,12 @@ export interface Spawn {
   /** Complete the Plan call the host drew in a chat's turn, before that turn's end is said. */
   completePlan(chat: string, turn: string): void;
 }
+
+/** The operator's policy with the auto-approval restriction a session holds, which is its owner's own on a host with users. */
+const restrictedAt = (policy: SchemaPolicy, restricted: boolean): SchemaPolicy => {
+  const { autoApprovePolicyRestricted: _host, ...rest } = policy;
+  return restricted ? { ...rest, autoApprovePolicyRestricted: true } : rest;
+};
 
 /**
  * Whether an action is one the protocol's chat reducer clears a chat's read
@@ -634,7 +640,7 @@ export function createSpawn(ctx: HostContext): Spawn {
       attached: messages.flatMap((message) => (Array.isArray(message?.attachments) ? message.attachments as Bag[] : []))
         .flatMap((one) => (typeof one.uri === 'string' && one.uri.startsWith('file:') && localPath(one.uri) !== '' ? [localPath(one.uri)] : [])),
       globalAutoApprove: ctx.rootConfig.globalAutoApproveEnabled === true,
-      sessionAutoApprove: ctx.rootConfig.autoApprovePolicyRestricted !== true && owning?.config.autoApprove === 'autoApprove',
+      sessionAutoApprove: setting('autoApprovePolicyRestricted') !== true && owning?.config.autoApprove === 'autoApprove',
       bypassLocked: managedSettings?.disableBypassPermissionsMode === 'disable',
       terminalAutoApprove: setting('terminalAutoApproveEnabled') !== false,
       editPatterns,
@@ -649,7 +655,7 @@ export function createSpawn(ctx: HostContext): Spawn {
       levels: {
         people: options.users !== undefined,
         host: writesHostRules(session),
-        allowAll: ctx.rootConfig.autoApprovePolicyRestricted !== true && managedSettings?.disableBypassPermissionsMode !== 'disable',
+        allowAll: setting('autoApprovePolicyRestricted') !== true && managedSettings?.disableBypassPermissionsMode !== 'disable',
       },
     };
     /*
@@ -1382,8 +1388,9 @@ export function createSpawn(ctx: HostContext): Spawn {
           contributor, ctx.stateOf(uri)?.customizations),
       }),
       // The operator's policy as it stands at the start: managed settings, and
-      // the auto-approval restriction a window forwarded.
-      ...ctx.schemaPolicy(),
+      // the auto-approval restriction a window forwarded, the owner's own where
+      // they keep one.
+      ...restrictedAt(ctx.schemaPolicy(), approvalSetting(options, ctx.rootConfig, ownerOfSession, 'autoApprovePolicyRestricted') === true),
       ...(userSettings === undefined ? {} : { userSettings }),
       ...(sender?.principal === undefined ? {} : { reader: sender.principal }),
       ...(ownerOfSession === undefined ? {} : { owner: ownerOfSession }),

@@ -1,6 +1,6 @@
 ---
 title: The auto-approve restriction is a person's own
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:

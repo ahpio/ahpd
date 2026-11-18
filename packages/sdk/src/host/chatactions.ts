@@ -6,7 +6,7 @@ import { filesOf, needsAsyncRewrite, snapshot } from './attachments.js';
 import { chatUriFor, isRootChannel, RELAYED, ROOT, spaceOf, WORKER_ACTIONS } from './channels.js';
 import { HOSTS_OWN, HOSTS_TAKEN } from './common.js';
 import { ALLOW_ALL_SESSION_OPTION_ID, grantOf, withGrant } from './permissions.js';
-import { filePersonRules, personOf } from '../access/personrules.js';
+import { approvalSetting, filePersonRules, personOf } from '../access/personrules.js';
 import { autoApproved, requireTrust, requireWorktreeTrust } from './trust.js';
 import { readAgentPermissionResponseMeta } from '../vscode/agentpermissionresponsemeta.js';
 import { filterChatConfigValues, validateChatConfigWrite } from '../vscode/chatconfig.js';
@@ -2248,7 +2248,7 @@ export function chatAction(
        * session's config, and the call keeps asking.
        */
       const allowsAll = action.approved === true && action.selectedOptionId === ALLOW_ALL_SESSION_OPTION_ID;
-      if (allowsAll && (rootConfig.autoApprovePolicyRestricted === true
+      if (allowsAll && (approvalSetting(ctx.options, rootConfig, kept.owner(idOf(session.uri)), 'autoApprovePolicyRestricted') === true
         || ctx.options.managedSettingsPermissions?.disableBypassPermissionsMode === 'disable')) {
         no('Allow All is turned off on this host');
         break;
@@ -2258,13 +2258,16 @@ export function chatAction(
         break;
       }
       // The decision the held state takes, said, and then handed to the
-      // backend with who decided, as the client's `_meta` says it.
+      // backend with who decided, as the client's `_meta` says it. A client
+      // answers for a person, so `host_policy`, the host's own answer, is no
+      // source it may name.
       dispatch(worker ? channel : session.chatUri, action, origin);
+      const source = readAgentPermissionResponseMeta(action as { _meta?: Record<string, unknown> }).decisionSource;
       session.confirm(
         toolCallId,
         action.approved === true,
         typeof action.selectedOptionId === 'string' ? action.selectedOptionId : undefined,
-        readAgentPermissionResponseMeta(action as { _meta?: Record<string, unknown> }).decisionSource,
+        source === 'host_policy' ? undefined : source,
       );
       /*
        * An approval that picked a grant keeps it, as VS Code's host keeps one:
