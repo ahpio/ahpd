@@ -8,6 +8,7 @@ refs:
   - "[code://packages/computer/src/sandbox.ts](../../packages/computer/src/sandbox.ts) - where the computer plugin runs the runtime's CLI"
   - https://github.com/advisories/GHSA-mrhx-c7xc-m3w5 - "Zod can exhaust memory while validating oversized constrained collections", fixed in zod 4.6.6
   - https://github.com/anthropics/sandbox-runtime - `@anthropic-ai/sandbox-runtime` 0.0.83, still on `zod ^3.25.0` on 2026-11-18
+  - https://github.com/anthropics/sandbox-runtime/issues/778 - the issue asking the runtime to allow zod 4, with the finding that zod/v3 imports never load the flawed code
 ---
 
 ## Symptom
@@ -26,7 +27,8 @@ No release of the runtime uses zod 4: the VS Code package has no later release, 
 ## Impact
 
 npm prints the warnings on every plugin install and update in the configuration folder.
-The risk is low. Zod runs in the runtime's CLI, a child process, and checks the settings file the host writes for it. Only a person who may change the host's configuration sets those values.
+The flawed code is not run. The advisory is in `$ZodArray.handleArrayResult`, which zod 3.25.76 ships only in its v4 core.
+The runtime imports bare `zod`, which zod 3.25.76 resolves to its v3 code. On 2026-11-18, importing the runtime loaded 10 zod files and none under `v4/`.
 
 ## Workaround
 
