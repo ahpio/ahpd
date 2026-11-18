@@ -37,9 +37,9 @@ These hurt a user of machines and nodes, a smaller group than the ones above.
 
 | # | Problem | Severity |
 | --- | --- | --- |
-| 14 | [a-disposed-session-not-held-leaves-its-machine.md](../problems/a-disposed-session-not-held-leaves-its-machine.md) | major |
-| 15 | [a-removed-node-keeps-serving-its-running-sessions.md](../problems/a-removed-node-keeps-serving-its-running-sessions.md) | major |
-| 16 | [node-rm-at-the-terminal-does-not-drop-a-joined-node.md](../problems/node-rm-at-the-terminal-does-not-drop-a-joined-node.md) | major |
+| 14 | [a-disposed-session-not-held-leaves-its-machine.md](../plans/container/20261118-1108-a-disposed-session-leaves-its-machine/plan.md), now planned | major |
+| 15 | [a-removed-node-keeps-serving-its-running-sessions.md](../plans/container/20261118-1107-a-removed-node-is-cut-off-at-once/plan.md), now planned | major |
+| 16 | [node-rm-at-the-terminal-does-not-drop-a-joined-node.md](../plans/container/20261118-1107-a-removed-node-is-cut-off-at-once/plan.md), now planned | major |
 | 17 | [a-dev-container-stop-misses-a-session-placed-by-computer-uri.md](../problems/a-dev-container-stop-misses-a-session-placed-by-computer-uri.md) | major |
 
 ## Minor, a person sees it
