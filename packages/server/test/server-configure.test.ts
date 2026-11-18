@@ -310,6 +310,16 @@ it('generates a token on Enter, and keeps the one already there', async () => {
   expect(readFileSync(tokenFile(), 'utf8').trim()).toBe(generated);
 });
 
+it('reads a relative token file against the configuration folder, and keeps it as written', async () => {
+  put({ connectionTokenFile: 'secret-token' });
+  writeFileSync(join(configDir, 'secret-token'), 'kept\n');
+  const { said } = await asked('', '', '', '', '', '', '', '');
+  expect(said).toContain(`${join(configDir, 'secret-token')} still holds the token.`);
+  expect(readFileSync(join(configDir, 'secret-token'), 'utf8').trim()).toBe('kept');
+  expect(read().connectionTokenFile).toBe('secret-token');
+  expect(existsSync(join(process.cwd(), 'secret-token'))).toBe(false);
+});
+
 it('keeps a token written as a literal, moving it into the token file', async () => {
   put({ connectionToken: 'old-shh' });
   const { said } = await asked('', '', '', '', '', '', '', '');
@@ -736,6 +746,18 @@ describe('people and policies', () => {
     const { said } = await asked(...today(), '', '', '');
     expect(said).toContain('The store already has a row everyone-agent, so no agent row was written.');
     expect(rowsOf().find((row) => row.id === 'everyone-agent')?.match).toEqual({ agent: ['claude'] });
+  });
+
+  it('reads a relative users path against the configuration folder, and keeps it as written', async () => {
+    put({ users: 'people.json' });
+    writeFileSync(join(configDir, 'people.json'), JSON.stringify({ roles: { senders: ['session:read'] }, users: [] }));
+    const { said } = await asked(...today(), 'y', 'erin', '');
+    // The file's own role is offered, which only the file beside the
+    // configuration holds.
+    expect(said).toContain('Roles (admin, guest, member, senders; comma-separated) [member]: ');
+    expect(usersOf(join(configDir, 'people.json')).map((one) => one.id)).toEqual(['erin']);
+    expect(read().users).toBe('people.json');
+    expect(existsSync(join(process.cwd(), 'people.json'))).toBe(false);
   });
 
   it('offers no row and writes no store with the checks off', async () => {

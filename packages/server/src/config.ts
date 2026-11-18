@@ -1024,6 +1024,13 @@ export interface LoadedConfig {
 }
 
 /**
+ * A path a configuration file names, read against that file's folder unless it
+ * is absolute. What the daemon reads `users`, `connectionTokenFile` and the
+ * other path keys as, so a command that edits the file reads the same files.
+ */
+export const besideFile = (file: string, path: string): string => (isAbsolute(path) ? path : resolve(dirname(file), path));
+
+/**
  * `values` with every relative path made absolute against the directory of the
  * file that set it: `paths`, `worktreesRoot`, `users`, `connectionTokenFile`
  * and `commandParser`.
@@ -1035,7 +1042,7 @@ const anchored = (values: Record<string, unknown>, sourceOf: (key: string) => st
   const out: Record<string, unknown> = { ...values };
   const at = (key: string, path: string): string => {
     const file = sourceOf(key);
-    return file === undefined || isAbsolute(path) ? path : resolve(dirname(file), path);
+    return file === undefined ? path : besideFile(file, path);
   };
   for (const key of ['users', 'connectionTokenFile', 'worktreesRoot', 'commandParser']) {
     const value = out[key];
