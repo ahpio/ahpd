@@ -30,7 +30,7 @@ import { callPartOf, confirmationOptions, contentOf, mapUpdate, questionsFor, ty
 import type { AcpTurn, PermissionAnswer } from '../types.js';
 import { messageIdOf } from '../transcript.js';
 import { bag } from './common.js';
-import { machineIdOf } from './opening.js';
+import { askMachine, machineIdOf } from './opening.js';
 import type { HeldTerminal, SessionContext } from './context.js';
 
 /** Everything the server sends this session: its updates, its requests and the answers to them. */
@@ -493,12 +493,12 @@ export function createHandlers(ctx: SessionContext): Handlers {
       if (computers === undefined) {
         throw new Error(`This session asked to run in ${id}, and this host has no computer plugin to run it in`);
       }
-      const how = await computers.how(id, {
+      const how = await askMachine(ctx.options, id, 'terminal', () => computers.how(id, {
         command: request.command,
         ...(request.args !== undefined && request.args.length > 0 ? { args: request.args } : {}),
         ...(env === undefined ? {} : { env }),
         ...(request.cwd === undefined || request.cwd === null ? {} : { cwd: hostPathOf(request.cwd) }),
-      });
+      }));
       if (how === undefined) throw new Error(`There is no computer called ${id}`);
       // The host's own folder is where the descriptor's program starts; the
       // directory the command itself works in is the machine's, in the argv

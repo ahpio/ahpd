@@ -542,6 +542,10 @@ const OF_A_VARIANT: Record<string, Bag> = {
     description: "Endpoints whose model lists this record offers, each filtered by match. key is the bearer token, written as { fromEnv } or { \"$secret\" }.",
   },
   keepCliModels: { type: 'boolean', description: 'With models, add them to the CLI model list rather than replace it.' },
+  computerConfigDir: {
+    anyOf: [{ type: 'string' }, { const: false }],
+    description: "Claude CLI configuration directory inside a computer, over the plugin's. Set to false to keep the computer image's own configuration.",
+  },
 };
 
 /**
@@ -554,13 +558,32 @@ const OF_A_VARIANT: Record<string, Bag> = {
  * `models`, `modelSources` and `keepCliModels` stay, because which models a
  * record offers is this backend's question and not the channel's.
  */
-export const kindSchema = (): Bag => ({
-  type: 'object',
-  properties: {
+export const kindSchema = (): Bag => {
+  const fields: Bag = {
     ...Object.fromEntries(Object.entries(DECLARED).map(([name, one]) => [name, one.schema])),
     ...OF_A_VARIANT,
-  },
-});
+  };
+  // A field FORM_ORDER does not name goes last, so the form never loses it.
+  const named = FORM_ORDER.filter((name) => name in fields);
+  const rest = Object.keys(fields).filter((name) => !FORM_ORDER.includes(name));
+  return { type: 'object', properties: Object.fromEntries([...named, ...rest].map((name) => [name, fields[name]])) };
+};
+
+/**
+ * The order a record's form draws its fields in, by purpose: the models, the
+ * prompt, the tools, the run, the machine, and the tuning last. `DECLARED`
+ * keeps its own order, which is the order its options are gathered in.
+ */
+const FORM_ORDER: readonly string[] = [
+  'models', 'modelSources', 'keepCliModels',
+  'outputStyle', 'thinking',
+  'hostTools', 'hostTasks', 'enableTasks',
+  'env', 'logins', 'extraArgs', 'sandbox',
+  'computerConfigDir',
+  'cliStart', 'stopEnds', 'dontAsk', 'portFailures', 'subagentsFrom',
+  'taskOutputFirstWaitMs', 'taskOutputLongestWaitMs', 'taskOutputQuietReads', 'subagentTitleMax', 'subagentStartTimeoutMs',
+  'maxShellInitScript', 'maxTerminalOutputBytes', 'keepFramed', 'watchWaitMs', 'fileMostBytes', 'ruleDepth', 'ruleMost',
+];
 
 /** The options of one declaration, gathered into a single bag. */
 const through = (values: Bag, member: 'toQuery' | 'toFlags'): Bag => {

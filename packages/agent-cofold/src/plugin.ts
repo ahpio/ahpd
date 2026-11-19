@@ -86,7 +86,7 @@ const optionsOf = (values: Record<string, unknown>): CofoldOptions => {
  * plugin forgives a configuration written for a later cofold: both are the
  * plugin's own, not something a JSON record can carry or usefully say.
  */
-const NOT_A_RECORD = new Set(['provider', 'displayName', 'description', 'model', 'adapter', 'strictTools']);
+const NOT_A_RECORD = new Set(['provider', 'displayName', 'description', 'model', 'adapter', 'strictTools', 'memory']);
 
 /**
  * The `tools` a record may name.
@@ -157,7 +157,6 @@ const RECORD_FIELDS = [
   'instructions',
   'computerConfigDir',
   'store',
-  'memory',
   'tools',
   'apiKey',
   'resource',
@@ -222,7 +221,7 @@ const engineOf = (defaults: CofoldOptions): Engine => ({
     description: 'Cofold on the harness configuration copapo reads, ~/.config/copapo/config.json and a project\'s .copapo.json, with nothing set here.',
     config: {},
   }],
-  hostOnly: ['computerConfigDir', 'store', 'memory'],
+  hostOnly: ['computerConfigDir', 'store'],
   open: (record) => cofoldAgent({
     ...optionsOfRecord(defaults, record),
     recordOf: () => optionsOfRecord(defaults, record),

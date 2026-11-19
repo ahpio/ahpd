@@ -100,12 +100,13 @@
     "optionsSchema": {
       "type": "object",
       "properties": {
-        "paths": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Directories to include in the workspace catalog and use as default session locations. Inherits the host's paths when omitted."
+        "model": {
+          "type": "string",
+          "description": "Default model for agents that don't set one."
+        },
+        "hostTools": {
+          "type": "boolean",
+          "description": "Offer the host's tools to each session. On by default. Each agent can override it."
         },
         "computerExecutable": {
           "type": "string",
@@ -136,10 +137,6 @@
           "type": "integer",
           "minimum": 1,
           "description": "Maximum time in milliseconds to wait for the Claude CLI handshake before treating startup as failed. Defaults to 120000 (2 minutes). Increase for slower computers."
-        },
-        "hostTools": {
-          "type": "boolean",
-          "description": "Offer the host's tools to each session. On by default. Each agent can override it."
         }
       }
     }
