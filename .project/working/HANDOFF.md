@@ -123,7 +123,7 @@ Current progress and pending items only, as of 2026-11-16. *Outside this reposit
 
 Remove each only on Softov's word.
 
-- On 2026-11-18, on Softov's word, the 11 worktrees on merged branches were removed with their branches. Left: `handoff` and `pending-check`, both in use, and `docs-plan` and `plugin-list-review`, detached and with no changes. `computer-facts-brief` is detached and holds a change that is not committed, so it stays.
+- On 2026-11-18, on Softov's word, the 11 worktrees on merged branches were removed with their branches. Left: `handoff` and `pending-check`, both in use, and `docs-plan` and `plugin-list-review`, detached and with no changes. `computer-facts-brief` is detached and holds a change that is not committed, so it stays. On 2026-11-19 its brief went to main as `24ba24911`, and `docs-plan`, `plugin-list-review` and `computer-facts-brief` were removed. Left: `handoff`, and `pending-check`, the test daemon's checkout.
 - About 60 local branches have no worktree, from plans built before 2026-11-12. `git branch` lists them, and deleting them waits for Softov's word.
 - Another session left changes in `/github/ahpd` that are not committed. They are the brief `a-cloudflare-tunnel-publishes-the-daemon.md` and the new brief `the-agents-are-listed-by-provider.md`. Leave them.
 - `/github/ahpw` is on `host-refine-ui`, from another session. Its local main is fast-forwarded with `git fetch origin main:main`.
