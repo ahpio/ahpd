@@ -59,6 +59,9 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 | acp gets `portFailures`, with Claude's values `spawn` and `message`, and `spawn` the default | Softov, 2026-11-19: "Add portFailures to acp (Recommended)" | 03 |
 | acp's `spawn` sentence is `The agent could not start in computer://<id>.`, and the raw message goes to the daemon's log | (defaulted: acp has no SDK to say one, and the log keeps what the client is not shown) | 03 |
 | The order of each form is the table of *Field order* | Softov's answers, 2026-11-19 | 01, 02, 03 |
+| Claude's record order is a list in `kindSchema`; `DECLARED` keeps its order | (defaulted: `DECLARED` is the order the options merge in, so moving it could change a value) | 01 |
+| `portFailures` covers a session and a terminal; a listing keeps the raw message in the log | (defaulted: a listing's failure is said only in the log, so a short sentence there hides the cause) | 03 |
+| A terminal says `The terminal could not start in computer://<id>.` | (defaulted: the sentence names what failed) | 03 |
 | A line in the unreleased notes of 0.15.0 | (defaulted: the notes say each change on main) | 01, 02, 03 |
 
 ## Field order
@@ -72,7 +75,7 @@ The groups in order: Model, Prompt, Tools, Run, Folders and trust, Machines, Tun
 | claude plugin | `model`, `hostTools`, `computerExecutable`, `computerCli`, `computerCliFallback`, `computerConfigDir`, `handshakeTimeoutMs` |
 | claude record | `models`, `modelSources`, `keepCliModels`, `outputStyle`, `thinking`, `hostTools`, `hostTasks`, `enableTasks`, `env`, `logins`, `extraArgs`, `sandbox`, `computerConfigDir`, `cliStart`, `stopEnds`, `dontAsk`, `portFailures`, `subagentsFrom`, `taskOutputFirstWaitMs`, `taskOutputLongestWaitMs`, `taskOutputQuietReads`, `subagentTitleMax`, `subagentStartTimeoutMs`, `maxShellInitScript`, `maxTerminalOutputBytes`, `keepFramed`, `watchWaitMs`, `fileMostBytes`, `ruleDepth`, `ruleMost` |
 | cofold plugin | `model`, `baseUrl`, `apiKey`, `resource`, `models`, `instructions`, `autoCompactTokens`, `autoCompactAt`, `hostTools`, `tools`, `strictTools`, `store`, `computerConfigDir`, `catalogueTimeoutMs`, `memory` |
-| cofold record | `baseUrl`, `apiKey`, `resource`, `models`, `instructions`, `autoCompactTokens`, `autoCompactAt`, `hostTools`, `tools`, `store`, `computerConfigDir` |
+| cofold record | `baseUrl`, `apiKey`, `resource`, `models`, `instructions`, `autoCompactTokens`, `autoCompactAt`, `hostTools`, `tools`, `store`, `computerConfigDir`, `catalogueTimeoutMs` |
 | pi plugin | `model`, `baseUrl`, `apiKey`, `hostTools`, `projectTrust`, `sessionDir` |
 | pi record | `baseUrl`, `apiKey`, `hostTools`, `env`, `projectTrust`, `sessionDir` |
 
@@ -86,9 +89,9 @@ The groups in order: Model, Prompt, Tools, Run, Folders and trust, Machines, Tun
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - the fields follow one order](task-01-the-fields-follow-one-order.md) | todo | - |
-| [02 - claude takes the host's paths](task-02-claude-takes-the-hosts-paths.md) | todo | 01 |
-| [03 - acp says a machine failure short](task-03-acp-says-a-machine-failure-short.md) | todo | 01 |
+| [01 - the fields follow one order](task-01-the-fields-follow-one-order.md) | done | - |
+| [02 - claude takes the host's paths](task-02-claude-takes-the-hosts-paths.md) | done | 01 |
+| [03 - acp says a machine failure short](task-03-acp-says-a-machine-failure-short.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -97,8 +100,8 @@ The groups in order: Model, Prompt, Tools, Run, Folders and trust, Machines, Tun
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-the-fields-follow-one-order.md](task-01-the-fields-follow-one-order.md).
+- **Done so far:** tasks 01 to 03, on branch `plugin/01-agent-settings-follow-one-order`, in #385.
+- **Next action:** CI on #385, the merge on Softov's word, then `implemented.md`.
 - **Open questions:** none.
 - **Watch out for:** a cofold or pi record takes the options' order. A field the record sets again keeps the place of its first key.
 

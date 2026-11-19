@@ -1,6 +1,6 @@
 ---
 title: Claude takes the host's paths, a default model and a record's config folder
-status: todo
+status: done
 depends: [task-01-the-fields-follow-one-order.md]
 layer: "agent-claude"
 refs:

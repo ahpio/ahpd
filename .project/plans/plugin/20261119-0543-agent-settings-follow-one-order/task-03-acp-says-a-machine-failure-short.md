@@ -1,6 +1,6 @@
 ---
 title: acp says a machine that could not start it in a short sentence
-status: todo
+status: done
 depends: [task-01-the-fields-follow-one-order.md]
 layer: "agent-acp"
 refs:
