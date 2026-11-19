@@ -10,7 +10,7 @@ changes: []
 creates: []
 refs:
   - git://7d76d5895 - the commit of ahpd this plan was checked at
-  - "[code://.project/briefs/agent-settings-at-plugin-and-record.md#L95](../../../briefs/agent-settings-at-plugin-and-record.md#L95) - the brief's blue circle for pi's `baseUrl` and `apiKey`, which this plan covers"
+  - "git://8ba783e1c - the agent settings brief, with the blue circle for pi's `baseUrl` and `apiKey` that this plan covers"
   - "[code://packages/agent-pi/package.json#L81](../../../../packages/agent-pi/package.json#L81) - the plugin's options, with no `baseUrl` or `apiKey`"
   - "[code://packages/agent-pi/src/plugin.ts#L87](../../../../packages/agent-pi/src/plugin.ts#L87) - `RECORD_FIELDS`, the record fields a turn runs on"
   - "[code://packages/agent-pi/src/plugin.ts#L124-L136](../../../../packages/agent-pi/src/plugin.ts#L124-L136) - `kindSchema`, the record's form"
