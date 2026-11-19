@@ -21,6 +21,7 @@ An anonymous 31546 is refused on a daemon with no connection token and no users,
 - CI on #364 passed every check, Windows included, and it merged as `d55de8382`.
 - Each task file says what its cases check.
 - The anonymous checks on Softov's dev daemon passed on 2026-11-18. No token and the derived tokens got `401`, and his own token got the session list.
+- Softov ran the rest by hand on 2026-11-18, and it passed. On a daemon with no token and no users, the anonymous 31546 was refused. The row said to set a connection token or a users file. VS Code connected through the tunnel with `anonymous` off.
 
 ## Departures from the plan
 
@@ -28,4 +29,4 @@ An anonymous 31546 is refused on a daemon with no connection token and no users,
 
 ## Left for later
 
-- The VS Code connect with `anonymous` off, and the daemon with no token and no users, in [pending/tunnel-token-checks.md](../../../pending/tunnel-token-checks.md).
+- none

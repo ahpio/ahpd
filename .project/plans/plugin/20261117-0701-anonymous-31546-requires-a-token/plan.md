@@ -80,7 +80,7 @@ visitor on 31546 -> hop -> signed in: swap the derived token as today
 
 ## Resume state
 
-- **Checks, 2026-11-18:** the suites passed at `2946984b6`. The checks that need the Dev Tunnel account are in [pending/tunnel-token-checks.md](../../../pending/tunnel-token-checks.md). On 2026-11-18, Softov's dev daemon refused no token and both derived tokens over the anonymous 31546, and admitted his own token.
+- **Checks, 2026-11-18:** the suites passed at `2946984b6`. The checks that need the Dev Tunnel account passed on 2026-11-18, as [implemented.md](implemented.md) says. git://fe8c59241 is the last commit that holds their file. On 2026-11-18, Softov's dev daemon refused no token and both derived tokens over the anonymous 31546, and admitted his own token.
 - **Done so far:** tasks 01 to 03 are `implemented` on 2026-11-17, on the branch `plugin/20261117-0701-anonymous-31546-requires-a-token`.
 - **Next action:** none, the plan is built.
 - **Open questions:** none.

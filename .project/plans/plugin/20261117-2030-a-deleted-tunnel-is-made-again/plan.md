@@ -76,7 +76,7 @@ running op or page read -> 404 -> kind: service.forget(connector) -> every recor
 
 ## Resume state
 
-- **Checks, 2026-11-18:** the suites passed at `2946984b6`. The checks that need the Dev Tunnel account are in [pending/tunnel-token-checks.md](../../../pending/tunnel-token-checks.md).
+- **Checks, 2026-11-18:** the suites passed at `2946984b6`. The checks that need the Dev Tunnel account passed on 2026-11-18, as [implemented.md](implemented.md) says. git://fe8c59241 is the last commit that holds their file.
 - **Done so far:** tasks 01 to 03 are `implemented` on 2026-11-17, on the branch `plugin/20261117-2030-a-deleted-tunnel-is-made-again`.
 - **Next action:** none, the plan is built.
 - **Open questions:** none.

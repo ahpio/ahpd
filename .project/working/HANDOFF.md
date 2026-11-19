@@ -129,7 +129,7 @@ Remove each only on Softov's word.
 
 ## Plans waiting to close
 
-- On 2026-11-18, the checklists of 12 plans ran on the test daemon and the suites at `2946984b6`. Nine passed in full. On Softov's word they are `built` since 2026-11-18, each with its `implemented.md`: host/20261116-2126, host/20261116-2128, host/20261116-2134, host/20261117-0525, host/20261117-0842, host/20261117-1047, host/20261117-2149, host/20261117-2336 and daemon/20261118-0129. The three tunnel plans, plugin/20261117-0701 (two) and plugin/20261117-2030, wait on [pending/tunnel-token-checks.md](../pending/tunnel-token-checks.md).
+- On 2026-11-18, the checklists of 12 plans ran on the test daemon and the suites at `2946984b6`. Nine passed in full. On Softov's word they are `built` since 2026-11-18, each with its `implemented.md`: host/20261116-2126, host/20261116-2128, host/20261116-2134, host/20261117-0525, host/20261117-0842, host/20261117-1047, host/20261117-2149, host/20261117-2336 and daemon/20261118-0129. The three tunnel plans, plugin/20261117-0701 (two) and plugin/20261117-2030, passed their checks by hand on 2026-11-18 and are `built`.
 Each plan here has every task `implemented`, and closes as `built` on Softov's word after his review.
 
 - The Windows check of 2026-11-12, [results](../pending/windows-machine-paths-checks.md#results-on-windows-2026-11-12): the seven plans of #304 to #310. They close after the Windows check runs again.
