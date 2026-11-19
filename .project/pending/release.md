@@ -12,15 +12,15 @@ A pushed `v*` tag runs [release.yml](../../.github/workflows/release.yml) and st
 
 What 0.15.0 waits for, as Softov chose on 2026-11-18. rc.4 is the last release candidate on npm.
 
-1. *The check by hand.* Softov makes `compclau` again on the parts of #336 with a Claude session in it.
-2. *A working day on the daemon* on main after #383, which holds the fixes. rc.4 does not.
-3. *The web UI.* `@ahpd/web` declares its sdk peer as `>=0.9`, which npm does not match to a prerelease, so npm refuses it beside rc.4. The fix is in ahpw.
-4. *The release.* The notes' summary covers the whole of 0.15, and the release candidate sections join under `0.15.0`. The bump, a dry run, the tag on Softov's word, and npm's `latest` once he approves the staged packages.
+1. *A working day on the daemon* on main after #383, which holds the fixes. rc.4 does not.
+2. *The web UI.* npm refuses `@ahpd/web@0.9.0-rc.3` beside rc.4, since its sdk peer is `>=0.9`. ahpw branch `release/sdk-range` sets `>=0.15.0-rc.2`, which npm takes beside rc.4. A release of `@ahpd/web` follows its merge.
+3. *The release.* The notes' summary covers the whole of 0.15, and the release candidate sections join under `0.15.0`. The bump, a dry run, the tag on Softov's word, and npm's `latest` once he approves the staged packages.
 
 Seven major problems wait for 0.16 by the same choice, and each says so in its *Fix*. `globalAutoApproveEnabled` keeps VS Code's meaning: [global-auto-approve-keeps-vs-codes-meaning.md](../decisions/global-auto-approve-keeps-vs-codes-meaning.md).
 
 ## Done
 
+- **The check by hand.** Softov made `compclau` again on 2026-11-19. Its first failure was the sign-in, and a session with a connector worked.
 - **The fixes before 0.15.0.** Nine problems were fixed by seven plans, merged on 2026-11-18 as #377 to #383. Each plan is `built`, and its `implemented.md` holds the checks: host/20261118-1043, plugin/20261118-1103, host/20261118-1104, daemon/20261118-1105, plugin/20261118-1106, container/20261118-1107 and container/20261118-1108.
 - **The built plans closed** on 2026-11-18, on Softov's word: the three tunnel plans, daemon/20261118-0603, host/20261118-0603, host/20261116-1714 and plugin/20261116-1816. The tunnel plans' checks by hand passed on 2026-11-18.
 - **The rc.4 release.** #376 sets `0.15.0-rc.4` and holds the notes for #321 to #375. Dry run 44258114344 passed on its branch. Its PR's `image` failed only because npm did not serve `@ahpd/sdk@0.15.0-rc.4` yet. After the update, npm warns of one zod advisory in `@vscode/sandbox-runtime`: [the-sandbox-runtime-carries-a-zod-advisory.md](../problems/the-sandbox-runtime-carries-a-zod-advisory.md).

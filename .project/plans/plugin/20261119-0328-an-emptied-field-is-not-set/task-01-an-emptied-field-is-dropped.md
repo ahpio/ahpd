@@ -1,6 +1,6 @@
 ---
 title: An emptied optional field is dropped before the check
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:
@@ -20,13 +20,14 @@ An operation's input leaves out each optional top-level field that is `""` and t
 ## Steps
 
 1. In `inputOf`, read the schema's `properties` and `required`.
-2. For each input field that is `""` and not required, check `""` alone against that field's schema with `check`.
+2. For each optional field that is `""` and not `secret`, check `""` against its schema with `check`.
 3. Leave out each field whose check refuses `""`.
 4. Check the rest of the input, and answer it to the channel.
 5. Add a case: an update with `person: ""` on a field that takes `^user:.+$` runs, and the input has no `person`.
 6. Add a case: a required field sent as `""` is still refused.
 7. Add a case: an optional field whose schema takes `""` keeps it.
-8. Add a line to the unreleased notes.
+8. Add a case: a blank secret reaches the check unchanged.
+9. Add a line to the unreleased notes.
 
 ## Validation
 

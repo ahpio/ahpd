@@ -39,6 +39,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 | --- | --- | --- |
 | The host reads `""` in an optional field as absent, before the check | Softov, 2026-11-19: "In the host (Recommended)" | 01 |
 | Only a field the schema does not require, and whose schema refuses `""`, is dropped | (defaulted: a `""` the schema takes is a value the person meant) | 01 |
+| A field marked `secret` keeps its `""` | (defaulted: a blank secret means the stored one stays, and the tunnels channel resolves it; a drop would erase the secret) | 01 |
 | Only the top-level fields of the input | (defaulted: a form edits top-level settings) | 01 |
 | The check of the field's own schema is the `check` the operation already uses | (defaulted: one validator, so the two never differ) | 01 |
 
@@ -52,7 +53,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - an emptied field is dropped](task-01-an-emptied-field-is-dropped.md) | todo | - |
+| [01 - an emptied field is dropped](task-01-an-emptied-field-is-dropped.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -60,8 +61,8 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-an-emptied-field-is-dropped.md](task-01-an-emptied-field-is-dropped.md).
+- **Done so far:** task 01, on branch `plugin/01-an-emptied-field-is-not-set`.
+- **Next action:** the PR, then the check in ahpw.
 - **Open questions:** none.
 - **Watch out for:** a required field keeps its refusal, so a form still says it must be filled.
 
