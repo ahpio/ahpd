@@ -6,7 +6,7 @@ plans:
 
 # Check the anonymous tunnel gate
 
-These need your dev daemon's Dev Tunnel, `giant-ant-5q89765` in cluster `brs`, signed in as you. The suites of all three plans pass on main at `2946984b6`.
+These need your dev daemon's Dev Tunnel, `giant-ant-5q89765` in cluster `brs`, signed in as you. The plan's suites pass on main at `2946984b6`.
 
 ## Set up
 
