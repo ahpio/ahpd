@@ -165,7 +165,7 @@ it('registers the claude engine, its template and host-only field', async () => 
   expect(engine).toMatchObject({
     name: 'claude',
     title: 'Claude Code',
-    hostOnly: ['extraArgs'],
+    hostOnly: ['extraArgs', 'computerConfigDir'],
     keyVariables: ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN'],
   });
   // The agent a record from it serves is named as VS Code's Claude agent is.
@@ -176,7 +176,7 @@ it('registers the claude engine, its template and host-only field', async () => 
   // record's config is what this engine runs and nothing a second engine spells.
   const fields = Object.keys((engine?.schema.properties ?? {}) as Bag).sort();
   expect(fields).toEqual([
-    'cliStart', 'dontAsk', 'enableTasks', 'env', 'extraArgs', 'fileMostBytes', 'hostTasks', 'hostTools', 'keepCliModels', 'keepFramed', 'logins', 'maxShellInitScript',
+    'cliStart', 'computerConfigDir', 'dontAsk', 'enableTasks', 'env', 'extraArgs', 'fileMostBytes', 'hostTasks', 'hostTools', 'keepCliModels', 'keepFramed', 'logins', 'maxShellInitScript',
     'maxTerminalOutputBytes', 'modelSources', 'models', 'outputStyle', 'portFailures', 'ruleDepth', 'ruleMost', 'sandbox', 'stopEnds',
     'subagentStartTimeoutMs', 'subagentTitleMax', 'subagentsFrom', 'taskOutputFirstWaitMs', 'taskOutputLongestWaitMs', 'taskOutputQuietReads',
     'thinking', 'watchWaitMs',

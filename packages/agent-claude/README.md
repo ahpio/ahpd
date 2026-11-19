@@ -30,7 +30,7 @@ Update, remove and one-run flags such as `--plugin` are in [Plugins](https://git
 ```json
 {
   "plugins": [
-    { "name": "@ahpd/agent-claude", "options": { "paths": ["/work/project"] } }
+    { "name": "@ahpd/agent-claude", "options": { "model": "sonnet" } }
   ]
 }
 ```
@@ -41,13 +41,13 @@ Every option below is a key under `options` in the plugin's entry, and the daemo
 
 | Option | Default | What it does |
 | --- | --- | --- |
-| `paths` | the host's directories | The directories it works in; the first is where a session goes when a client names none |
+| `model` | the CLI's default | The model of an agent that names none; an agent's own `model` wins |
+| `hostTools` | `true` | Whether the host's own tools reach each session. A record can turn them off for one agent |
 | `computerExecutable` | `claude` | Where the CLI is *inside a machine* |
 | `computerCli` | `part` | Where the CLI a machine runs comes from |
 | `computerCliFallback` | `refuse` | With `computerCli: "part"`, what a machine gets when the `claude` part cannot be built |
 | `computerConfigDir` | `/ahpd/<id>`, or `/ahpd/claude` for the first record | The configuration directory the CLI reads *inside a machine*; `false` leaves the image's own |
 | `handshakeTimeoutMs` | `120000` | How long the CLI has to answer its handshake, the bound the SDK's `startup` is handed |
-| `hostTools` | `true` | Whether the host's own tools reach each session. A record can turn them off for one agent |
 
 `computerCli` is `part`, the `claude` part this host builds at its pinned version, or `host`, which mounts this host's own installed CLI. `computerCliFallback` is `refuse`, which refuses a Claude session in a machine and names the part, or `host`, which mounts this host's own CLI instead and logs that it did. `handshakeTimeoutMs` is how long a CLI has to take the control request that says it is up: a cold start with several MCP servers is slow, and a machine slower than that is what the option is for. A session starts its CLI through the SDK's `startup`, as VS Code's Claude does, and hands it this bound: a CLI that misses it did not start, the SDK closes it, the turn fails in the SDK's words, and the next send starts a CLI again.
 
@@ -60,16 +60,21 @@ An agent is a record on `x-ahpd-agents`: `{ id, engine, owner, name, description
 | `models` | the CLI's own list | The models that agent offers in the picker, each an `{ "id", "name" }` |
 | `modelSources` | none | Endpoints whose model lists that agent also offers, each `{ "fetch", "match", "key" }` |
 | `keepCliModels` | `false` | With either list, add them to the CLI's list rather than replace it |
-| `sandbox` | `default` | The CLI's own sandbox for shell commands: `default` leaves it to the settings files, `on` and `off` set it. `on` runs a sandboxed Bash command without a prompt |
-| `thinking` | `adaptive` | Extended thinking: `adaptive` lets the agent decide when to think, `disabled` is none |
 | `outputStyle` | none | The name of a style from the CLI's own settings |
+| `thinking` | `adaptive` | Extended thinking: `adaptive` lets the agent decide when to think, `disabled` is none |
+| `hostTools` | `true` | Whether the host's own tools reach this agent's sessions. Off drops them and keeps each client's tools |
+| `hostTasks` | `true` | Whether Claude leaves its own task tools to the host's `task_add`. Off keeps them, and their calls write the session's plan |
+| `enableTasks` | `true` | Whether Claude's own Task tools are on when Claude keeps its task tools; off starts the CLI with `CLAUDE_CODE_ENABLE_TASKS=0`, which gives it `TodoWrite` instead |
 | `env` | none | Variables for the CLI's process, laid over the daemon's own environment on this host, and the whole of it in a machine |
 | `logins` | none | The Claude logins the agent runs on, by the id of a `claude-login` connector, in the order a turn tries them. See [Several logins](#several-logins) |
 | `extraArgs` | none | Arguments the CLI is started with beyond the ones this backend builds. **Host records only** |
-| `hostTasks` | `true` | Whether Claude leaves its own task tools to the host's `task_add`. Off keeps them, and their calls write the session's plan |
-| `hostTools` | `true` | Whether the host's own tools reach this agent's sessions. Off drops them and keeps each client's tools |
-| `enableTasks` | `true` | Whether Claude's own Task tools are on when Claude keeps its task tools; off starts the CLI with `CLAUDE_CODE_ENABLE_TASKS=0`, which gives it `TodoWrite` instead |
+| `sandbox` | `default` | The CLI's own sandbox for shell commands: `default` leaves it to the settings files, `on` and `off` set it. `on` runs a sandboxed Bash command without a prompt |
+| `computerConfigDir` | the plugin's | The configuration directory the CLI reads *inside a machine*, over the plugin's; `false` leaves the image's own. **Host records only** |
+| `cliStart` | `open` | When a session starts its CLI: `open` as the session is made, so its account, context and plan limits show before any turn; `send` at its first message, as VS Code's Claude agent makes a session provisional until then |
+| `stopEnds` | `turn` | What a stop ends: `turn` interrupts the turn through the SDK and keeps the CLI, ending only the workers the stopped turn spawned, and a steering message the CLI holds is answered after the stop in a turn of its own; `query` aborts the query as VS Code's agent does, its workers, its tasks and the steering it holds with it |
 | `dontAsk` | `true` | Whether the Approvals control offers the SDK's `dontAsk` beside VS Code's five modes; off offers VS Code's five alone |
+| `portFailures` | `spawn` | How a machine's port that could not start the CLI is said: `spawn` files it as a failure to start, so the turn fails in the SDK's one sentence for that, with no host path; `message` passes on the failure's own message, as VS Code's host shows a failed send's |
+| `subagentsFrom` | `meta` | Where a restored session's worker chats are read from: `meta` reads the CLI's worker files and links each by the call its meta file names, which tells two identical delegations apart; `sdk` reads them through the SDK's `listSubagents` and `getSubagentMessages` and links each as VS Code's agent does, by the `agentId` line of its call's result, else its prompt, else its last answer |
 | `taskOutputFirstWaitMs` | `500` | The first wait between the reads that follow a background shell's output, in milliseconds, as VS Code's output monitor waits |
 | `taskOutputLongestWaitMs` | `10000` | The longest wait between those reads, in milliseconds, each wait twice the last until it |
 | `taskOutputQuietReads` | `2` | How many reads in a row that find nothing new count the shell quiet, so its next output brings the wait back to the first, as VS Code's output monitor counts |
@@ -82,10 +87,6 @@ An agent is a record on `x-ahpd-agents`: `{ id, engine, owner, name, description
 | `fileMostBytes` | `65536` | The most of a customization file, in bytes, read for its frontmatter |
 | `ruleDepth` | `32` | How many folders deep a rules folder is walked |
 | `ruleMost` | `1000` | The most rule files read from one rules folder |
-| `cliStart` | `open` | When a session starts its CLI: `open` as the session is made, so its account, context and plan limits show before any turn; `send` at its first message, as VS Code's Claude agent makes a session provisional until then |
-| `stopEnds` | `turn` | What a stop ends: `turn` interrupts the turn through the SDK and keeps the CLI, ending only the workers the stopped turn spawned, and a steering message the CLI holds is answered after the stop in a turn of its own; `query` aborts the query as VS Code's agent does, its workers, its tasks and the steering it holds with it |
-| `portFailures` | `spawn` | How a machine's port that could not start the CLI is said: `spawn` files it as a failure to start, so the turn fails in the SDK's one sentence for that, with no host path; `message` passes on the failure's own message, as VS Code's host shows a failed send's |
-| `subagentsFrom` | `meta` | Where a restored session's worker chats are read from: `meta` reads the CLI's worker files and links each by the call its meta file names, which tells two identical delegations apart; `sdk` reads them through the SDK's `listSubagents` and `getSubagentMessages` and links each as VS Code's agent does, by the `agentId` line of its call's result, else its prompt, else its last answer |
 
 `extraArgs` is host-only: a team's or a person's record that sets one is refused, because an argument is where a command would come from. `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` in `env` are the engine's key variables, so any owner may set them; every other `env` variable is the host's alone, because a free environment can run a program.
 

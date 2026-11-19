@@ -319,8 +319,8 @@ describe('a first-party plugin', () => {
     ['activepieces', ['pieces', 'networkMode', 'ssrfAllowList', 'sandboxPropagatedEnvVars', 'logoLimitBytes', 'logoTimeoutMs']],
     ['agent-acp', ['hostTools', 'toolsChanged']],
     ['agent-claude', [
-      'paths', 'computerExecutable', 'computerCli', 'computerCliFallback', 'computerConfigDir',
-      'handshakeTimeoutMs', 'hostTools',
+      'model', 'hostTools', 'computerExecutable', 'computerCli', 'computerCliFallback', 'computerConfigDir',
+      'handshakeTimeoutMs',
     ]],
     ['agent-cofold', [
       'model', 'baseUrl', 'models', 'instructions', 'computerConfigDir', 'store', 'memory', 'tools', 'strictTools', 'apiKey',

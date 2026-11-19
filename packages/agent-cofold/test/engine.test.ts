@@ -131,17 +131,17 @@ it('registers the cofold engine, its form, its template and its host-only fields
   expect(engine).toMatchObject({
     name: 'cofold',
     title: 'Cofold',
-    hostOnly: ['computerConfigDir', 'store', 'memory'],
+    hostOnly: ['computerConfigDir', 'store'],
   });
   expect(typeof engine?.open).toBe('function');
 
   // The fields of one record: what this backend has, without the four the
-  // agents channel owns and without the two only an embedder can set.
+  // agents channel owns and without the ones only the plugin or an embedder sets.
   const fields = Object.keys((engine?.schema.properties ?? {}) as Bag).sort();
   expect(fields).toEqual([
-    'apiKey', 'autoCompactAt', 'autoCompactTokens', 'baseUrl', 'catalogueTimeoutMs', 'computerConfigDir', 'hostTools', 'instructions', 'memory', 'models', 'resource', 'store', 'tools',
+    'apiKey', 'autoCompactAt', 'autoCompactTokens', 'baseUrl', 'catalogueTimeoutMs', 'computerConfigDir', 'hostTools', 'instructions', 'models', 'resource', 'store', 'tools',
   ]);
-  for (const owned of ['provider', 'displayName', 'name', 'description', 'icon', 'model', 'adapter', 'policy', 'strictTools']) {
+  for (const owned of ['provider', 'displayName', 'name', 'description', 'icon', 'model', 'adapter', 'policy', 'strictTools', 'memory']) {
     expect(fields).not.toContain(owned);
   }
   // A record's key is vaulted and answered as set, never read back.

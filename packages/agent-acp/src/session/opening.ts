@@ -51,7 +51,7 @@ const SPAWN_KEYS = [
 const LIVE_KEYS = [
   'command', 'args', 'env', 'cwd', 'provider', 'displayName', 'description', 'model',
   'authenticate', 'authenticateInMachine', 'hostTools', 'honoursTrust', 'toolsChanged', 'machine', 'variant',
-  'cutTurns', 'stderrTail', 'modesFrom', 'unreportedClientCalls', 'findFreshMs',
+  'cutTurns', 'stderrTail', 'portFailures', 'modesFrom', 'unreportedClientCalls', 'findFreshMs',
   'listingIdleMs', 'sessionListMaxPages', 'exitGraceMs', 'stderrBytes', 'killGraceMs', 'closeGraceMs',
 ] as const;
 
@@ -194,6 +194,29 @@ const serversFor = async (
 };
 
 /**
+ * What a machine port answers, with a refusal said as `portFailures` says.
+ *
+ * `spawn`, the default, says `The <what> could not start in computer://<id>.`
+ * and logs the port's own message, which can name a socket path, a registry or
+ * an image. `message` passes the port's refusal on as it is.
+ */
+export const askMachine = async <T>(
+  options: Pick<AcpOptions, 'portFailures' | 'log' | 'provider'>,
+  id: string,
+  what: 'agent' | 'terminal',
+  ask: () => Promise<T>,
+): Promise<T> => {
+  try {
+    return await ask();
+  }
+  catch (error) {
+    if (options.portFailures === 'message') throw error;
+    options.log?.(`${options.provider}: computer://${id}: the ${what} could not start: ${error instanceof Error ? error.message : String(error)}`, 'error');
+    throw new Error(`The ${what} could not start in computer://${id}.`);
+  }
+};
+
+/**
  * The machine this session was told to run in, as its id, or nothing.
  *
  * A name that cannot be reached throws rather than falling back to this host: a
@@ -293,11 +316,11 @@ export function createOpening(ctx: SessionContext): Opening {
      * paths that mean anything inside the machine are its own. The port uses
      * the machine's working directory when the caller names none.
      */
-    const spawn = await computers.how(id, {
+    const spawn = await askMachine(options, id, 'agent', () => computers.how(id, {
       command: options.command,
       ...(options.args === undefined ? {} : { args: options.args }),
       ...(options.env === undefined ? {} : { env: options.env }),
-    });
+    }));
     if (spawn === undefined) throw new Error(`There is no computer called ${id}`);
     return spawn;
   };

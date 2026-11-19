@@ -173,6 +173,16 @@ export interface AcpOptions {
    */
   stderrTail?: 'sentence' | 'log';
   /**
+   * How a machine that could not start the server or a terminal is said.
+   *
+   * `spawn`, the default, says one short sentence with no host path, and the
+   * port's own message goes to the daemon's log; `message` passes the port's
+   * message on as it is, as VS Code's host shows a failed send's. The port's
+   * message can name a socket path, a registry or an image. Claude's
+   * `portFailures` takes the same two values.
+   */
+  portFailures?: 'spawn' | 'message';
+  /**
    * Where the agent's modes come from: the record's `modes`.
    *
    * `refreshed`, the default, lists the preset's modes until a session hears
