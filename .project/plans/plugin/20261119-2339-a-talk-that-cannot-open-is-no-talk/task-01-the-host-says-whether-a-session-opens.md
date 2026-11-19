@@ -1,6 +1,6 @@
 ---
 title: The host says whether a session opens
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:
@@ -42,4 +42,8 @@ With no host built over the plugin, it answers what the store keeps.
 - The sdk suite passes.
 
 ## Resume
+
+Built on 2026-11-19. With a host built, `sessionOpens` asks `opens` alone.
+The store's row is not asked first, because a session a plugin just started has no config row yet, and `opens` already checks the name.
+With no host built, it answers the store's row, as `sessionKept` does.
 

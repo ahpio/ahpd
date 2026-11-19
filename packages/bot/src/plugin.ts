@@ -555,7 +555,7 @@ export const apply: Plugin['apply'] = (host, options) => {
   const talks = botTalks({
     fronts,
     configDir: host.configDir,
-    kept: (uri) => host.sessionKept(uri),
+    opens: (uri) => host.sessionOpens(uri),
     owner: (uri) => host.sessionOwner(uri),
     // A talk written down is the bot again to the person whose talk it is.
     onKeep: (bot, talker, session) => { catalogue.talked(bot, talker, session); },

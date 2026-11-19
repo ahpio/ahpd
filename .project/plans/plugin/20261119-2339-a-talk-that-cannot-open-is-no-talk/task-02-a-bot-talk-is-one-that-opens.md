@@ -1,6 +1,6 @@
 ---
 title: A bot talk is one that opens
-status: todo
+status: done
 depends: [task-01-the-host-says-whether-a-session-opens.md]
 layer: "bot"
 refs:
@@ -42,4 +42,9 @@ A talk with no message, after a restart, is no talk: a read of the bot answers n
 - On the test daemon, Solar's talk from 2026-11-19 is not answered, and Open chat makes a new one.
 
 ## Resume
+
+Built on 2026-11-19. The case writes the row a restart leaves into one host's store and Front rows, in place of a second host.
+It fails with the seam wired to `sessionKept`, and passes with `sessionOpens`.
+Suites: bot 273, push 58, webhook 124, sdk 4961.
+The computer suite fails one case, `finds an adopted container again`, which times out on main too and is in `problems/computer-cases-time-out-on-a-busy-machine.md`.
 

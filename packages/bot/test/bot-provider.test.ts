@@ -18,6 +18,7 @@ import { echo } from '../../../examples/echo/agent.js';
 import { apply } from '../src/plugin.js';
 import { BOT_BODIES, BOT_COLORS } from '../src/record.js';
 import { botStore } from '../src/store.js';
+import { frontsOf, rowId } from '../src/names.js';
 import { talkerOf } from '../src/talks.js';
 import type { Agent } from '../../sdk/src/types/agent.js';
 import type { AgentOwner } from '../../sdk/src/types/agents.js';
@@ -1402,6 +1403,29 @@ it('keeps one talk for the root, whose connection has no principal, and a read w
   expect((await record(root, 'bot://motion'))['session']).toBe('ahp-session:/one');
   // A person's talk is their own: soft has none.
   expect(await record(soft, 'bot://motion')).not.toHaveProperty('session');
+});
+
+it('drops a talk whose session the host cannot open, as one with no message after a restart, and opens a new one', async () => {
+  const { host, records, sessions } = made({ soft: ['bot:*', 'session:create'], ana: TALKER });
+  const soft = await as(host, 'soft');
+  await write(soft, 'bot://motion', { name: 'Motion' }, { createOnly: true });
+  /*
+   * What a restart leaves of a talk nobody spoke in: ana's Front row names the
+   * session, and the store keeps its record, but no process runs it and no log
+   * holds a turn, so a subscribe to it answers `No agent for session`.
+   */
+  sessions.setConfig('gone', { bot: 'motion' });
+  sessions.setOwner('gone', 'user:ana');
+  sessions.setProvider('gone', 'bot-chat');
+  sessions.setUri?.('gone', 'ahp-session:/gone');
+  await (await records.collection(frontsOf('motion'))).put({ id: rowId(['motion', 'user:ana']), bot: 'motion', user: 'user:ana', session: 'ahp-session:/gone' });
+  const ana = await as(host, 'ana');
+
+  // The read answers no talk, and a create makes the new one in its place.
+  expect(await record(ana, 'bot://motion')).not.toHaveProperty('session');
+  got(await talk(ana, 'ahp-session:/one'));
+  expect(await talk(ana, 'ahp-session:/two')).toMatchObject({ message: 'You already have a session with Motion: ahp-session:/one.' });
+  await vi.waitFor(async () => { expect((await record(ana, 'bot://motion'))['session']).toBe('ahp-session:/one'); }, { timeout: WAIT_MS });
 });
 
 it('keeps every root owner under one talker, whatever machine it names, and no owner as the root', () => {
