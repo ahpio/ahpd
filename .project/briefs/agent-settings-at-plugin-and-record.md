@@ -2,152 +2,90 @@
 title: Agent settings at the plugin and the record
 created: 2026-11-05
 refs:
-  - git://9c3418cb - the commit of ahpd the facts were checked at
-  - git://7d76d5895 - the `hostTools` row, checked again: claude, cofold and pi have it at both levels
+  - git://05671213e - the commit of ahpd the facts were checked at, on 2026-11-19
+  - git://8ba783e1c - the last commit that holds the table of 2026-11-05, by setting and level
   - "[code://packages/agent-acp/package.json](../../packages/agent-acp/package.json) - the acp plugin's options"
+  - "[code://packages/agent-acp/src/plugin.ts#L96-L198](../../packages/agent-acp/src/plugin.ts#L96-L198) - `RECORD_FIELDS`, the acp record's fields in their order"
   - "[code://packages/agent-claude/package.json](../../packages/agent-claude/package.json) - the claude plugin's options"
+  - "[code://packages/agent-claude/src/options.ts#L492-L563](../../packages/agent-claude/src/options.ts#L492-L563) - `DECLARED` and `OF_A_VARIANT`, the claude record's fields in their order"
+  - "[code://packages/agent-claude/src/plugin.ts#L66-L87](../../packages/agent-claude/src/plugin.ts#L66-L87) - claude's `paths`, which falls back to the host's"
+  - "[code://packages/agent-claude/src/plugin.ts#L147](../../packages/agent-claude/src/plugin.ts#L147) - a claude session starts on the record's top-level `model`"
+  - "[code://packages/agent-claude/src/claude.ts#L117-L127](../../packages/agent-claude/src/claude.ts#L117-L127) - `computerConfigDir`, a plugin option today"
   - "[code://packages/agent-cofold/package.json](../../packages/agent-cofold/package.json) - the cofold plugin's options"
+  - "[code://packages/agent-cofold/src/plugin.ts#L89](../../packages/agent-cofold/src/plugin.ts#L89) - `NOT_A_RECORD`: a cofold record takes every option but these, in the options' order"
   - "[code://packages/agent-pi/package.json](../../packages/agent-pi/package.json) - the pi plugin's options"
-  - "[code://packages/agent-acp/src/plugin.ts#L143-L190](../../packages/agent-acp/src/plugin.ts#L143-L190) - the acp engine's record fields, and the plugin-wide `hostTools` and `toolsChanged`"
-  - "[code://packages/agent-acp/src/plugin.ts#L353-L354](../../packages/agent-acp/src/plugin.ts#L353-L354) - a record's `hostTools` and `toolsChanged` win over the plugin's"
-  - "[code://packages/agent-claude/src/options.ts#L338](../../packages/agent-claude/src/options.ts#L338) - the claude engine's record fields"
-  - "[code://packages/agent-claude/src/plugin.ts#L66](../../packages/agent-claude/src/plugin.ts#L66) - claude's `paths`, which falls back to the host's"
-  - "[code://packages/agent-cofold/src/plugin.ts#L138](../../packages/agent-cofold/src/plugin.ts#L138) - the cofold engine's record fields"
-  - "[code://packages/agent-pi/src/plugin.ts#L101](../../packages/agent-pi/src/plugin.ts#L101) - the pi engine's record fields"
-  - "[code://packages/agent-pi/src/plugin.ts#L200](../../packages/agent-pi/src/plugin.ts#L200) - pi takes the host's paths, with no option of its own"
+  - "[code://packages/agent-pi/src/plugin.ts#L84](../../packages/agent-pi/src/plugin.ts#L84) - `NOT_A_RECORD`: a pi record takes every option but these, in the options' order"
 ---
 
 # Agent settings at the plugin and the record
 
-Softov wants one table of every agent setting, at the plugin level and at the engine level, to find where the four agent plugins disagree.
-His example, 2026-11-05: "ACP put the hostTools on plugin while claude put on agent."
+Softov wants the four agent plugins' settings refined, at the plugin and at the record. Each form lists its fields in one order of purpose, so a person reads them in the order Softov set. Fields added later went between fields of another purpose. Some settings move between the plugin and the record, and some leave.
 
-## The two levels
+## What others do
 
-- A plugin option is in the plugin's `optionsSchema`, in `config.json` under `plugins`. It holds for every record of that plugin.
-- A record field is in the engine's `schema`, in `~/.config/ahpd/agents/<id>.json` under `config`. It holds for one agent.
-- A record field marked host only may be set only on a record whose owner is `host`.
-- Every record also has top-level fields outside `config`: `name`, `description`, `icon`, `model` and `owner`.
-- A plugin's `model` is only the default for a record that names none. Two records of one plugin can each name their own `model`.
-- Where a setting is at both levels, the record's value wins, and the plugin's is the default. This holds in the code of all four.
+- VS Code draws a settings page in the order its contributions declare, grouped by their `order` and their title.
+- ahpw draws a form in the schema's own order. See `src/resources/agents/form.ts` `engineSchema` in ahpw, and its test of the drawn order.
 
-## The table
+## What ahpd has today
 
-The table comes from the four `optionsSchema` blocks and from the schema each engine registers at the checked commit.
+The fields at `05671213e`, in the order each form draws them.
 
-- ✓ is a setting at that level, and ✓ host is a record field only a host record may set.
-- `model` is a field at the top of a record, outside `config`. Every other record row is a field of `config`.
-- 🔵 is a setting the harness takes, which ahpd does not offer at that level. *Why each blue circle* gives the fact behind each one.
-- An empty cell is a setting that does not apply there.
+| Form | Fields |
+| --- | --- |
+| acp plugin | `hostTools`, `toolsChanged` |
+| acp record | `base`, `command`, `install`, `page`, `args`, `env`, `cwd`, `authenticate`, `hostTools`, `honoursTrust`, `toolsChanged`, `cutTurns`, `stderrTail`, `modes`, `unreportedClientCalls`, `findFreshMs`, `listingIdleMs`, `sessionListMaxPages`, `exitGraceMs`, `stderrBytes`, `killGraceMs`, `closeGraceMs`, `machine` |
+| claude plugin | `paths`, `computerExecutable`, `computerCli`, `computerCliFallback`, `computerConfigDir`, `handshakeTimeoutMs`, `hostTools` |
+| claude record | `sandbox`, `thinking`, `hostTasks`, `hostTools`, `enableTasks`, `cliStart`, `stopEnds`, `dontAsk`, `portFailures`, `subagentsFrom`, `taskOutputFirstWaitMs`, `taskOutputLongestWaitMs`, `taskOutputQuietReads`, `subagentTitleMax`, `subagentStartTimeoutMs`, `maxShellInitScript`, `maxTerminalOutputBytes`, `keepFramed`, `watchWaitMs`, `fileMostBytes`, `ruleDepth`, `ruleMost`, `outputStyle`, `env`, `logins`, `extraArgs`, `models`, `modelSources`, `keepCliModels` |
+| cofold plugin | `model`, `baseUrl`, `models`, `instructions`, `computerConfigDir`, `store`, `memory`, `tools`, `strictTools`, `apiKey`, `resource`, `autoCompactTokens`, `autoCompactAt`, `catalogueTimeoutMs`, `hostTools` |
+| cofold record | the plugin's, without `model` and `strictTools` |
+| pi plugin | `model`, `baseUrl`, `apiKey`, `projectTrust`, `sessionDir`, `hostTools` |
+| pi record | the plugin's, without `model`, then `env` |
 
-| Setting | acp plugin | acp record | claude plugin | claude record | cofold plugin | cofold record | pi plugin | pi record |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Model** | | | | | | | | |
-| `model` (top level) |  | ✓ | 🔵 | 🔵 | ✓ | ✓ | ✓ | ✓ |
-| `models` |  |  |  | ✓ |  |  |  | 🔵 |
-| `modelSources` |  |  |  | ✓ |  |  |  |  |
-| `keepCliModels` |  |  |  | ✓ |  |  |  |  |
-| `baseUrl` |  |  |  |  | ✓ | ✓ | 🔵 | 🔵 |
-| `apiKey` |  |  |  |  | ✓ | ✓ | 🔵 | 🔵 |
-| `resource` |  |  |  |  | ✓ | ✓ |  |  |
-| **Prompt and output** | | | | | | | | |
-| `instructions` |  |  | 🔵 | 🔵 | ✓ | ✓ | 🔵 | 🔵 |
-| `outputStyle` |  |  |  | ✓ |  |  |  |  |
-| `thinking` |  |  |  | ✓ |  | 🔵 |  | 🔵 |
-| `autoCompactTokens` |  |  |  |  | ✓ | ✓ |  | 🔵 |
-| **Host tools** | | | | | | | | |
-| `hostTools` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `toolsChanged` | ✓ | ✓ |  |  |  |  |  |  |
-| `hostTasks` |  |  |  | ✓ |  |  |  |  |
-| `enableTasks` |  |  |  | ✓ |  |  |  |  |
-| `tools` |  |  |  | 🔵 | ✓ | ✓ |  | 🔵 |
-| `strictTools` |  |  |  |  | ✓ |  |  |  |
-| **Process** | | | | | | | | |
-| `base` |  | ✓ host |  |  |  |  |  |  |
-| `command` |  | ✓ host |  |  |  |  |  |  |
-| `args` |  | ✓ host |  |  |  |  |  |  |
-| `extraArgs` |  |  |  | ✓ host |  |  |  |  |
-| `install` |  | ✓ host |  |  |  |  |  |  |
-| `page` |  | ✓ |  |  |  |  |  |  |
-| `env` |  | ✓ |  | ✓ |  |  |  | ✓ |
-| `cwd` |  | ✓ host |  |  |  |  |  |  |
-| `authenticate` |  | ✓ |  |  |  |  |  |  |
-| `logins` |  |  |  | ✓ |  |  |  |  |
-| `handshakeTimeoutMs` |  |  | ✓ |  |  |  |  |  |
-| `workerStop` |  |  | ✓ |  |  |  |  |  |
-| `sandbox` |  |  |  | ✓ |  |  |  |  |
-| **Folders and trust** | | | | | | | | |
-| `paths` |  |  | ✓ |  |  |  |  |  |
-| `honoursTrust` |  | ✓ |  |  |  |  |  |  |
-| `projectTrust` |  |  |  |  | 🔵 | 🔵 | ✓ | ✓ |
-| `sessionDir` |  |  |  |  |  |  | ✓ | ✓ host |
-| `store` |  |  |  |  | ✓ | ✓ host |  |  |
-| `memory` |  |  |  |  | ✓ | ✓ host |  |  |
-| **Computers** | | | | | | | | |
-| `machine` |  | ✓ host |  |  |  |  |  |  |
-| `computerExecutable` |  |  | ✓ |  |  |  |  |  |
-| `computerCli` |  |  | ✓ |  |  |  |  |  |
-| `computerCliFallback` |  |  | ✓ |  |  |  |  |  |
-| `computerConfigDir` |  |  | ✓ | 🔵 | ✓ | ✓ host |  |  |
+- The tuning fields of acp, `cutTurns` to `closeGraceMs`, came with the VS Code parity audit. They went between `toolsChanged` and `machine`.
+- The claude tuning fields, `cliStart` to `ruleMost`, went between `enableTasks` and `outputStyle`.
+- Only claude has `paths`. pi takes the host's paths, and acp and cofold read none.
+- A claude session starts on the record's `model`, but the claude plugin has no default `model`. cofold and pi have one.
+- Claude's `computerConfigDir` is a plugin option only. cofold has it at both levels, on a host record only.
+- cofold's `memory` says "For tests", and both cofold forms show it.
 
-## Why each blue circle
+## Who writes
 
-- **claude `model`.** Every record has a top-level `model`, and acp, cofold and pi start a session on it. Claude's engine does not read it, so a Claude agent starts on the CLI's default. See [`code://packages/agent-claude/src/plugin.ts#L125-L135`](../../packages/agent-claude/src/plugin.ts#L125-L135). A plugin-wide default is missing too.
-- **pi record `models`, pi `baseUrl` and `apiKey`.** pi's SDK takes a provider at run time with `ModelRegistry.registerProvider(name, { baseUrl, apiKey, api, models })`. ahpd reads only pi's own `models.json` and `auth.json`. See [`code://packages/agent-pi/src/backend.ts#L335-L344`](../../packages/agent-pi/src/backend.ts#L335-L344). A record's `env` holds keys for pi's built-in providers only, by their own variables, so a provider at another URL has no key. See [`code://packages/agent-pi/src/machine.ts#L25`](../../packages/agent-pi/src/machine.ts#L25). Softov asked for a pi `baseUrl` as cofold has on 2026-11-10, after the pi resume check. Plan pi/20261110-0813-a-pi-agent-takes-a-base-url builds it.
-- **claude and pi `instructions`.** Claude's SDK takes a prompt to append, and ahpd already sends the host's instructions through it. See [`code://packages/agent-claude/src/session/query.ts#L451`](../../packages/agent-claude/src/session/query.ts#L451). pi's SDK replaces or appends to its system prompt. cofold has `instructions` at both levels.
-- **pi record `thinking`.** pi's `createAgentSession` takes a `thinkingLevel`, and claude has `thinking` on the record.
-- **cofold record `thinking`.** cofold reads an effort level per session, from the session's `effortLevel` setting. See [`code://packages/agent-cofold/src/agent.ts#L424-L431`](../../packages/agent-cofold/src/agent.ts#L424-L431). A record cannot set a default.
-- **claude and pi record `tools`.** Claude's SDK takes `allowedTools` and `disallowedTools`, and ahpd already sends both. See [`code://packages/agent-claude/src/session/query.ts#L135`](../../packages/agent-claude/src/session/query.ts#L135). pi's `createAgentSession` takes `tools` and `excludeTools`.
-- **pi record `autoCompactTokens`.** pi's `SettingsManager` holds compaction settings, and cofold has the field on the record.
-- **claude record `computerConfigDir`.** cofold lets a host record set it, and claude has it at the plugin only.
-- **cofold `projectTrust`.** Softov, 2026-11-05: "cofold need the same level Trust as pi." ahpd's cofold loads no project files today. The setting gates what cofold loads once it does.
+No open PR and no remote branch touches the four `packages/agent-*` packages. ahpw draws what the host sends, so the change needs no ahpw work.
 
-## What disagrees
+## The change
 
-- **Host tools.** All four now have a `hostTools` switch, at the plugin and on the record. Only acp has `toolsChanged`. Claude's `hostTasks` is a different thing: it hands Claude's own task tools to the host's.
-- **The acp `toolsChanged` description.** The plugin's text says it wins "over each record's own", but the code takes the record's value first.
-- **The default model.** cofold and pi set it at the plugin, as `model`. Claude sets a list per record, as `models` and `modelSources`. acp has none, and the agent picks.
-- **Folders.** Only claude has `paths`. pi reads the host's paths with no option. acp and cofold read none.
-- **Where sessions are kept.** pi has `sessionDir` and cofold has `store`, both at both levels. Claude and acp have none.
-- **Project trust.** acp has `honoursTrust` on the record, and pi has `projectTrust` at both levels. Claude and cofold have none.
-- **Computers.** Claude has four plugin options, the `computer` ones. cofold has `computerConfigDir` at both levels. acp has `machine` on the record. pi has none.
-- **Environment.** acp, claude and pi take `env` on the record. cofold takes `baseUrl`, `apiKey` and `resource` instead.
-- **pi's provider.** A pi record sets keys through `env`, which ahpd hands to pi with `setRuntimeApiKey`, for pi's built-in providers only. A provider at another URL, with its key and its models, comes only from pi's own `models.json`, outside ahpd.
+- Every form of the four plugins lists its fields by purpose, in this order of groups:
+  1. Model: `model`, `models`, `modelSources`, `keepCliModels`, `baseUrl`, `apiKey`, `resource`.
+  2. Prompt: `instructions`, `outputStyle`, `thinking`, `autoCompactTokens`, `autoCompactAt`.
+  3. Tools: `hostTools`, `toolsChanged`, `hostTasks`, `enableTasks`, `tools`, `strictTools`.
+  4. Run: `base`, `command`, `args`, `install`, `page`, `env`, `cwd`, `authenticate`, `logins`, `extraArgs`, `sandbox`.
+  5. Folders and trust: `honoursTrust`, `projectTrust`, `sessionDir`, `store`.
+  6. Machines: `machine`, `computerExecutable`, `computerCli`, `computerCliFallback`, `computerConfigDir`.
+  7. Tuning: the timeouts, the limits and the VS Code parity switches, and `memory` last.
+- The tuning fields of acp and claude stay on the record, in the Tuning group.
+- cofold's `memory` is a plugin option only.
+- The claude plugin has no `paths`. Claude takes the host's paths, as pi does. A config that sets it gets a warning at load, and the value is ignored.
+- The claude plugin has a default `model` for a record that names none, as cofold and pi have.
+- A claude record may set `computerConfigDir`, on a host record only, as cofold's may.
 
-## Settings that one agent has
+| Form | Fields, after the change |
+| --- | --- |
+| acp plugin | `hostTools`, `toolsChanged` |
+| acp record | `hostTools`, `toolsChanged`, `base`, `command`, `args`, `install`, `page`, `env`, `cwd`, `authenticate`, `honoursTrust`, `machine`, `cutTurns`, `stderrTail`, `modes`, `unreportedClientCalls`, `findFreshMs`, `listingIdleMs`, `sessionListMaxPages`, `exitGraceMs`, `stderrBytes`, `killGraceMs`, `closeGraceMs` |
+| claude plugin | `model`, `hostTools`, `computerExecutable`, `computerCli`, `computerCliFallback`, `computerConfigDir`, `handshakeTimeoutMs` |
+| claude record | `models`, `modelSources`, `keepCliModels`, `outputStyle`, `thinking`, `hostTools`, `hostTasks`, `enableTasks`, `env`, `logins`, `extraArgs`, `sandbox`, `computerConfigDir`, `cliStart`, `stopEnds`, `dontAsk`, `portFailures`, `subagentsFrom`, `taskOutputFirstWaitMs`, `taskOutputLongestWaitMs`, `taskOutputQuietReads`, `subagentTitleMax`, `subagentStartTimeoutMs`, `maxShellInitScript`, `maxTerminalOutputBytes`, `keepFramed`, `watchWaitMs`, `fileMostBytes`, `ruleDepth`, `ruleMost` |
+| cofold plugin | `model`, `baseUrl`, `apiKey`, `resource`, `models`, `instructions`, `autoCompactTokens`, `autoCompactAt`, `hostTools`, `tools`, `strictTools`, `store`, `computerConfigDir`, `catalogueTimeoutMs`, `memory` |
+| cofold record | `baseUrl`, `apiKey`, `resource`, `models`, `instructions`, `autoCompactTokens`, `autoCompactAt`, `hostTools`, `tools`, `store`, `computerConfigDir` |
+| pi plugin | `model`, `baseUrl`, `apiKey`, `hostTools`, `projectTrust`, `sessionDir` |
+| pi record | `baseUrl`, `apiKey`, `hostTools`, `env`, `projectTrust`, `sessionDir` |
 
-- **`hostTasks` and `enableTasks`, claude only.** Claude ships its own task tools: `TodoWrite`, `TaskCreate`, `TaskUpdate`, `TaskList` and `TaskGet`. `hostTasks` takes them away when the host offers the tasks plugin's `task_add`. pi ships no task tools, and cofold's tool groups have none. An acp agent's tools are its own, and the host cannot take one away. See [`code://packages/agent-claude/src/options.ts#L92-L126`](../../packages/agent-claude/src/options.ts#L92-L126).
-- **`tools` and `strictTools`, cofold only.** ahpd configures cofold in code, so its tool groups are ahpd settings: `files`, `shell`, `memory` and `web`. `strictTools: false` drops a tool key cofold does not know, in place of a refusal. The other agents keep their tools in their own settings files.
-- **No `env` or `cwd` on cofold.** cofold runs in the daemon's own process, so no child process takes variables or a folder. A session works in its own folder, or in the daemon's folder when it names none. See [`code://packages/agent-cofold/src/session.ts#L102`](../../packages/agent-cofold/src/session.ts#L102).
-- **cofold's variables.** cofold reads `COFOLD_CONFIG`, `COFOLD_BASE_URL`, `COFOLD_API_KEY` and `COFOLD_MODEL` from the daemon's environment. See [`code://packages/agent-cofold/src/config.ts#L57-L116`](../../packages/agent-cofold/src/config.ts#L57-L116). In a machine, ahpd sets them as machine needs. A record has `baseUrl`, `apiKey` and `model` for three of them, and nothing for `COFOLD_CONFIG`, so every cofold record reads one config file.
-- **No `thinking` on cofold.** The effort is a session setting only, as *Why each blue circle* says.
+## Answers
 
-## The folder settings
+Softov chose each of these on 2026-11-19:
 
-| Setting | Agent | What it is |
-| --- | --- | --- |
-| `cwd` | acp | The folder the ACP server process starts in. Absent, it is the session's folder. |
-| `paths` | claude | The folders whose past Claude sessions are listed. The first is the default folder of a new session. |
-| `honoursTrust` | acp | Whether the agent asks the person before it loads a project's own settings. Absent, a session in a folder the host did not trust is refused. |
-| `projectTrust` | pi | Whether pi loads a project's own extensions, skills and prompts. |
-| `sessionDir` | pi | The folder pi keeps its session files in. pi's own folder by default. |
-| `store` | cofold | The folder of each record's file store, one folder per record. |
-| `memory` | cofold | `true` keeps each record's store in memory, for a test. |
-
-- `cwd` and `paths` say where a session runs. `honoursTrust` and `projectTrust` say what a session may load from that folder. `sessionDir`, `store` and `memory` say where the agent keeps its own data.
-- The session's folder itself is not a setting. The client names it, or the agent takes its default.
-
-## Claude's `paths`
-
-- It scopes which past Claude sessions are listed, and its first entry is the default folder of a new session.
-- Absent, it is the host's `paths`. pi uses the host's paths with no option at all.
-- A client that names an absolute folder runs a session there, inside the list or not.
-- So `paths` only narrows the list of past sessions, and moves the default folder away from the host's.
-- Softov, 2026-11-05: "Claude's plugin paths, I think is not necessary." Claude takes the host's paths, as pi does.
-
-## Open points
-
-- Which disagreements are deliberate, and which settings move to the other level.
-- Whether `hostTools` becomes one switch for every agent, at the daemon, the plugin or the record.
-- Whether a cofold record gives its shell commands variables of their own. The record has no such field today.
-- Whether a cofold record names its own config file, in place of the daemon's `COFOLD_CONFIG`.
+- The same groups in the order of *The change*, for the four plugins, at both levels: "Same groups, this order (Recommended)".
+- The tuning fields stay on the record, last: "Keep on the agent, last".
+- cofold's `memory` is a plugin option only, last: "Keep, plugin only, last (Recommended)".
+- Claude's `paths` leaves, and Claude takes the host's: "Remove, use the host's (Recommended)".
+- The claude plugin gets a default `model`: "Add a default model (Recommended)".
+- Claude's `computerConfigDir` is at both levels, on a host record only: "Plugin, computerConfigDir both (Recommended)".
