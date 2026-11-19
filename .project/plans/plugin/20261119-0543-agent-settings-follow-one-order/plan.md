@@ -100,8 +100,8 @@ The groups in order: Model, Prompt, Tools, Run, Folders and trust, Machines, Tun
 
 ## Resume state
 
-- **Done so far:** tasks 01 to 03, on branch `plugin/01-agent-settings-follow-one-order`, in #385.
-- **Next action:** CI on #385, the merge on Softov's word, then `implemented.md`.
+- **Done so far:** tasks 01 to 03, merged in #385 as `f926befca`. See [implemented.md](implemented.md).
+- **Next action:** Softov's checks of *Final verification checklist*, then `status: built`.
 - **Open questions:** none.
 - **Watch out for:** a cofold or pi record takes the options' order. A field the record sets again keeps the place of its first key.
 
@@ -110,4 +110,4 @@ The groups in order: Model, Prompt, Tools, Run, Folders and trust, Machines, Tun
 - [ ] In ahpw, each agent plugin's options and each agent's form list the fields of *Field order*, in that order.
 - [ ] A Claude agent with no `model` starts on the plugin's `model`.
 - [ ] An acp agent on a machine that cannot start shows the short sentence, and the log holds the raw message.
-- [ ] The suites of the four agent packages, the sdk suite and the computer suite pass, one at a time, and `check` and `check-windows` are green.
+- [x] The four agent suites, the sdk suite and the computer suite pass, one at a time. `check` and `check-windows` are green.
