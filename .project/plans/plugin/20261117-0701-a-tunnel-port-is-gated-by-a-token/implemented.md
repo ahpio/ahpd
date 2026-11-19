@@ -19,6 +19,7 @@ Each request is checked, and a request with no token the daemon accepts reaches 
 
 - CI on #365 passed every check, Windows included, and it merged as `0677627e0`.
 - Each task file says what its cases check.
+- Softov ran the gated port checks by hand on his dev daemon on 2026-11-18, and they passed.
 
 ## Departures from the plan
 
@@ -26,4 +27,4 @@ Each request is checked, and a request with no token the daemon accepts reaches 
 
 ## Left for later
 
-- The gated port checks by hand, in [pending/tunnel-token-checks.md](../../../pending/tunnel-token-checks.md).
+- none

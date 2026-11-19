@@ -20,6 +20,7 @@ Every start, stop and restart then failed with `Tunnel service error: Not Found`
 
 - CI on #368 passed every check, Windows included, and it merged as `1aab4e4da`.
 - Each task file says what its cases check.
+- Softov ran the deleted tunnel check by hand on his dev daemon on 2026-11-18, and they passed.
 
 ## Departures from the plan
 
@@ -27,4 +28,4 @@ Every start, stop and restart then failed with `Tunnel service error: Not Found`
 
 ## Left for later
 
-- The deleted tunnel check by hand, in [pending/tunnel-token-checks.md](../../../pending/tunnel-token-checks.md).
+- none
