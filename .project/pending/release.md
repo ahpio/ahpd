@@ -12,7 +12,7 @@ A pushed `v*` tag runs [release.yml](../../.github/workflows/release.yml) and st
 
 What 0.15.0 waits for, as Softov chose on 2026-11-18. rc.4 is the last release candidate on npm.
 
-1. *A working day on the daemon* on main after #383, which holds the fixes. rc.4 does not.
+1. *A working day on the daemon* on main after #383, which holds the fixes. rc.4 does not. Softov does it in ahpw and ahpd since 2026-11-19, and the problems he finds are part of it.
 2. *The web UI.* npm refuses `@ahpd/web@0.9.0-rc.3` beside rc.4, since its sdk peer is `>=0.9`. ahpw #102 (`9603ada`) sets `>=0.15.0-rc.2`, which npm takes beside rc.4. It merged on 2026-11-19, and reaches npm with the next `@ahpd/web` release. A release of `@ahpd/web` follows its merge.
 3. *The release.* The notes' summary covers the whole of 0.15, and the release candidate sections join under `0.15.0`. The bump, a dry run, the tag on Softov's word, and npm's `latest` once he approves the staged packages.
 

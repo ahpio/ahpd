@@ -36,4 +36,4 @@ The four agent plugins list their options and an agent's fields by purpose, in t
 
 ## Left for later
 
-- The checks by hand of the plan's *Final verification checklist*.
+- The checks by hand of the plan's *Final verification checklist*, in [deferred.md](deferred.md).

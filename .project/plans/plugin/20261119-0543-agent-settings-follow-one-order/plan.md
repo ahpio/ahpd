@@ -1,7 +1,7 @@
 ---
 title: Agent settings follow one order
 domain: plugin
-status: planned
+status: built
 priority: medium
 created: 2026-11-19
 revalidated: 2026-11-19
@@ -101,7 +101,7 @@ The groups in order: Model, Prompt, Tools, Run, Folders and trust, Machines, Tun
 ## Resume state
 
 - **Done so far:** tasks 01 to 03, merged in #385 as `f926befca`. See [implemented.md](implemented.md).
-- **Next action:** Softov's checks of *Final verification checklist*, then `status: built`.
+- **Next action:** none. Softov closed the plan on 2026-11-19 without the checks by hand, which [deferred.md](deferred.md) holds.
 - **Open questions:** none.
 - **Watch out for:** a cofold or pi record takes the options' order. A field the record sets again keeps the place of its first key.
 

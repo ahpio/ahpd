@@ -1,7 +1,7 @@
 ---
 title: An emptied field is not set
 domain: plugin
-status: planned
+status: built
 priority: medium
 created: 2026-11-19
 revalidated: 2026-11-19
@@ -62,11 +62,11 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 ## Resume state
 
 - **Done so far:** task 01, merged in #384 as `05fa09ecf`. See [implemented.md](implemented.md).
-- **Next action:** Softov's check in ahpw, then `status: built`.
+- **Next action:** none. Softov's check in ahpw passed on 2026-11-19.
 - **Open questions:** none.
 - **Watch out for:** a required field keeps its refusal, so a form still says it must be filled.
 
 ## Final verification checklist
 
-- [ ] In ahpw, a tunnel's Person emptied and saved leaves the record with no `person`.
+- [x] In ahpw, a tunnel's Person emptied and saved leaves the record with no `person`.
 - [x] The sdk suite and the server suite pass, one at a time, and `check` and `check-windows` are green.

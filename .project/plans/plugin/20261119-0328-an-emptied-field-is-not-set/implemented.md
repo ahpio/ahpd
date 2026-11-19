@@ -24,6 +24,6 @@ An optional field that a person empties in a create or an edit form is left out 
 
 - A field marked `secret` keeps its `""`. The sdk suite showed that a blank secret means the stored one stays. A drop there would erase the secret. The plan's *Answers* holds the row.
 
-## Left for later
+## Checked by hand
 
-- The check in ahpw of the plan's *Final verification checklist*.
+- Softov emptied a tunnel's Person in ahpw and saved it on 2026-11-19, and it worked.
