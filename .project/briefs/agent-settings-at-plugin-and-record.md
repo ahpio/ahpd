@@ -47,6 +47,9 @@ The fields at `05671213e`, in the order each form draws them.
 - A claude session starts on the record's `model`, but the claude plugin has no default `model`. cofold and pi have one.
 - Claude's `computerConfigDir` is a plugin option only. cofold has it at both levels, on a host record only.
 - cofold's `memory` says "For tests", and both cofold forms show it.
+- Claude's `portFailures` says how a machine that could not start the CLI is said. `spawn`, the default, gives the SDK's short sentence with no host path, and `message` passes the raw message on. See [`code://packages/agent-claude/src/spawn.ts#L140-L185`](../../packages/agent-claude/src/spawn.ts#L140-L185).
+- acp asks the machine for its command itself, and passes a refusal on as the raw message. That message can name a socket path, a registry or an image, and acp has no `portFailures`. See [`code://packages/agent-acp/src/session/opening.ts#L286-L301`](../../packages/agent-acp/src/session/opening.ts#L286-L301).
+- pi and cofold run in a machine inside a nested `ahpd`, so neither starts a process through the port.
 
 ## Who writes
 
@@ -67,11 +70,12 @@ No open PR and no remote branch touches the four `packages/agent-*` packages. ah
 - The claude plugin has no `paths`. Claude takes the host's paths, as pi does. A config that sets it gets a warning at load, and the value is ignored.
 - The claude plugin has a default `model` for a record that names none, as cofold and pi have.
 - A claude record may set `computerConfigDir`, on a host record only, as cofold's may.
+- An acp record has `portFailures`, in the Tuning group, with Claude's values and default. `spawn` says a short sentence with no host path, and the raw message goes to the daemon's log.
 
 | Form | Fields, after the change |
 | --- | --- |
 | acp plugin | `hostTools`, `toolsChanged` |
-| acp record | `hostTools`, `toolsChanged`, `base`, `command`, `args`, `install`, `page`, `env`, `cwd`, `authenticate`, `honoursTrust`, `machine`, `cutTurns`, `stderrTail`, `modes`, `unreportedClientCalls`, `findFreshMs`, `listingIdleMs`, `sessionListMaxPages`, `exitGraceMs`, `stderrBytes`, `killGraceMs`, `closeGraceMs` |
+| acp record | `hostTools`, `toolsChanged`, `base`, `command`, `args`, `install`, `page`, `env`, `cwd`, `authenticate`, `honoursTrust`, `machine`, `portFailures`, `cutTurns`, `stderrTail`, `modes`, `unreportedClientCalls`, `findFreshMs`, `listingIdleMs`, `sessionListMaxPages`, `exitGraceMs`, `stderrBytes`, `killGraceMs`, `closeGraceMs` |
 | claude plugin | `model`, `hostTools`, `computerExecutable`, `computerCli`, `computerCliFallback`, `computerConfigDir`, `handshakeTimeoutMs` |
 | claude record | `models`, `modelSources`, `keepCliModels`, `outputStyle`, `thinking`, `hostTools`, `hostTasks`, `enableTasks`, `env`, `logins`, `extraArgs`, `sandbox`, `computerConfigDir`, `cliStart`, `stopEnds`, `dontAsk`, `portFailures`, `subagentsFrom`, `taskOutputFirstWaitMs`, `taskOutputLongestWaitMs`, `taskOutputQuietReads`, `subagentTitleMax`, `subagentStartTimeoutMs`, `maxShellInitScript`, `maxTerminalOutputBytes`, `keepFramed`, `watchWaitMs`, `fileMostBytes`, `ruleDepth`, `ruleMost` |
 | cofold plugin | `model`, `baseUrl`, `apiKey`, `resource`, `models`, `instructions`, `autoCompactTokens`, `autoCompactAt`, `hostTools`, `tools`, `strictTools`, `store`, `computerConfigDir`, `catalogueTimeoutMs`, `memory` |
@@ -89,3 +93,4 @@ Softov chose each of these on 2026-11-19:
 - Claude's `paths` leaves, and Claude takes the host's: "Remove, use the host's (Recommended)".
 - The claude plugin gets a default `model`: "Add a default model (Recommended)".
 - Claude's `computerConfigDir` is at both levels, on a host record only: "Plugin, computerConfigDir both (Recommended)".
+- acp gets `portFailures`, as Claude has it: "Add portFailures to acp (Recommended)".
