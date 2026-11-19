@@ -17,7 +17,7 @@ Softov wants a tunnel row in ahpw to show which Dev Tunnel it is. On 2026-11-18 
 ## What others do
 
 - VS Code's Remote Tunnels list names a tunnel by its display label. That is the first label that is not the launcher label, a protocol label or one starting with `_`.
-- ahpc's `tunnel list` prints that display name, `tunnel:<id>.<cluster>`, and whether a host is online: [code://../ahpc/src/ahp/devtunnels.ts#L310-L363](https://github.com/ahpio/ahpc/blob/903c5d2/src/ahp/devtunnels.ts#L310-L363), at `903c5d2`.
+- ahpc's `tunnel list` prints that display name, `tunnel:<id>.<cluster>`, and whether a host is online: https://github.com/ahpio/ahpc/blob/903c5d2/src/ahp/devtunnels.ts#L310-L363.
 - The `devtunnel` command lists a tunnel by its id and cluster.
 
 ## What ahpd has today
