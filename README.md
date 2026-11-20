@@ -96,47 +96,47 @@ AI agents can help you write code, fix problems, manage files, and automate task
 
 ahpd gives your agents a place to run and gives you a way to reach them.
 
-**⏳ Keep work running**
+**⏳ [Keep work running](https://ahpio.github.io/ahpd/sdk/SESSIONS)**
 
 Start a task and leave it running on your host. Your agent can continue its work when you close the client. Return later to review the results.
 
-**📱 Work from any device**
+**📱 [Work from any device](https://ahpio.github.io/ahpd/server/CONNECT)**
 
 Start on your desktop. Check progress from your phone. Open the same session in your browser or terminal. Your work stays in sync.
 
-**🤖 Choose your agents**
+**🤖 [Choose your agents](https://ahpio.github.io/ahpd/server/PLUGINS)**
 
 Use Claude Code, Codex, Copilot, Gemini, pi, and other supported agents. Configure the agents you need and use them through one host.
 
-**🔑 Subscriptions or API keys**
+**🔑 [Subscriptions or API keys](https://ahpio.github.io/ahpd/plugins/agent-claude)**
 
 Bring your existing agent subscriptions where supported, or connect model providers using your own API keys. Choose how you access and pay for AI.
 
-**🐳 Run work in isolated environments**
+**🐳 [Run work in isolated environments](https://ahpio.github.io/ahpd/plugins/COMPUTERS)**
 
 Use Docker containers to give tasks their own environment. Keep work separate when projects need different tools or dependencies.
 
-**⏰ Automate routine tasks**
+**⏰ [Automate routine tasks](https://ahpio.github.io/ahpd/sdk/AUTOMATIONS)**
 
 Schedule agent work or start it from a webhook. Let your host run tasks even when no client is connected. Turn your agents into continuously available workers.
 
-**🔐 Control access**
+**🔐 [Control access](https://ahpio.github.io/ahpd/server/USERS)**
 
 Control access to your agents and tools. Define who can interact with your host and what actions they can perform. Define permissions and usage policies for different users and teams.
 
-**📊 Diagnostics**
+**📊 [Diagnostics](https://ahpio.github.io/ahpd/server/RUN#doctor)**
 
 Inspect host status, logs, network information, and telemetry.
 
-**💰 Control spending**
+**💰 [Control spending](https://ahpio.github.io/ahpd/server/USAGE)**
 
 See what each person, team, and project has spent on models. Set daily, weekly, or monthly limits, and the host refuses new work when a limit is reached.
 
-**🔀 Share your models**
+**🔀 [Share your models](https://ahpio.github.io/ahpd/server/GATEWAY)**
 
-Point your agent or a script at your host and call any model with your ahpd token. The host uses the provider's key, applies your policies, and records the cost. Centralize credentials without distributing provider keys to every client. [Model gateway](https://ahpio.github.io/ahpd/server/GATEWAY)
+Point your agent or a script at your host and call any model with your ahpd token. The host uses the provider's key, applies your policies, and records the cost. Centralize credentials without distributing provider keys to every client.
 
-**🧩 Extend with plugins**
+**🧩 [Extend with plugins](https://ahpio.github.io/ahpd/plugins/PLUGINS)**
 
 Add new agents, tools, integrations, and capabilities without rebuilding the server. Use existing plugins or build your own with the SDK.
 
