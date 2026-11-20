@@ -4,7 +4,7 @@
 [![CI](https://github.com/ahpio/ahpd/actions/workflows/ci.yml/badge.svg)](https://github.com/ahpio/ahpd/actions/workflows/ci.yml)
 ![license MIT](https://img.shields.io/badge/license-MIT-blue)
 ![node >=22](https://img.shields.io/badge/node-%3E%3D22-5fa04e)
-![Agent Host Protocol 0.9.0](https://img.shields.io/badge/AHP-0.9.0-0b7285)
+![Agent Host Protocol 1.0.0](https://img.shields.io/badge/AHP-1.0.0-0b7285)
 
 The cofold agent runtime as a backend for [`@ahpd/sdk`](https://www.npmjs.com/package/@ahpd/sdk), and a plugin for the [`@ahpd/server`](https://www.npmjs.com/package/@ahpd/server) daemon. It registers the engine `cofold`: each record of that engine is one agent, and every model an OpenAI-compatible endpoint serves is a model inside it.
 

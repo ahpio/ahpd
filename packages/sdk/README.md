@@ -4,7 +4,7 @@
 [![CI](https://github.com/ahpio/ahpd/actions/workflows/ci.yml/badge.svg)](https://github.com/ahpio/ahpd/actions/workflows/ci.yml)
 ![license MIT](https://img.shields.io/badge/license-MIT-blue)
 ![node >=22](https://img.shields.io/badge/node-%3E%3D22-5fa04e)
-![Agent Host Protocol 0.9.0](https://img.shields.io/badge/AHP-0.9.0-0b7285)
+![Agent Host Protocol 1.0.0](https://img.shields.io/badge/AHP-1.0.0-0b7285)
 
 A server library for the [Agent Host Protocol](https://github.com/microsoft/agent-host-protocol). It has no agent in it: you pass one in when you create the host.
 
