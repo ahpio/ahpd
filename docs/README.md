@@ -20,6 +20,9 @@ For a person who runs the `ahpd` daemon: its commands, its flags and its configu
 | [CONNECT.md](server/CONNECT.md) | Connect VS Code or `ahpc` |
 | [REMOTE.md](server/REMOTE.md) | The connection token, the network, the HTTP API and `--remote` |
 | [USERS.md](server/USERS.md) | A token and a role for each person |
+| [TEAMS.md](server/TEAMS.md) | Teams and projects, and what work is charged to |
+| [NODES.md](server/NODES.md) | Machines that join this host to run its sessions |
+| [AUTOMATIONS.md](server/AUTOMATIONS.md) | Work the host starts on its own, and moving automations between hosts |
 | [VAULT.md](server/VAULT.md) | Credentials out of `config.json` |
 | [USAGE.md](server/USAGE.md) | What each pool has spent |
 | [GATEWAY.md](server/GATEWAY.md) | The model gateway under `/v1` |

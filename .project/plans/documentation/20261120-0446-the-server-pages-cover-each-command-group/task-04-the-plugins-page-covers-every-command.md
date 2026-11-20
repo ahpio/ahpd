@@ -1,6 +1,6 @@
 ---
 title: The plugins page covers every command
-status: todo
+status: doing
 depends: []
 layer: "docs"
 refs:
@@ -30,4 +30,6 @@ refs:
 - `pnpm docs:build` passes.
 
 ## Resume
+
+Written on 2026-11-20. The page also said a change loads at the next restart. A running daemon with the HTTP API loads it at once, so the sentence says so. The plugin table gained `@ahpd/tasks` and `@ahpd/activepieces`.
 

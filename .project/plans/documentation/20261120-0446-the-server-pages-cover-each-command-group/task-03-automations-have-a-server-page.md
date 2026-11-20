@@ -1,6 +1,6 @@
 ---
 title: Automations have a server page
-status: todo
+status: doing
 depends: []
 layer: "docs"
 refs:
@@ -35,4 +35,6 @@ refs:
 - `pnpm docs:build` passes.
 
 ## Resume
+
+Written on 2026-11-20. The `list` paragraph and its example moved from `sdk/AUTOMATIONS.md` to the server page. The example names `/work/project` and `Europe/Berlin` in place of a person's folder and zone.
 
