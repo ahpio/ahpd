@@ -12,7 +12,7 @@ A pushed `v*` tag runs [release.yml](../../.github/workflows/release.yml) and st
 
 The order of 0.15.0, as Softov chose on 2026-11-20. rc.4 is the last release candidate on npm.
 
-1. *The release PR,* prepared now as a draft. It holds the notes of #389 and the 13 packages at `0.15.0`. `node scripts/sdk-range.mjs --write` sets each first-party plugin's sdk range. `AHPD_TAG` is `0.15` in `docker/compose.yaml`, `docs/server/DOCKER.md` and `docs/README.md`. A dry run of `release.yml` on its branch passes `parts`, `release` and `image`. A fix merged before the tag is rebased in and noted, and the dry run runs again.
+1. *The release PR,* #394, open as a draft on `release/0.15.0`. It holds the notes of #389 and the 13 packages at `0.15.0`. `node scripts/sdk-range.mjs --write` sets each first-party plugin's sdk range. `AHPD_TAG` is `0.15` in `docker/compose.yaml`, `docs/server/DOCKER.md` and `docs/README.md`. Dry run 44712120112 of `release.yml` on its branch passed `parts`, `release` and `image`. A fix merged before the tag is rebased in and noted, and the dry run runs again.
 2. *Softov's review.* His working day on ahpw and ahpd since 2026-11-19, and the fixes he still reviews. It stands for the checks by hand in *Before 0.15.0* as well (Softov, 2026-11-20: "No, the working day covers it").
 3. *The tag.* #389 merges, then the release PR, both green. `v0.15.0` is pushed on Softov's word, and npm's `latest` moves once he approves the staged packages.
 4. *The web UI.* Once npm serves `@ahpd/sdk@0.15.0`, ahpw #107 takes `^0.15.0` as its dev dependency, with its lockfile and the 0.9.0 changelog. Its peer is `>=0.15.0 <0.16.0-0`, the range of the first-party plugins (Softov, 2026-11-20). It merges green, and `v0.9.0` is pushed on Softov's word.
