@@ -4,7 +4,7 @@
 [![CI](https://github.com/ahpio/ahpd/actions/workflows/ci.yml/badge.svg)](https://github.com/ahpio/ahpd/actions/workflows/ci.yml)
 ![license MIT](https://img.shields.io/badge/license-MIT-blue)
 ![node >=22](https://img.shields.io/badge/node-%3E%3D22-5fa04e)
-![Agent Host Protocol 0.9.0](https://img.shields.io/badge/AHP-0.9.0-0b7285)
+![Agent Host Protocol 1.0.0](https://img.shields.io/badge/AHP-1.0.0-0b7285)
 
 Disposable machines for the [`@ahpd/server`](https://www.npmjs.com/package/@ahpd/server) daemon. A client or an agent makes a `computer`, runs commands and sessions inside it, and destroys it.
 
@@ -57,7 +57,7 @@ Every option below is a key under `options` in the plugin's entry, and the daemo
 
 | Option | Default | What it does |
 | --- | --- | --- |
-| `runtime` | `docker` | Which runtime to use. `docker` is the only one |
+| `runtime` | `docker` | How machines are provided: `docker` makes them, and `ssh` only lists the boxes in `ssh` |
 | `command` | `docker` | The program to run |
 | `args` | none | Arguments before its own, for a wrapper or a context |
 | `env` | none | Environment variables merged over the daemon's for that program |

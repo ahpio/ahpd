@@ -246,7 +246,7 @@ Manage sessions, files, terminals, and host settings from your browser.
 ### 🖥️ Desktop → ahp-desk
 Connect to multiple hosts, manage local installations, and work in dedicated windows.
 
-[GitHub](https://github.com/softov/ahp-desk) · [Download](https://github.com/softov/ahp-desk/releases)
+[GitHub](https://github.com/ahpio/ahp-desk) · [Download](https://github.com/ahpio/ahp-desk/releases)
 
 ### 💻 Terminal → @softov/ahpc
 Work with agents through an interactive terminal, CLI commands, or scripts.
@@ -300,7 +300,7 @@ You can extend your host without changing the server itself.
 Implement the `Agent` interface or contribute host ports, tools, and URI schemes. Load extensions from npm packages, local directories, or manifest-backed files.
 
 ```bash
-# Load plugins for one run, in place of the configured list
+# Load plugins for one run, on top of the configured list
 ahpd --plugin @ahpd/agent-claude --plugin @ahpd/computer
 # A single file, with a plugin.json beside it that names its id and main
 ahpd --plugin ./scratch-agent.mjs

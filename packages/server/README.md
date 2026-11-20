@@ -3,8 +3,8 @@
 [![npm](https://img.shields.io/npm/v/%40ahpd%2Fserver)](https://www.npmjs.com/package/@ahpd/server)
 [![CI](https://github.com/ahpio/ahpd/actions/workflows/ci.yml/badge.svg)](https://github.com/ahpio/ahpd/actions/workflows/ci.yml)
 ![license MIT](https://img.shields.io/badge/license-MIT-blue)
-![node >=22.1](https://img.shields.io/badge/node-%3E%3D22.1-5fa04e)
-![Agent Host Protocol 0.9.0](https://img.shields.io/badge/AHP-0.9.0-0b7285)
+![node >=22.18](https://img.shields.io/badge/node-%3E%3D22.18-5fa04e)
+![Agent Host Protocol 1.0.0](https://img.shields.io/badge/AHP-1.0.0-0b7285)
 
 A ready-to-run [Agent Host Protocol](https://microsoft.github.io/agent-host-protocol/) server. It installs the `ahpd` command, runs agent sessions, and serves them over a WebSocket, so several clients can watch and drive the same session at once.
 
@@ -37,7 +37,7 @@ npm 12 blocks install scripts unless told otherwise, and `node-pty` needs its sc
 
 It listens on `ws://127.0.0.1:9187`. Run it with no arguments to serve the directory you are in.
 
-Needs Node 22.1 or later. Also runs on Bun and Deno.
+Needs Node 22.18 or later. Also runs on Bun and Deno.
 
 ## Commands
 
@@ -154,7 +154,7 @@ Every verb and every flag is one declaration under [`src/commands`](https://gith
 | `--version`, `-v` | What version this is |
 | `--help`, `-h` | Every command, then the foreground run's flags |
 
-Every flag is also a key in `config.json` under `$XDG_CONFIG_HOME/ahpd`, spelled the same way without the dashes, except `--stdio`, `--config-file`, `--no-plugins`, `--no-cwd` and `--plugin-option`, which mean something only when typed. A flag beats the file. Five keys are set in the file alone and have no flag: `http`, `usage`, `proxy`, `policies` and `mcpServers`. Run `ahpd config` to see the path and the current values.
+Every flag is also a key in `config.json` under `$XDG_CONFIG_HOME/ahpd`, spelled the same way without the dashes, except `--stdio`, `--config-file`, `--no-plugins`, `--no-cwd` and `--plugin-option`, which mean something only when typed. A flag beats the file. These keys are set in the file alone and have no flag: `httpApi`, `modelApi`, `mcpTools`, `routes`, `usage`, `modelGateway`, `policies`, `service`, `mcpServers`, `shellEnv`, `commandParser`, `tunnelHosts`, `onPath`, `daemonRecord` and `stopWaitMs`. Run `ahpd config` to see the path and the current values.
 
 ## Directories
 

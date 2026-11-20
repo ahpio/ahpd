@@ -4,7 +4,7 @@
 [![CI](https://github.com/ahpio/ahpd/actions/workflows/ci.yml/badge.svg)](https://github.com/ahpio/ahpd/actions/workflows/ci.yml)
 ![license MIT](https://img.shields.io/badge/license-MIT-blue)
 ![node >=22](https://img.shields.io/badge/node-%3E%3D22-5fa04e)
-![Agent Host Protocol 0.9.0](https://img.shields.io/badge/AHP-0.9.0-0b7285)
+![Agent Host Protocol 1.0.0](https://img.shields.io/badge/AHP-1.0.0-0b7285)
 
 Claude Code as a backend for [`@ahpd/sdk`](https://www.npmjs.com/package/@ahpd/sdk), and the plugin that lets the [`@ahpd/server`](https://www.npmjs.com/package/@ahpd/server) daemon run it.
 
@@ -285,7 +285,7 @@ A turn uses the logins as the [model gateway](https://github.com/ahpio/ahpd/blob
 - When no login is left to try, the turn ends with the last failure and the first login back, with when. A turn that starts with every open login resting ends at once the same way.
 - Any other error ends the turn as it always did, with the CLI's words. So do `billing_error`, a 402, and `account_on_hold`, which is no single status. The [API's errors](https://docs.claude.com/en/api/errors) give each status.
 
-Each failure of a login goes to the daemon's log with the CLI's words, and each call of a login, failed or not, is noted on its connector's health, as the model gateway notes an attempt, so its row shows it. The plugin notes as a client of its own host. On a host with a users directory, its configuration entry needs the grants `connector:put` and `connector:host` to note the host's logins. A person's login is never the plugin's to note. A login's check, which counts one prompt's tokens with its token and costs nothing, runs where the host runs a connector's check: at a put, at start and at a client's command.
+Each failure of a login goes to the daemon's log with the CLI's words, and each call of a login, failed or not, is noted on its connector, as the model gateway notes an attempt: a failure raises the row's `call` alert, and a call that works clears it. The plugin notes as a client of its own host. On a host with a users directory, its configuration entry needs the grants `connector:put` and `connector:host` to note the host's logins. A person's login is never the plugin's to note. A login's check, which counts one prompt's tokens with its token and costs nothing, runs where the host runs a connector's check: at a put, at start and at a client's command.
 
 Rests are kept in memory, so a restart clears them, and the next failure names the time again. The CLI keeps its conversations in one configuration folder for every login, so a login resumes what another one wrote. A refused token does not fall back to a sign-in kept in that folder.
 
