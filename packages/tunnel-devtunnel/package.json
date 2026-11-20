@@ -2,7 +2,7 @@
   "name": "@ahpd/tunnel-devtunnel",
   "version": "0.15.0-rc.4",
   "type": "module",
-  "description": "Microsoft Dev Tunnels for ahpd. Reach the daemon from anywhere, VS Code included.",
+  "description": "Microsoft Dev Tunnels integration. Connect to your ahpd daemon from anywhere, including VS Code, without opening ports on your network.",
   "keywords": [
     "ahp",
     "ahpd",
