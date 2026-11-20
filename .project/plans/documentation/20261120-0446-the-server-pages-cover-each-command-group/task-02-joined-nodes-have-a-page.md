@@ -40,7 +40,10 @@ refs:
 
 ## Resume
 
-Written on 2026-11-20. The command table, the nodes file, the grants and the paragraph on the running daemon moved from *Joined nodes* to `NODES.md`, so each is in one file. *Joined nodes* keeps what runs on a node, its trust, its version and a restart.
-`node rm`'s help says a running daemon drops the node at once, and that with no daemon answering the token is refused from its next connection on.
+Written on 2026-11-20. Four things moved from *Joined nodes* to `NODES.md`, so each is in one file.
+They are the command table, the nodes file, the grants and the paragraph on the running daemon.
+*Joined nodes* keeps what runs on a node, its trust, its version and a restart.
+`node rm`'s help says a running daemon drops the node at once.
+With no daemon answering, it says the token is refused from the node's next connection on.
 The server suite passed, 1982 cases.
 
