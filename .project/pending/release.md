@@ -10,11 +10,12 @@ A pushed `v*` tag runs [release.yml](../../.github/workflows/release.yml) and st
 
 ## Left
 
-What 0.15.0 waits for, as Softov chose on 2026-11-18. rc.4 is the last release candidate on npm.
+The order of 0.15.0, as Softov chose on 2026-11-20. rc.4 is the last release candidate on npm.
 
-1. *A working day on the daemon* on main after #383, which holds the fixes. rc.4 does not. Softov does it in ahpw and ahpd since 2026-11-19, and the problems he finds are part of it.
-2. *The web UI.* npm refuses `@ahpd/web@0.9.0-rc.3` beside rc.4, since its sdk peer is `>=0.9`. ahpw #102 (`9603ada`) sets `>=0.15.0-rc.2`, which npm takes beside rc.4. It merged on 2026-11-19, and reaches npm with the next `@ahpd/web` release. A release of `@ahpd/web` follows its merge.
-3. *The release.* The notes' summary covers the whole of 0.15, and the release candidate sections join under `0.15.0`. The bump, a dry run, the tag on Softov's word, and npm's `latest` once he approves the staged packages.
+1. *The release PR,* prepared now as a draft. It holds the notes of #389 and the 13 packages at `0.15.0`. `node scripts/sdk-range.mjs --write` sets each first-party plugin's sdk range. `AHPD_TAG` is `0.15` in `docker/compose.yaml`, `docs/server/DOCKER.md` and `docs/README.md`. A dry run of `release.yml` on its branch passes `parts`, `release` and `image`. A fix merged before the tag is rebased in and noted, and the dry run runs again.
+2. *Softov's review.* His working day on ahpw and ahpd since 2026-11-19, and the fixes he still reviews. It stands for the checks by hand in *Before 0.15.0* as well (Softov, 2026-11-20: "No, the working day covers it").
+3. *The tag.* #389 merges, then the release PR, both green. `v0.15.0` is pushed on Softov's word, and npm's `latest` moves once he approves the staged packages.
+4. *The web UI.* Once npm serves `@ahpd/sdk@0.15.0`, ahpw #107 takes `^0.15.0` as its dev dependency, with its lockfile and the 0.9.0 changelog. Its peer is `>=0.15.0 <0.16.0-0`, the range of the first-party plugins (Softov, 2026-11-20). It merges green, and `v0.9.0` is pushed on Softov's word.
 
 Seven major problems wait for 0.16 by the same choice, and each says so in its *Fix*. `globalAutoApproveEnabled` keeps VS Code's meaning: [global-auto-approve-keeps-vs-codes-meaning.md](../decisions/global-auto-approve-keeps-vs-codes-meaning.md).
 
