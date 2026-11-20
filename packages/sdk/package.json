@@ -2,7 +2,7 @@
   "name": "@ahpd/sdk",
   "version": "0.15.0-rc.4",
   "type": "module",
-  "description": "A server library for the Agent Host Protocol. No agent inside, you pass one in",
+  "description": "The library behind ahpd. Build your own host with the sessions, chats and clients ahpd serves.",
   "keywords": [
     "ahp",
     "agent-host-protocol",

@@ -2,7 +2,7 @@
   "name": "@ahpd/push",
   "version": "0.15.0-rc.4",
   "type": "module",
-  "description": "Push notifications for ahpd. Tells a phone or browser when a session needs you, through Expo or Web Push.",
+  "description": "Push notifications integration. Get a phone or browser notification when an ahpd session needs you, even with the app closed.",
   "keywords": [
     "ahp",
     "ahpd",
