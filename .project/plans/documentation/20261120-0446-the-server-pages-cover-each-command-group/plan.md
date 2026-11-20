@@ -72,8 +72,8 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ## Resume state
 
-- **Done so far:** the four tasks written on 2026-11-20, waiting for Softov's read.
-- **Next action:** [task-01-teams-and-projects-have-a-page.md](task-01-teams-and-projects-have-a-page.md).
+- **Done so far:** the four tasks, merged in #391 on 2026-11-20, green on the first run.
+- **Next action:** Softov's read of the pages, then `implemented.md`.
 - **Open questions:** none.
 - **Watch out for:** `pnpm docs:build` needs `pnpm build` first, for the command reference; add a page and its sidebar entry in one commit.
 
