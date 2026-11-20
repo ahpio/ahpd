@@ -7,7 +7,7 @@ blocks: []
 refs:
   - "[code://packages/agent-cofold/test/agent-cofold-turn.test.ts#L54-L61](../../packages/agent-cofold/test/agent-cofold-turn.test.ts#L54-L61) - `until`, which waits 400 zero-delay ticks and no wall-clock time"
   - "[code://packages/agent-cofold/test/agent-cofold-turn.test.ts#L1383-L1430](../../packages/agent-cofold/test/agent-cofold-turn.test.ts#L1383-L1430) - the case that failed"
-  - "[code://packages/agent-cofold/test/agent-cofold-fork.test.ts#L](../../packages/agent-cofold/test/agent-cofold-fork.test.ts#L) - a wait in the same package with a wall-clock deadline"
+  - "[code://packages/agent-cofold/test/agent-cofold-fork.test.ts#L41](../../packages/agent-cofold/test/agent-cofold-fork.test.ts#L41) - a wait in the same package with a wall-clock deadline"
   - https://github.com/ahpio/ahpd/actions/runs/44786022773/job/136460983985 - the CI job of #394 where it failed
   - git://74ec926ce - main when the problem was read
 ---
