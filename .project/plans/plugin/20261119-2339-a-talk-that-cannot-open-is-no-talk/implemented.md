@@ -7,7 +7,7 @@ refs:
   - "[code://packages/bot/src/talks.ts](../../../../packages/bot/src/talks.ts)"
 ---
 
-A bot hands a person only a talk that works. A talk counts while the host's store keeps its session with the config that names the bot, and the host can open it. A talk made with no message, after a restart, and an old talk from a log with no record are no talk: Open chat makes a new one, and its Back answers.
+A bot hands a person only a talk that works. A talk counts while the host's store keeps its session with the config that names the bot, and the host can open it. After a restart, a talk made with no message is no talk. Neither is an old talk from a log with no record. Open chat makes a new one, and its Back answers.
 
 ## What was built
 
