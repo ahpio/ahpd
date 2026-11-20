@@ -9,6 +9,7 @@ import { EFFORT_LEVELS, cofoldAgent, modelOf } from '../src/index.js';
 import { apply } from '../src/plugin.js';
 import { startedNow } from '../../sdk/test/support/started.js';
 import type { Peer } from '../../sdk/src/types/rpc.js';
+import { WAIT_MS } from '../../../tools/wait.ts';
 
 /*
  * The models the endpoint serves.
@@ -136,11 +137,12 @@ const hanging = (): { calls: () => number } => {
   return { calls: () => calls };
 };
 
-/** Let the probe's zero-delay work finish before reading what it learned. */
-const untilAsync = async (check: () => Promise<boolean>, times = 400): Promise<void> => {
-  for (let i = 0; i < times; i++) {
-    if (await check()) return;
-    await new Promise((r) => { setTimeout(r, 0); });
+/** Let the probe's work finish before reading what it learned, bounded by the clock. */
+const untilAsync = async (check: () => Promise<boolean>): Promise<void> => {
+  const deadline = performance.now() + WAIT_MS;
+  while (!(await check())) {
+    if (performance.now() >= deadline) return;
+    await new Promise((r) => { setImmediate(r); });
   }
 };
 
