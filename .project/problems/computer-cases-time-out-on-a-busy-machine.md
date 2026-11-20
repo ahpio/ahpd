@@ -56,6 +56,10 @@ On 2026-11-16, in CI run 43952762220 for ahpio/ahpd#356, the `processes (1/2)` j
 
 On 2026-11-17, main's CI run 44030269573 at `19ed69394` failed `processes (1/2)` on the same case, at 5000 ms. On 2026-11-18, CI run 44411897897 for ahpio/ahpd#382 failed `processes (1/2)` on it again, at 5000 ms. That change does not touch `packages/computer`. The run before it was cancelled, and the run after it at `f65b24112` passed.
 
+On 2026-11-20, near 20:04 UTC, `processes (1/2)` failed on the same case in two runs at once: run 44807221844 for ahpio/ahpd#394 at 8384 ms, and run 44770193956 for ahpio/ahpd#393 at 5112 ms. Main's CI run 44807185199 at `4e5753e6a` passed a few minutes before. On Softov's machine the case takes 289 ms, and `docker info` takes 190 ms.
+
+This case starts no fake CLI. It runs the real server-check script of [`code://packages/computer/src/servercheck.ts`](../../packages/computer/src/servercheck.ts), which calls `docker version`, `docker info` and `virsh` on the runner itself. A busy Docker daemon on the runner is a likely cause for this case, not yet shown.
+
 On 2026-11-16, on Softov's machine with a load average near 17, a full run timed out 15 cases in `packages/computer` and `plugin-load.test.ts`. The 8 files run again alone timed out 4 cases, 2 of them not in the first set.
 
 On 2026-11-17, at `acc5b9b9c` with the wrapper change, both cases timed out at 5000 ms again in a full run.
