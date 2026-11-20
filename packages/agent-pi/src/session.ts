@@ -648,6 +648,12 @@ export function piSession(
     };
 
     const decided = decide(event.toolName, input);
+    /*
+     * A question asked while a stopped turn winds down, or with no turn
+     * running, has nobody to answer it, and pi would wait on it for ever. It
+     * is refused as the stop refuses the questions it leaves.
+     */
+    if (decided === 'ask' && (cancelled || active === undefined)) return { block: true, reason: 'The turn was stopped' };
     if (decided === 'ask') {
       const title = `Run ${displayName}?`;
       /*
