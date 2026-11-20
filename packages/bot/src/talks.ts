@@ -35,9 +35,15 @@ export interface TalkSeams {
   /** The daemon's configuration folder, where each bot's Front logs are. */
   configDir: string;
   /**
-   * Whether the host can open the session at this URI. Not whether its store
-   * keeps a row for it: a row outlives a session that ran no turn, which a
-   * restart cannot open, and a talk handed back there is one nobody can read.
+   * Whether the host's store keeps the session at this URI, with its config.
+   * A talk's config names its bot, and a session read back from an old log
+   * with no record names none, so a message there wakes no bot.
+   */
+  kept(uri: string): Promise<boolean>;
+  /**
+   * Whether the host can open the session at this URI. A record outlives a
+   * session that ran no turn, which a restart cannot open, and a talk handed
+   * back there is one nobody can read.
    */
   opens(uri: string): Promise<boolean>;
   /** Whose the session at this URI is, or nothing where the host has none. */
@@ -97,13 +103,16 @@ const logIds = (dir: string): string[] => {
 };
 
 export function botTalks(seams: TalkSeams, second: SecondSession = 'refuse'): Talks {
+  /** Whether a session is a talk: the store keeps it with its config, and the host can open it. */
+  const talk = async (uri: string): Promise<boolean> => await seams.kept(uri) && await seams.opens(uri);
   /** The last used session from before the rows were kept, and the row written for it. */
   const fromLogs = async (bot: string, owner: Owner | undefined): Promise<string | undefined> => {
     for (const id of logIds(logsOf(seams.configDir, bot))) {
       for (const uri of urisOf(id)) {
-        if (!await seams.opens(uri)) continue;
+        if (!await talk(uri)) continue;
         if (talkerOf(await seams.owner(uri)) !== talkerOf(owner)) continue;
         await seams.fronts.put(bot, talkerOf(owner), uri);
+        seams.onKeep?.(bot, talkerOf(owner), uri);
         return uri;
       }
     }
@@ -113,7 +122,7 @@ export function botTalks(seams: TalkSeams, second: SecondSession = 'refuse'): Ta
     second,
     of: async (bot, owner) => {
       const held = await seams.fronts.get(bot, talkerOf(owner));
-      if (held !== undefined && await seams.opens(held)) return held;
+      if (held !== undefined && await talk(held)) return held;
       return await fromLogs(bot, owner);
     },
     keep: async (bot, owner, session) => {
@@ -123,7 +132,7 @@ export function botTalks(seams: TalkSeams, second: SecondSession = 'refuse'): Ta
     all: async (bot) => {
       const found = new Map<string, string>();
       for (const { user, session } of await seams.fronts.talks(bot)) {
-        if (await seams.opens(session)) found.set(user, session);
+        if (await talk(session)) found.set(user, session);
       }
       return found;
     },

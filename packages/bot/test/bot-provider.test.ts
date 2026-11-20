@@ -18,7 +18,7 @@ import { echo } from '../../../examples/echo/agent.js';
 import { apply } from '../src/plugin.js';
 import { BOT_BODIES, BOT_COLORS } from '../src/record.js';
 import { botStore } from '../src/store.js';
-import { frontsOf, rowId } from '../src/names.js';
+import { frontsOf, logsOf, rowId } from '../src/names.js';
 import { talkerOf } from '../src/talks.js';
 import type { Agent } from '../../sdk/src/types/agent.js';
 import type { AgentOwner } from '../../sdk/src/types/agents.js';
@@ -1426,6 +1426,25 @@ it('drops a talk whose session the host cannot open, as one with no message afte
   got(await talk(ana, 'ahp-session:/one'));
   expect(await talk(ana, 'ahp-session:/two')).toMatchObject({ message: 'You already have a session with Motion: ahp-session:/one.' });
   await vi.waitFor(async () => { expect((await record(ana, 'bot://motion'))['session']).toBe('ahp-session:/one'); }, { timeout: WAIT_MS });
+});
+
+it('takes no talk from an old log whose session the store keeps no record of, and opens a new one', async () => {
+  const { host, configDir } = made({ soft: ['bot:*', 'session:create'] });
+  const soft = await as(host, 'soft');
+  await write(soft, 'bot://motion', { name: 'Motion' }, { createOnly: true });
+  /*
+   * A talk from before the rows were kept: its Front log holds a turn, so the
+   * host can open it, but the store keeps no record of it and its config names
+   * no bot. A message there would wake nothing, so it is nobody's talk.
+   */
+  mkdirSync(logsOf(configDir, 'motion'), { recursive: true });
+  writeFileSync(join(logsOf(configDir, 'motion'), 'old.jsonl'),
+    `${JSON.stringify({ id: 't1', message: { text: 'hi' }, _meta: { bot: 'motion' } })}\n`);
+  const root = await door(host);
+
+  got(await talk(root, 'ahp-session:/one'));
+  expect(await talk(root, 'ahp-session:/two')).toMatchObject({ message: 'You already have a session with Motion: ahp-session:/one.' });
+  await vi.waitFor(async () => { expect((await record(root, 'bot://motion'))['session']).toBe('ahp-session:/one'); }, { timeout: WAIT_MS });
 });
 
 it('keeps every root owner under one talker, whatever machine it names, and no owner as the root', () => {

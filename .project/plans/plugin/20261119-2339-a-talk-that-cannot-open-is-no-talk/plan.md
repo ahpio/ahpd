@@ -63,6 +63,7 @@ Open chat -> bot read answers the talk -> talks.of -> host.sessionKept (store ro
 | A talk whose session does not open is not the person's talk, so Open chat makes a new one, and the old row is written over when it is kept | (defaulted: `keep` writes a row over the one there was) | 02 |
 | The reopen of talks a restart left open keeps `sessionKept`, since a talk with an open turn has a log and its subscribe restores it | (defaulted: no change where the answer is the same) | 02 |
 | The line in the 0.15.0 notes goes under *Bots* and *Plugins and connectors* | (defaulted: a fix of the working day, before 0.15.0) | 02 |
+| A talk is a session the store keeps with its config and the host can open, so an old log with no record is no talk | Softov, 2026-11-19: "build it, PR, merge when green", after #386 took Ember's old log as his talk | 03 |
 
 ## Proposed architecture
 
@@ -76,6 +77,7 @@ Open chat -> bot read answers the talk -> talks.of -> host.sessionKept (store ro
 | --- | --- | --- |
 | [01 - the host says whether a session opens](task-01-the-host-says-whether-a-session-opens.md) | done | - |
 | [02 - a bot talk is one that opens](task-02-a-bot-talk-is-one-that-opens.md) | done | 01 |
+| [03 - a talk is kept and opens](task-03-a-talk-is-kept-and-opens.md) | done | 02 |
 
 ## Risks and tradeoffs
 
@@ -85,7 +87,7 @@ Open chat -> bot read answers the talk -> talks.of -> host.sessionKept (store ro
 ## Resume state
 
 - **Done so far:** tasks 01 and 02, merged in #386 as `69571e844` on 2026-11-19, green on the first run.
-- **Next action:** Softov's check after a restart, then `implemented.md`.
+- **Next action:** the PR of task 03, then Softov's check after a restart, then `implemented.md`.
 - **Open questions:** none.
 - **Watch out for:** the computer plugin must keep `sessionKept`; a `false` there removes a machine and its volume.
 
