@@ -84,8 +84,8 @@ Open chat -> bot read answers the talk -> talks.of -> host.sessionKept (store ro
 
 ## Resume state
 
-- **Done so far:** tasks 01 and 02, built on 2026-11-19.
-- **Next action:** the PR, then Softov's check after a restart, then `implemented.md`.
+- **Done so far:** tasks 01 and 02, merged in #386 as `69571e844` on 2026-11-19, green on the first run.
+- **Next action:** Softov's check after a restart, then `implemented.md`.
 - **Open questions:** none.
 - **Watch out for:** the computer plugin must keep `sessionKept`; a `false` there removes a machine and its volume.
 
