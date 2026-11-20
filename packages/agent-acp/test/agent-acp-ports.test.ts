@@ -1308,12 +1308,8 @@ it('refuses a late elicitation and permission emitted during post-abort prompt u
 
   await endedTurn(p, chatUri, 1);
   expect(actions(p, chatUri).filter((e) => e.action.type === 'chat/inputRequested')).toHaveLength(1);
-  expect(actions(p, chatUri).filter((e) => e.action.type === 'chat/inputRequested')[0]?.action.turnId).toBe('t1');
   expect(actions(p, chatUri).some((e) => e.action.type === 'chat/toolCallReady' && e.action.toolCallId === 'call-late-unwind')).toBe(false);
   expect(actions(p, uri).filter((e) => e.action.type === 'session/inputNeededSet')).toHaveLength(1);
-  expect(actions(p, uri).filter((e) => e.action.type === 'session/inputNeededSet')[0]?.action.request).toMatchObject({
-    kind: 'chatInput',
-    turnId: 't1',
-  });
+  expect(actions(p, uri).filter((e) => e.action.type === 'session/inputNeededSet')[0]?.action.request).toMatchObject({ kind: 'chatInput' });
   expect(actions(p, chatUri).some((e) => e.action.type === 'chat/turnComplete' && e.action.turnId === 't2')).toBe(true);
 });

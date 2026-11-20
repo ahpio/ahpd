@@ -342,13 +342,6 @@ for (const [name, schema] of defs) {
   void name;
 }
 
-for (const name of ['ChatInputRequestedAction', 'SessionChatInputRequest']) {
-  const def = defs.get(name);
-  if (def && typeof def === 'object' && def.properties) {
-    def.properties.turnId = { type: 'string' };
-  }
-}
-
 const out = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   $id: 'ahp-strict',

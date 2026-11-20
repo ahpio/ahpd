@@ -801,7 +801,6 @@ export function createHandlers(ctx: SessionContext): Handlers {
      */
     if (ctx.mapping === undefined || ctx.cancelRequested || ctx.replaced?.has(ctx.mapping.turnId) === true
       || (page === undefined && questions.length === 0)) return Promise.resolve({ action: 'cancel' });
-    const turnId = ctx.mapping.turnId;
     const id = nameOf(request, str(held.toolCallId));
     const message = str(held.message);
     const asking: Bag = {
@@ -810,7 +809,10 @@ export function createHandlers(ctx: SessionContext): Handlers {
       ...(page === undefined ? {} : { url: page.url }),
       ...(questions.length === 0 ? {} : { questions }),
     };
-    const entry: Bag = { id, chat: start.chatUri, kind: 'chatInput', turnId, request: asking };
+    // The chat input entry, which is the one kind of input request that names
+    // no turn: a question stands on the chat rather than in the turn that
+    // happened to be running when the server asked it.
+    const entry: Bag = { id, chat: start.chatUri, kind: 'chatInput', request: asking };
     const answered = new Promise<CreateElicitationResponse>((resolve) => {
       elicitations.set(id, {
         fields: new Set(questions.map((one) => String(one.id))),
@@ -819,7 +821,7 @@ export function createHandlers(ctx: SessionContext): Handlers {
         settle: resolve,
       });
     });
-    emit('chat', { type: 'chat/inputRequested', turnId, request: asking });
+    emit('chat', { type: 'chat/inputRequested', request: asking });
     emit('session', { type: 'session/inputNeededSet', request: entry });
     /*
      * The question the server takes back.

@@ -151,7 +151,6 @@ export function createAsking(options: AskingOptions): Asking {
       try {
         options.dispatch(chat, {
           type: 'chat/inputRequested',
-          turnId: turn,
           request: { id, questions: questions.map(questionOf) },
         });
       }
