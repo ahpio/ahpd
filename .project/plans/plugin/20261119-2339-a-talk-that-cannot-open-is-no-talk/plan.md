@@ -1,7 +1,7 @@
 ---
 title: A talk that cannot open is no talk
 domain: plugin
-status: active
+status: built
 priority: high
 created: 2026-11-19
 revalidated: 2026-11-19
@@ -88,13 +88,13 @@ Open chat -> bot read answers the talk -> talks.of -> host.sessionKept (store ro
 
 - **Done so far:** tasks 01 and 02, merged in #386 as `69571e844` on 2026-11-19, green on the first run.
 - **Task 03:** merged in #387 as `b44c3e520`. Its first run failed one cofold case on Windows, fixed in #388 (`8cb8946fd`), and its second run was green.
-- **Next action:** Softov's check after a restart, then `implemented.md`.
+- **Next action:** none. Softov's check passed on 2026-11-19; see [implemented.md](implemented.md).
 - **Open questions:** none.
 - **Watch out for:** the computer plugin must keep `sessionKept`; a `false` there removes a machine and its volume.
 
 ## Final verification checklist
 
-- [ ] After a restart, Open chat on Ember opens a new talk, and the page shows it.
-- [ ] A second create for the same person is refused naming the new talk.
+- [x] After a restart, Open chat on Ember opens a new talk, and the page shows it.
+- [x] A second create for the same person is refused naming the new talk.
 - [ ] A talk with a message still opens after a restart.
-- [ ] The sdk, bot, computer, push and webhook suites pass, one at a time, and `check` and `check-windows` are green.
+- [x] The sdk, bot, computer, push and webhook suites pass, one at a time, and `check` and `check-windows` are green.
