@@ -1,7 +1,7 @@
 ---
 title: A guide page for each subject
 domain: documentation
-status: planned
+status: dropped
 priority: high
 created: 2026-11-20
 revalidated: 2026-11-20
@@ -18,6 +18,8 @@ refs:
   - "[code://docs/server/GET-STARTED.md](../../../../docs/server/GET-STARTED.md) - a page for a person who runs ahpd, the voice the guide pages follow"
   - https://diataxis.fr/explanation/ - an explanation page says what a thing is and why, and links the reference
 ---
+
+Dropped on 2026-11-20: Softov meant a server page for each command group that has none, not a guide of subjects. "maybe we dont need a /guide but on server we need the missing pages."
 
 ## Goal
 
