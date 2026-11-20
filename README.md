@@ -9,16 +9,25 @@
 ![Agent Host Protocol 1.0.0](https://img.shields.io/badge/AHP-1.0.0-0b7285)
 ![runs on Node, Bun, Deno](https://img.shields.io/badge/runs%20on-Node%20%7C%20Bun%20%7C%20Deno-495057)
 
-
 **Run your AI agents anywhere. Control them from anywhere.**
 
-`ahpd` is an open-source, self-hosted platform that brings multiple AI agents together. Run Claude Code, pi, Codex, Copilot, Gemini, and custom agents using supported subscriptions or your own API keys, with the freedom to extend tools and features with plugins.
+`ahpd` is an open-source, self-hosted platform that brings multiple AI agents together.
 
-Manage everything: track usage, control budgets, automate tasks, and keep sessions running even when you disconnect. Connect from your browser, desktop, terminal, or phone, with your sessions and work always in sync.
+Run Claude Code SDK, Pi SDK, ACP agents (Codex, Copilot, Gemini, and more), or your own custom harness using supported subscriptions or API keys. Extend their capabilities with plugins, tools, connectors, MCP servers, and integrations.
 
-Run sessions on your computer, a remote server, or in containers, with full control over your environment and resources.
+Schedule tasks or run sessions on your computer, remote servers, or in containers, with full control over your environments and resources.
 
+Whether it's for personal use or an organization, manage access, monitor usage, and control budgets from one place.
+
+Connect from your browser, desktop, terminal, or phone. Your sessions and work stay in sync across every client. 
+
+> It also has a `shared editing` feature for real-time collaboration.
+>
 > **And this is just the beginning.** ahpd is an extensible platform, built to grow with new agents, integrations, and possibilities.
+
+[Read the documentation](https://ahpio.github.io/ahpd/) · [GitHub](https://github.com/ahpio/ahpd) · [Discord](https://discord.gg/NWvnuqEQxG)
+
+[ahpio.com](https://ahpio.com)
 
 <p align="center">
   <picture>
@@ -26,8 +35,6 @@ Run sessions on your computer, a remote server, or in containers, with full cont
     <img src="docs/media/hub-01-dark.png" alt="Run agents on your own infrastructure, controlled from anywhere">
   </picture>
 </p>
-
-[Read the documentation](https://ahpio.github.io/ahpd/) · [GitHub](https://github.com/ahpio/ahpd) · [ahpio.com](https://ahpio.com)
 
 ---
 

@@ -1,4 +1,4 @@
-# @ahpd/server
+# <img src="https://raw.githubusercontent.com/ahpio/ahpd/main/docs/public/logo.svg" alt="" height="32"> @ahpd/server
 
 [![npm](https://img.shields.io/npm/v/%40ahpd%2Fserver)](https://www.npmjs.com/package/@ahpd/server)
 [![CI](https://github.com/ahpio/ahpd/actions/workflows/ci.yml/badge.svg)](https://github.com/ahpio/ahpd/actions/workflows/ci.yml)
@@ -6,7 +6,14 @@
 ![node >=22.18](https://img.shields.io/badge/node-%3E%3D22.18-5fa04e)
 ![Agent Host Protocol 1.0.0](https://img.shields.io/badge/AHP-1.0.0-0b7285)
 
-A ready-to-run [Agent Host Protocol](https://microsoft.github.io/agent-host-protocol/) server. It installs the `ahpd` command, runs agent sessions, and serves them over a WebSocket, so several clients can watch and drive the same session at once.
+[ahpio.com](https://ahpio.com) · [Docs](https://ahpio.github.io/ahpd/)
+
+The `ahpd` daemon: one self-hosted host for your AI agents. It runs Claude Code, Codex, Copilot, Gemini, pi and your own agents as plugins, keeps their sessions running when you disconnect, and serves them over the [Agent Host Protocol](https://microsoft.github.io/agent-host-protocol/), so your browser, desktop, terminal and phone all work on the same session.
+
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/ahpio/ahpd/main/docs/media/hub-01-light.png">
+  <img src="https://raw.githubusercontent.com/ahpio/ahpd/main/docs/media/hub-01-dark.png" alt="Run agents on your own infrastructure, controlled from anywhere">
+</picture>
 
 Part of [ahpd](https://github.com/ahpio/ahpd). The source is in [`packages/server`](https://github.com/ahpio/ahpd/tree/main/packages/server), and it is built on [`@ahpd/sdk`](https://www.npmjs.com/package/@ahpd/sdk).
 
@@ -29,13 +36,15 @@ ahpd plugin install @ahpd/agent-claude
 ahpd --plugin @ahpd/agent-claude --path /work/project
 ```
 
+It listens on `ws://127.0.0.1:9187`. Run it with no arguments to serve the directory you are in.
+
 `ahpd plugin install` runs `npm install` in the configuration directory, where a bare plugin name is resolved from, and adds the name to `plugins` in `config.json` so the next run loads it. A bare name is installed at the newest of the package's versions whose `@ahpd/sdk` peer range admits this daemon, and a name that carries a version or a tag goes to npm as written. A plugin installed with `npm i -g` is not seen.
+
+### Update
 
 To upgrade, run `npm i -g @ahpd/server`, then `ahpd plugin update all` to move every installed plugin to the newest of its own versions whose `@ahpd/sdk` range admits this daemon (or `ahpd plugin update <name>...` for only some), then restart the daemon. ahpd installs the daemon's own `@ahpd/sdk` beside the plugins, so one plugin never blocks another, and a plugin whose `@ahpd/sdk` range leaves out the daemon's is refused when the daemon loads it.
 
 npm 12 blocks install scripts unless told otherwise, and `node-pty` needs its script on Linux to build the terminal binding. Without it the daemon still runs, but terminals fall back to pipes (`isPty: false`). Add `--allow-scripts=node-pty` to the daemon's global install, or run `npm config set allow-scripts=node-pty --location=user` once.
-
-It listens on `ws://127.0.0.1:9187`. Run it with no arguments to serve the directory you are in.
 
 Needs Node 22.18 or later. Also runs on Bun and Deno.
 
@@ -221,6 +230,8 @@ For a host of a different shape, build it from `@ahpd/sdk` and skip this package
 | [src/update.ts](https://github.com/ahpio/ahpd/blob/main/packages/server/src/update.ts) | Asking npm whether a newer version exists, in the background |
 
 ## Documentation
+
+[Read the documentation](https://ahpio.github.io/ahpd/)
 
 | | |
 | --- | --- |

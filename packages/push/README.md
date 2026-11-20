@@ -6,6 +6,8 @@
 ![node >=22](https://img.shields.io/badge/node-%3E%3D22-5fa04e)
 ![Agent Host Protocol 1.0.0](https://img.shields.io/badge/AHP-1.0.0-0b7285)
 
+[ahpio.com](https://ahpio.com) · [Docs](https://ahpio.github.io/ahpd/)
+
 Push notifications for the [`@ahpd/server`](https://www.npmjs.com/package/@ahpd/server) daemon. A phone registers its Expo push token, or a browser registers its Web Push subscription. Each hears about a session that needs a person while the app or the tab is closed.
 
 It is two halves. A `push:` resource provider keeps the registered devices. The plugin is VS Code's sessions window notifier, carried to a phone or a browser: a client of the daemon that holds its session list and tells a person's devices when one of their sessions needs them, completes or fails.
@@ -145,4 +147,4 @@ A push service sees which host talks to which browser, and when. The message is 
 
 ## License
 
-MIT.
+MIT © Softov

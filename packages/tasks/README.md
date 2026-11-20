@@ -6,6 +6,8 @@
 ![node >=22](https://img.shields.io/badge/node-%3E%3D22-5fa04e)
 ![Agent Host Protocol 1.0.0](https://img.shields.io/badge/AHP-1.0.0-0b7285)
 
+[ahpio.com](https://ahpio.com) · [Docs](https://ahpio.github.io/ahpd/)
+
 A tasks plugin for the [`@ahpd/server`](https://www.npmjs.com/package/@ahpd/server) daemon. The host keeps one list of tasks and plans for every agent and person, and offers host tools so a Claude, a pi or a cofold session reads and writes the same list.
 
 Part of [ahpd](https://github.com/ahpio/ahpd). The source is in [`packages/tasks`](https://github.com/ahpio/ahpd/tree/main/packages/tasks).
@@ -57,3 +59,7 @@ const { options } = foldHostOptions({ path, agents: [claude({ paths: [path] })] 
 const host = createHost(options);
 await listen({ port: 9187 }, (peer) => host.accept(peer));
 ```
+
+## License
+
+MIT © Softov

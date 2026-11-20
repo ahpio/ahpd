@@ -6,6 +6,8 @@
 ![node >=22](https://img.shields.io/badge/node-%3E%3D22-5fa04e)
 ![Agent Host Protocol 1.0.0](https://img.shields.io/badge/AHP-1.0.0-0b7285)
 
+[ahpio.com](https://ahpio.com) · [Docs](https://ahpio.github.io/ahpd/)
+
 A [Dev Tunnel](https://aka.ms/devtunnels) plugin for the [`@ahpd/server`](https://www.npmjs.com/package/@ahpd/server) daemon. It forwards the daemon's port through a Microsoft Dev Tunnel, labelled the way VS Code expects, so VS Code can find and reach the daemon from a machine on another network.
 
 Part of [ahpd](https://github.com/ahpio/ahpd). The source is in [`packages/tunnel-devtunnel`](https://github.com/ahpio/ahpd/tree/main/packages/tunnel-devtunnel).
