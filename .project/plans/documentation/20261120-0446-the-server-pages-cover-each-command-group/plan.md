@@ -1,7 +1,7 @@
 ---
 title: The server pages cover each command group
 domain: documentation
-status: planned
+status: active
 priority: high
 created: 2026-11-20
 revalidated: 2026-11-20
@@ -60,10 +60,10 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - teams and projects have a page](task-01-teams-and-projects-have-a-page.md) | todo | - |
-| [02 - joined nodes have a page](task-02-joined-nodes-have-a-page.md) | todo | - |
-| [03 - automations have a server page](task-03-automations-have-a-server-page.md) | todo | - |
-| [04 - the plugins page covers every command](task-04-the-plugins-page-covers-every-command.md) | todo | - |
+| [01 - teams and projects have a page](task-01-teams-and-projects-have-a-page.md) | doing | - |
+| [02 - joined nodes have a page](task-02-joined-nodes-have-a-page.md) | doing | - |
+| [03 - automations have a server page](task-03-automations-have-a-server-page.md) | doing | - |
+| [04 - the plugins page covers every command](task-04-the-plugins-page-covers-every-command.md) | doing | - |
 
 ## Risks and tradeoffs
 
@@ -72,7 +72,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ## Resume state
 
-- **Done so far:** nothing.
+- **Done so far:** the four tasks written on 2026-11-20, waiting for Softov's read.
 - **Next action:** [task-01-teams-and-projects-have-a-page.md](task-01-teams-and-projects-have-a-page.md).
 - **Open questions:** none.
 - **Watch out for:** `pnpm docs:build` needs `pnpm build` first, for the command reference; add a page and its sidebar entry in one commit.

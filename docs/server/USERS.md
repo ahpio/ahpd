@@ -27,7 +27,7 @@ ahpd user token ana --url
 | `ahpd user rm <id>` | Remove them, and their tokens |
 | `ahpd user member <id> <team[:project]>...` | Teams and projects their work may be charged to |
 | `ahpd user primary <id> [team[:project]]` | Where work that names none is charged |
-| `ahpd team add <id>`, `ahpd project add <id>` | Name a team or project |
+| `ahpd team add <id>`, `ahpd project add <id>` | Name a team or project. See [Teams and projects](TEAMS.md) |
 | `ahpd token mint [--user <id>] [--team <team>] [--scope <team[:project]>]` | Mint a token of their own, shown once |
 | `ahpd token list [--user <id>] [--team <team>]` | Show tokens, without any secret or hash |
 | `ahpd token rm <token id> [--user <id>] [--team <team>]` | Revoke one token |

@@ -1,6 +1,6 @@
 ---
 title: Teams and projects have a page
-status: todo
+status: doing
 depends: []
 layer: "docs"
 refs:
@@ -34,4 +34,6 @@ refs:
 - `pnpm docs:build` passes.
 
 ## Resume
+
+Written on 2026-11-20. The memberships section names `user member` and `user primary`, which `USERS.md` also lists, as the commands that use a team.
 

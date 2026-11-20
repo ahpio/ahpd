@@ -163,7 +163,7 @@ export const declareNodes = (registry: Registry<object>, served?: ServedFacts): 
   const rm = registry.action({
     id: 'node.rm',
     summary: 'Take a node out of the file',
-    description: 'Its token is refused from its next connection on.',
+    description: 'A running daemon drops it at once, with every session it runs. With no daemon answering, its token is refused from its next connection on.',
     surfaces: { cli: { pattern: ['node', 'rm', ':id'] }, http: { method: 'POST', path: '/node/rm/{id}' } },
     // The name is what says which node the confirm is about to take out.
     effect: 'remove',

@@ -232,11 +232,7 @@ A daemon started over the `automations.json` an earlier version wrote converts i
 
 Automations are driven over the protocol, and over the HTTP API where the daemon serves one. `ahpd automation export` and `import` move one out and in as [ahpd's own file](#automation-files), or as [VS Code's file](#vs-code-automation-files) with `--vscode`.
 
-`ahpd automation list` shows one row per automation: the id that export takes, the name, the folder, the schedule and whether it is on. `--json` gives the same rows, and over HTTP it is `GET /api/automation/list`.
-
-```text
-0b6f1c1e-4d8e-4d8a-9a43-6a3f4c2b9e10  Review yesterday's commits  /home/softov/ahpd  0 9 * * * America/Campo_Grande  on
-```
+The commands, `ahpd automation list`, `export` and `import`, are on [the server's Automations page](../server/AUTOMATIONS.md).
 
 | Command | What it does |
 | --- | --- |
