@@ -1,7 +1,7 @@
 ---
 title: A talk that cannot open is no talk
 domain: plugin
-status: planned
+status: active
 priority: high
 created: 2026-11-19
 revalidated: 2026-11-19
@@ -59,7 +59,7 @@ Open chat -> bot read answers the talk -> talks.of -> host.sessionKept (store ro
 | --- | --- | --- |
 | The bot stops handing out a talk the host cannot open, in place of the host opening an empty session | Softov, 2026-11-19: "You can plan it using the sessionKept also. since its your recommendation." | 01, 02 |
 | `sessionKept` keeps its meaning, and the host gains `sessionOpens(uri)`, which the bot's talks ask | Softov, 2026-11-19: "New sessionOpens, bot uses it" | 01, 02 |
-| `sessionOpens` is the store's row and `opens`, as `sessionOwner` reads them; with no host built over the plugin, the store's row alone | (defaulted: the same answer `sessionOwner` gives in each case) | 01 |
+| `sessionOpens` asks `opens`; with no host built over the plugin, it answers the store's row | (defaulted: a session a plugin just started has no config row, and `opens` checks the name) | 01 |
 | A talk whose session does not open is not the person's talk, so Open chat makes a new one, and the old row is written over when it is kept | (defaulted: `keep` writes a row over the one there was) | 02 |
 | The reopen of talks a restart left open keeps `sessionKept`, since a talk with an open turn has a log and its subscribe restores it | (defaulted: no change where the answer is the same) | 02 |
 | The line in the 0.15.0 notes goes under *Bots* and *Plugins and connectors* | (defaulted: a fix of the working day, before 0.15.0) | 02 |
@@ -74,8 +74,8 @@ Open chat -> bot read answers the talk -> talks.of -> host.sessionKept (store ro
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - the host says whether a session opens](task-01-the-host-says-whether-a-session-opens.md) | todo | - |
-| [02 - a bot talk is one that opens](task-02-a-bot-talk-is-one-that-opens.md) | todo | 01 |
+| [01 - the host says whether a session opens](task-01-the-host-says-whether-a-session-opens.md) | done | - |
+| [02 - a bot talk is one that opens](task-02-a-bot-talk-is-one-that-opens.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -84,8 +84,8 @@ Open chat -> bot read answers the talk -> talks.of -> host.sessionKept (store ro
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-the-host-says-whether-a-session-opens.md](task-01-the-host-says-whether-a-session-opens.md).
+- **Done so far:** tasks 01 and 02, built on 2026-11-19.
+- **Next action:** the PR, then Softov's check after a restart, then `implemented.md`.
 - **Open questions:** none.
 - **Watch out for:** the computer plugin must keep `sessionKept`; a `false` there removes a machine and its volume.
 
