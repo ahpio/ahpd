@@ -1,6 +1,6 @@
 ---
 title: The plugins page covers every command
-status: doing
+status: done
 depends: []
 layer: "docs"
 refs:

@@ -1,7 +1,7 @@
 ---
 title: The server pages cover each command group
 domain: documentation
-status: active
+status: built
 priority: high
 created: 2026-11-20
 revalidated: 2026-11-20
@@ -60,10 +60,10 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - teams and projects have a page](task-01-teams-and-projects-have-a-page.md) | doing | - |
-| [02 - joined nodes have a page](task-02-joined-nodes-have-a-page.md) | doing | - |
-| [03 - automations have a server page](task-03-automations-have-a-server-page.md) | doing | - |
-| [04 - the plugins page covers every command](task-04-the-plugins-page-covers-every-command.md) | doing | - |
+| [01 - teams and projects have a page](task-01-teams-and-projects-have-a-page.md) | done | - |
+| [02 - joined nodes have a page](task-02-joined-nodes-have-a-page.md) | done | - |
+| [03 - automations have a server page](task-03-automations-have-a-server-page.md) | done | - |
+| [04 - the plugins page covers every command](task-04-the-plugins-page-covers-every-command.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -73,13 +73,13 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 ## Resume state
 
 - **Done so far:** the four tasks, merged in #391 on 2026-11-20, green on the first run.
-- **Next action:** Softov's read of the pages, then `implemented.md`.
+- **Next action:** none. Softov read the pages on 2026-11-20; see [implemented.md](implemented.md).
 - **Open questions:** none.
 - **Watch out for:** `pnpm docs:build` needs `pnpm build` first, for the command reference; add a page and its sidebar entry in one commit.
 
 ## Final verification checklist
 
-- [ ] `pnpm docs:build` passes, and the Server group lists the three new pages.
-- [ ] Each command of `team`, `project`, `join`, `node`, `automation` and `plugin` is on a server page.
-- [ ] Each line matches the command's help and its code.
-- [ ] Softov reads the pages.
+- [x] `pnpm docs:build` passes, and the Server group lists the three new pages.
+- [x] Each command of `team`, `project`, `join`, `node`, `automation` and `plugin` is on a server page.
+- [x] Each line matches the command's help and its code.
+- [x] Softov reads the pages.

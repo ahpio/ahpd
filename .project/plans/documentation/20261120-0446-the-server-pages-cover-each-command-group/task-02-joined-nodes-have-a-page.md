@@ -1,6 +1,6 @@
 ---
 title: Joined nodes have a page
-status: doing
+status: done
 depends: []
 layer: "docs, server"
 refs:

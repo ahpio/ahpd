@@ -1,6 +1,6 @@
 ---
 title: Automations have a server page
-status: doing
+status: done
 depends: []
 layer: "docs"
 refs:

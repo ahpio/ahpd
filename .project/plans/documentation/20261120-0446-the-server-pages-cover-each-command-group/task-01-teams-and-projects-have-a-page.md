@@ -1,6 +1,6 @@
 ---
 title: Teams and projects have a page
-status: doing
+status: done
 depends: []
 layer: "docs"
 refs:
