@@ -25,6 +25,7 @@ import {
   alwaysAsks, asksForTool, confirmationOptions, getAutoApproval as autoApprovalOf, isDeniedByPermissions, isForbiddenSnapshotWrite, managedDecision,
   permissionRulesOf,
 } from './permissions.js';
+import { mcpServerOf } from './permissions.js';
 import type { ToolApproval } from './permissions.js';
 import { vscodeRootProperties } from '../vscoderootconfig.js';
 import { PENDING_CONFIRMATION_FIELDS } from '../types/agent.js';
@@ -622,10 +623,21 @@ export function createSpawn(ctx: HostContext): Spawn {
     const attachments = kept.attachmentsDir?.(idOf(session));
     const messages = [...(Array.isArray(ctx.stateOf(chat)?.turns) ? ctx.stateOf(chat)?.turns as Bag[] : []), ...(turn === undefined ? [] : [turn])]
       .map((one) => one.message as Bag | undefined);
+    /*
+     * The MCP server the call's tool belongs to and the tool's own name on
+     * it, which an `Mcp(<server>/<tool>)` rule reads. An MCP client names a
+     * server's tool `mcp__<server>__<tool>`, so the tool is what ends the name
+     * after its last `__`.
+     */
+    const mcpServerName = mcpServerOf(contributor, ctx.stateOf(session)?.customizations);
+    const mcpToolName = mcpServerName === undefined || toolName === undefined ? undefined
+      : toolName.includes('__') ? toolName.slice(toolName.lastIndexOf('__') + 2) : toolName;
     const approval: ToolApproval = {
       request: {
         kind: signal.permissionKind,
         toolName: toolName ?? '',
+        ...(mcpServerName === undefined ? {} : { mcpServerName }),
+        ...(mcpToolName === undefined ? {} : { mcpToolName }),
         ...(signal.shellLanguage === undefined ? {} : { shellLanguage: signal.shellLanguage }),
         ...(signal.permissionUrl === undefined ? {} : { url: signal.permissionUrl }),
         ...(signal.permissionPath === undefined ? {} : { path: signal.permissionPath }),
