@@ -2880,3 +2880,27 @@ it('refuses a clone of a branch origin does not have, and says bundle brings it 
   // The machine that could not be seeded is not left on the box.
   expect(held(farOf(state)).machines).toEqual([]);
 }, FAR_CASE);
+
+/*
+ * A machine operation reads the machine's record once: plan
+ * `plugin/20261121-1708-a-machine-operation-reads-its-record-once`. Each docker
+ * call is a process, so a call made twice is a process started twice.
+ */
+it('reads a disposable machine\'s record once per operation, from its make to its removal', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  const dir = realpathSync(temp());
+  const state = join(dir, 'docker.json');
+  const { repo } = repositoryIn(dir);
+  const lines: string[] = [];
+  const loaded = await withRepository(state, {}, {}, lines);
+  const { open, dispose } = await room(loaded);
+  await open('ahp-session:/one', { computer: 'disposable:claude' }, repo);
+  await dispose('ahp-session:/one');
+  await settle();
+  await advanceUntil(() => lines.some((line) => line.includes('removed the disposable machine')));
+  await settle();
+  const calls = held(state).calls;
+  // The leave's bring-back reads it once, the owner check once, and the removal once.
+  expect(calls.filter((one) => one[0] === 'inspect').length).toBe(3);
+  expect(calls.length).toBe(20);
+});
