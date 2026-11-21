@@ -141,7 +141,7 @@ it('registers the acp engine, its templates, host-only fields and key variables'
     'AMP_API_KEY',
     'CLINE_API_KEY',
     'CODEX_API_KEY',
-    'COPAPO_API_KEY',
+    'COFOLD_API_KEY',
     'COPILOT_GITHUB_TOKEN',
     'CURSOR_API_KEY',
     'DEEPSEEK_API_KEY',

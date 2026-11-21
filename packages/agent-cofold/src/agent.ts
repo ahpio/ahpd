@@ -69,7 +69,7 @@ export interface CofoldOptions {
   /**
    * The configuration directory the harness reads *inside a machine*.
    *
-   * The configuration is mounted there and `COPAPO_CONFIG` is pointed at the
+   * The configuration is mounted there and `COFOLD_CONFIG` is pointed at the
    * file, so a cofold host in the machine finds the providers whatever user the
    * image runs as, and `XDG_CONFIG_HOME` is left as the image has it.
    * `false` says nothing at all and leaves the image's own.
@@ -885,9 +885,9 @@ export function cofoldAgent(options: CofoldOptions = {}): CofoldAgent {
     const opened = (resumed: Start): Session => {
       /*
        * The harness configuration as copapo reads it in the session's own
-       * workspace, that workspace's `.copapo.json` among its layers; a session
+       * workspace, that workspace's `.cofold.json` among its layers; a session
        * given no folder has no project of its own and reads the backend's.
-       * https://github.com/softov/cofold/blob/ee4819644696b88e83e63c56ed7bdf426d32cfb9/packages/papo/src/config.ts#L92-L94
+       * https://github.com/softov/cofold/blob/97e05d0/packages/copapo/src/config.ts#L128-L133
        */
       const read = resumed.workingDirectory === undefined ? harness : harnessConfig(process.env, homedir(), resumed.workingDirectory);
       return cofoldSession(
@@ -951,7 +951,7 @@ export function cofoldAgent(options: CofoldOptions = {}): CofoldAgent {
      * What a machine needs for this harness to find its providers.
      *
      * The harness configuration holds the provider keys, and it is mounted
-     * read-only at a fixed target under `computerConfigDir`, with `COPAPO_CONFIG`
+     * read-only at a fixed target under `computerConfigDir`, with `COFOLD_CONFIG`
      * naming that file, the layer copapo's resolver reads from the variable. It
      * is a path to one file rather than a directory, because `XDG_CONFIG_HOME`
      * cannot be moved for one program: it is the nested host's own folder as
@@ -960,7 +960,7 @@ export function cofoldAgent(options: CofoldOptions = {}): CofoldAgent {
      * folder. Nothing here touches `XDG_CONFIG_HOME`, so every other program in
      * the machine keeps its own.
      *
-     * The target keeps the `copapo/config.json` shape the file has on a host, so
+     * The target keeps the `cofold/config.json` shape the file has on a host, so
      * a person reading a mounted machine sees the same relative path they see
      * at `~/.config`.
      *
@@ -993,13 +993,13 @@ export function cofoldAgent(options: CofoldOptions = {}): CofoldAgent {
       return {
         cofoldState: {
           state: configDir,
-          seed: [{ source: read, target: 'copapo/config.json' }],
+          seed: [{ source: read, target: 'cofold/config.json' }],
           credential: true,
           description: 'The harness configuration, which holds the provider endpoints and their keys, kept in a volume.',
         },
         cofoldConfig: {
           file: read,
-          target: `${configDir}/copapo/config.json`,
+          target: `${configDir}/cofold/config.json`,
           readOnly: true,
           required: true,
           when: 'host',
@@ -1007,8 +1007,8 @@ export function cofoldAgent(options: CofoldOptions = {}): CofoldAgent {
           description: 'The harness configuration, which holds the provider endpoints and their keys.',
         },
         cofoldConfigPath: {
-          name: 'COPAPO_CONFIG',
-          default: `${configDir}/copapo/config.json`,
+          name: 'COFOLD_CONFIG',
+          default: `${configDir}/cofold/config.json`,
           description: 'Where the harness looks for its configuration inside the machine.',
         },
         cofoldBaseUrl: {

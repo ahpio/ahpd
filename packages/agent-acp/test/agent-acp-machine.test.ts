@@ -668,7 +668,7 @@ it('ships a part and a state directory for every row, each seeded from the agent
       part: 'copapo',
       env: ['XDG_CONFIG_HOME=/ahpd/copapo/config', 'XDG_DATA_HOME=/ahpd/copapo/data', 'COFOLD_HOME=/ahpd/copapo/home'],
       state: '/ahpd/copapo',
-      seed: ['~/.config/copapo/config.json'],
+      seed: ['~/.config/cofold/config.json'],
     },
     devin: {
       part: 'devin',
