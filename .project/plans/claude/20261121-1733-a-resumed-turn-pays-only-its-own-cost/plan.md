@@ -1,7 +1,7 @@
 ---
 title: A resumed turn pays only its own cost
 domain: claude
-status: active
+status: built
 priority: high
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -86,7 +86,7 @@ query(resume) -> CLI restores cost-state -> result.modelUsage (session total) ->
 ## Resume state
 
 - **Done so far:** tasks 01 and 02, 2026-11-21, in [implemented.md](implemented.md).
-- **Next action:** Softov reviews the branch, then the plan is `built`.
+- **Next action:** none. Merged on 2026-11-21.
 - **Watch out for:** `paid` is keyed by model, and `cost-state` keys `modelUsage` by the same model names.
 
 ## Final verification checklist

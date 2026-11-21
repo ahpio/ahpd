@@ -1,7 +1,7 @@
 ---
 title: A usage record carries the tags of what it passed through
 domain: usage
-status: active
+status: built
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -108,7 +108,7 @@ usage://groups?by=tag&tag=<t> | x-ahpd/usage/groups -> store.groups -> keysOf ->
 ## Resume state
 
 - **Done so far:** tasks 01 to 04, 2026-11-21, in [implemented.md](implemented.md).
-- **Next action:** Softov reviews the branch, then the plan is `built`.
+- **Next action:** none. Merged on 2026-11-21.
 - **Watch out for:** `agent` on a record is the agent record id. `AgentView` is live, so read the tags when the record is written.
 
 ## Final verification checklist
