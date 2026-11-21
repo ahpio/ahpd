@@ -5,7 +5,7 @@ date: 2026-11-21
 severity: minor
 blocks: []
 refs:
-  - "[code://packages/sdk/test/container-relay.test.ts#L120-L128](../../packages/sdk/test/container-relay.test.ts#L120-L128) - `until`, with its 4000 ms limit"
+  - "[code://packages/sdk/test/container-relay.test.ts#L121-L128](../../packages/sdk/test/container-relay.test.ts#L121-L128) - `until`, which waits `WAIT_MS`"
   - "[code://packages/sdk/test/container-relay.test.ts#L130-L150](../../packages/sdk/test/container-relay.test.ts#L130-L150) - the case, which waits for the nested host's first answer"
   - git://c5e471a71 - main when the problem was read
 ---
@@ -20,7 +20,7 @@ The branch does not change the stdio path or the dev container relay.
 ## Cause
 
 The case starts the nested daemon from `packages/server/src/main.ts` through the dev loader, so the first answer waits for the whole server to load from source.
-On a busy machine that takes more than the 4 s that `until` waits.
+On a busy machine that takes more than the 4 s of `WAIT_MS` that `until` waits.
 
 ## Impact
 
@@ -32,5 +32,5 @@ None. A second run is not a fix.
 
 ## Fix
 
-- Give `until` in this file a limit from `WAIT_MS`, as other cases wait.
+- Give the wait for the nested host's first answer a longer limit of its own.
 - Or start the nested daemon from the built server.
