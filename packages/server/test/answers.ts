@@ -60,7 +60,10 @@ export const terminal = (...answers: (string | Readonly<Record<string, string | 
     },
   }), { isTTY: true, columns: 400 });
   return {
-    term: { input, output },
+    // Unicode marks, whatever system runs the case: the answers find a
+    // question by its `◆` and its end by its `◇`, and a Windows runner's
+    // console would be drawn the ASCII ones instead.
+    term: { input, output, unicode: true },
     said: () => said.replace(/\u001b\[[?0-9;]*[A-Za-z]/gu, '').replace(/\r/gu, ''),
   };
 };

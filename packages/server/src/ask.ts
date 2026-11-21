@@ -23,6 +23,12 @@ import type { Readable, Writable } from 'node:stream';
 export interface Term {
   input: Readable & { isTTY?: boolean; setRawMode?: (on: boolean) => unknown };
   output: Writable & { isTTY?: boolean; columns?: number };
+  /**
+   * Whether the frame is drawn with unicode marks. Absent, cofold reads it from
+   * the terminal, so a console that cannot draw them gets ASCII ones; a test
+   * pins it, so what it reads back is the same frame on every system.
+   */
+  unicode?: boolean;
 }
 
 /** This process's own terminal, which is what a caller asks on when it names none. */
@@ -45,7 +51,7 @@ export const answering = (term: Term): boolean => term.input.isTTY === true && t
 /** The prompts for one terminal, refused when there is nobody to answer. */
 const promptsOf = (term: Term) => {
   if (!answering(term)) throw new Error(NO_TERMINAL);
-  return createPrompts({ input: term.input, output: term.output });
+  return createPrompts({ input: term.input, output: term.output, ...(term.unicode === undefined ? {} : { unicode: term.unicode }) });
 };
 
 /**
