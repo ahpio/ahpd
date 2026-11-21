@@ -56,7 +56,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 | The terminal prompts are built first, in the configure plan | user, 2026-11-21 | - (see [configure plan](../../daemon/20261121-0636-configure-on-cofold-prompts/plan.md)) |
 | The tool table stays; `subject` is a display string and names no permission kind or absolute path | (defaulted: replacing a row with it changes the approval prompt) | 04 |
 | A `command` message stays the turn's message on read-back | [code://packages/agent-cofold/test/agent-cofold-compact.test.ts](../../../../packages/agent-cofold/test/agent-cofold-compact.test.ts), which checks it | 05 |
-| A cut turn's reason is shown in cofold's marker text | (defaulted: the reason is already in the transcript, and no wording was asked for) | 06 |
+| A cut turn's reason is shown in cofold's marker text, the same text the model reads | user, 2026-11-21: "Keep cofold's (Recommended)" | 06 |
 
 ## Proposed architecture
 
