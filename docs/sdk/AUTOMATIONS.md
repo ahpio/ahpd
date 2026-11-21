@@ -11,13 +11,13 @@ Terms, one line each:
 | Term | |
 | --- | --- |
 | an automation | A definition: the message a run is given, the shape of its session, and the triggers that wake it |
-| a trigger | When it runs: a `schedule`, an `event` of a type this host or a plugin offers, or nothing at all, which is manual only |
+| a trigger | When it runs: a `schedule`, a `oneTime` time, an `event` of a type this host or a plugin offers, or nothing at all, which is manual only |
 | a run | One execution, with a lifecycle and the sessions it started |
 | the overlap | What happens to an event that arrives while a run of the same automation is going |
 | pinned | An automation that keeps one chat and adds each run to it as the next turn |
 | the owner | Whose work the automation is, as `user:<id>`, `team:<id>`, `project:<id>` or `root:<host>` |
 
-## The three kinds of trigger
+## The kinds of trigger
 
 A trigger has an `id`, a `kind`, a `type`, a `title`, and either `events` or a `schedule`.
 
@@ -30,6 +30,8 @@ A trigger has an `id`, a `kind`, a `type`, a `title`, and either `events` or a `
 | `session` | One of the eight things a session does, with a count, a follow-up or a state check around it |
 | `watch` | One of five patterns somebody already thought about, with its numbers left to you |
 | a plugin's | A type a plugin registered, with its own events and its own config schema |
+
+`oneTime` runs once, at its `runAt`, an ISO 8601 time. It comes from AHP 1.2.0, and the host advertises it as `oneTime` in its automation capabilities. A one-time automation has that one trigger and no `disableConditions`. A `runAt` already gone by runs at once, or not at all when it is a minute late or more and `misfirePolicy` is `skip`. Once its run is created, the definition's `_meta.ahpd.oneTimeRun` names the run, the automation has no `nextRunAt`, and an update is refused. A press of Run is not its run, so it leaves the trigger to fire.
 
 `listAutomationTriggerDefinitions` answers with every event type this host fires - the two above, and each plugin's beside them - and nothing for a schedule, which needs no form. Manual is not a trigger at all: an empty trigger list is what the protocol says manual-only means.
 
@@ -114,7 +116,7 @@ A run is started by a schedule, by an event, or by a person pressing Run, and al
 
 The store records the run before the session exists, marks it `running` when the session is asked for, and the host settles it when a turn of its session's default chat ends and none of its other sessions is still working, as VS Code's host settles a run on its sessions' default chats; a turn in a side chat of that session leaves the run going. `runAutomation` is answered with the run once it is recorded, and its session is made after, so a press is answered whatever making the session takes, as VS Code's host answers it. A press's `requestId` is its identity, as it is to VS Code's host: the same request asked again is answered with the run it made, and one already used for another automation is refused. Its lifecycle is `pending`, then `running`, then one of `completed`, `failed` or `cancelled`, and a `failed` one carries the chat error's own `ErrorInfo`, its `errorType` and `message`. A run that could not start at all is `failed` with no `startedAt`, because no execution began.
 
-An automation's entry carries its runs newest first, twenty at a time, with `runsNextCursor` when there are more: `fetchAutomationRuns` grows the page in view and every subscriber reads the longer list off the same `automation/set`, because the protocol's answer to that command is empty. A cursor that is not the entry's own is refused, and an entry with no more runs is answered at once, as VS Code's host answers. `operations` is always `update`, `remove` and `run`: `enabled` governs the schedule only, so a person can run a switched-off automation by hand.
+An automation's entry carries its runs newest first, twenty at a time, with `runsNextCursor` when there are more: `fetchAutomationRuns` grows the page in view and every subscriber reads the longer list off the same `automation/set`, because the protocol's answer to that command is empty. A cursor that is not the entry's own is refused, and an entry with no more runs is answered at once, as VS Code's host answers. `operations` is `update`, `remove` and `run`, and a one-time automation whose trigger has run drops `update`. `enabled` governs the schedule only, so a person can run a switched-off automation by hand.
 
 ## One chat, or a session each run
 

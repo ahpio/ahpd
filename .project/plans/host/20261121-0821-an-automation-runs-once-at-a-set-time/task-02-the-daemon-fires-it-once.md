@@ -1,6 +1,6 @@
 ---
 title: The daemon fires it once
-status: todo
+status: implemented
 depends: [01]
 layer: "server"
 refs:
@@ -35,3 +35,5 @@ A one-time automation runs once at `runAt`. After its run is created, it has no 
 - The server vitest suite passes.
 
 ## Resume
+
+VS Code fires a one-time trigger at `runAt`, and at once for a passed `runAt`, unless it is a minute late and `misfirePolicy` is `skip`. It consumes the trigger when the trigger's own run is created, and then offers no `update`. `scheduled.ts` reads the trigger in `onceOf`, beside the schedules. `firedOnce` keeps one `runAt` from firing twice in a process, since a refused run leaves the trigger. The catch-up at start leaves one-time triggers to `rearm`. The sdk store writes `_meta.ahpd.oneTimeRun` in `consume`, so the mark is in the automation's own file, and drops `update`. The cases are `scheduled-one-time.test.ts`.

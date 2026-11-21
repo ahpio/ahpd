@@ -1,6 +1,6 @@
 ---
 title: A one-time definition is advertised and checked
-status: todo
+status: implemented
 depends: []
 layer: "sdk"
 refs:
@@ -33,3 +33,5 @@ The host advertises `oneTime: {}`, and refuses a one-time definition that VS Cod
 - The sdk vitest suite passes.
 
 ## Resume
+
+`types/automations-next.ts` holds the one-time types from AHP `e36b0a20`. `automations/onetime.ts` holds `oneTimeProblem` and the readers. The handshake advertises `oneTime: {}`. `actions.ts` refuses a one-time definition with two triggers, an end date, or a `runAt` that is no time. It refuses an update once the trigger has run. The cases are *a one-time automation* in `automations.test.ts`.

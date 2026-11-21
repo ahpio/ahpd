@@ -15,6 +15,9 @@ import {
   disableConditionsOf,
   memoryAutomations,
   nextOccurrence,
+  oneTimeRunAt,
+  oneTimeRunOf,
+  oneTimeTriggerOf,
   ownerOf,
   parseCron,
   readJson,
@@ -165,6 +168,13 @@ interface Schedule {
   timeZone: string;
   /** Whether a missed occurrence is caught up. `runOnce` is the protocol's default. */
   catchUp: boolean;
+}
+
+/** What `soonest` answers a run with: the trigger, its catch-up rule, and whether it is a one-time trigger. */
+interface Due {
+  triggerId: string;
+  catchUp: boolean;
+  once?: true;
 }
 
 /*
@@ -437,10 +447,36 @@ export function scheduledAutomations(options: ScheduledOptions): ScheduledStore 
     return out;
   };
 
-  /** The soonest any of an automation's schedules comes round, after that instant. */
-  const soonest = (automation: Automation, after: Date): { at: Date; schedule: Schedule } | undefined => {
+  /**
+   * The one-time triggers this process has fired, by automation and `runAt`.
+   *
+   * The store consumes a trigger when its run is created. A run it refuses
+   * leaves the trigger as it was, and a `runAt` in the past would arm the
+   * clock at once, again and again: so a time is fired once per process.
+   */
+  const firedOnce = new Set<string>();
+
+  /**
+   * When an automation's one-time trigger runs, as VS Code fires one.
+   *
+   * At its `runAt`, and at once for a `runAt` gone by, unless that is a minute
+   * late or more and its `misfirePolicy` is `skip`. Nothing once it is consumed.
+   * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/agentHostAutomationService.ts#L1007-L1024
+   */
+  const onceOf = (automation: Automation, after: Date): { at: Date; schedule: Due } | undefined => {
+    const trigger = oneTimeTriggerOf(automation.definition);
+    const runAt = trigger === undefined ? undefined : oneTimeRunAt(trigger);
+    if (trigger === undefined || runAt === undefined || oneTimeRunOf(automation.definition) !== undefined) return undefined;
+    if (firedOnce.has(`${automation.resource} ${trigger.runAt}`)) return undefined;
+    const skip = trigger.misfirePolicy === 'skip';
+    if (runAt <= after.getTime() && skip && now().getTime() - runAt >= 60_000) return undefined;
+    return { at: new Date(runAt), schedule: { triggerId: String(trigger.id ?? ''), catchUp: !skip, once: true } };
+  };
+
+  /** The soonest any of an automation's triggers comes round, after that instant. */
+  const soonest = (automation: Automation, after: Date): { at: Date; schedule: Due } | undefined => {
     if (automation.definition.enabled === false) return undefined;
-    let best: { at: Date; schedule: Schedule } | undefined;
+    let best: { at: Date; schedule: Due } | undefined = onceOf(automation, after);
     for (const schedule of schedulesOf(automation)) {
       let at: Date | undefined;
       try { at = nextOccurrence(schedule.cron, after, schedule.timeZone); }
@@ -622,6 +658,10 @@ export function scheduledAutomations(options: ScheduledOptions): ScheduledStore 
       const schedule = soonest(automation, new Date(when.getTime() - 1));
       const late = at.getTime() - when.getTime() >= 60_000;
       if (late && schedule?.schedule.catchUp === false) continue;
+      if (schedule?.schedule.once === true) {
+        const trigger = oneTimeTriggerOf(automation.definition);
+        firedOnce.add(`${automation.resource} ${String(trigger?.runAt)}`);
+      }
       ready.push({
         automation: automation.resource,
         when,
@@ -660,7 +700,8 @@ export function scheduledAutomations(options: ScheduledOptions): ScheduledStore 
       // which `rearm` has already done by the time catch-up is asked for.
       if (expired(automation.definition, at)) continue;
       const schedule = soonest(automation, new Date(missed.getTime() - 1));
-      if (!schedule?.schedule.catchUp) continue;
+      // A one-time trigger gone by is armed at once by `rearm`, so it is not caught up twice.
+      if (!schedule?.schedule.catchUp || schedule.schedule.once === true) continue;
       const origin: Bag = {
         kind: 'trigger',
         triggerId: schedule.schedule.triggerId,

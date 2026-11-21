@@ -100,6 +100,9 @@ export type { CallOutcome, CheckResult, CodeSignIn, ConnectorAccount, ConnectorM
 export { MODEL_DIALECTS } from './types/connectors.js';
 export { AGENT_RECORD_VARIABLE } from './types/computers.js';
 export { disableConditionsOf } from './automations/automations.js';
+export { oneTimeProblem, oneTimeRunAt, oneTimeRunOf, oneTimeTriggerOf } from './automations/onetime.js';
+export { ONE_TIME_TRIGGER } from './types/automations-next.js';
+export type { AutomationOneTimeTrigger } from './types/automations-next.js';
 export { enablementKeyOf, memoryEnablement } from './plugins/enablement.js';
 export type { EnablementStore, HeldDecisions, HeldEnablementStore } from './plugins/enablement.js';
 export { nextOccurrence, parseCron } from './automations/cron.js';
