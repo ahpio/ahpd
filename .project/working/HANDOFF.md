@@ -22,8 +22,8 @@ Current progress and pending items only, as of 2026-11-21. *Outside this reposit
   - #401 (`f5257c229`) merged host/20261121-0555, the liveness ping and keep-awake. It closes as `built` on Softov's word. His dev daemon takes it at its next restart on main.
   - #418 (`4966eea67`) merged [host/20261121-1218-worktree-removals-are-a-queue](../plans/host/20261121-1218-worktree-removals-are-a-queue/plan.md). It closes as `built` on Softov's word. His dev daemon takes it at its next restart on main: the removal queue in `worktree-removals.json` and the four `vscode/*` cleanup methods.
   - #419 (`406667ee0`) merged [host/20261121-1553-turn-changesets-under-the-chat](../plans/host/20261121-1553-turn-changesets-under-the-chat/plan.md). It closes as `built` on Softov's word.
-  - Branch `test/random-cases-get-their-time` (`20df81584`) is pushed, and its PR waits for Softov's OK of the text. It fixes the git-volume case and the two plugin import cases.
-  - [briefs/a-machine-operation-reads-its-record-once.md](../briefs/a-machine-operation-reads-its-record-once.md) is the fix Softov chose for the computer cases that start many processes. It waits for a plan.
+  - #420, branch `test/random-cases-get-their-time`, is open and merges when check and check-windows are green. It fixes the git-volume case and the two plugin import cases.
+  - [plugin/20261121-1708-a-machine-operation-reads-its-record-once](../plans/plugin/20261121-1708-a-machine-operation-reads-its-record-once/plan.md) is the fix Softov chose for the computer cases that start many processes. Its brief went in the plan commit.
   - The parity brief is covered and deleted; its last commit is `8b6842e2c`. Its *Later* items went as follows.
     - The AHP 1.2.0 automations are built, and the worktree queue is #418.
     - The turn changesets are [host/20261121-1553-turn-changesets-under-the-chat](../plans/host/20261121-1553-turn-changesets-under-the-chat/plan.md).
