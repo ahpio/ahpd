@@ -17,7 +17,13 @@ An automation can run once at a set time, with AHP 1.2.0's `oneTime` trigger. Th
 - [`code://packages/sdk/src/host/actions.ts`](../../../../packages/sdk/src/host/actions.ts) - the refusals on a create and an update.
 - [`code://packages/sdk/src/host/handshake.ts`](../../../../packages/sdk/src/host/handshake.ts) - `oneTime: {}`.
 - [`code://packages/server/src/scheduled.ts`](../../../../packages/server/src/scheduled.ts) - `onceOf` and `firedOnce`.
-- `docs/sdk/AUTOMATIONS.md` - the trigger and its operations.
+- `docs/sdk/AUTOMATIONS.md` and `docs/sdk/AHP.md` - the trigger, its operations and its refusals.
+
+## Verified
+
+- `scheduled-one-time.test.ts` and *a one-time automation* in `automations.test.ts` pass.
+- The server suite passes, 1992 cases. The sdk suite passed 5114 of 5115 cases; `wire.test.ts` then took the `oneTime` departure, and passes.
+- Typecheck and boundary pass.
 
 ## Departures from the plan
 
