@@ -269,6 +269,38 @@ it('lets a host tool keep the name it shares with a capability\'s', async () => 
 });
 
 /*
+ * The host's shell in place of cofold's own.
+ *
+ * A host `bash` marked as taking the place of the agent's shell is the one a
+ * person watches in a terminal and can move to the background, so cofold's
+ * `shell_exec` is left out where it is offered. An unmarked `bash` is just
+ * another host tool, beside which cofold keeps its own shell.
+ */
+it('leaves shell_exec out where the host bash takes the place of the agent\'s shell', async () => {
+  const dir = place();
+  const bash = (overridesBuiltInTool: boolean): BoundTool => ({
+    definition: { name: 'bash', description: 'The host\'s shell.', inputSchema: { type: 'object' } },
+    ...(overridesBuiltInTool ? { overridesBuiltInTool } : {}),
+    run: () => 'ran',
+  });
+  const marked = await open({ script: [{ text: 'ok' }], workspace: dir, store: dir, hostTools: [bash(true)] });
+  marked.session.sendMessage('t1', 'hello');
+  await when(() => ended(marked.v));
+  expect(offeredNames(marked.model)).toContain('bash');
+  expect(offeredNames(marked.model)).not.toContain('shell_exec');
+  expect(offeredNames(marked.model)).toContain('read_file');
+
+  rmSync(dir, { recursive: true, force: true });
+
+  const other = place();
+  const plain = await open({ script: [{ text: 'ok' }], workspace: other, store: other, hostTools: [bash(false)] });
+  plain.session.sendMessage('t1', 'hello');
+  await when(() => ended(plain.v));
+  expect(offeredNames(plain.model)).toContain('shell_exec');
+  rmSync(other, { recursive: true, force: true });
+});
+
+/*
  * The name cofold's own question tool has, given to the host's.
  *
  * The host's `ask_user` is the more specific contribution: it asks on the chat

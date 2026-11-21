@@ -55,6 +55,13 @@ import type { HostContext } from './context.js';
  * bounded is the chain - A makes B makes C - and how many are made across it
  * is the count below.
  */
+/**
+ * The agents that get the host's terminal tool unless the root config turns
+ * it off: the ones this host runs itself, whose own shells cannot move to the
+ * background.
+ */
+const HOST_SHELL_PROVIDERS: readonly string[] = ['pi', 'cofold'];
+
 const MAX_SPAWN_DEPTH = 3;
 
 /**
@@ -546,17 +553,25 @@ export function createTooling(ctx: HostContext): Tooling {
    */
   const namedBy = (uri: string): string[] => kept.tools?.(idOf(uri)) ?? [];
   /**
-   * Whether this host offers the agent terminal tool.
+   * Whether this host offers the agent terminal tool to a session of
+   * `provider`.
    *
-   * The reference's switch, `enableCustomTerminalTool`, which is off until the
-   * root config turns it on, and never on Windows: there the reference leaves
-   * the agent its own shell, and so does this host. A host with no terminal
-   * store has no shell to offer either, whatever the switch says.
+   * The reference's switch, `enableCustomTerminalTool`, and never on Windows:
+   * there the reference leaves the agent its own shell, and so does this
+   * host. A host with no terminal store has no shell to offer either,
+   * whatever the switch says.
+   *
+   * The switch is off until the root config turns it on, except for the
+   * agents this host runs itself, pi and cofold, where it is on until the
+   * root config turns it off: their shell is the one a person can move to the
+   * background and watch in a terminal. A switch a client set either way wins.
    */
-  const shellToolsFor = (): boolean =>
-    rootConfig[ENABLE_CUSTOM_TERMINAL_TOOL] === true
-    && process.platform !== 'win32'
-    && options.terminals !== undefined;
+  const shellToolsFor = (provider: string | undefined): boolean => {
+    if (process.platform === 'win32' || options.terminals === undefined) return false;
+    const set = rootConfig[ENABLE_CUSTOM_TERMINAL_TOOL];
+    if (typeof set === 'boolean') return set;
+    return provider !== undefined && HOST_SHELL_PROVIDERS.includes(provider);
+  };
   /**
    * Whether this host offers the artifact tools.
    *
@@ -590,7 +605,7 @@ export function createTooling(ctx: HostContext): Tooling {
     return ctx.contributing.filter((one) =>
       (one.optIn !== true || named.includes(one.definition.name))
       && (sessionToolsFor(uri, provider) || !SESSION_TOOL_NAMES.includes(one.definition.name) || forChat.includes(one.definition.name))
-      && (shellToolsFor() || !SHELL_TOOL_NAMES.includes(one.definition.name))
+      && (shellToolsFor(providerOf(uri, provider).provider) || !SHELL_TOOL_NAMES.includes(one.definition.name))
       && (artifactToolsFor() || !ARTIFACT_TOOL_NAMES.includes(one.definition.name)));
   };
   /**
