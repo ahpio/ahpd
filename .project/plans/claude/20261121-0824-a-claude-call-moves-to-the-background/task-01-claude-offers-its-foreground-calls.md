@@ -1,6 +1,6 @@
 ---
 title: Claude offers its foreground Bash and subagent calls
-status: todo
+status: done
 depends: []
 layer: "agent-claude"
 refs:
@@ -18,7 +18,10 @@ Its move calls `query.backgroundTasks(toolUseId)` and answers the row id.
 
 - `UPDATE: packages/agent-claude/src/session/workers.ts` - add `moveOf(toolUseId, taskId, kind)`, beside `stopOf`.
 - `UPDATE: packages/agent-claude/src/session/query.ts:1215-1248` - offer on `task_started` with `is_backgrounded: false`; withdraw on `task_updated` with `is_backgrounded: true`, on the call's `tool_result`, and on the terminal `task_notification`.
-- `UPDATE: packages/agent-claude/test/agent-claude-background-work.test.ts` - the offer, the move, the withdraw.
+- `UPDATE: packages/agent-claude/src/session/stream.ts` - report the row before a moved call completes.
+- `UPDATE: packages/agent-claude/src/session/context.ts` - carry `movableCalls` from `Start`.
+- `UPDATE: packages/agent-claude/src/claude.ts` - hand `movableCalls` to the session.
+- `CREATE: packages/agent-claude/test/agent-claude-movable-calls.test.ts` - the offer, the move, the row, the env switch.
 - `UPDATE: packages/agent-claude/README.md:209` - a foreground Bash or subagent call can move to the background through `x-ahpd/backgroundToolCall`.
 
 ## Steps
@@ -34,7 +37,7 @@ Its move calls `query.backgroundTasks(toolUseId)` and answers the row id.
 
 ## Validation
 
-- `packages/agent-claude/test/agent-claude-background-work.test.ts` holds these cases:
+- `packages/agent-claude/test/agent-claude-movable-calls.test.ts` holds these cases:
   - The backend offers a foreground Bash task.
   - Its move calls `backgroundTasks` with the tool_use id and answers `shell:<task id>`.
   - A subagent's move answers `subagent:<task id>`.
@@ -44,4 +47,10 @@ Its move calls `query.backgroundTasks(toolUseId)` and answers the row id.
 - `npx vitest run packages/agent-claude` passes.
 
 ## Resume
+
+Done on 2026-11-21.
+
+- The chat tool call id is the SDK's tool_use id, so step 2 needed nothing.
+- No withdraw: the host takes the flag off at the completion, and a late move gets `false` from the SDK.
+- The move reports `moved` itself. The row is also reported on `task_updated` and before the completion, because the order of those frames is not fixed. Before the completion, it comes from the result's `backgroundTaskId` or a worker now in the background.
 

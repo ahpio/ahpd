@@ -871,6 +871,7 @@ export function claude(options: ClaudeOptions): Agent<Session> {
       // backend reports each task the harness leaves running, and the host
       // draws the row, its stop flag and the snapshot it reaches.
       ...(start.backgroundTasks ? { backgroundTasks: start.backgroundTasks } : {}),
+      ...(start.movableCalls ? { movableCalls: start.movableCalls } : {}),
       // And the host's output-terminal factory, which is where a background
       // shell's output goes: the host owns the channel, this backend the text.
       ...(start.outputTerminals ? { outputTerminals: start.outputTerminals } : {}),

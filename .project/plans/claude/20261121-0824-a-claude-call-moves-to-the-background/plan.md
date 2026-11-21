@@ -1,7 +1,7 @@
 ---
 title: A Claude call moves to the background
 domain: claude
-status: planned
+status: active
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -69,7 +69,7 @@ SDK task_started { tool_use_id, task_id, is_backgrounded: false }
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - Claude offers its foreground calls](task-01-claude-offers-its-foreground-calls.md) | todo | - |
+| [01 - Claude offers its foreground calls](task-01-claude-offers-its-foreground-calls.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -78,8 +78,8 @@ SDK task_started { tool_use_id, task_id, is_backgrounded: false }
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** build the host plan first; then [task-01-claude-offers-its-foreground-calls.md](task-01-claude-offers-its-foreground-calls.md).
+- **Done so far:** task 01, 2026-11-21, on the host plan's branch.
+- **Next action:** open the pull request, then write `implemented.md` and set `status: built` once it merges.
 - **Open questions:** none.
 - **Watch out for:** a call that asked for the background from the start has `is_backgrounded: true` and is never offered. Check that ahpd's tool call id for a Claude call is the SDK's tool_use id.
 
