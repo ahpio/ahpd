@@ -113,7 +113,7 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 ## Resume state
 
 - **Done so far:** the plan, 2026-10-22; checked again against AHP 1.1.0 and main on 2026-11-21. Tasks 02 and 03 are on main. Task 01 implemented on 2026-11-21. Task 08 implemented on 2026-11-21. Task 07 implemented on 2026-11-21. Task 09 implemented on 2026-11-21. Task 04 implemented on 2026-11-21. Task 05 implemented on 2026-11-21. Task 06 implemented on 2026-11-21.
-- **Next action:** Run the server and computer suites, then open the PR.
+- **Next action:** Softov reviews the PR. The plan closes as `built` on his word.
 - **Open questions:** none.
 - **Watch out for:** `isActionKnownToVersion` says `chat/configChanged` is 1.1.0. Do not use it to hold the action back, since VS Code sends it on 1.0.0.
 
