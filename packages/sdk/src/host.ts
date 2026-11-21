@@ -2248,6 +2248,7 @@ export function createHost(options: HostOptions): Host {
         ctx.agentMerge.stop();
         ctx.disposeSessionLifecycle();
         ctx.keepAwake.stop();
+        ctx.worktreeRemovals.stop();
         ctx.closed = true;
         ctx.stopLapses();
         unwatchProbes(true);

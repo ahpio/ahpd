@@ -526,6 +526,14 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
         _meta: {
           'vscode.removeSessionArtifact': true,
           'vscode.detachedWorktrees': true,
+          // The worktree cleanup four, where this host makes worktrees at all.
+          // https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/protocolServerHandler.ts#L1258-L1261
+          ...(options.worktrees === undefined ? {} : {
+            'vscode.worktreeCleanup': true,
+            'vscode.forceWorktreeCleanup': true,
+            'vscode.prepareSessionWorktreeCleanup': true,
+            'vscode.managedWorktrees': true,
+          }),
           'vscode.getAgentHostSessionStateFile.chat': true,
           // A debug-log collection its window follows may be called off.
           'vscode.debugLogsCancellation': true,

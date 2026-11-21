@@ -1,6 +1,6 @@
 ---
 title: A removal is a record a pass works through
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:

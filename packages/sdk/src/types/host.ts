@@ -10,6 +10,7 @@ import type { ResourceProvider, ResourceStore } from './resources.js';
 import type { Grant, Principal, Users } from './users.js';
 import type { CommandTerminal, TerminalStore } from './terminals.js';
 import type { Shells } from './shells.js';
+import type { RemovalTimings, WorktreeRemovalStore } from '../host/worktreeremovals.js';
 import type { CreatedModelOptions } from '../tools/modeloptions.js';
 import type { AcquireKeepAwake } from '../host/keepawake.js';
 import type { CallMovable, ChatBackgroundTasks } from './background.js';
@@ -531,6 +532,13 @@ export interface HostOptions {
    * discarding a file discards somebody else's work.
    */
   worktrees?: Worktrees;
+  /**
+   * Where the worktree removals still to make are kept, so they outlive a
+   * restart. Absent, they live as long as the host.
+   */
+  worktreeRemovals?: WorktreeRemovalStore;
+  /** The queue's waits, which a test shortens. */
+  worktreeRemovalTimings?: RemovalTimings;
   /**
    * An absolute folder every session tree goes under.
    *

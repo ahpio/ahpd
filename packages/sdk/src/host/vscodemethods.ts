@@ -1,10 +1,11 @@
 import { lookup } from 'node:dns/promises';
 import { realpathSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
-import { isAbsolute, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, resolve } from 'node:path';
 import { AhpErrorCodes } from '@microsoft/agent-host-protocol';
 import { INTERNAL_ERROR, INVALID_PARAMS, METHOD_NOT_FOUND, RpcError, optionalStringParam, stringParam } from '../rpc.js';
-import { idOf } from '../sessions/catalog.js';
+import { Status, idOf } from '../sessions/catalog.js';
+import { isWorktreeUnderRepository, worktreeFor, worktreesOf } from '../repo/worktrees.js';
 import { hostLogPath } from '../sessions/debuglogs.js';
 import { localPath, uriOf } from '../resources/fileuri.js';
 import { ROOT, spaceOf } from './channels.js';
@@ -82,6 +83,10 @@ export const normalizeDevContainerWorkspaceFolder = (workspaceFolder: string, pl
 export interface VscodeMethods {
   'vscode/createAgentHostDetachedWorktree': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/claimAgentHostDetachedWorktree': (params: Record<string, unknown>) => Promise<unknown>;
+  'vscode/sessionWorktreeCleanup': (params: Record<string, unknown>) => Promise<unknown>;
+  'vscode/prepareSessionWorktreeCleanup': (params: Record<string, unknown>) => Promise<unknown>;
+  'vscode/listManagedWorktrees': (params: Record<string, unknown>) => Promise<unknown>;
+  'vscode/cleanupManagedWorktree': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/setAgentHostDetachedWorktreeArchived': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/deleteAgentHostDetachedWorktree': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/reconcileAgentHostDetachedWorktrees': (params: Record<string, unknown>) => Promise<unknown>;
@@ -113,6 +118,94 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
 
   /** The folders linked into a session's tree, whose links are not work in it. */
   const linkedOf = (session: string): string[] => symlinkFolders(kept.config(idOf(session)) ?? ctx.decided.get(session) ?? {});
+
+  /*
+   * The worktree cleanup four, as VS Code's host serves them over its removal
+   * queue: a session's status, a retry and a force, and the managed worktrees
+   * no session holds.
+   * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/agentHostWorktreeCleanupService.ts#L141-L452
+   */
+  /** A worktree this host made: in the folder it makes trees in, named for an `agents/` branch it is on. */
+  const managedTree = (repository: string, path: string, branch: string | undefined): boolean =>
+    branch !== undefined && /(?:^|\/)agents\//.test(branch) && basename(path) === worktreeFor(branch)
+      && (isWorktreeUnderRepository(path, repository) || (options.worktreesRoot !== undefined && resolve(dirname(path)) === resolve(worktreesOf(repository, options.worktreesRoot))));
+  /** Whether a session's tree record, a detached worktree, or anything `treeInUse` finds still uses `path`. */
+  const managedInUse = async (path: string): Promise<boolean> =>
+    ctx.worktreeRecorded(path) || [...detached.values()].some((one) => one.path === path) || await treeInUse(path);
+  const archivedNow = (session: string): boolean => (kept.flags(idOf(session)) & Status.IsArchived) !== 0;
+  const knownSession = (session: string): boolean => ctx.sessions.has(session) || kept.provider(idOf(session)) !== undefined;
+
+  /** Record a managed working directory a session has no tree record of, as VS Code adopts one before its cleanup. */
+  const prepareSessionWorktreeCleanup = async (session: string): Promise<void> => {
+    if (!knownSession(session)) throw new RpcError(INVALID_PARAMS, 'Only existing sessions can prepare worktree cleanup.');
+    const port = options.worktrees;
+    if (port?.list === undefined || kept.worktree?.(idOf(session)) !== undefined) return;
+    const dir = ctx.dirOf(session);
+    if (dir === undefined) return;
+    const repository = await port.repository(dir).catch(() => undefined);
+    if (repository === undefined) return;
+    const entry = (await port.list(repository).catch(() => [])).find((one) => one.path === dir);
+    if (entry === undefined || !managedTree(repository, entry.path, entry.branch)) return;
+    kept.setWorktree?.(idOf(session), { repository, path: entry.path, base: entry.branch ?? 'HEAD', ...(entry.branch === undefined ? {} : { branch: entry.branch }) });
+    log(`recorded ${entry.path} as the worktree of ${session}, ahead of its cleanup`);
+  };
+
+  const sessionWorktreeCleanup = async (params: Record<string, unknown>): Promise<unknown> => {
+    const session = stringParam(params, 'session');
+    const retry = params['retry'] === true;
+    const force = params['force'] === true;
+    const removals = ctx.worktreeRemovals;
+    if (force && !retry) throw new RpcError(INVALID_PARAMS, 'Forced cleanup requires an explicit retry.');
+    if (retry) {
+      if (!knownSession(session) || !archivedNow(session)) throw new RpcError(INVALID_PARAMS, 'Only archived sessions can retry worktree cleanup.');
+      await prepareSessionWorktreeCleanup(session);
+      await ctx.requestSessionWorktreeRemoval(session);
+    }
+    if (force) {
+      const left = await removals.processNow(removals.ofSession(session), true);
+      if (left.length > 0) throw new RpcError(INTERNAL_ERROR, left[0]?.lastAttempt?.message ?? 'The worktree could not be forcibly removed. It may still be in use.');
+      return { state: 'unknown' };
+    }
+    return removals.sessionStatus(session, () => ctx.sessions.has(session));
+  };
+
+  const listManagedWorktrees = async (params: Record<string, unknown>): Promise<unknown> => {
+    const asked = params['repositories'];
+    if (!Array.isArray(asked) || asked.some((one) => typeof one !== 'string')) throw new RpcError(INVALID_PARAMS, 'repositories must be a list of URIs');
+    const port = options.worktrees;
+    if (port?.list === undefined) return [];
+    const seen = new Set<string>();
+    const out: { repository: string; worktree: string; branch: string; cleanupStatus: unknown }[] = [];
+    for (const one of asked as string[]) {
+      if (!one.startsWith('file:') && !isAbsolute(one)) throw new RpcError(INVALID_PARAMS, 'Worktree inventory requires a host-local repository.');
+      const repository = await port.repository(localPath(one)).catch(() => undefined);
+      if (repository === undefined || seen.has(repository)) continue;
+      seen.add(repository);
+      for (const entry of await port.list(repository).catch(() => [])) {
+        if (entry.branch === undefined || !managedTree(repository, entry.path, entry.branch)) continue;
+        const record = ctx.worktreeRemovals.managed(entry.path);
+        const cleanupStatus = await managedInUse(entry.path) ? { state: 'inUse' } : record === undefined ? { state: 'unknown' } : ctx.worktreeRemovals.statusOf(record);
+        out.push({ repository: uriOf(repository), worktree: uriOf(entry.path), branch: entry.branch, cleanupStatus });
+      }
+    }
+    return out.sort((a, b) => a.worktree.localeCompare(b.worktree));
+  };
+
+  const cleanupManagedWorktree = async (params: Record<string, unknown>): Promise<void> => {
+    const repository = localPath(stringParam(params, 'repository'));
+    const path = localPath(stringParam(params, 'worktree'));
+    const branch = stringParam(params, 'branch');
+    const force = params['force'] === true;
+    const port = options.worktrees;
+    if (port?.list === undefined) throw new RpcError(INTERNAL_ERROR, 'This host does not manage worktrees.');
+    const entry = (await port.list(repository).catch(() => [])).find((one) => one.path === path);
+    if (entry === undefined || !managedTree(repository, path, entry.branch ?? branch)) throw new RpcError(INVALID_PARAMS, `Not a worktree this host manages: ${uriOf(path)}`);
+    if (!force && entry.branch !== branch) throw new RpcError(INVALID_PARAMS, `The worktree moved from ${branch} to ${entry.branch ?? 'a detached HEAD'}.`);
+    if (!force && await managedInUse(path)) throw new RpcError(INVALID_PARAMS, 'A session, chat, or detached worktree record is still using this worktree.');
+    ctx.worktreeRemovals.request({ kind: 'managed', owner: path, repository, path, branch: entry.branch ?? branch, mode: 'commit' });
+    const left = await ctx.worktreeRemovals.processNow([ctx.worktreeRemovals.managed(path)].filter((one) => one !== undefined), force);
+    if (force && left.length > 0) throw new RpcError(INTERNAL_ERROR, left[0]?.lastAttempt?.message ?? 'The worktree could not be forcibly removed.');
+  };
 
   /*
    * A Dev Container's folder vouched for by the window asking, before one is
@@ -385,6 +478,16 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
      * refused in VS Code's words.
      * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostWorktreeCleanupService.ts#L402-L407
      */
+    'vscode/sessionWorktreeCleanup': async (params) => await sessionWorktreeCleanup(params),
+    'vscode/prepareSessionWorktreeCleanup': async (params) => {
+      await prepareSessionWorktreeCleanup(stringParam(params, 'session'));
+      return {};
+    },
+    'vscode/listManagedWorktrees': async (params) => await listManagedWorktrees(params),
+    'vscode/cleanupManagedWorktree': async (params) => {
+      await cleanupManagedWorktree(params);
+      return {};
+    },
     'vscode/claimAgentHostDetachedWorktree': async (params) => {
       const handle = handleOf(params);
       const held = detached.get(handle);

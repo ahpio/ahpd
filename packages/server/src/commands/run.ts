@@ -78,7 +78,7 @@ import { controlIn, controlServer } from '../control.js';
 import type { ControlServer } from '../control.js';
 import { here } from '../ask.js';
 import { offerConfigure, askToServe } from './configure.js';
-import { agentPluginsDir, automationsDir, automationsPath, automationStatePath, configDir, configPath, customizationStatePath, daemonLog, hostId, isIdentifier, namedIssuer, policiesPath, rootConfigPath, sessionsDir, sessionsPath, signInIdentifier, urlHost, vaultPath } from '../config.js';
+import { agentPluginsDir, automationsDir, automationsPath, automationStatePath, configDir, configPath, customizationStatePath, daemonLog, hostId, isIdentifier, namedIssuer, policiesPath, rootConfigPath, sessionsDir, sessionsPath, signInIdentifier, urlHost, vaultPath, worktreeRemovalsPath } from '../config.js';
 import { API_PREFIX, PROXY_PREFIX, apiHandler, isUnder, json, listenApi, plainRequests, pluginRoutes, withoutApi, type ApiListener, type ApiOrigins } from '../http.js';
 import { isRootPath } from '../proxy/dialects.js';
 import { mcpHandler } from '../mcp.js';
@@ -116,6 +116,7 @@ import {
 import type { RestartOutcome } from './restart.js';
 import type { Options } from './options.js';
 import { holdIdleSleep, oncePerProcess } from '../keepawake.js';
+import { fileWorktreeRemovals } from '../worktreeremovals.js';
 
 /** The listener an HTTP surface is on: the daemon's, the API's own or the model API's own. */
 type Place = 'daemon' | 'api' | 'model';
@@ -1599,6 +1600,8 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
     rootConfig: daemonRootConfig(options, typed, openWire, (servers) => { mcpServers = servers as typeof mcpServers; }, async () => (await applyNow()).restart),
     // The machine's idle sleep held while a chat works, as `keepAwakeWhileWorking` says.
     keepAwake: (allowOnBattery) => holdIdleSleep(allowOnBattery, keepAwakeLog),
+    // The worktree removals still to make, kept beside the configuration so a restart tries them again.
+    worktreeRemovals: fileWorktreeRemovals(worktreeRemovalsPath(), (line) => { stamp(line, 'warn'); }),
     /*
      * The root config a client pushed, kept between restarts, as VS Code's
      * host keeps its own: a daemon restarted for an upgrade comes back with
