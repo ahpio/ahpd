@@ -28,6 +28,7 @@
     "sdk-range": "node scripts/sdk-range.mjs",
     "i18n": "node tools/i18n-check.mjs",
     "test": "node tools/schema.mjs && vitest run",
+    "test:timings": "node tools/test-timings.mjs",
     "test:unit": "node tools/schema.mjs && vitest run --exclude \"packages/computer/**\" --exclude \"packages/server/test/server-cli*\" --exclude \"packages/server/test/server-http*\" --exclude \"packages/sdk/test/nested-process*\"",
     "test:processes": "node tools/schema.mjs && vitest run packages/computer/ packages/server/test/server-cli packages/server/test/server-http packages/sdk/test/nested-process",
     "schema": "node tools/schema.mjs",
