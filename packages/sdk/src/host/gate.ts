@@ -62,6 +62,8 @@ export const NEEDS: Record<string, Grant> = {
   'vscode/createAgentHostDetachedWorktree': 'session:worktree',
   'vscode/claimAgentHostDetachedWorktree': 'session:worktree',
   'vscode/sessionWorktreeCleanup': 'session:worktree',
+  'vscode/measureWorktreeDiskUsage': 'file:list',
+  'vscode/cancelWorktreeDiskUsage': 'file:list',
   'vscode/prepareSessionWorktreeCleanup': 'session:worktree',
   'vscode/listManagedWorktrees': 'session:worktree',
   'vscode/cleanupManagedWorktree': 'session:worktree',

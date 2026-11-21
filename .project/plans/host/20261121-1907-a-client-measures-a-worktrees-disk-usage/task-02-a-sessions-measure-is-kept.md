@@ -1,6 +1,6 @@
 ---
 title: A session's measure is kept until it changes
-status: todo
+status: done
 depends: [01]
 layer: "sdk"
 refs:

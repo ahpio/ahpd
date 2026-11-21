@@ -132,6 +132,12 @@ export interface HostContext extends ChatRecord, Routing, Relay, Changesets, Fac
    * back when a relay ends.
    */
   relays: Map<Connection, Map<string, { name: string; folder: string; tail: string[] }>>;
+  /**
+   * The disk usage scans: those in flight by connection and request id, the
+   * two slots every connection shares, and the measures kept by session and
+   * worktree with the one ask at a time of each worktree.
+   */
+  diskUsage: DiskUsageState;
   /** The person who first signed in under each client id, by client id. */
   holders: Map<string, string>;
   /**
@@ -690,4 +696,12 @@ export interface ConnectionContext {
    * dies can say why in this log.
    */
   containers: Map<string, { name: string; folder: string; tail: string[] }>;
+}
+
+/** See `HostContext.diskUsage`. */
+export interface DiskUsageState {
+  scans: Map<Connection, Map<string, AbortController>>;
+  slot: <T>(work: () => Promise<T>) => Promise<T>;
+  kept: Map<string, { revision: string; bytes: number | undefined }>;
+  queues: Map<string, Promise<unknown>>;
 }

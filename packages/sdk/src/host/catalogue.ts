@@ -51,6 +51,8 @@ const RECENT_LOCAL_SESSION_UPDATE_LIMIT = 2;
 /** The session list and each row of it. */
 export interface Catalogue {
   statusOf(uri: string): number;
+  /** A session's row as a summary says it, with its change counts. */
+  rowOf(uri: string): Bag;
   /** A chat's `ChatOrigin`: what it was made from, else `user`. */
   getChatOrigin(chat?: string): Bag;
   chatSummary(session: string, uri: string, chat: Session): Bag;
@@ -2186,7 +2188,7 @@ export function createCatalogue(ctx: HostContext): Catalogue {
   };
 
   return {
-    statusOf, getChatOrigin, chatSummary, isStructurallyMovable, sessionMoveRefusal, chatMoveRefusal, movable, hasActiveTurn, updateChatMovability,
+    statusOf, rowOf, getChatOrigin, chatSummary, isStructurallyMovable, sessionMoveRefusal, chatMoveRefusal, movable, hasActiveTurn, updateChatMovability,
     chatsReordered, subagentSummary, restoredSubagentSummary,
     chatCatalogOf, onChatSummaryChanged, syncSessionInputNeeded, inputNeededOf, changesetsAndMetaChanged, activeCount,
     activityOf, markSessionProvisional, sessionAdded, provisional: (uri: string) => provisionalSessionKeys.has(uri), materialized, failSessionCreationIfStillCreating,

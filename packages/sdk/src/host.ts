@@ -17,6 +17,7 @@
  *   the host reporting what it did.
  */
 
+import { slotted } from './repo/diskusage.js';
 import { resolve } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { filePersonRules } from './access/personrules.js';
@@ -1683,7 +1684,7 @@ export function createHost(options: HostOptions): Host {
         : options.catalogs?.agents?.[provider],
       HOST_CATALOGS,
     ],
-    replayable, releaseActiveClientForSession, attachWatch, projectActionForClient, claims, agents, first: options.agents[0], connections, clientsChanged, relays: new Map(), holders, sessions, byChat, subagents, owners, names,
+    replayable, releaseActiveClientForSession, attachWatch, projectActionForClient, claims, agents, first: options.agents[0], connections, clientsChanged, relays: new Map(), diskUsage: { scans: new Map(), slot: slotted(2), kept: new Map(), queues: new Map() }, holders, sessions, byChat, subagents, owners, names,
     leadOf, wheres, worktrees, worktreeOf, githubFacts, kept, offered, decided, about, terminals,
     madeFrom, chatInteractivity, chatTools, origins, births, moves, listedMeta, browsable, broadcast, presence, beside, marks, lives, lifeOf, restarting, relaunches: new Map(), chatRelaunches: new Map(), baselineCheckpoints: new Map(), resumedTurns: new Map(), cancelledTurns: new Map(), learned, starting,
     logs, detached, refuse,
@@ -2669,6 +2670,9 @@ export function createHost(options: HostOptions): Host {
           // The relays above were ended one by one; the view across
           // connections drops this one with the connection itself.
           ctx.relays.delete(connection);
+          // Its disk usage scans stop with it, as VS Code's host cancels them on a disconnect.
+          for (const scan of ctx.diskUsage.scans.get(connection)?.values() ?? []) scan.abort();
+          ctx.diskUsage.scans.delete(connection);
           void fire({ type: 'client_disconnect', client: connection.clientId || 'anonymous' });
           /*
            * And the git watch of a directory this was the last watcher of. The

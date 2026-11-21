@@ -1,6 +1,6 @@
 ---
 title: A worktree's disk usage is measured and cancelled
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:
