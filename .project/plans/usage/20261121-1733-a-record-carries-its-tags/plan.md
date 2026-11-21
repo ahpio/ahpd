@@ -1,7 +1,7 @@
 ---
 title: A usage record carries the tags of what it passed through
 domain: usage
-status: planned
+status: active
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -77,7 +77,7 @@ usage://groups?by=tag&tag=<t> | x-ahpd/usage/groups -> store.groups -> keysOf ->
 | A model gets no tags in this plan | `(defaulted: the record names the model in model.name already)` | - |
 | Tags are on the usage record only, not on the turn's `_meta` | `(defaulted: no client asked to show them)` | - |
 | A record keeps the tags it was written with | `(defaulted: the same rule as pools, in decisions/a-limit-counts-the-records-tagged-with-its-key.md)` | 02 |
-| A tag is 1 to 64 characters, with no comma and no control character, and a list holds at most 32 | `(defaulted: a comma would break the --tag list, and the limit keeps a record small)` | 01 |
+| A tag is 1 to 64 characters, with no comma and no control character, and a list holds at most 32 | `(defaulted: a comma would break the tag list of a query, and the limit keeps a record small)` | 01 |
 | The order is the agent's tags, then each connector's in the order used | `(defaulted: the order they were passed)` | 02 |
 | A backend names the connectors a turn used in its usage `_meta` as `ahpd.connectors`, and the host reads their tags | `(defaulted: the host reads connector records already, and a backend then never copies tags)` | 02, 03 |
 | `by=tag` puts a record in one group for each of its tags, and a record with no tag in none | `(defaulted: the shape a multi-valued label has in Langfuse and LiteLLM)` | 04 |
@@ -94,21 +94,21 @@ usage://groups?by=tag&tag=<t> | x-ahpd/usage/groups -> store.groups -> keysOf ->
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - agents-and-connectors-hold-tags](task-01-agents-and-connectors-hold-tags.md) | todo | - |
-| [02 - a-record-takes-the-tags-it-passed](task-02-a-record-takes-the-tags-it-passed.md) | todo | 01 |
-| [03 - claude-names-the-logins-it-ran-on](task-03-claude-names-the-logins-it-ran-on.md) | todo | 02 |
-| [04 - usage-filters-and-groups-by-tag](task-04-usage-filters-and-groups-by-tag.md) | todo | 02 |
+| [01 - agents-and-connectors-hold-tags](task-01-agents-and-connectors-hold-tags.md) | done | - |
+| [02 - a-record-takes-the-tags-it-passed](task-02-a-record-takes-the-tags-it-passed.md) | done | 01 |
+| [03 - claude-names-the-logins-it-ran-on](task-03-claude-names-the-logins-it-ran-on.md) | done | 02 |
+| [04 - usage-filters-and-groups-by-tag](task-04-usage-filters-and-groups-by-tag.md) | done | 02 |
 
 ## Risks and tradeoffs
 
-- `query.ts` is also changed by the cost plan and by the fork's `host/124` branch - this plan requires the cost plan and stacks on its branch.
+- The cost plan and the fork's `host/124` branch also change `parts.ts` and `query.ts` - this branch stacks on the cost plan's branch.
 - `maycxc/plugin/54-webhook-real-senders` changes `Connector` - rebase over it before task 01 is merged.
 - A client shows no tag field until it reads `tags` from the record - the channels send `tags`. A client change is out of this plan.
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-agents-and-connectors-hold-tags.md](task-01-agents-and-connectors-hold-tags.md).
+- **Done so far:** tasks 01 to 04, 2026-11-21, in [implemented.md](implemented.md).
+- **Next action:** Softov reviews the branch, then the plan is `built`.
 - **Watch out for:** `agent` on a record is the agent record id. `AgentView` is live, so read the tags when the record is written.
 
 ## Final verification checklist

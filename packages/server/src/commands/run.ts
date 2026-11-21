@@ -726,6 +726,7 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
     // The provider lists are kept below, once the channel they read exists.
     catalog: () => catalogue,
     note: (id, outcome) => { connectorLists.note(id, outcome); },
+    connectorTags: (id) => connectorLists.refs().find((one) => one.id === id)?.tags ?? [],
     ...(token === undefined ? {} : { token }),
     ...(users === undefined ? {} : { users }),
     policies,
@@ -1681,6 +1682,11 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
     // Whether that is one record per turn or one per report, which `usage.per`
     // in the configuration file chose.
     usagePer: options.usagePer,
+    // The tags each record copies, from the agent records and the connectors.
+    usageTags: {
+      agent: (id) => agentLists.tagsOf(id),
+      connector: (id) => connectorLists.refs().find((one) => one.id === id)?.tags ?? [],
+    },
     // The zone the store below keeps its days in, so a period walked for a
     // limit reads the days the store wrote.
     ...(options.usageTimezone === undefined ? {} : { usageTimezone: options.usageTimezone }),

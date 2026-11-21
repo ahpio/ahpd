@@ -184,6 +184,7 @@ export { ensureWorkspacelessScratchDir } from './sessions/scratch.js';
 export type { Activity, StatusBits } from './sessions/catalog.js';
 export { tail, older, PAGE } from './sessions/paging.js';
 export { toolCallDurationMs, withToolCallDuration } from './utils/timing.js';
+export { joinTags, MAX_TAG_LENGTH, MAX_TAGS, tagsOf, tagsProblem } from './utils/tags.js';
 export { appendEscapedMarkdownInlineCode, truncate } from './utils/markdown.js';
 export { steerOf, steerPart } from './sessions/steer.js';
 export { CommandAutoApprover, DEFAULT_TERMINAL_AUTO_APPROVE_RULES, splitCommand } from './access/commandautoapprover.js';

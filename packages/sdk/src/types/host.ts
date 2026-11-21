@@ -670,6 +670,19 @@ export interface HostOptions {
    */
   usagePer?: 'turn' | 'report';
   /**
+   * The tags of an agent and of a connector, which each usage record of work
+   * that passed through it carries.
+   *
+   * Read as each record is written. Absent, records carry no tags. It says
+   * nothing without a `usage` port.
+   */
+  usageTags?: {
+    /** The tags of the agent with this id, empty when it has none. */
+    agent(id: string): readonly string[];
+    /** The tags of the connector with this id, empty when it has none or there is no such connector. */
+    connector(id: string): readonly string[];
+  };
+  /**
    * The zone a day, a week and a month start in, as `Intl` names one.
    *
    * It is the zone the usage store cuts its days in, so the charge walk reads
