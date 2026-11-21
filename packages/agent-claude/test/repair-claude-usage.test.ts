@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -66,8 +66,18 @@ const cliWith = (lines: ({ at: string } | { total: number })[]): string => {
   return claude;
 };
 
-const run = (config: string, claude: string, ...flags: string[]) =>
-  spawnSync(process.execPath, [SCRIPT, '--config', config, '--claude', claude, ...flags], { encoding: 'utf8' });
+/**
+ * The script's exit, as a person sees it run.
+ *
+ * A child run here rather than synchronously, because a worker held by one for
+ * the whole file misses vitest's own calls on a slow Windows runner.
+ */
+const run = (config: string, claude: string, ...flags: string[]): Promise<{ status: number | null; stdout: string; stderr: string }> =>
+  new Promise((resolve) => {
+    execFile(process.execPath, [SCRIPT, '--config', config, '--claude', claude, ...flags], { encoding: 'utf8' }, (error, stdout, stderr) => {
+      resolve({ status: error === null ? 0 : typeof error.code === 'number' ? error.code : null, stdout, stderr });
+    });
+  });
 
 const usageOf = (config: string): Record<string, unknown>[] => readFileSync(join(config, 'usage', '2026-11-model.jsonl'), 'utf8')
   .split('\n').filter((line) => line !== '').map((line) => JSON.parse(line) as Record<string, unknown>);
@@ -93,10 +103,10 @@ const transcript = cliWith.bind(null, [
   { at: '2026-11-21T16:01:00.000Z' }, { total: 2.15 },
 ]);
 
-it('prints each turn billed a restored total with what it cost, and writes nothing', () => {
+it('prints each turn billed a restored total with what it cost, and writes nothing', async () => {
   const config = daemonWith(billed);
   const before = readFileSync(join(config, 'usage', '2026-11-model.jsonl'), 'utf8');
-  const answer = run(config, transcript());
+  const answer = await run(config, transcript());
   expect(answer.status).toBe(0);
   const changed = answer.stdout.split('\n').filter((line) => line.includes(' -> '));
   expect(changed).toHaveLength(4);
@@ -108,29 +118,29 @@ it('prints each turn billed a restored total with what it cost, and writes nothi
   expect(readFileSync(join(config, 'usage', '2026-11-model.jsonl'), 'utf8')).toBe(before);
 });
 
-it('leaves a resumed turn that was charged only its own cost', () => {
+it('leaves a resumed turn that was charged only its own cost', async () => {
   // A fixed host charged the resumed turn 0.25, below the 1.5 the transcript saved.
   const config = daemonWith([...billed.slice(0, 2), record('2026-11-21T09:00:00.000Z', 't3', 0.25)]);
-  const answer = run(config, cliWith([{ at: '2026-11-21T07:11:00.000Z' }, { total: 1.5 }]));
+  const answer = await run(config, cliWith([{ at: '2026-11-21T07:11:00.000Z' }, { total: 1.5 }]));
   expect(answer.status).toBe(0);
   expect(answer.stdout).not.toContain(' -> ');
   expect(answer.stdout).toContain('Nothing to change.');
 });
 
-it('names a chat whose transcript is not on this host, and changes nothing there', () => {
+it('names a chat whose transcript is not on this host, and changes nothing there', async () => {
   const config = daemonWith(billed);
-  const answer = run(config, folder('empty'), '--verbose');
+  const answer = await run(config, folder('empty'), '--verbose');
   expect(answer.status).toBe(0);
   expect(answer.stdout).toContain('1 chats not checked');
   expect(answer.stdout).toContain(`ahp-session:/${SESSION}`);
   expect(answer.stdout).not.toContain(' -> ');
 });
 
-it('writes the corrected costs, keeps a copy, and leaves every other line as it was', () => {
+it('writes the corrected costs, keeps a copy, and leaves every other line as it was', async () => {
   const other = record('2026-11-21T08:00:00.000Z', 'other', 3, '11111111-2222-4333-8444-555555555555');
   const config = daemonWith([...billed, other]);
   const before = readFileSync(join(config, 'usage', '2026-11-model.jsonl'), 'utf8');
-  const answer = run(config, transcript(), '--write');
+  const answer = await run(config, transcript(), '--write');
   expect(answer.status).toBe(0);
   const copies = readdirSync(join(config, 'usage')).filter((name) => name.startsWith('2026-11-model.jsonl.bak-'));
   expect(copies).toHaveLength(1);
@@ -144,46 +154,46 @@ it('writes the corrected costs, keeps a copy, and leaves every other line as it 
   for (const index of [0, 1, 6]) expect(now[index]).toBe(lines[index]);
 });
 
-it('marks each record it corrects with the cost it had before', () => {
+it('marks each record it corrects with the cost it had before', async () => {
   const config = daemonWith(billed);
-  expect(run(config, transcript(), '--write').status).toBe(0);
+  expect((await run(config, transcript(), '--write')).status).toBe(0);
   const marks = usageOf(config).map((one) => (one.meta as Record<string, unknown> | undefined)?.['ahpd.repaired']);
   expect(marks).toEqual([undefined, undefined, 1.75, 1.75, 1.85, 2.15]);
 });
 
-it('changes nothing on a second run', () => {
+it('changes nothing on a second run', async () => {
   const config = daemonWith(billed);
   const claude = transcript();
-  expect(run(config, claude, '--write').status).toBe(0);
+  expect((await run(config, claude, '--write')).status).toBe(0);
   const once = readFileSync(join(config, 'usage', '2026-11-model.jsonl'), 'utf8');
-  const answer = run(config, claude, '--write');
+  const answer = await run(config, claude, '--write');
   expect(answer.status).toBe(0);
   expect(answer.stdout).toContain('Nothing to change.');
   expect(readFileSync(join(config, 'usage', '2026-11-model.jsonl'), 'utf8')).toBe(once);
 });
 
-it('leaves a chat whose records already sum to its transcript\'s last total', () => {
+it('leaves a chat whose records already sum to its transcript\'s last total', async () => {
   // Corrected before the mark was written: the sum agrees, but t3 is still above the 1.5 saved before it.
   const config = daemonWith([...billed.slice(0, 2), record('2026-11-21T09:00:00.000Z', 't3', 1.75)]);
-  const answer = run(config, cliWith([{ at: '2026-11-21T07:11:00.000Z' }, { total: 1.5 }, { at: '2026-11-21T09:01:00.000Z' }, { total: 3.25 }]));
+  const answer = await run(config, cliWith([{ at: '2026-11-21T07:11:00.000Z' }, { total: 1.5 }, { at: '2026-11-21T09:01:00.000Z' }, { total: 3.25 }]));
   expect(answer.status).toBe(0);
   expect(answer.stdout).toContain('Nothing to change.');
 });
 
-it('skips a marked record in a chat whose sum does not agree', () => {
+it('skips a marked record in a chat whose sum does not agree', async () => {
   const marked = { ...record('2026-11-21T09:00:00.000Z', 't3', 1.75), meta: { 'ahpd.repaired': 3.25 } };
   const config = daemonWith([...billed.slice(0, 2), marked]);
-  const answer = run(config, cliWith([{ at: '2026-11-21T07:11:00.000Z' }, { total: 1.5 }, { at: '2026-11-21T09:01:00.000Z' }, { total: 9 }]));
+  const answer = await run(config, cliWith([{ at: '2026-11-21T07:11:00.000Z' }, { total: 1.5 }, { at: '2026-11-21T09:01:00.000Z' }, { total: 9 }]));
   expect(answer.status).toBe(0);
   expect(answer.stdout).toContain('Nothing to change.');
 });
 
-it('stops before writing while the daemon runs', () => {
+it('stops before writing while the daemon runs', async () => {
   const config = daemonWith(billed);
   // This test's own process stands for the daemon.
   writeFileSync(join(config, 'daemon.json'), JSON.stringify({ pid: process.pid }));
   const before = readFileSync(join(config, 'usage', '2026-11-model.jsonl'), 'utf8');
-  const answer = run(config, transcript(), '--write');
+  const answer = await run(config, transcript(), '--write');
   expect(answer.status).toBe(1);
   expect(answer.stderr).toContain('is running');
   expect(readFileSync(join(config, 'usage', '2026-11-model.jsonl'), 'utf8')).toBe(before);
