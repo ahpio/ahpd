@@ -1,6 +1,6 @@
 ---
 title: the copapo preset comment
-status: todo
+status: done
 depends: []
 layer: "agent-acp"
 refs:
@@ -26,3 +26,7 @@ The copapo preset comment says what copapo does today over ACP, and no more.
 ## Validation
 
 - The comment matches what copapo's ACP server does, as read in step 1.
+
+## Result
+
+The comment was stale. copapo 0.2.0 declares `mcpCapabilities: { http: true, sse: false }`, takes stdio and http servers from `session/new`, and warns on an SSE one. 0.1.0 took none. The comment now says so.

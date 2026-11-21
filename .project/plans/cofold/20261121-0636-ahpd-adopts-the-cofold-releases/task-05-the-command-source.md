@@ -1,6 +1,6 @@
 ---
 title: the command source
-status: todo
+status: done
 depends: []
 layer: "agent-cofold"
 refs:
@@ -27,3 +27,7 @@ A message whose source is `command` is shown as a command, not as user text.
 ## Validation
 
 - The new test passes, and the agent-cofold suite still passes.
+
+## Result
+
+No change. A `command` message is the typed slash line, and the transcript shows it as the turn's message, as the live turn drew it. `agent-cofold-compact.test.ts` checks this in "runs /compact as a command, and reads it back as the turn drew it". Treating it as `skill` would drop the line the person typed.

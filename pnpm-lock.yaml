@@ -150,8 +150,8 @@ importers:
         specifier: ^0.2.2
         version: 0.2.2(@cofold/agents@0.4.0)
       '@cofold/tools':
-        specifier: ^0.4.1
-        version: 0.4.1(@cofold/agents@0.4.0)
+        specifier: ^0.4.2
+        version: 0.4.2(@cofold/agents@0.4.0)
     devDependencies:
       '@ahpd/sdk':
         specifier: workspace:*
@@ -621,8 +621,8 @@ packages:
     resolution: {integrity: sha512-baFVrlVglmMf6iWHi4bRpdn+EFRbU4+VikUYVqbwb2Noh92+hKH29StDt8pw/VMwHtVJ6X60pgHZGb04z5whcA==}
     engines: {node: '>=22'}
 
-  '@cofold/tools@0.4.1':
-    resolution: {integrity: sha512-LsO2ghqvlpnVwGV2mIZWELG7viDHzIcLKBc4rqHkYMb8mnaQDK/0FKwvF5bn90JpCyun87APyra1qhx0feVkUg==}
+  '@cofold/tools@0.4.2':
+    resolution: {integrity: sha512-eVGG21OuiKFPx4FoQYPSKra+WVWBqBqfVDEm02P354kvFxeNHN0qZkRsU48CVUQu6LfyIfCimnWqCefBiUrq3Q==}
     engines: {node: '>=22'}
     peerDependencies:
       '@cofold/agents': '>=0.2 <0.5'
@@ -3109,7 +3109,7 @@ snapshots:
     dependencies:
       '@cofold/commands': 0.3.0
 
-  '@cofold/tools@0.4.1(@cofold/agents@0.4.0)':
+  '@cofold/tools@0.4.2(@cofold/agents@0.4.0)':
     dependencies:
       '@cofold/agents': 0.4.0
 

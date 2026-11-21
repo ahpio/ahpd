@@ -1,7 +1,7 @@
 ---
 title: ahpd adopts the cofold releases
 domain: cofold
-status: active
+status: built
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -53,6 +53,9 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 | Build all eight, mechanical first | user, 2026-11-21: "All eight, mechanical first (Recommended)" | 01-08 |
 | Permission labels stay host-owned | [code://packages/agent-cofold/src/agent.ts#L182-L190](../../../../packages/agent-cofold/src/agent.ts#L182-L190) and cofold's `modes.ts` comment, read 2026-11-21 | 01 |
 | The terminal prompts are built first, in the configure plan | user, 2026-11-21 | - (see [configure plan](../../daemon/20261121-0636-configure-on-cofold-prompts/plan.md)) |
+| The tool table stays; `subject` is a display string and names no permission kind or absolute path | (defaulted: replacing a row with it changes the approval prompt) | 04 |
+| A `command` message stays the turn's message on read-back | [code://packages/agent-cofold/test/agent-cofold-compact.test.ts](../../../../packages/agent-cofold/test/agent-cofold-compact.test.ts), which checks it | 05 |
+| A cut turn's reason is shown in cofold's marker text | (defaulted: the reason is already in the transcript, and no wording was asked for) | 06 |
 
 ## Proposed architecture
 
@@ -68,12 +71,12 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 | --- | --- | --- |
 | [01 - the effort and permission copies](task-01-effort-and-permission-copies.md) | done | - |
 | [02 - the terminal JSON failure](task-02-terminal-json-failure.md) | done | - |
-| [03 - the pause workarounds](task-03-the-pause-workarounds.md) | todo | - |
-| [04 - the tool table and the tools 0.4.2 bump](task-04-the-tool-table-and-tools-042.md) | todo | - |
-| [05 - the command source](task-05-the-command-source.md) | todo | - |
-| [06 - the turn-cut reason](task-06-the-turn-cut-reason.md) | todo | - |
-| [07 - the copapo preset comment](task-07-the-copapo-preset-comment.md) | todo | - |
-| [08 - the read-before-write and dangling-link switches](task-08-read-before-write-and-dangling-link.md) | todo | 04 |
+| [03 - the pause workarounds](task-03-the-pause-workarounds.md) | done | - |
+| [04 - the tool table and the tools 0.4.2 bump](task-04-the-tool-table-and-tools-042.md) | done | - |
+| [05 - the command source](task-05-the-command-source.md) | done | - |
+| [06 - the turn-cut reason](task-06-the-turn-cut-reason.md) | done | - |
+| [07 - the copapo preset comment](task-07-the-copapo-preset-comment.md) | done | - |
+| [08 - the read-before-write and dangling-link switches](task-08-read-before-write-and-dangling-link.md) | done | 04 |
 
 ## Risks and tradeoffs
 
@@ -82,8 +85,8 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ## Resume state
 
-- **Done so far:** tasks 01 and 02, checked on 2026-11-21, with no change to ahpd code.
-- **Next action:** [task-04-the-tool-table-and-tools-042.md](task-04-the-tool-table-and-tools-042.md).
+- **Done so far:** tasks 01 to 08, 2026-11-21. Task 04 bumps `@cofold/tools` to 0.4.2, task 06 adds a test, and task 07 rewrites a comment. The others needed no change; see each task's *Result* and [implemented.md](implemented.md).
+- **Next action:** none in this plan.
 - **Open questions:** none.
 - **Watch out for:** `pnpm install` runs in the worktree, and the `minimumReleaseAgeExclude` entry for a new cofold version must be added with it.
 
