@@ -471,6 +471,9 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
          * own and this host restricts nothing beyond its one-minute
          * resolution.
          *
+         * `targets` because a run may continue its previous session or send
+         * its message to one chat, as AHP 1.2.0 describes both.
+         *
          * `oneTime` because a store fires a one-time trigger at its `runAt`,
          * once, as AHP 1.2.0 describes it and VS Code advertises it.
          * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/agentHostAutomationService.ts#L289
@@ -496,6 +499,7 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
           ? {
             automations: {
               create: {}, schedules: {}, oneTime: {}, runCancellation: {},
+              targets: { previousSession: {}, chat: {} },
               runHistoryLimit: RUN_HISTORY_LIMIT,
               ...(options.clientPlugins ? { customizations: {} } : {}),
             },

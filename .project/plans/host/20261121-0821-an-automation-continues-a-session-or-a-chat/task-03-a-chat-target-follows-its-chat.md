@@ -1,6 +1,6 @@
 ---
 title: A chat target follows its chat
-status: todo
+status: implemented
 depends: [02]
 layer: "sdk"
 refs:
@@ -33,3 +33,5 @@ A `chat` target sends each run's message to its chat, through the queue of task 
 - The sdk vitest suite passes.
 
 ## Resume
+
+`actions.ts` refuses a chat target this host does not have, or one the owner may not drive, and writes the owning session into `target.session`. `beginInChat` sends each run to its chat: now when it is idle, and through `queueIn` when it is busy. It fails the run when the chat is gone. The chat mover calls `moveChatAutomations`, which updates each target through `retargeted`.

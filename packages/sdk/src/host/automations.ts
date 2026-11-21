@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
+import { continues, retargeted, targetOf } from '../automations/targets.js';
 import { computerSource } from '../machines/computers.js';
 import { Status, idOf, uriFor } from '../sessions/catalog.js';
 import { INTERNAL_ERROR, INVALID_PARAMS, RpcError } from '../rpc.js';
@@ -21,6 +22,7 @@ import type { WakeFacts } from '../automations/wakemessage.js';
 import type { AutomationWake, SessionEventKind, SessionRule } from '../types/triggers.js';
 import type { Owner } from '../types/usage.js';
 import type { HostContext } from './context.js';
+import type { MessageFrom } from '../types/session.js';
 import { mayTrust } from './trust.js';
 
 /** How long the window the hourly cap counts runs over is. */
@@ -118,7 +120,8 @@ const wakeOf = (definition: Bag): AutomationWake => {
   const held = bag(bag(definition._meta)['ahpd']);
   const overlap = String(held.overlap);
   return {
-    session: held.session === 'pinned' ? 'pinned' : 'new',
+    // `target` decides, and the older `pinned` stands in for `previousSession` where it names none.
+    session: targetOf(definition).kind === 'previousSession' ? 'pinned' : 'new',
     overlap: (OVERLAPS.includes(overlap) ? overlap : 'queue') as NonNullable<AutomationWake['overlap']>,
     ...(typeof held.pinnedSession === 'string' ? { pinnedSession: held.pinnedSession } : {}),
   };
@@ -178,6 +181,8 @@ export const runState = ({ owner, notes, ...rest }: AutomationRun): AutomationRu
  * is told when it moves, and the run a due automation starts.
  */
 export interface Automations {
+  /** A chat moved to `to`: each automation whose chat target is that chat names its new session. */
+  moveChatAutomations(from: string, to: string, chat: string): void;
   /** The run each manual request made, by its `requestId`, with the automation it named. */
   manualRunRequests: Map<string, { automation: string; run: string }>;
   /** Move the run a session belongs to, when that session stops working. */
@@ -352,6 +357,12 @@ export function createAutomations(ctx: HostContext): Automations {
     const found = store?.runOf?.(run);
     if (found === undefined) return `Automation run not found: ${run}`;
     if (OVER.has(String(found.lifecycle.status))) return `Automation run is already terminal: ${run}`;
+    // A run whose message still waits is cancelled by taking the message out, and touches no turn.
+    const queued = queuedRuns.get(run);
+    if (queued !== undefined) {
+      ctx.dequeue(queued.chat, queued.id);
+      return undefined;
+    }
     if (found.sessions.length === 0) {
       waiting.delete(found.automation);
       store?.settle?.(run, { status: 'cancelled' });
@@ -446,6 +457,9 @@ export function createAutomations(ctx: HostContext): Automations {
 
   /** Pinned chats a run has passed the busy check for and is still waking, so a second run finds them busy. */
   const claimed = new Set<string>();
+
+  /** The runs whose message waits in a chat's queue, by run, with the chat and the message's id. */
+  const queuedRuns = new Map<string, { chat: string; id: string }>();
 
   /**
    * Whether a chat has a turn running in it, is waiting on a person, or is
@@ -612,6 +626,17 @@ export function createAutomations(ctx: HostContext): Automations {
    * on it, and the store is what keeps that.
    */
   const request = (automation: string, origin: Bag, facts: WakeFacts | undefined, said: string, byEvent: boolean): void => {
+    /*
+     * A run that continues a session or a chat queues its message there and
+     * never steers a turn, as AHP 1.2.0 says, so `overlap` is not asked: each
+     * wake is a run, and its message waits its turn in the chat.
+     * https://github.com/microsoft/agent-host-protocol/blob/e36b0a20/types/channels-automation/state.ts#L316-L346
+     */
+    if (continues(targetOf(options.automations?.get(automation)?.definition))) {
+      if (byEvent && !counted(automation)) return;
+      void fly(automation, origin, facts, said);
+      return;
+    }
     const flight = going(automation);
     const overlap = wakeFor(automation).overlap ?? 'queue';
     /*
@@ -877,6 +902,83 @@ export function createAutomations(ctx: HostContext): Automations {
   };
 
   /**
+   * Put a run's message in a chat's queue, and answer once a turn takes it up.
+   *
+   * As AHP 1.2.0 says of a run that continues a session: the message is a
+   * queued pending message with the template's model, the run stays `pending`
+   * while it waits and is `running` from the turn that takes it, and a message
+   * withdrawn without a turn cancels the run.
+   * https://github.com/microsoft/agent-host-protocol/blob/e36b0a20/types/channels-automation/state.ts#L316-L346
+   */
+  const queueIn = (session: string, chat: string, wanted: StartSession, taken: () => void): Promise<string> => new Promise((resolve, reject) => {
+    const run = String(bag(wanted.origin)['run'] ?? '');
+    const id = crypto.randomUUID();
+    queuedRuns.set(run, { chat, id });
+    ctx.enqueue(chat, id, wanted.text, { origin: { kind: 'automation' } } as MessageFrom,
+      wanted.owner === undefined ? undefined : { owner: wanted.owner },
+      {
+        model: modelIn(wanted.model),
+        taken: () => {
+          queuedRuns.delete(run);
+          taken();
+          wanted.running?.();
+          resolve(session);
+        },
+        withdrawn: () => {
+          queuedRuns.delete(run);
+          options.automations?.settle?.(run, { status: 'cancelled' });
+          reject(new Error('The automation\'s queued message was withdrawn'));
+        },
+      });
+    log(`${run} waits in the queue of ${chat}`);
+  });
+
+  /**
+   * Keep a chat target's `session` right when its chat moves, as AHP asks:
+   * the definition is updated and published with `automation/set`.
+   * https://github.com/microsoft/agent-host-protocol/blob/e36b0a20/types/channels-automation/state.ts#L380-L386
+   */
+  const moveChatAutomations = (_from: string, to: string, chat: string): void => {
+    const store = options.automations;
+    if (store === undefined) return;
+    for (const one of retargeted(store.list(), to, chat)) store.update(one.resource, { target: one.target });
+  };
+
+  /**
+   * A run of a chat target: its message goes to that chat, now when the chat
+   * is idle and through its queue when it is busy. The chat being gone, or
+   * belonging to somebody the automation may not act for, fails the run.
+   * https://github.com/microsoft/agent-host-protocol/blob/e36b0a20/types/channels-automation/state.ts#L360-L392
+   */
+  const beginInChat = async (automation: string, session: string, chat: string, wanted: StartSession): Promise<string> => {
+    if (ctx.sessionFor(chat) !== session || !(sessions.has(session) || ctx.owners.has(session)))
+      throw new RpcError(-32009, `This automation's chat no longer exists: ${chat}`);
+    const owner = wanted.owner;
+    if (owner !== undefined && kept.owner(idOf(session)) !== owner)
+      throw new RpcError(-32009, 'This automation is set to run in a chat that belongs to somebody else');
+    const startedBy = { kind: 'automation', automation, run: String(bag(wanted.origin)['run'] ?? '') } as const;
+    const release = ctx.hold(session);
+    try {
+      if (!sessions.has(session)) await ctx.wake(session);
+      if (!byChat.has(chat)) throw new RpcError(-32009, `This automation's chat no longer exists: ${chat}`);
+      const state = ctx.stateOf(chat) as { activeTurn?: unknown } | undefined;
+      const busy = (state?.activeTurn !== undefined && state.activeTurn !== null) || pinBusy(session);
+      const mark = (): void => {
+        origins.set(session, startedBy);
+        kept.setAutomationOrigin?.(idOf(session), startedBy);
+        fireRun(wanted);
+      };
+      if (busy) return await queueIn(session, chat, wanted, mark);
+      mark();
+      beginIn(session, wanted, chat);
+      return session;
+    }
+    finally {
+      release();
+    }
+  };
+
+  /**
    * What a store is handed when a run starts, however it started.
    *
    * The session *and* the first message: a session created and never spoken to
@@ -892,10 +994,14 @@ export function createAutomations(ctx: HostContext): Automations {
      */
     const automation = wanted.origin?.automation;
     const wake = automation === undefined ? undefined : wakeOf(bag(options.automations?.get(automation)?.definition));
+    // A chat target sends each run to its one chat, and never makes a session.
+    const target = automation === undefined ? undefined : targetOf(options.automations?.get(automation)?.definition);
+    if (automation !== undefined && target?.kind === 'chat') return await beginInChat(automation, target.session, target.chat, wanted);
     const pin = wake?.session === 'pinned' ? wake.pinnedSession : undefined;
     // Live, or asleep in the catalogue: a sleeping one is woken in place once
     // every check below has let the run through.
-    const reachable = pin !== undefined && (sessions.has(pin) || ctx.owners.has(pin));
+    // An archived session is never usable, as AHP says of the previous session: the run makes another.
+    const reachable = pin !== undefined && (sessions.has(pin) || ctx.owners.has(pin)) && (statusOf(pin) & Status.IsArchived) === 0;
     if (automation !== undefined && pin !== undefined && reachable) {
       /*
        * A chat somebody else has is not a chat this run may work in.
@@ -948,8 +1054,14 @@ export function createAutomations(ctx: HostContext): Automations {
        * is a person pressing Run: they are owed a reason rather than a second
        * turn in a chat that is busy.
        */
+      const startedBy = { kind: 'automation', automation, run: String(bag(wanted.origin)['run'] ?? '') } as const;
       if (pinBusy(pin) || heldBy(automation, pin) !== undefined) {
-        throw new RpcError(-32009, 'The chat this automation runs in is already running a turn');
+        // Busy: the message waits in the chat's queue, and the run is pending until a turn takes it.
+        return await queueIn(pin, ctx.defaultChatFor(pin), wanted, () => {
+          origins.set(pin, startedBy);
+          kept.setAutomationOrigin?.(idOf(pin), startedBy);
+          fireRun(wanted);
+        });
       }
       /*
        * Woken only now, for a run that will go ahead, and held awake until its
@@ -967,7 +1079,6 @@ export function createAutomations(ctx: HostContext): Automations {
          * the run, and the one that made the session is remembered by the
          * session itself rather than by this map.
          */
-        const startedBy = { kind: 'automation', automation, run: String(bag(wanted.origin)['run'] ?? '') } as const;
         origins.set(pin, startedBy);
         // Kept with the session's record too, so the row a restart lists names
         // the run that last used it.
@@ -1541,7 +1652,7 @@ export function createAutomations(ctx: HostContext): Automations {
   };
 
   return {
-    manualRunRequests, settleRun, cancelRun, gone, stop, changed, beginAutomation, startForAutomation, startForPlugin, startForPluginChat, due,
+    moveChatAutomations, manualRunRequests, settleRun, cancelRun, gone, stop, changed, beginAutomation, startForAutomation, startForPlugin, startForPluginChat, due,
     wireTriggerTypes, wirePluginStarts,
   };
 }

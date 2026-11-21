@@ -23,3 +23,34 @@ export interface AutomationOneTimeTrigger {
 
 /** Presence capability for one-time triggers. */
 export type AutomationOneTimeCapability = Record<string, never>;
+
+/** Where an automation's runs send their message, AHP's `AutomationTargetKind`. */
+export const TARGET_KINDS = ['newSession', 'previousSession', 'chat'] as const;
+
+/** Each run creates a session from the definition's template. */
+export interface AutomationNewSessionTarget {
+  kind: 'newSession';
+}
+
+/** Each run continues the session of the automation's previous run. */
+export interface AutomationPreviousSessionTarget {
+  kind: 'previousSession';
+}
+
+/** Each run sends its message to one existing chat. */
+export interface AutomationChatTarget {
+  kind: 'chat';
+  /** The session that owns `chat`, which the host keeps. */
+  session: string;
+  /** The chat that receives each run's message. */
+  chat: string;
+}
+
+/** Where the runs of an automation send its message; absent is `newSession`. */
+export type AutomationTarget = AutomationNewSessionTarget | AutomationPreviousSessionTarget | AutomationChatTarget;
+
+/** Which targets a definition may set; absent means each run creates a session. */
+export interface AutomationTargetsCapabilities {
+  previousSession?: Record<string, never>;
+  chat?: Record<string, never>;
+}

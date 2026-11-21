@@ -783,6 +783,8 @@ it('sends nothing the protocol does not declare, and nothing short of what it re
     'RootState /config/schema/properties/terminalAutoApproveRules undeclared key `x-ahpd-scope`': 'USERS.md',
     // AHP 1.2.0's one-time trigger, which the 1.1.0 schema has no key for.
     'InitializeResult /automations undeclared key `oneTime`': 'AUTOMATIONS.md',
+    // AHP 1.2.0's run targets, which the 1.1.0 schema has no key for either.
+    'InitializeResult /automations undeclared key `targets`': 'AUTOMATIONS.md',
   };
 
   /*
