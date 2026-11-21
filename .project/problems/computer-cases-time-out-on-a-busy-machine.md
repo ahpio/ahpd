@@ -61,6 +61,8 @@ The same 3 timed out on main at `11846b594`, without the change, and CI passed a
 
 On 2026-11-21, CI's `processes (2/2)` on #400 timed out `computer-parts-build.test.ts`: `pulls the joined image by the digest the release pinned for its tag` at 5000 ms. Its cleanup then failed with `ENOTEMPTY` on the build folder. #400 does not change `packages/computer`. The local computer suite passed all 633 cases on its branch.
 
+On 2026-11-21, CI's `windows (4/4)` on #429, run 44942705209, timed out `agent-acp-machine.test.ts`: `reaches a disposable machine: plain values at create, a $secret by name on each command` at 20 s, its `PROCESS_CASE_MS` budget. #429 does not change `packages/agent-acp` or `packages/computer`.
+
 ## Cause
 
 Each connect starts the fake `docker` and `devcontainer` CLIs as node processes.
