@@ -15,8 +15,6 @@ refs:
 | --- | --- | --- |
 | keeps a session's machine across a restart | 43044491680, `processes (1/2)`, main | `expected true to be false`, at the check that no `rm` was recorded |
 | mounts the repository root for a session in a subfolder | 42727088464, `windows (2/4)`, main | `Test timed out in 20000ms`, after 24.6 s |
-| takes the machine's own git volume with it, and asks for none where the profile leaves it open | local, 2026-11-21, host/20261121-0821 at load near 15 | `expected false to be true`, at the check that `volume rm` was recorded, after 3.6 s; it then passed twice alone on that branch |
-| takes the machine's own git volume with it, and asks for none where the profile leaves it open | local, 2026-11-21, host/20261121-1218 in the full computer suite | failed after 3.9 s; it then passed alone in its file |
 
 ## Cause
 

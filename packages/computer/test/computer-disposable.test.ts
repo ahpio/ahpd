@@ -27,6 +27,9 @@ import { gitSync } from '../../../tools/git.ts';
 // Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
 vi.setConfig({ testTimeout: PROCESS_CASE_MS });
 
+/** How long one `advanceUntil` waits by the real clock: less than half of the case's budget. */
+const ADVANCE_MS = PROCESS_CASE_MS * 0.4;
+
 /*
  * A disposable machine: offered as a source, made when a session starts, and
  * gone a delay after the last session that used it.
@@ -132,8 +135,14 @@ const settle = async (times = 30): Promise<void> => {
  * then waits for a removal that was never scheduled. The two are spent
  * together instead: real milliseconds for the subprocess, then the clock.
  */
-const advanceUntil = async (check: () => boolean, times = 400): Promise<void> => {
-  for (let i = 0; i < times && !check(); i++) {
+const advanceUntil = async (check: () => boolean): Promise<void> => {
+  // By the real clock, and a failure when it runs out: the removal's docker
+  // calls are processes, which took more than the 2 s that 400 turns of 5 ms
+  // gave them on a loaded machine, and the case then read a removal not yet
+  // made. Two waits fit in the case's budget, each failing in its own words.
+  const limit = Date.now() + ADVANCE_MS;
+  while (!check()) {
+    if (Date.now() > limit) throw new Error(`still waiting after ${String(ADVANCE_MS)} ms`);
     await wait(5);
     await vi.advanceTimersByTimeAsync(1000);
   }
