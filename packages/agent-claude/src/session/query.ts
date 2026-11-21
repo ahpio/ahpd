@@ -358,8 +358,8 @@ export function createQuery(ctx: SessionContext): Query {
       while (mine === bound && toYield[0]?.sdkMessage !== undefined) {
         const next = toYield.shift() as PendingSdkMessage;
         ctx.yielded.set(next.sdkUuid, next);
-        if (next.steeringPendingId !== undefined && str(bag(ctx.steering).id) === next.steeringPendingId) {
-          ctx.steering = undefined;
+        if (next.steeringPendingId !== undefined && ctx.steering.some((one) => str(one.id) === next.steeringPendingId)) {
+          ctx.steering = ctx.steering.filter((one) => str(one.id) !== next.steeringPendingId);
           ctx.emit('chat', { type: 'chat/pendingMessageRemoved', kind: 'steering', id: next.steeringPendingId });
         }
         yield next.sdkMessage as SDKUserMessage;
@@ -409,7 +409,7 @@ export function createQuery(ctx: SessionContext): Query {
     ctx.toYield.length = 0;
     ctx.yielded.clear();
     ctx.parentSdkUuid = undefined;
-    ctx.steering = undefined;
+    ctx.steering = [];
     failTurn(why);
     ctx.sendNext();
   };
