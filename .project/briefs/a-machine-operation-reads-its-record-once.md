@@ -16,7 +16,7 @@ Softov chose on 2026-11-21 to cut the docker calls the computer runtime repeats,
 
 ## What others do
 
-Docker's own CLI reads a container once per command. VS Code's dev container support is not a reference here: it reads through `@devcontainers/cli`, not one `docker inspect` per step.
+No reference was read for this change. It is ahpd's own runtime calling docker more often than its operations need.
 
 ## What ahpd has today
 
