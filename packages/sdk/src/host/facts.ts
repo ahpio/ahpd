@@ -627,6 +627,7 @@ export function createFacts(ctx: HostContext): Facts {
               const changesets = catalogueOf(uri, dir);
               if (!ctx.relaysChangesets(uri) && !isDeepStrictEqual(ctx.stateOf(uri)?.changesets ?? [], changesets))
                 dispatch(uri, { type: 'session/changesetsChanged', changesets });
+              ctx.chatChangesetsMoved(uri);
               ctx.markSummaryDirty(uri);
               await contentMoved(uri);
             }
@@ -878,6 +879,7 @@ export function createFacts(ctx: HostContext): Facts {
         const changesets = catalogueOf(uri, dir);
         if (!ctx.relaysChangesets(uri) && !isDeepStrictEqual(ctx.stateOf(uri)?.changesets ?? [], changesets))
           dispatch(uri, { type: 'session/changesetsChanged', changesets });
+        ctx.chatChangesetsMoved(uri);
         ctx.markSummaryDirty(uri);
       }
       /*

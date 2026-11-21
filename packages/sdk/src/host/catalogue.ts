@@ -984,6 +984,7 @@ export function createCatalogue(ctx: HostContext): Catalogue {
     if (!ctx.relaysChangesets(uri) && JSON.stringify(changesets ?? []) !== JSON.stringify(state.changesets ?? [])) {
       ctx.dispatch(uri, { type: 'session/changesetsChanged', ...(changesets === undefined ? {} : { changesets }) });
     }
+    ctx.chatChangesetsMoved(uri);
     const { _meta: meta } = ctx.describes(uri) as { _meta?: Bag };
     if (JSON.stringify(meta ?? {}) !== JSON.stringify(state._meta ?? {})) {
       ctx.dispatch(uri, { type: 'session/metaChanged', ...(meta === undefined ? {} : { _meta: meta }) });

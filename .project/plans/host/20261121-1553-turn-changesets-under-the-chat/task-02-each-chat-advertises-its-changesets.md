@@ -1,6 +1,6 @@
 ---
 title: Each chat advertises its changesets
-status: todo
+status: done
 depends: [01]
 layer: "sdk"
 refs:

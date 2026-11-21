@@ -1,6 +1,6 @@
 ---
 title: A changeset under a chat is served
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:

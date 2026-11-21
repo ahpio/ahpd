@@ -1,7 +1,7 @@
 ---
 title: Turn changesets under the chat
 domain: host
-status: planned
+status: active
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -61,8 +61,8 @@ chat snapshot -> chat.changesets -> subscribe <chatUri>/changeset/<scope> -> cha
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - A changeset under a chat is served](task-01-a-changeset-under-a-chat-is-served.md) | todo | - |
-| [02 - Each chat advertises its changesets](task-02-each-chat-advertises-its-changesets.md) | todo | 01 |
+| [01 - A changeset under a chat is served](task-01-a-changeset-under-a-chat-is-served.md) | done | - |
+| [02 - Each chat advertises its changesets](task-02-each-chat-advertises-its-changesets.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -70,13 +70,13 @@ chat snapshot -> chat.changesets -> subscribe <chatUri>/changeset/<scope> -> cha
 
 ## Resume state
 
-- **Done so far:** the plan, 2026-11-21.
-- **Next action:** [task-01-a-changeset-under-a-chat-is-served.md](task-01-a-changeset-under-a-chat-is-served.md).
+- **Done so far:** tasks 01 and 02, 2026-11-21; see [implemented.md](implemented.md).
+- **Next action:** Softov's review of the PR.
 - **Open questions:** none.
 - **Watch out for:** a subagent chat URI is held by its parent session; `ctx.sessionHolding` resolves it.
 
 ## Final verification checklist
 
-- [ ] A test: `<chatUri>/changeset/turn/<turnId>` answers the turn's files, and a change to them is said on that channel.
-- [ ] A test: a chat's snapshot carries its list, and `chat/changesetsChanged` follows the session's list.
-- [ ] The gates pass: typecheck, boundary, and the sdk and computer suites.
+- [x] A test: `<chatUri>/changeset/turn/<turnId>` answers the turn's files, and a change to them is said on that channel.
+- [x] A test: a chat's snapshot carries its list, and `chat/changesetsChanged` follows the session's list.
+- [x] The gates pass: typecheck, boundary, and the sdk and computer suites.

@@ -238,6 +238,8 @@ export function createSnapshots(ctx: HostContext): Snapshots {
     const canvases = talking.chat.channel === undefined ? ctx.canvases.listOf(chatUri) : undefined;
     const state: Bag = {
       ...talking.chat.chatState(),
+      // The chat's own changesets, unless the session's machine serves them.
+      ...(ctx.relaysChangesets(session) ? {} : ctx.chatChangesetsOf(session, chatUri)),
       origin: getChatOrigin(chatUri),
       // How a person may use it, where the plugin that made it said.
       ...(ctx.chatInteractivity.get(chatUri) === undefined ? {} : { interactivity: ctx.chatInteractivity.get(chatUri) }),
