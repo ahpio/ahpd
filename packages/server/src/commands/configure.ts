@@ -22,11 +22,12 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
+import { styleText } from 'node:util';
 import { output } from '@cofold/commands';
 import type { Command, Registry } from '@cofold/commands';
 import { filePolicies, installLine, isRecord, knownAgents, sdkVersion } from '@ahpd/sdk';
 import type { Policy, PolicyKind, RecordCollection } from '@ahpd/sdk';
-import { ask, answering, confirm, here, multiselect, type Term } from '../ask.js';
+import { ask, answering, confirm, here, multiselect, report, type Term } from '../ask.js';
 import { asSpec, besideFile, configDir, configPath, policiesPath } from '../config.js';
 import { marketplacesOf } from '../pluginlist.js';
 import { AGENT_PLUGIN, agentLines, alsoLines, configuredAgents, findAgents, findAlso, findRuntimes, missingLines, runtimeLines } from '../found.js';
@@ -813,14 +814,27 @@ export const declareConfigure = (registry: Registry<object>): Command => registr
     });
     // The offer at a first start starts the daemon next, so only the command
     // says how to.
-    const next = [
-      'Start the daemon: ahpd start',
-      'Check that it is up, and where it listens: ahpd status',
-      'Change an answer later, with the same questions: ahpd configure',
+    const next: [string, string][] = [
+      ['ahpd start', 'Start the daemon'],
+      ['ahpd status', 'Check status and listening addresses'],
+      ['ahpd configure', 'Change an answer later, with the same questions'],
     ];
-    for (const line of next) {
-      if (payload) context.error(line);
-      else context.write(`${line}\n`);
+    if (!payload && answering(here)) {
+      // The commands are coloured here, and the words after them are lined up
+      // on the plain width, since the colour codes take no room on the screen.
+      const width = Math.max(...next.map(([command]) => command.length)) + 3;
+      await report(done.path, next.map(([command, meaning]) => `${styleText('cyan', command, { stream: process.stdout })}${' '.repeat(width - command.length)}${meaning}`), here);
+    }
+    else {
+      // Without a terminal, the commands are plain lines; the colour is only
+      // where the stream is a terminal, and the names line up in one column.
+      const stream = payload ? process.stderr : process.stdout;
+      const width = Math.max(...next.map(([command]) => command.length)) + 3;
+      for (const [command, meaning] of next) {
+        const line = `${styleText('cyan', command, { stream })}${' '.repeat(width - command.length)}${meaning}`;
+        if (payload) context.error(line);
+        else context.write(`${line}\n`);
+      }
     }
     return output(done, '');
   },

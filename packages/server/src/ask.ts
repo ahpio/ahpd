@@ -117,6 +117,24 @@ export const confirm = async (label: string, yes: boolean, term: Term = here): P
   return asked(term, () => prompts.confirm({ message: label, initial: yes }));
 };
 
+/**
+ * Say where the configuration went, and what to run next, as the close of a run.
+ *
+ * Each line of `next` is drawn as the caller wrote it, so the caller lines the
+ * columns up and paints them. Drawn only at a terminal; a caller without one
+ * prints its own lines.
+ */
+export const report = async (
+  saved: string,
+  next: readonly string[],
+  term: Term = here,
+): Promise<void> => {
+  const prompts = promptsOf(term);
+  await prompts.group('Configuration saved', (group) => { group.line('plain', saved); });
+  await prompts.group("What's next?", (group) => { for (const line of next) group.line('plain', line); });
+  prompts.outro('Done.', 'plain');
+};
+
 /** One item a multiselect offers: its value, the label a person reads, and what is said beside it. */
 export interface Item<V extends string> {
   value: V;
