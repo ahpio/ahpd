@@ -1,7 +1,7 @@
 ---
 title: ahpd speaks AHP 1.1.0
 domain: host
-status: planned
+status: active
 priority: high
 created: 2026-10-22
 revalidated: 2026-11-21
@@ -92,7 +92,7 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - The 1.1.0 package is installed](task-01-the-1-1-0-package-is-installed.md) | todo | - |
+| [01 - The 1.1.0 package is installed](task-01-the-1-1-0-package-is-installed.md) | implemented | - |
 | [02 - A chat keeps its own config](task-02-a-chat-keeps-its-own-config.md) | dropped | - |
 | [03 - Backend keys are chat-mutable](task-03-backend-keys-are-chat-mutable.md) | dropped | - |
 | [04 - Steering messages share the list](task-04-steering-messages-share-the-list.md) | todo | 01 |
@@ -111,8 +111,8 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 ## Resume state
 
-- **Done so far:** the plan, 2026-10-22; checked again against AHP 1.1.0 and main on 2026-11-21. Tasks 02 and 03 are on main.
-- **Next action:** [task-01-the-1-1-0-package-is-installed.md](task-01-the-1-1-0-package-is-installed.md).
+- **Done so far:** the plan, 2026-10-22; checked again against AHP 1.1.0 and main on 2026-11-21. Tasks 02 and 03 are on main. Task 01 implemented on 2026-11-21.
+- **Next action:** [task-07-the-chat-config-reads-the-package.md](task-07-the-chat-config-reads-the-package.md), then 08 and 09.
 - **Open questions:** none.
 - **Watch out for:** `isActionKnownToVersion` says `chat/configChanged` is 1.1.0. Do not use it to hold the action back, since VS Code sends it on 1.0.0.
 
