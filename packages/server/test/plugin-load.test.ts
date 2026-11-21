@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { IMPORT_CASE_MS } from '../../../tools/wait.ts';
 import { loadPlugins, pluginIdOf, pluginSet } from '../src/plugins.js';
 import { setPluginEnabled } from '../src/install.js';
 import { echo } from '../../../examples/echo/agent.js';
@@ -308,7 +309,7 @@ describe('the manifest a client lists', () => {
   });
 });
 
-describe('a first-party plugin', () => {
+describe('a first-party plugin', { timeout: IMPORT_CASE_MS }, () => {
   /*
    * Each package's options schema is the one it exported before the move, now
    * written in its package.json and read with it: the load carries the schema
