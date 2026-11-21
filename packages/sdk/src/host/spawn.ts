@@ -720,7 +720,7 @@ export function createSpawn(ctx: HostContext): Spawn {
     const ref = subagents.get(uri);
     if (ref === undefined) return;
     // A question a worker's call puts is answered by the backend that runs the worker, as a client's answer on the worker's chat is.
-    const action = toolReady(ref.session, uri, withMcpContributor(ref.session, withWorkerUri(uri, given)), () => workerLead(uri));
+    const action = toolReady(ref.session, uri, withMcpContributor(ref.session, withWorkerUri(uri, ctx.background.withMeta(uri, given))), () => workerLead(uri));
     if (action === undefined || decidedAlready(uri, action)) return;
     const was = ctx.stateOf(uri)?.status;
     // Whether this ends the turn the worker's chat runs, whose end is then raised as every chat's is.
@@ -1525,6 +1525,7 @@ export function createSpawn(ctx: HostContext): Spawn {
        * emits `chat/backgroundWorkSet` itself has it dropped, by `emit`.
        */
       backgroundTasks: ctx.background.heldTasks(),
+      movableCalls: ctx.background.heldMovable(),
       /*
        * A harness's own task list, raised for whoever is listening.
        *
@@ -1645,7 +1646,7 @@ export function createSpawn(ctx: HostContext): Spawn {
         // A client's decision on a call is said once, as the client's.
         if (channel === 'chat' && decidedAlready(chatUri, action)) return;
         if (channel === 'chat') {
-          const put = toolReady(uri, chatUri, withMcpContributor(uri, action), () => sessions.get(uri)?.chats.get(chatUri));
+          const put = toolReady(uri, chatUri, withMcpContributor(uri, ctx.background.withMeta(chatUri, action)), () => sessions.get(uri)?.chats.get(chatUri));
           if (put === undefined) return;
           action = put;
         }

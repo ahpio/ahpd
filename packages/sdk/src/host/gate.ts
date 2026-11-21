@@ -71,6 +71,13 @@ export const NEEDS: Record<string, Grant> = {
    * kill the shell a turn started either.
    */
   'vscode/stopBackgroundWork': 'chat:cancel',
+  /*
+   * Moving a call to the background ends nothing: the work goes on and the
+   * turn goes on without the call's real answer, which is what a steering
+   * message does to a turn, so it asks what `chat/pendingMessageSet` asks.
+   * Stopping the row it becomes still asks for `chat:cancel`.
+   */
+  'x-ahpd/backgroundToolCall': 'chat:send',
 
   // chat
   createChat: 'chat:create',

@@ -1,6 +1,6 @@
 ---
 title: A running call offers to move, and its _meta says so
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:
@@ -54,4 +54,12 @@ While the offer stands, the call's `_meta` carries `ahpd.backgroundToolCall: tru
 - `npx tsc -p packages/sdk --noEmit` passes.
 
 ## Resume
+
+Done on 2026-11-21.
+
+- The one-call seam is `CallMovable`, not `ChatMovableCalls`: the host binds the chat and the call id.
+- `MovableCalls` has a third verb, `moved(chat, toolCallId, row)`. A call that goes to the background without the method, such as `mode: 'async'`, reports its row with it.
+- A move answers `Promise<boolean>`. The provider reports `moved` before the call completes, because a backend's completion can arrive before the move's answer.
+- A backend's `chat/turnComplete`, `chat/turnCancelled` and `chat/error` drop the chat's records.
+- Tests: `packages/sdk/test/host-movable-calls.test.ts`.
 

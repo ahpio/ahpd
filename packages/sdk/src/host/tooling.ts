@@ -2553,6 +2553,21 @@ export function createTooling(ctx: HostContext): Tooling {
         remove: (id) => { tasks.remove(chatUri, id); },
       };
     },
+    /*
+     * The call's own offer, bound to the chat that holds it: a worker's chat
+     * where a subagent made the call, the calling chat otherwise. A call the
+     * backend named no id for has nothing to offer.
+     */
+    movable: () => {
+      const calls = ctx.background.heldMovable();
+      const toolCallId = call?.toolCallId;
+      const holding = workerOfCall(uri, toolCallId) ?? chatUri;
+      return {
+        offer: (move) => { if (toolCallId !== undefined) calls.offer(holding, toolCallId, move); },
+        withdraw: () => { if (toolCallId !== undefined) calls.withdraw(holding, toolCallId); },
+        moved: (row) => { if (toolCallId !== undefined) calls.moved(holding, toolCallId, row); },
+      };
+    },
     read: async (asked) => {
       // A client's resource from the client the client scheme names, about
       // the URI as it knows it, as VS Code's host reads one through its client
@@ -2709,6 +2724,7 @@ export function createTooling(ctx: HostContext): Tooling {
         mover(undefined, (provider) => tokensForConnection(ctx.agents, undefined, provider), { channel: chat, destination }),
       // A row is drawn in a chat, and a call with no session has none.
       background: needsSession,
+      movable: needsSession,
       scheduleWake: needsSession,
       cancelWake: needsSession,
       artifacts: needsSession,

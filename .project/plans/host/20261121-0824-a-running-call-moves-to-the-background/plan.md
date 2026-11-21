@@ -1,7 +1,7 @@
 ---
 title: A running call moves to the background
 domain: host
-status: planned
+status: active
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -20,7 +20,6 @@ refs:
   - "[code://packages/sdk/src/host/vscodemethods.ts#L508-L517](../../../../packages/sdk/src/host/vscodemethods.ts#L508-L517) - `vscode/stopBackgroundWork`, the checks and answers the new method copies"
   - "[code://packages/sdk/src/host/gate.ts#L67-L73](../../../../packages/sdk/src/host/gate.ts#L67-L73) - the grant of `vscode/stopBackgroundWork`, with its reason"
   - "[code://packages/sdk/src/host/gate.ts#L171-L176](../../../../packages/sdk/src/host/gate.ts#L171-L176) - `chat/pendingMessageSet` asks for `chat:send`, the grant a steering message takes"
-  - "[code://packages/sdk/src/host/root.ts#L680-L692](../../../../packages/sdk/src/host/root.ts#L680-L692) - `advertisedMethods`, the `ahpd.methods` list a client reads its `x-` methods from"
   - "[code://packages/sdk/src/tools/shell.ts#L294-L341](../../../../packages/sdk/src/tools/shell.ts#L294-L341) - the host shell tool: `async` sets a row and is woken; a `sync` command a client lets go is only held"
   - "[code://packages/sdk/src/host/shells.ts#L349-L390](../../../../packages/sdk/src/host/shells.ts#L349-L390) - `start`, which waits for a command's real end and wakes its chat"
   - "[code://packages/sdk/src/host/shells.ts#L400-L420](../../../../packages/sdk/src/host/shells.ts#L400-L420) - `hold`, which keeps a let-go command's shell busy with no row and no wake"
@@ -50,7 +49,7 @@ The brief holds the facts about other projects and about each backend.
 
 ### Searches performed
 
-- `rg "'x-ahpd/" packages` - ahpd's own methods are named `x-ahpd/<name>`, and a client finds them in `ahpd.methods`.
+- `rg "'x-ahpd/" packages` - ahpd's own methods are named `x-ahpd/<name>`.
 - `rg "toolCallContentChanged" packages/sdk/src/host` - the host already sends that action for a call a backend runs (`terminals.ts`, `spawn.ts`).
 - `rg "backgroundToolCall|backgroundWork'" packages` - nothing exists yet.
 
@@ -81,6 +80,8 @@ ahpw/ahpc button -> x-ahpd/backgroundToolCall { chat, toolCallId } -> gate (chat
 | The method asks for `chat:send`, the grant of a steering message | "the same permission as steer? because we are not changing, we are letting it continue the turn without the tool real reply", 2026-11-21 | 02 |
 | The method moves one call, never all calls of a chat | "One call only", 2026-11-21 | 02 |
 | The method is named `x-ahpd/backgroundToolCall` | `(defaulted: ahpd's own methods are x-ahpd/<name>, as x-ahpd/tokens/mint)` | 02 |
+| A client knows the host can move a call by the flag on the call; `ahpd.methods` does not list the method | `(defaulted: the flag is the offer, as vscode.stopBackgroundWork on a row is; ahpd.methods stays the list of plugin methods)` | 02 |
+| A provider reports `moved(row)` before the call completes, and a move answers only whether it moved | `(defaulted: the completion is where the row is written, and a backend's completion can arrive before a move's answer)` | 01 |
 | pi and cofold move the shell through the host shell tool | "Host shell tool", 2026-11-21 | 04 |
 | The host shell tool is on by default for pi and cofold; for the others `enableCustomTerminalTool` still decides | "On for pi and cofold", 2026-11-21 | 04 |
 | An explicit `enableCustomTerminalTool: false` turns the host shell tool off for pi and cofold too | `(defaulted: a person's explicit setting wins over a default)` | 04 |
@@ -101,8 +102,8 @@ ahpw/ahpc button -> x-ahpd/backgroundToolCall { chat, toolCallId } -> gate (chat
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a call offers to move](task-01-a-call-offers-to-move.md) | todo | - |
-| [02 - the move method](task-02-the-move-method.md) | todo | 01 |
+| [01 - a call offers to move](task-01-a-call-offers-to-move.md) | done | - |
+| [02 - the move method](task-02-the-move-method.md) | done | 01 |
 | [03 - the shell tool moves a sync command](task-03-the-shell-tool-moves-a-sync-command.md) | todo | 01 |
 | [04 - pi and cofold get the host shell](task-04-pi-and-cofold-get-the-host-shell.md) | todo | 03 |
 | [05 - docs](task-05-docs.md) | todo | 02, 03, 04 |
@@ -116,8 +117,8 @@ ahpw/ahpc button -> x-ahpd/backgroundToolCall { chat, toolCallId } -> gate (chat
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-call-offers-to-move.md](task-01-a-call-offers-to-move.md).
+- **Done so far:** tasks 01 and 02, 2026-11-21, on branch `host/20261121-0824-a-running-call-moves-to-the-background`.
+- **Next action:** [task-03-the-shell-tool-moves-a-sync-command.md](task-03-the-shell-tool-moves-a-sync-command.md).
 - **Open questions:** none.
 - **Watch out for:** the reducer replaces the whole `_meta` on content-changed and complete, so every write sends the call's other keys too. A worker chat's actions go through `sendSubagent`, not `dispatch`.
 
