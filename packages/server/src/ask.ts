@@ -135,6 +135,27 @@ export const report = async (
   prompts.outro('Done.', 'plain');
 };
 
+/**
+ * Say that the daemon is up: where it listens, what it has, and what to run next.
+ *
+ * `rows` are aligned name and value pairs, and `next` lines are drawn as the
+ * caller wrote them. Drawn only at a terminal; a caller without one prints its
+ * own lines.
+ */
+export const started = async (
+  rows: readonly (readonly [string, string])[],
+  next: readonly string[],
+  term: Term = here,
+): Promise<void> => {
+  const prompts = promptsOf(term);
+  await prompts.group('Daemon started', (group) => {
+    group.rows(rows);
+    group.line('plain', '');
+    for (const line of next) group.line('plain', line);
+  });
+  prompts.outro('Done ahpd is running.', 'plain');
+};
+
 /** One item a multiselect offers: its value, the label a person reads, and what is said beside it. */
 export interface Item<V extends string> {
   value: V;
