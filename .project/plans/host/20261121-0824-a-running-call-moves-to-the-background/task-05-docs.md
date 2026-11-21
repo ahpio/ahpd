@@ -1,6 +1,6 @@
 ---
 title: The docs say how a call moves to the background
-status: todo
+status: done
 depends: [task-02-the-move-method.md, task-03-the-shell-tool-moves-a-sync-command.md, task-04-pi-and-cofold-get-the-host-shell.md]
 layer: "docs"
 refs:
@@ -29,4 +29,6 @@ The docs name the method, its grant, the two `_meta` keys, the shell tool's move
 - Each statement matches the tests of tasks 01 to 04.
 
 ## Resume
+
+Done on 2026-11-21. `AHP.md` keeps its own hard wrap; `TERMINALS.md` keeps one paragraph per line.
 

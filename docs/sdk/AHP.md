@@ -1150,6 +1150,18 @@ throws fails the request, as VS Code's host lets its runtime's rejection
 through; an empty id or a `chat` that is not an AHP chat URI is `-32602`. The row is
 left where it is, and the backend's own `remove` takes it down when the work
 has ended. The request needs `chat:cancel`.
+`x-ahpd/backgroundToolCall` is this host's own, beside it: it takes
+`{ chat, toolCallId }`, moves a running call to the background through the
+move its provider offered, and answers `{ backgrounded }`. A call that can
+move says so under `_meta['ahpd.backgroundToolCall']` while it runs, and a
+call whose work runs in the background names its row under
+`_meta['ahpd.backgroundWork']`, which stays on the completed call. The host
+writes both keys, whoever runs the call: a backend offers it through
+`Start.movableCalls`, a host tool through `ToolCall.movable()`. No offer, a
+call that already answered and a move that did not happen are the same
+`false`; the checks on the two strings are the stop's. The request needs
+`chat:send`, the grant of a steering message, because moving a call ends no
+work.
 `getNetworkDiagnosticsInfo` reports the version the daemon gave, the platform,
 the first account a backend is signed in as, the proxy variables that are set
 and the endpoints the backends name, each once - the Anthropic API, answering
@@ -1189,6 +1201,7 @@ is described. A request in neither the package nor this table is refused
 | `vscode/reconcileAgentHostDetachedWorktrees` | The same flow, which lets go of the trees the window has forgotten. [Worktrees the window manages](#worktrees-the-window-manages) |
 | `vscode/removeSessionArtifact` | The window takes an artifact pill off with its own request. [Sessions and the catalogue](#sessions-and-the-catalogue) |
 | `vscode/stopBackgroundWork` | The Stop button on a background task's row, which the host answers by calling the backend that reported it. [What the window asks a host about itself](#what-the-window-asks-a-host-about-itself) |
+| `x-ahpd/backgroundToolCall` | This host's own "Run in background" on a running call that carries `_meta['ahpd.backgroundToolCall']`. [What the window asks a host about itself](#what-the-window-asks-a-host-about-itself) |
 | `vscode/getAgentHostSessionStateFile` | The backend's own record of a session, read by the window's debug view. [What the window asks a host about itself](#what-the-window-asks-a-host-about-itself) |
 | `vscode/collectAgentHostDebugLogs` | The window's own bundle of logs, for a bug report. [What the window asks a host about itself](#what-the-window-asks-a-host-about-itself) |
 | `vscode/cancelAgentHostDebugLogs` | The same bundle, called off by the window that follows it. [What the window asks a host about itself](#what-the-window-asks-a-host-about-itself) |

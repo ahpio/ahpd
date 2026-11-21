@@ -105,8 +105,8 @@ ahpw/ahpc button -> x-ahpd/backgroundToolCall { chat, toolCallId } -> gate (chat
 | [01 - a call offers to move](task-01-a-call-offers-to-move.md) | done | - |
 | [02 - the move method](task-02-the-move-method.md) | done | 01 |
 | [03 - the shell tool moves a sync command](task-03-the-shell-tool-moves-a-sync-command.md) | done | 01 |
-| [04 - pi and cofold get the host shell](task-04-pi-and-cofold-get-the-host-shell.md) | todo | 03 |
-| [05 - docs](task-05-docs.md) | todo | 02, 03, 04 |
+| [04 - pi and cofold get the host shell](task-04-pi-and-cofold-get-the-host-shell.md) | done | 03 |
+| [05 - docs](task-05-docs.md) | done | 02, 03, 04 |
 
 ## Risks and tradeoffs
 
@@ -117,8 +117,8 @@ ahpw/ahpc button -> x-ahpd/backgroundToolCall { chat, toolCallId } -> gate (chat
 
 ## Resume state
 
-- **Done so far:** tasks 01, 02 and 03, 2026-11-21, on branch `host/20261121-0824-a-running-call-moves-to-the-background`.
-- **Next action:** [task-04-pi-and-cofold-get-the-host-shell.md](task-04-pi-and-cofold-get-the-host-shell.md).
+- **Done so far:** every task, 2026-11-21, on branch `host/20261121-0824-a-running-call-moves-to-the-background`.
+- **Next action:** open the pull request, then write `implemented.md` and set `status: built` once it merges.
 - **Open questions:** none.
 - **Watch out for:** the reducer replaces the whole `_meta` on content-changed and complete, so every write sends the call's other keys too. A worker chat's actions go through `sendSubagent`, not `dispatch`.
 
