@@ -63,6 +63,8 @@ On 2026-11-21, CI's `processes (2/2)` on #400 timed out `computer-parts-build.te
 
 On 2026-11-21, CI's `windows (4/4)` on #429, run 44942705209, timed out `agent-acp-machine.test.ts`: `reaches a disposable machine: plain values at create, a $secret by name on each command` at 20 s, its `PROCESS_CASE_MS` budget. #429 does not change `packages/agent-acp` or `packages/computer`.
 
+On 2026-11-21, CI's `windows (4/4)` on #426, run 44943835612, timed out the same case at 20 s. #426 does not change `packages/agent-acp` or `packages/computer`.
+
 ## Cause
 
 Each connect starts the fake `docker` and `devcontainer` CLIs as node processes.
