@@ -1,7 +1,7 @@
 ---
 title: An automation runs once at a set time
 domain: host
-status: planned
+status: active
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -70,8 +70,8 @@ automation/createRequested -> actions.ts checks -> AutomationStore -> scheduled.
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - A one-time definition is advertised and checked](task-01-a-one-time-definition-is-checked.md) | todo | - |
-| [02 - The daemon fires it once](task-02-the-daemon-fires-it-once.md) | todo | 01 |
+| [01 - A one-time definition is advertised and checked](task-01-a-one-time-definition-is-checked.md) | implemented | - |
+| [02 - The daemon fires it once](task-02-the-daemon-fires-it-once.md) | implemented | 01 |
 
 ## Risks and tradeoffs
 
@@ -80,15 +80,15 @@ automation/createRequested -> actions.ts checks -> AutomationStore -> scheduled.
 
 ## Resume state
 
-- **Done so far:** the plan, 2026-11-21.
-- **Next action:** [task-01-a-one-time-definition-is-checked.md](task-01-a-one-time-definition-is-checked.md).
+- **Done so far:** the plan, 2026-11-21. Tasks 01 and 02 implemented on 2026-11-21.
+- **Next action:** Softov reviews the PR. The plan closes as `built` on his word.
 - **Open questions:** none.
 - **Watch out for:** a run started by `run` is not the trigger's run, so it leaves the one-time trigger to fire.
 
 ## Final verification checklist
 
-- [ ] A test: the handshake advertises `oneTime`.
-- [ ] A test: a one-time definition with two triggers, or with a disable condition, is refused in VS Code's words.
-- [ ] A test: the trigger fires once at `runAt`, and the automation then has no `nextRunAt` and no `update`.
-- [ ] A test: a `runAt` passed while the daemon was down runs once, or not at all with `skip`.
-- [ ] The gates pass: typecheck, boundary, and the sdk and server suites.
+- [x] A test: the handshake advertises `oneTime`.
+- [x] A test: a one-time definition with two triggers, or with a disable condition, is refused in VS Code's words.
+- [x] A test: the trigger fires once at `runAt`, and the automation then has no `nextRunAt` and no `update`.
+- [x] A test: a `runAt` passed while the daemon was down runs once, or not at all with `skip`.
+- [x] The gates pass: typecheck, boundary, and the sdk and server suites.

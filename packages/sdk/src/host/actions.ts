@@ -1,4 +1,5 @@
 import { APPROVAL_KEYS, filePersonRules } from '../access/personrules.js';
+import { oneTimeProblem, oneTimeRunOf } from '../automations/onetime.js';
 import { isDeepStrictEqual } from 'node:util';
 import { IS_CLIENT_DISPATCHABLE } from '@microsoft/agent-host-protocol';
 import type { AnnotationsAction } from '@microsoft/agent-host-protocol';
@@ -767,6 +768,20 @@ export function createActions(ctx: HostContext, conn: ConnectionContext): Action
         no(`Automation not found: ${resource}`);
         return;
       }
+      /*
+       * A one-time automation, checked on the definition it would become, in
+       * VS Code's words: one trigger and no end date, and no edit once its
+       * trigger has run.
+       * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/agentHostAutomationService.ts#L408-L415
+       * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/agentHostAutomationService.ts#L1820-L1826
+       */
+      const started = existing === undefined ? undefined : oneTimeRunOf(existing.definition);
+      if (type === 'automation/updateRequested' && started !== undefined) {
+        no(`One-time automation has already started: ${started}`);
+        return;
+      }
+      const oneTimeRefusal = oneTimeProblem(type === 'automation/createRequested' ? written : { ...existing?.definition, ...written });
+      if (oneTimeRefusal !== undefined) { no(oneTimeRefusal); return; }
       /*
        * Client plugins on the template, copied while the client that named
        * them is still here.

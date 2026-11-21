@@ -1,6 +1,7 @@
 /** Automations held in memory, run when somebody asks. */
 
 import { randomUUID } from 'node:crypto';
+import { consumedBy, oneTimeRunOf, oneTimeTriggerOf } from './onetime.js';
 import type { AutomationTriggerDefinition, ConfigPropertySchema, ConfigSchema, JsonPrimitive } from '@microsoft/agent-host-protocol';
 import { localPath } from '../resources/fileuri.js';
 import { mayUseAgentFor, ownershipOf } from '../agents/usable.js';
@@ -633,7 +634,9 @@ export function memoryAutomations(options: AutomationsOptions = {}): AutomationS
        * offering no button for one would be a client that cannot do what this
        * host would allow.
        */
-      operations: ['update', 'remove', 'run'],
+      // No `update` once a one-time trigger has run, as VS Code offers none.
+      // https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/agentHostAutomationService.ts#L306
+      operations: oneTimeRunOf(automation.definition) === undefined ? ['update', 'remove', 'run'] : ['remove', 'run'],
       /*
        * Whose work this is, where a client can read it.
        *
@@ -654,6 +657,15 @@ export function memoryAutomations(options: AutomationsOptions = {}): AutomationS
    * learns an automation stopped. Nothing is removed: the definition, its runs
    * and its count all stay, and a person may still start it by hand.
    */
+  /** Record the run a one-time trigger created, which consumes it, as `stop` records a switch-off. */
+  const consume = (automation: Automation, run: string): void => {
+    const definition = consumedBy(automation.definition, run);
+    const modifiedAt = now();
+    options.persist?.({ automation: entry({ ...automation, definition, modifiedAt }) });
+    automation.definition = definition;
+    automation.modifiedAt = modifiedAt;
+  };
+
   const stop = (automation: Automation): void => {
     if (automation.definition.enabled === false) return;
     const definition = { ...automation.definition, enabled: false };
@@ -809,6 +821,14 @@ export function memoryAutomations(options: AutomationsOptions = {}): AutomationS
        * read against the origin rather than against the automation.
        */
       const scheduled = bag(origin).kind === 'trigger';
+      /*
+       * The one-time trigger's own run, which happens once: a second fire of
+       * it is refused, and a press of Run is not its run, so it leaves the
+       * trigger to fire.
+       */
+      const oneTime = oneTimeTriggerOf(found.definition);
+      const consumes = scheduled && oneTime !== undefined && bag(origin).triggerId === oneTime.id;
+      if (consumes && oneTimeRunOf(found.definition) !== undefined) return undefined;
       const conditions = disableConditionsOf(found.definition.disableConditions);
       if (scheduled) {
         if (found.definition.enabled === false) return undefined;
@@ -862,6 +882,7 @@ export function memoryAutomations(options: AutomationsOptions = {}): AutomationS
         found.runCount = (found.runCount ?? 0) + 1;
         if (found.runCount >= conditions.allowedRuns) stop(found);
       }
+      if (consumes) consume(found, run.resource);
       said({ automation: resource, run: run.resource });
 
       const directories = Array.isArray(template.workingDirectories) ? template.workingDirectories : [];

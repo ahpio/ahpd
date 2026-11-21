@@ -563,7 +563,7 @@ describe('a template that names client plugins', () => {
       params: { clientId: 'a', protocolVersions: ['0.9.0'], initialSubscriptions: [] },
     }) as { automations?: Record<string, unknown> };
     expect(answer.automations).toEqual({
-      create: {}, schedules: {}, runCancellation: {}, runHistoryLimit: RUN_HISTORY_LIMIT,
+      create: {}, schedules: {}, oneTime: {}, runCancellation: {}, runHistoryLimit: RUN_HISTORY_LIMIT,
     });
     expect('customizations' in (answer.automations ?? {})).toBe(false);
   });
@@ -953,7 +953,7 @@ describe('a host that keeps client plugins', () => {
       params: { clientId: 'b', protocolVersions: ['0.9.0'], initialSubscriptions: [] },
     }) as { automations?: Record<string, unknown> };
     expect(answer.automations).toEqual({
-      create: {}, schedules: {}, runCancellation: {}, runHistoryLimit: RUN_HISTORY_LIMIT, customizations: {},
+      create: {}, schedules: {}, oneTime: {}, runCancellation: {}, runHistoryLimit: RUN_HISTORY_LIMIT, customizations: {},
     });
   });
 });
@@ -2267,5 +2267,50 @@ describe('a run whose first turn the host ends', () => {
   it('completes on a model its agent offers', async () => {
     const state = await ran({ ...DEFINITION, session: { ...DEFINITION.session, model: { id: 'm1' } } });
     expect(state.lifecycle.status).toBe('completed');
+  });
+});
+
+/*
+ * A one-time automation, refused where VS Code refuses one and in its words:
+ * one trigger, no end date, a `runAt` that is a time, and no edit once the
+ * trigger has run.
+ * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/agentHostAutomationService.ts#L408-L415
+ * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/agentHostAutomationService.ts#L1820-L1826
+ */
+describe('a one-time automation', () => {
+  const ONCE = { id: 'o1', kind: 'oneTime', runAt: '2030-01-01T09:00:00Z' };
+
+  it('takes one trigger at a time, and refuses two, an end date, or a runAt that is no time', async () => {
+    const { client, peer: p } = await connected();
+    await client.handle({ method: 'subscribe', params: { channel: AUTOMATIONS } });
+    await write(client, { ...DEFINITION, triggers: [ONCE, { id: 's1', kind: 'schedule', schedule: { expression: '0 9 * * *', timeZone: 'UTC' } }] });
+    await write(client, { ...DEFINITION, triggers: [ONCE], disableConditions: [{ kind: 'afterRuns', max: 2 }] });
+    await write(client, { ...DEFINITION, triggers: [{ ...ONCE, runAt: 'tomorrow' }] });
+    await settle();
+    expect(refusals(p, AUTOMATIONS)).toEqual([
+      'A one-time automation must have exactly one trigger.',
+      'One-time automations do not support end dates.',
+      'A one-time trigger needs runAt as an ISO 8601 time: tomorrow',
+    ]);
+    expect(await entries(client)).toEqual([]);
+    await write(client, { ...DEFINITION, triggers: [ONCE] });
+    expect(((await entries(client))[0] as { definition: { triggers: unknown[] } }).definition.triggers).toEqual([ONCE]);
+  });
+
+  it('refuses an update once its trigger has run, and offers none', async () => {
+    const held = memoryAutomations();
+    const { client, peer: p } = await connected(true, 0, held);
+    await client.handle({ method: 'subscribe', params: { channel: AUTOMATIONS } });
+    await write(client, { ...DEFINITION, triggers: [ONCE] });
+    const run = await held.run(ONE, { kind: 'trigger', triggerId: 'o1', scheduledFor: ONCE.runAt }, async () => 'ahp-session:/made');
+    expect(held.get(ONE)?.operations).toEqual(['remove', 'run']);
+    // A second fire of the same trigger is not a second run.
+    expect(await held.run(ONE, { kind: 'trigger', triggerId: 'o1', scheduledFor: ONCE.runAt }, async () => 'ahp-session:/again')).toBeUndefined();
+    await client.handle({
+      method: 'dispatchAction',
+      params: { channel: AUTOMATIONS, action: { type: 'automation/updateRequested', resource: ONE, changes: { title: 'Later' } } },
+    });
+    await settle();
+    expect(refusals(p, AUTOMATIONS).at(-1)).toBe(`One-time automation has already started: ${String(run?.resource)}`);
   });
 });
