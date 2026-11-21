@@ -149,6 +149,17 @@ export function createCanvases(ctx: CanvasHost): Canvases {
    * anywhere. AHP 1.1.0 lets the host choose which sources it serves, and this
    * host serves absolute http(s) URLs only.
    */
+  /*
+   * A state as the host sends it: AHP 1.1.0's `uri`, and the same value as
+   * the old `url`, which a VS Code 1.145 window reads. VS Code's host sends
+   * both while released windows still read `url`.
+   * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/common/agentHostProtocolTransition.ts#L40-L44
+   */
+  const sent = (state: CanvasState): CanvasState => {
+    const { url: _url, ...rest } = state as CanvasState & { url?: string };
+    return (rest.uri === undefined ? rest : { ...rest, url: rest.uri }) as CanvasState;
+  };
+
   const check = (method: string, by: string, state: CanvasState): void => {
     for (const member of ['instanceId', 'extensionId', 'canvasId'] as const) {
       const value: unknown = state?.[member];
@@ -201,7 +212,7 @@ export function createCanvases(ctx: CanvasHost): Canvases {
      * chat hold a resource can subscribe to a channel that already answers.
      * https://github.com/microsoft/vscode/blob/e646868227c/src/vs/platform/agentHost/node/agentHostStateManager.ts#L1077-L1100
      */
-    ctx.dispatch(resource, { type: 'canvas/stateChanged', canvas: canvas.state });
+    ctx.dispatch(resource, { type: 'canvas/stateChanged', canvas: sent(canvas.state) });
     if (same === undefined) announce(chat);
     return resource;
   };
@@ -220,7 +231,7 @@ export function createCanvases(ctx: CanvasHost): Canvases {
     // https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostStateManager.ts#L1192-L1197
     if (isDeepStrictEqual(one.state, state)) return;
     one.state = structuredClone(state);
-    ctx.dispatch(resource, { type: 'canvas/stateChanged', canvas: one.state });
+    ctx.dispatch(resource, { type: 'canvas/stateChanged', canvas: sent(one.state) });
   };
 
   const close = (resource: string, by: string): void => {
@@ -252,7 +263,7 @@ export function createCanvases(ctx: CanvasHost): Canvases {
        */
       if (one.state.uri !== undefined) {
         const { uri: _uri, ...left } = one.state;
-        ctx.dispatch(one.resource, { type: 'canvas/stateChanged', canvas: left });
+        ctx.dispatch(one.resource, { type: 'canvas/stateChanged', canvas: sent(left) });
       }
       drop(one);
       touched.add(one.chat);
@@ -276,7 +287,7 @@ export function createCanvases(ctx: CanvasHost): Canvases {
     update,
     close,
     closeAll,
-    snapshot: (resource) => held.get(resource)?.state,
+    snapshot: (resource) => { const one = held.get(resource); return one === undefined ? undefined : sent(one.state); },
     listOf,
     chatOf: (resource) => held.get(resource)?.chat,
     forgetChat,

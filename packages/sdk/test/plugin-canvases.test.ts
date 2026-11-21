@@ -32,6 +32,9 @@ const STATE: CanvasState = {
   uri: 'https://canvas.test/board',
 };
 
+/** The state as the host sends it: the old `url` beside `uri`, for a VS Code 1.145 window. */
+const SENT = { ...STATE, url: STATE.uri };
+
 const context = (): LoaderContext => ({
   path: DIR, paths: [DIR], version: sdkVersion(), hostName: 'test', configDir: DIR, log: loggerOf(() => {}), say: () => {},
 });
@@ -120,7 +123,7 @@ describe('canvasesEnabled', () => {
 
     const listed = await chatState(client, chat);
     expect(listed.canvases).toEqual([{ resource }]);
-    expect(await canvasState(client, resource)).toEqual(STATE);
+    expect(await canvasState(client, resource)).toEqual(SENT);
     expect(() => plugin.closeCanvas(resource)).not.toThrow();
   });
 });
@@ -273,7 +276,7 @@ describe('a chat whose session sleeps', () => {
     const resource = await plugin.host.openCanvas(first, STATE);
     expect(starts).toBe(3);
     expect((await chatState(client, first)).canvases).toEqual([{ resource }]);
-    expect(await canvasState(client, resource)).toEqual(STATE);
+    expect(await canvasState(client, resource)).toEqual(SENT);
   });
 });
 

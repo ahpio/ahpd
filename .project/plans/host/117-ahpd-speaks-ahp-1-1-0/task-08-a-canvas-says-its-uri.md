@@ -13,7 +13,7 @@ refs:
 ## Objective
 
 A canvas's state says `uri`, an absolute content URI, as AHP 1.1.0 renames the experimental `CanvasState.url`.
-No canvas says `url`.
+The host sends the same value as `url` beside it, as VS Code's host does while a 1.145 window reads only `url`.
 
 ## Files
 
@@ -38,3 +38,5 @@ No canvas says `url`.
 ## Resume
 
 A canvas says `uri`: the host's check, the clear when a plugin goes, the wire log's redaction, the example plugin, the tests and the docs. The check keeps absolute http(s) URLs only, which AHP 1.1.0 allows, since it lets the host choose the sources it serves. `pnpm typecheck` is clean. Six files pass, 156 cases. ahpw `src/resources/sessions/SessionHeader.tsx:114` reads `url` and needs its own PR.
+
+On 2026-11-21 the host also sends `url` beside `uri`, in `sent` in `canvases.ts`, for the actions and the snapshot. VS Code main does the same in `withLegacyCanvasState` (`common/agentHostProtocolTransition.ts`, `ddbdd50a9ed1`), and a 1.145.2 window reads only `canvas.url`. The wire log redacts both keys. Seven files pass, 173 cases.

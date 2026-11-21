@@ -74,7 +74,7 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 | agent-claude holds a list of steering entries, and each read of the CLI input removes the oldest | (defaulted: upstream `0b4e0632b1f`; the input loop in `query.ts` is first in, first out) | 04 |
 | A backend that submits a steer at once (cofold, pi, bot) emits no pending entry, as today | (defaulted: no pending state to show) | 04 |
 | No backend fills `vendor` yet; the host passes it through from `models()`, and a changed vendor is a changed list | Softov, 2026-10-22 | 05 |
-| A canvas says `uri`, an absolute content URI, and no `url` | (defaulted: AHP 1.1.0 renames the experimental field) | 08 |
+| A canvas says `uri`, an absolute content URI, and the host sends the same value as `url` beside it | VS Code `ddbdd50a9ed1` `withLegacyCanvasState`; a 1.145.2 window reads only `url` | 08 |
 | ahpw reads `uri` in its own PR, after this one | (defaulted: ahpw `SessionHeader.tsx:114` reads `url`; a change scoped to ahpd touches no other repo) | 08 |
 | A session's annotations channel is `ahp-annotations:/<uuid>` with the session's id, and the session's `annotations.resource` names it | (defaulted: AHP 1.1.0 and VS Code main `ddbdd50a9ed1`) | 09 |
 | The old `<session>/annotations` name keeps working beside it | (defaulted: VS Code 1.145.2 `c4453f8ea430` builds the old name itself) | 09 |
@@ -105,7 +105,7 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 ## Risks and tradeoffs
 
-- A client on 1.0.0 reads a canvas's `url`. After task 08 it finds none until it reads `uri`, as the protocol's rename asks.
+- The old `url` stays on the wire until VS Code drops its transition layer. A later change removes it then.
 - VS Code 1.145.2 builds `<session>/annotations` itself, so task 09 serves both names. One action goes to every name a client subscribed to.
 - The package's own list leaves out `1.1.0`, so a refusal names a version that its list does not hold. The plan keeps the package's words.
 - A chat's config inherits, unlike 1.1.0. A 1.1.0 client that expects a schema default where the session has a value reads the session's value.
@@ -124,7 +124,7 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 - [ ] `vscode/chatconfig.ts` is gone, and the per-chat config tests pass on the package's types.
 - [ ] A test: two steers before a read leave no stale entry.
 - [ ] A test: a model's `vendor` reaches the root state, and a changed vendor is a changed list.
-- [ ] A test: a canvas says `uri` and no `url`.
+- [ ] A test: a canvas says `uri`, and `url` beside it.
 - [ ] A test: a session's annotations channel is `ahp-annotations:/<uuid>`, and `annotations.resource` names it.
 - [ ] The conformance test replays the actions through the 1.1.0 reducers.
 - [ ] The gates pass: typecheck, boundary, schema and vitest.

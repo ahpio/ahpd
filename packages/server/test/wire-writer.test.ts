@@ -164,11 +164,11 @@ describe('a capture line that carries a credential', () => {
   it('writes a canvas source as VS Code redacts it, in an action and in a canvas snapshot', () => {
     const write = writerFor(at);
     const canvas = 'ahp-canvas:/Y2hhdA/board';
-    write(answered(JSON.stringify({ jsonrpc: '2.0', method: 'action', params: { channel: canvas, serverSeq: 1, action: { type: 'canvas/stateChanged', canvas: { title: 'Board', uri: url } } } })));
-    write(answered(JSON.stringify({ jsonrpc: '2.0', id: 5, result: { snapshot: { resource: canvas, state: { title: 'Board', uri: url }, fromSeq: 1 } } })));
+    write(answered(JSON.stringify({ jsonrpc: '2.0', method: 'action', params: { channel: canvas, serverSeq: 1, action: { type: 'canvas/stateChanged', canvas: { title: 'Board', uri: url, url } } } })));
+    write(answered(JSON.stringify({ jsonrpc: '2.0', id: 5, result: { snapshot: { resource: canvas, state: { title: 'Board', uri: url, url }, fromSeq: 1 } } })));
     const [action, snapshot] = lines(at);
-    expect(action).toMatchObject({ params: { action: { canvas: { title: 'Board', uri: '<redacted canvas source>' } } } });
-    expect(snapshot).toMatchObject({ result: { snapshot: { state: { title: 'Board', uri: '<redacted canvas source>' } } } });
+    expect(action).toMatchObject({ params: { action: { canvas: { title: 'Board', uri: '<redacted canvas source>', url: '<redacted canvas source>' } } } });
+    expect(snapshot).toMatchObject({ result: { snapshot: { state: { title: 'Board', uri: '<redacted canvas source>', url: '<redacted canvas source>' } } } });
     expect(readFileSync(at, 'utf8')).not.toContain('sesame');
   });
 

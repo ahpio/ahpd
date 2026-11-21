@@ -126,7 +126,7 @@ describe('open_check_canvas', () => {
       snapshot: { state: CanvasState };
     };
     expect(canvas.snapshot.state).toEqual({
-      instanceId: 'check', extensionId: 'example-canvas', canvasId: 'check', title: 'Example canvas', uri: answer.uri,
+      instanceId: 'check', extensionId: 'example-canvas', canvasId: 'check', title: 'Example canvas', uri: answer.uri, url: answer.uri,
     });
   });
 });
