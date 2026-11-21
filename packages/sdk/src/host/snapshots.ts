@@ -5,8 +5,8 @@ import { RpcError } from '../rpc.js';
 import { runState } from './automations.js';
 import { ROOT, isRootChannel, isAutomations, automationOwner, queryOf, ANNOTATIONS_PATH_SEGMENT, chatUriFor, servedIn, schemeOf, spaceOf, toolCallOfSubagentChat } from './channels.js';
 import { ownerFilter } from '../utils/values.js';
-import { filterChatConfigValues } from '../vscode/chatconfig.js';
-import type { ChatConfigState, ConfigSchema } from '../vscode/chatconfig.js';
+import { filterChatConfigValues } from './chatconfig.js';
+import type { ChatConfigState, SessionConfigSchema } from '@microsoft/agent-host-protocol';
 import type { Agent } from '../types/agent.js';
 import type { Bag } from '../types/common.js';
 import type { Connection } from '../types/host.js';
@@ -206,14 +206,14 @@ export function createSnapshots(ctx: HostContext): Snapshots {
    * A chat of another backend runs on nothing of its session's, so it says
    * its own schema beside them, the properties of its backend's a chat may
    * set, and its values are its own config's.
-   * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/common/state/protocol/channels-chat/state.ts#L416-L445
+   * https://github.com/microsoft/agent-host-protocol/blob/v1.1.0/types/channels-chat/state.ts#L430-L462
    */
   const chatConfigState = (
     session: string, chatUri: string, foreign: { agent: Agent; config: Record<string, unknown> } | undefined,
   ): ChatConfigState => {
     if (foreign === undefined) return { values: ctx.getChatOwnConfigValues(session, chatUri) };
-    const schema = sessionSchema(foreign.agent) as ConfigSchema;
-    const properties = Object.fromEntries(Object.entries(schema.properties).filter(([, property]) => property?.chatMutable === true));
+    const schema = sessionSchema(foreign.agent) as unknown as SessionConfigSchema;
+    const properties = Object.fromEntries(Object.entries(schema.properties).filter(([, property]) => property.chatMutable === true));
     return { schema: { ...schema, properties }, values: filterChatConfigValues(schema, foreign.config) };
   };
 

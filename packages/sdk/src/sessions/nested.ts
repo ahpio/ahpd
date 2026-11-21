@@ -49,8 +49,6 @@ import type {
 } from '@microsoft/agent-host-protocol';
 import { idOf, Status, uriFor } from './catalog.js';
 import { posixUriOf, uriOf } from '../resources/fileuri.js';
-import { reduceChatConfigChanged } from '../vscode/chatconfig.js';
-import type { ChatConfigChangedAction, ChatConfigState } from '../vscode/chatconfig.js';
 import { machinePathOf } from '../machines/machine.js';
 import { canvasResource, chatOfCanvas } from '../host/channels.js';
 import { STOP_FLAG } from '../host/background.js';
@@ -1108,11 +1106,7 @@ const nestedSession = (provider: string, variant: boolean, start: Start, options
             if (session !== undefined) session = sessionReducer(session, action as SessionAction);
           }
           else if (chat !== undefined) {
-            // A chat's own config through VS Code's case for it, which the
-            // package's reducer is behind.
-            chat = String(action.type) === 'chat/configChanged'
-              ? reduceChatConfigChanged(chat as ChatState & { config?: ChatConfigState }, action as unknown as ChatConfigChangedAction)
-              : chatReducer(chat, action as ChatAction);
+            chat = chatReducer(chat, action as ChatAction);
           }
         }
         catch (error) {

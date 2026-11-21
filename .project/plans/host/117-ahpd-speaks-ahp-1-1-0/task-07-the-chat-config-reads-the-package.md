@@ -1,6 +1,6 @@
 ---
 title: The chat config reads the package
-status: todo
+status: implemented
 depends: [01]
 layer: "sdk"
 refs:
@@ -44,3 +44,5 @@ A chat still inherits its session's value where it set none.
 - `pnpm typecheck` and the sdk vitest suite pass.
 
 ## Resume
+
+The vendored types and reducer are gone. The checks are in `packages/sdk/src/host/chatconfig.ts`, and `host.ts` and `nested.ts` apply `chat/configChanged` through the package's chat reducer, whose case is the same. The 1.1.0 package registers `chat/configChanged` at `1.1.0`, so the host's version filter held it back from a client on `0.9.0` or `1.0.0`. That broke two sandbox cases. The filter now lets it through, as VS Code's host does. `wire.test.ts` no longer lists `ChatState.config` and `chatMutable` as undeclared. Departure: `createChat` keeps its untyped `params`, as every session method reads them; `params.title` was read already. For task 06: `docs/sdk/AHP.md` L102 and L1198 still call `chatMutable` undeclared.

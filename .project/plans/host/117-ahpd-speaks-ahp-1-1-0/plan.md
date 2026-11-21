@@ -68,7 +68,8 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 | A chat's config keeps inheriting a session's value where the chat set none | Softov, 2026-11-10, recorded in UPSTREAM.md Pass 8 | 07 |
 | Tasks 02 and 03 are dropped: per-chat config and `chatMutable` are on main | `7f7a74ffe`, `20e812035` | 02, 03 |
 | `vscode/chatconfig.ts` gives way to the package's `ChatConfigState`, `ChatConfigChangedAction` and `chatMutable` | (defaulted: the package ships the types the file vendored) | 07 |
-| `CreateChatParams.title` is read already; it takes the package's type | `code://packages/sdk/src/host/sessionmethods.ts#L1775` | 07 |
+| `CreateChatParams.title` is read already, from the untyped `params` every session method reads | `code://packages/sdk/src/host/sessionmethods.ts#L1775` | 07 |
+| `chat/configChanged` goes to a client on any version, though 1.1.0 registers it at `1.1.0` | VS Code `ddbdd50a9ed1` `protocolServerHandler.ts` L4944, which holds back only `chat/moved` | 07 |
 | Steering and queued entries share `queuedMessages`; `steeringMessage` mirrors the latest steering entry | (defaulted: AHP 1.1.0 `CHANGELOG.md`, *Changed*) | 04 |
 | agent-claude holds a list of steering entries, and each read of the CLI input removes the oldest | (defaulted: upstream `0b4e0632b1f`; the input loop in `query.ts` is first in, first out) | 04 |
 | A backend that submits a steer at once (cofold, pi, bot) emits no pending entry, as today | (defaulted: no pending state to show) | 04 |
@@ -98,7 +99,7 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 | [04 - Steering messages share the list](task-04-steering-messages-share-the-list.md) | todo | 01 |
 | [05 - A model names its vendor](task-05-a-model-names-its-vendor.md) | todo | 01 |
 | [06 - The documents say 1.1.0](task-06-the-documents-say-1-1-0.md) | todo | 04, 05, 07, 08, 09 |
-| [07 - The chat config reads the package](task-07-the-chat-config-reads-the-package.md) | todo | 01 |
+| [07 - The chat config reads the package](task-07-the-chat-config-reads-the-package.md) | implemented | 01 |
 | [08 - A canvas says its uri](task-08-a-canvas-says-its-uri.md) | implemented | 01 |
 | [09 - The annotations channel is ahp-annotations](task-09-the-annotations-channel-is-ahp-annotations.md) | todo | 01 |
 
@@ -111,8 +112,8 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 ## Resume state
 
-- **Done so far:** the plan, 2026-10-22; checked again against AHP 1.1.0 and main on 2026-11-21. Tasks 02 and 03 are on main. Task 01 implemented on 2026-11-21. Task 08 implemented on 2026-11-21.
-- **Next action:** [task-07-the-chat-config-reads-the-package.md](task-07-the-chat-config-reads-the-package.md), then 09.
+- **Done so far:** the plan, 2026-10-22; checked again against AHP 1.1.0 and main on 2026-11-21. Tasks 02 and 03 are on main. Task 01 implemented on 2026-11-21. Task 08 implemented on 2026-11-21. Task 07 implemented on 2026-11-21.
+- **Next action:** [task-09-the-annotations-channel-is-ahp-annotations.md](task-09-the-annotations-channel-is-ahp-annotations.md); task 08 sends `url` beside `uri` first.
 - **Open questions:** none.
 - **Watch out for:** `isActionKnownToVersion` says `chat/configChanged` is 1.1.0. Do not use it to hold the action back, since VS Code sends it on 1.0.0.
 
