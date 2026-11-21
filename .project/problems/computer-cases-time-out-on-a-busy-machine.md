@@ -59,6 +59,8 @@ The load average was near 15, while the dev daemon restarted. The change touches
 The two files run alone timed out 3 cases at a load average near 5, the adopted container case among them.
 The same 3 timed out on main at `11846b594`, without the change, and CI passed all of them on #363.
 
+On 2026-11-21, CI's `processes (2/2)` on #400 timed out `computer-parts-build.test.ts`: `pulls the joined image by the digest the release pinned for its tag` at 5000 ms. Its cleanup then failed with `ENOTEMPTY` on the build folder. #400 does not change `packages/computer`. The local computer suite passed all 633 cases on its branch.
+
 ## Cause
 
 Each connect starts the fake `docker` and `devcontainer` CLIs as node processes.
