@@ -737,9 +737,6 @@ it('sends nothing the protocol does not declare, and nothing short of what it re
     'vscode/devContainers/output': 'CONTAINERS.md',
     'vscode/devContainers/relayClose': 'CONTAINERS.md',
     'vscode/devContainers/closeConnection': 'CONTAINERS.md',
-    chatMutable: 'SESSIONS.md',
-    config: 'SESSIONS.md',
-    'chat/configChanged': 'SESSIONS.md',
   };
 
   /*
