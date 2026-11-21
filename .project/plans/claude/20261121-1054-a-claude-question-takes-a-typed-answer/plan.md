@@ -1,7 +1,7 @@
 ---
 title: A Claude question takes a typed answer
 domain: claude
-status: planned
+status: active
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -56,7 +56,7 @@ AskUserQuestion -> questionRequest -> chat/inputRequested -> a client's answer w
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - A question allows a typed answer](task-01-a-question-allows-a-typed-answer.md) | todo | - |
+| [01 - A question allows a typed answer](task-01-a-question-allows-a-typed-answer.md) | implemented | - |
 
 ## Risks and tradeoffs
 
@@ -64,13 +64,13 @@ AskUserQuestion -> questionRequest -> chat/inputRequested -> a client's answer w
 
 ## Resume state
 
-- **Done so far:** the plan, 2026-11-21.
-- **Next action:** [task-01-a-question-allows-a-typed-answer.md](task-01-a-question-allows-a-typed-answer.md).
+- **Done so far:** the plan, 2026-11-21. Task 01 implemented on 2026-11-21.
+- **Next action:** Softov reviews the PR. The plan closes as `built` on his word.
 - **Open questions:** none.
 - **Watch out for:** the restored question is built by the same `questionRequest`, so its case moves with the live one.
 
 ## Final verification checklist
 
-- [ ] A test: a question with no flag allows a typed answer, and one with `false` does not.
-- [ ] A test: a typed answer reaches the tool's answers.
-- [ ] The gates pass: typecheck and the agent-claude suite.
+- [x] A test: a question with no flag allows a typed answer, and one with `false` does not.
+- [x] A test: a typed answer reaches the tool's answers.
+- [x] The gates pass: typecheck and the agent-claude suite.
