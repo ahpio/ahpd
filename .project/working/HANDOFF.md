@@ -22,8 +22,12 @@ Current progress and pending items only, as of 2026-11-21. *Outside this reposit
   - In ahpw: #109 (`c440209`) reads a canvas's `uri`, and #112 (`4da31ba`) adds the one-time trigger and the target to the automation form.
   - [pending/vscode-main-parity-checks.md](../pending/vscode-main-parity-checks.md) is the check by hand of the parity, 12 sections in VS Code, ahpw and `rpc`.
   - Softov's dev daemon takes #401, #418, #419, #422, #428 and #429 at its next restart on main. Tell him, and do not restart it.
-  - [briefs/vscode-methods-ahpd-does-not-serve.md](../briefs/vscode-methods-ahpd-does-not-serve.md) has Softov's pick for each group, from 2026-11-21, in its section *The change*. Nine groups wait for "plan it", or for their VS Code handlers to be read first.
-  - [briefs/ahpio-sandbox-runtime.md](../briefs/ahpio-sandbox-runtime.md) waits for "plan it". It forks Anthropic's runtime as `@ahpio/sandbox-runtime`, with a `network.enabled` gate and zod `^4.6.6`. The plan spans the fork's repository and ahpd.
+  - Eleven plans `20261121-2250` are written in `/github/ahpd.worktrees/handoff`, not on main yet. They cover the groups of [briefs/vscode-methods-ahpd-does-not-serve.md](../briefs/vscode-methods-ahpd-does-not-serve.md), which links each one in *The change*. A review found fixes, which go in before the plan commit.
+    - The host plans all add to `vscodemethods.ts`, `gate.ts`, `handshake.ts` and the gate table test, so their builds stack.
+    - `container/20261121-2250-the-sandbox-runtime-is-ahpios-fork` replaces the sandbox runtime brief. Its fork needs Softov's yes before `gh repo fork`, and its first npm publish is his.
+  - [working/plan-review-20261121-2250.md](plan-review-20261121-2250.md) lists the review fixes the plans wait for.
+  - Three briefs keep Softov's intent: [agent-extensions-are-a-sessions-plugins.md](../briefs/agent-extensions-are-a-sessions-plugins.md), [plugins-are-a-sessions-extensions.md](../briefs/plugins-are-a-sessions-extensions.md) and [artifact-integrations.md](../briefs/artifact-integrations.md). Their open points wait for Softov's answers.
+  - Agent extensions and artifact integrations get briefs of their own.
   - [pending/ahp-1-2-0-package.md](../pending/ahp-1-2-0-package.md) waits for AHP 1.2.0 on npm, to drop the local 1.2.0 types.
   - `/github/ahpd` is on `briefs/record-edits`, whose one commit is on main as `c4516b3b0`. The branch can go on Softov's word. Its local `main` matches `origin/main`.
 - Before 0.15.0, the last stable release was 0.14.0 (`v0.14.0`). `v0.15.0-rc.3` is tagged on `28dd315e0` (#320). Its release run 43394827388 passed `parts`, `release` and `image` on 2026-11-13, and staged the 13 packages under `next`. Softov approved them on 2026-11-13, and npm serves `0.15.0-rc.3` under `next` since 14:36 UTC. What the release needs is in [pending/release.md](../pending/release.md), and the checks by hand are ordered in [pending/triage.md](../pending/triage.md).
