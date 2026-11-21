@@ -22,11 +22,10 @@ Current progress and pending items only, as of 2026-11-21. *Outside this reposit
   - In ahpw: #109 (`c440209`) reads a canvas's `uri`, and #112 (`4da31ba`) adds the one-time trigger and the target to the automation form.
   - [pending/vscode-main-parity-checks.md](../pending/vscode-main-parity-checks.md) is the check by hand of the parity, 12 sections in VS Code, ahpw and `rpc`.
   - Softov's dev daemon takes #401, #418, #419, #422, #428 and #429 at its next restart on main. Tell him, and do not restart it.
-  - Eleven plans `20261121-2250` are written in `/github/ahpd.worktrees/handoff`, not on main yet. They cover the groups of [briefs/vscode-methods-ahpd-does-not-serve.md](../briefs/vscode-methods-ahpd-does-not-serve.md), which links each one in *The change*. A review found fixes, which go in before the plan commit.
+  - Eleven plans `20261121-2250` cover the groups of [briefs/vscode-methods-ahpd-does-not-serve.md](../briefs/vscode-methods-ahpd-does-not-serve.md), which links each one in *The change*. A review's fixes are in them. Their builds run on `claude-deepseek-build`, on Softov's choice.
     - The host plans all add to `vscodemethods.ts`, `gate.ts`, `handshake.ts` and the gate table test, so their builds stack.
     - `container/20261121-2250-the-sandbox-runtime-is-ahpios-fork` replaces the sandbox runtime brief. Its fork needs Softov's yes before `gh repo fork`, and its first npm publish is his.
-  - [working/plan-review-20261121-2250.md](plan-review-20261121-2250.md) lists the review fixes the plans wait for.
-  - Three briefs keep Softov's intent: [agent-extensions-are-a-sessions-plugins.md](../briefs/agent-extensions-are-a-sessions-plugins.md), [plugins-are-a-sessions-extensions.md](../briefs/plugins-are-a-sessions-extensions.md) and [artifact-integrations.md](../briefs/artifact-integrations.md). Their open points wait for Softov's answers.
+  - Three briefs keep Softov's intent: [agent-extensions-are-a-sessions-plugins.md](../briefs/agent-extensions-are-a-sessions-plugins.md), [plugins-are-a-sessions-extensions.md](../briefs/plugins-are-a-sessions-extensions.md) and [artifact-integrations.md](../briefs/artifact-integrations.md). Their open points wait for Softov's answers. The plugin brief is not yet what he wants: an app made in one session lasts, and other sessions change it.
   - Agent extensions and artifact integrations get briefs of their own.
   - [pending/ahp-1-2-0-package.md](../pending/ahp-1-2-0-package.md) waits for AHP 1.2.0 on npm, to drop the local 1.2.0 types.
   - `/github/ahpd` is on `briefs/record-edits`, whose one commit is on main as `c4516b3b0`. The branch can go on Softov's word. Its local `main` matches `origin/main`.

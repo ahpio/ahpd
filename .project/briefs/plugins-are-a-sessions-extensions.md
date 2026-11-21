@@ -16,7 +16,7 @@ refs:
 
 # Plugins are a session's extensions
 
-Softov wants an ahpd plugin to work as VS Code's agent extensions do, and as dsh's plugins do. A plugin can be scoped to one session, and an agent can write one with a skill. It can run as a stdio process instead of inside the daemon. It contributes UI as a schema, with no React or HTML: a view, a shortcut, an explorer, an activity item. Each client decides how to draw it. A plugin can also register a resource, such as a channel, and store its data through functions the host gives it. In his words: "I think for this one we need a separated brief since it can affect things."
+Softov wants an ahpd plugin to work as VS Code's agent extensions do, and as dsh's plugins do. An agent can write one with a skill, and the plugin lasts beyond the session that made it. It can run as a stdio process instead of inside the daemon. It contributes UI as a schema, with no React or HTML: a view, a shortcut, an explorer, an activity item. Each client decides how to draw it. A plugin can also register a resource, such as a channel, and store its data through functions the host gives it. In his words: "I think for this one we need a separated brief since it can affect things."
 
 ## What others do
 
@@ -37,7 +37,7 @@ Softov wants an ahpd plugin to work as VS Code's agent extensions do, and as dsh
 
 ## The change
 
-- A plugin can be scoped to one session, and runs only there.
+- A plugin an agent makes in one session lasts after that session ends, and other sessions can change it. Softov, 2026-11-21: "a app made in one session must survive like forever or be changed by others sessions."
 - A plugin can run as a stdio process, when its runtime allows it.
 - A plugin contributes UI as a schema: views, shortcuts, an explorer, activity items. A client draws each kind its own way.
 - A plugin can register a resource, such as a channel, and keep its data through host storage functions.
@@ -47,5 +47,6 @@ Softov wants an ahpd plugin to work as VS Code's agent extensions do, and as dsh
 ## Open points
 
 - Not asked yet: the stdio protocol, the schema of each UI kind, and the storage functions' shape and scope.
-- Not asked yet: how a plugin scoped to a session is installed and removed.
+- Not asked yet: where a plugin an agent made is kept, who may change it, and how it is removed.
+- Softov said on 2026-11-21 that this brief is not yet what he wants for plugins. He reviews it later.
 - Each is to be asked before this brief is final.

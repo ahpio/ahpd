@@ -52,20 +52,20 @@ Softov picked each group on 2026-11-21.
 | --- | --- |
 | Worktree disk usage | Built in #428. |
 | Session move | Built in #429. |
-| Shell authentication | Plan it. |
-| Agent extensions | Plan it. |
-| MCP authentication | Plan it. |
-| Chat workspace | Plan it, with a folder per chat first. |
-| Dev container environments | Plan it, with containers from an image first. |
-| Automation deletion | Read VS Code's handler, then plan it. |
-| Session import | Read VS Code's handler, then plan it. |
-| Sandbox certificates | Read VS Code's handlers, then plan it. |
-| Artifact integrations | Read `ARTIFACT_INTEGRATIONS_PROPOSAL.md`, then plan it. |
-| Diagnostic timing | Plan it, at low priority. |
+| Shell authentication | [plans/host/20261121-2250-a-shell-asks-the-person-for-a-password](../plans/host/20261121-2250-a-shell-asks-the-person-for-a-password/plan.md). |
+| Agent extensions | A brief of its own, beside a brief on plugins: VS Code's are Copilot's programs, not plugins. |
+| MCP authentication | [plans/host/20261121-2250-automation-mcp-sign-in-goes-to-a-client](../plans/host/20261121-2250-automation-mcp-sign-in-goes-to-a-client/plan.md). |
+| Chat workspace | [plans/host/20261121-2250-a-new-chat-gets-a-workspace-of-its-own](../plans/host/20261121-2250-a-new-chat-gets-a-workspace-of-its-own/plan.md). ahpd already has a folder per chat. |
+| Dev container environments | [plans/container/20261121-2250-a-dev-container-starts-from-an-image](../plans/container/20261121-2250-a-dev-container-starts-from-an-image/plan.md), then [plans/container/20261121-2250-a-dev-container-keeps-the-users-state](../plans/container/20261121-2250-a-dev-container-keeps-the-users-state/plan.md). |
+| Automation deletion | [plans/host/20261121-2250-an-automation-is-deleted-with-its-runs](../plans/host/20261121-2250-an-automation-is-deleted-with-its-runs/plan.md). |
+| Session import | [plans/host/20261121-2250-an-external-session-is-imported](../plans/host/20261121-2250-an-external-session-is-imported/plan.md), and the chunks in [plans/host/20261121-2250-a-session-is-created-from-a-conversation](../plans/host/20261121-2250-a-session-is-created-from-a-conversation/plan.md). |
+| Sandbox certificates | [plans/container/20261121-2250-a-chat-sandbox-trusts-a-host-ca](../plans/container/20261121-2250-a-chat-sandbox-trusts-a-host-ca/plan.md), on [plans/container/20261121-2250-the-sandbox-runtime-is-ahpios-fork](../plans/container/20261121-2250-the-sandbox-runtime-is-ahpios-fork/plan.md). |
+| Artifact integrations | A brief of its own first. |
+| Diagnostic timing | [plans/host/20261121-2250-a-client-reports-turn-timing](../plans/host/20261121-2250-a-client-reports-turn-timing/plan.md). |
 | Saved chat recovery | Left out for now. |
 | GitHub environment | Left out for now. |
 | Proxy and certificates | Left out for now. |
 
 - Each group that gets a plan is one plan, in VS Code's names and shapes.
 - A group that needs a feature ahpd lacks gets a plan for that feature first, linked by `requires`.
-- A group to read first gets its facts added to this brief before its plan.
+- A group with a plan or a brief of its own leaves this brief once it is built.
