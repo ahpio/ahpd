@@ -67,6 +67,9 @@ ahpd configure -> commands/configure.ts configure() -> ask.ts ask|choose|confirm
 | ACP's found agents are auto-enabled only when detected; a found agent not on this machine is asked as an install | user, 2026-11-21: "only auto enable the ones detected ... not detected need to be able to select to 'install'" | 06 |
 | An install runs its line after the list, when the list ticks it and one confirm says yes; the confirm defaults to no | user, 2026-11-21: "it could ask, to install or not?" with the answer "Run its install line (Recommended)" | 06 |
 | httpApi and modelApi are asked as a switch plus the port, after the folders and before the marketplaces | user, 2026-11-21: "There is no step to configure httpApi or modelGateway" with the answer "Switches plus the port" | 06 |
+| A refusal of every folder says why and asks the folders again | user, 2026-11-21: "It should not repeat the question? with a error line?" | - |
+| A run ends with a saved group, a next-steps group with coloured commands, and "Done." | user, 2026-11-21: the sketch with "Configuration saved" and "What's next?", "With commands colored" and "I prefere the blue from before" | - |
+| `ahpd start` ends with a "Daemon started" group, `ahpd status` and `ahpd stop`, and "Done ahpd is running." | user, 2026-11-21: "yes" with the sketch | - |
 | The `Term` seam keeps injected streams | (defaulted: tests answer through streams, as they do now) | 03 |
 | Unknown keys are ignored, and a list is not re-asked | (defaulted: the cofold prompts read keys and do not re-ask; a yes or no that is neither waits for the next key) | 02, 03 |
 | A closed input and a cancel refuse the question | (defaulted: the close is raced against the prompt, and a cancel gives the closed-terminal error, as readline did) | 02 |

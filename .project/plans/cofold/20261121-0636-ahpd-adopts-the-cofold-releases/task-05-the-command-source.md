@@ -4,8 +4,8 @@ status: todo
 depends: []
 layer: "agent-cofold"
 refs:
-  - "[code://packages/agent-cofold/src/transcript.ts#L394-L430](../../../../../packages/agent-cofold/src/transcript.ts#L394-L430) - how a message's source is shown; `command` is treated as user text"
-  - "[code://packages/agent-cofold/src/mapping.ts#L559-L575](../../../../../packages/agent-cofold/src/mapping.ts#L559-L575) - `command.started` and `command.finished`, already mapped"
+  - "[code://packages/agent-cofold/src/transcript.ts#L394-L430](../../../../packages/agent-cofold/src/transcript.ts#L394-L430) - how a message's source is shown; `command` is treated as user text"
+  - "[code://packages/agent-cofold/src/mapping.ts#L559-L575](../../../../packages/agent-cofold/src/mapping.ts#L559-L575) - `command.started` and `command.finished`, already mapped"
 ---
 
 ## Objective

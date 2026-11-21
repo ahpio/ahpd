@@ -4,8 +4,8 @@ status: todo
 depends: []
 layer: "agent-acp"
 refs:
-  - "[code://packages/agent-acp/src/presets.ts#L212-L218](../../../../../packages/agent-acp/src/presets.ts#L212-L218) - the comment that says copapo over ACP ignores `mcpServers`"
-  - "[code://packages/agent-cofold/src/capabilities.ts](../../../../../packages/agent-cofold/src/capabilities.ts) - not a file of this task; the ACP side is checked against copapo's own code"
+  - "[code://packages/agent-acp/src/presets.ts#L212-L218](../../../../packages/agent-acp/src/presets.ts#L212-L218) - the comment that says copapo over ACP ignores `mcpServers`"
+  - "[code://packages/agent-cofold/src/capabilities.ts](../../../../packages/agent-cofold/src/capabilities.ts) - not a file of this task; the ACP side is checked against copapo's own code"
 ---
 
 ## Objective

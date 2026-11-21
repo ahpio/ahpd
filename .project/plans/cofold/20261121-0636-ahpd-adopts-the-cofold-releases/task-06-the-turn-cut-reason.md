@@ -4,7 +4,7 @@ status: todo
 depends: []
 layer: "agent-cofold"
 refs:
-  - "[code://packages/agent-cofold/src/transcript.ts#L398-L430](../../../../../packages/agent-cofold/src/transcript.ts#L398-L430) - the transcript that shows a cut turn"
+  - "[code://packages/agent-cofold/src/transcript.ts#L398-L430](../../../../packages/agent-cofold/src/transcript.ts#L398-L430) - the transcript that shows a cut turn"
 ---
 
 ## Objective
