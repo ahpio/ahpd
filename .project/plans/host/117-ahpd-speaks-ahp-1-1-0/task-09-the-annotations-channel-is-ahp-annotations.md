@@ -1,6 +1,6 @@
 ---
 title: The annotations channel is ahp-annotations
-status: todo
+status: implemented
 depends: [01]
 layer: "sdk"
 refs:
@@ -20,7 +20,9 @@ The old `<session>/annotations` name still works, because VS Code 1.145.2 builds
 
 ## Files
 
-- `CREATE: packages/sdk/test/host-annotations-channel.test.ts` - the cases for both names.
+- `CREATE: packages/sdk/src/host/annotationssummary.ts` - the session's summary of its marks.
+- `UPDATE: packages/sdk/src/host/routing.ts` - `meantBy` makes an `ahp-annotations:` name again from the published session.
+- `UPDATE: packages/sdk/test/host-snapshots.test.ts` - the cases for both names.
 - `UPDATE: packages/sdk/src/host/channels.ts:39-43` - a function that makes and one that parses `ahp-annotations:/<uuid>`, beside the old suffix.
 - `UPDATE: packages/sdk/src/host/actions.ts:264-268` - the check takes both names.
 - `UPDATE: packages/sdk/src/host/snapshots.ts:443-460` - the snapshot answers both names.
@@ -38,8 +40,10 @@ The old `<session>/annotations` name still works, because VS Code 1.145.2 builds
 
 ## Validation
 
-- `packages/sdk/test/host-annotations-channel.test.ts` - a client subscribed to `ahp-annotations:/<uuid>` and one on `<session>/annotations` both get the snapshot and each action.
+- `packages/sdk/test/host-snapshots.test.ts` - a client subscribed to `ahp-annotations:/<uuid>` and one on `<session>/annotations` both get the snapshot and each action.
 - The same file - the session's state names `ahp-annotations:/<uuid>` in `annotations.resource`, with both counts.
 - The sdk vitest suite passes.
 
 ## Resume
+
+A session's annotations channel is `ahp-annotations:/<id>` for `ahp-session:/<id>`, and `ahp-annotations://vscode-legacy/<base64url>` for any other session URI, as VS Code main's `buildAnnotationsUri`. `sessionOfAnnotations` reads both new forms and the old `<session>/annotations` name. A mark goes to both names. The session's state and row carry `annotations` with `resource` and both counts, updated as each mark lands. Two causes were found on the way. `spaceOf` reads an `ahp-` scheme as the host's own, so the session checks ask about the owning session. `meantBy` built `ahp-session:/livelive` from the new name, so it now makes the name again from the published session. The cases went into `host-snapshots.test.ts` beside their siblings, not a new file. The sdk suite passes, 5090 cases.

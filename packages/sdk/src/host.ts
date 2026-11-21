@@ -53,10 +53,11 @@ import type { ChannelSubscriber, PublishOptions } from './types/plugin.js';
 import { bag, ownerFilter, ownerOfPrincipal } from './utils/values.js';
 import { reason } from './host/common.js';
 import { clientQueueBytes, replayBytes } from './host/limits.js';
+import { annotationsSummaryOf } from './host/annotationssummary.js';
 import {
   ROOT, RESTART_NEEDED, isRootChannel, AUTOMATIONS, AUTOMATIONS_ME, spaceOf, servedIn, methodIn, named,
   chatUriFor, subagentChatUri, WORKER_ACTIONS, toolCallOfSubagentChat, isAutomations, automationOwner,
-  parseResourceWatchChannelUri, schemeOf, ANNOTATIONS_PATH_SEGMENT, SHARED_SCHEME,
+  parseResourceWatchChannelUri, schemeOf, annotationsChannelOf, annotationsChannelsOf, sessionOfAnnotations, SHARED_SCHEME,
 } from './host/channels.js';
 import type { Space } from './host/channels.js';
 import { DELTA_WINDOW_MS, merger } from './host/deltas.js';
@@ -631,6 +632,18 @@ export function createHost(options: HostOptions): Host {
   const marksOf = (id: string): AnnotationsState =>
     marks.get(id) ?? (kept.annotations?.(id) as AnnotationsState | undefined) ?? { annotations: [] };
 
+  /*
+   * The session's summary of its marks, on its held state and its row, kept
+   * as each mark lands, as VS Code's host keeps `SessionState.annotations`.
+   * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/agentHostStateManager.ts#L2765-L2772
+   */
+  const summarizeAnnotations = (uri: string): void => {
+    const held = states.get(uri);
+    if (held?.kind !== 'session') return;
+    held.state = { ...held.state, annotations: annotationsSummaryOf(uri, marksOf(idOf(uri))) };
+    ctx.markSummaryDirty(uri);
+  };
+
   /**
    * One mark on a session, kept and said.
    *
@@ -648,7 +661,9 @@ export function createHost(options: HostOptions): Host {
     const next = annotationsReducer(marksOf(id), action);
     marks.set(id, next);
     kept.setAnnotations?.(id, next as unknown as Bag);
-    dispatch(`${uri}${ANNOTATIONS_PATH_SEGMENT}`, action as unknown as Record<string, unknown>, origin);
+    // Said on both names, AHP 1.1.0's and the one a VS Code 1.145 window makes.
+    for (const channel of annotationsChannelsOf(uri)) dispatch(channel, action as unknown as Record<string, unknown>, origin);
+    summarizeAnnotations(uri);
     // The file's channel shows every session's comments on it.
     if (typeof resource === 'string' && resource !== '') emit(resourceAnnotations.channelOf(resource), action as unknown as Record<string, unknown>, origin);
   };
@@ -1631,7 +1646,7 @@ export function createHost(options: HostOptions): Host {
     // A session's channel goes through the session's own path, as its marks do; one with an audience is said to that audience alone.
     emit: (channel, action, origin, audience) => {
       if (audience !== undefined) emit(channel, action, origin, audience);
-      else (channel.endsWith(ANNOTATIONS_PATH_SEGMENT) ? dispatch : emit)(channel, action, origin);
+      else (sessionOfAnnotations(channel) !== undefined ? dispatch : emit)(channel, action, origin);
     },
     hasSession: (connection, session) => (sessions.has(session) || owners.has(session)) && visible(connection, session),
     sessionCommentsOn: (resource) => [...new Set([...kept.sessions(), ...marks.keys()])]
@@ -1644,8 +1659,9 @@ export function createHost(options: HostOptions): Host {
       const open = new Set<string>();
       for (const connection of connections) {
         for (const channel of connection.activeSubscriptions) {
-          if (!channel.endsWith(ANNOTATIONS_PATH_SEGMENT) || !sessionChannel(channel)) continue;
-          if (resourceAnnotations.within(resource, placesOf(channel.slice(0, -ANNOTATIONS_PATH_SEGMENT.length)))) open.add(channel);
+          const owning = sessionOfAnnotations(channel);
+          if (owning === undefined || !sessionChannel(owning)) continue;
+          if (resourceAnnotations.within(resource, placesOf(owning))) open.add(channel);
         }
       }
       return [...open];

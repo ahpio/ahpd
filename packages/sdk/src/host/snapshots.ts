@@ -3,9 +3,10 @@ import { Status, idOf } from '../sessions/catalog.js';
 import { windowOf } from '../sessions/paging.js';
 import { RpcError } from '../rpc.js';
 import { runState } from './automations.js';
-import { ROOT, isRootChannel, isAutomations, automationOwner, queryOf, ANNOTATIONS_PATH_SEGMENT, chatUriFor, servedIn, schemeOf, spaceOf, toolCallOfSubagentChat } from './channels.js';
+import { ROOT, isRootChannel, isAutomations, automationOwner, queryOf, sessionOfAnnotations, chatUriFor, servedIn, schemeOf, spaceOf, toolCallOfSubagentChat } from './channels.js';
 import { ownerFilter } from '../utils/values.js';
 import { filterChatConfigValues } from './chatconfig.js';
+import { annotationsSummaryOf } from './annotationssummary.js';
 import type { ChatConfigState, SessionConfigSchema } from '@microsoft/agent-host-protocol';
 import type { Agent } from '../types/agent.js';
 import type { Bag } from '../types/common.js';
@@ -197,6 +198,9 @@ export function createSnapshots(ctx: HostContext): Snapshots {
       // function both answers call, from the state each chat holds.
       chats: chatCatalogOf(channel, held, restored),
       ...(activity === undefined ? {} : { activity }),
+      // Its annotations channel and counts, which a client reads instead of
+      // making the channel's name itself, as AHP 1.1.0 asks.
+      annotations: annotationsSummaryOf(channel, ctx.marksOf(idOf(channel))),
     };
   };
 
@@ -440,8 +444,9 @@ export function createSnapshots(ctx: HostContext): Snapshots {
      * is a failed open, and a client that treats the three as one
      * hydration renders nothing at all.
      */
-    if (channel.endsWith(ANNOTATIONS_PATH_SEGMENT) && sessionChannel(channel)) {
-      const owning = channel.slice(0, -ANNOTATIONS_PATH_SEGMENT.length);
+    const annotated = sessionOfAnnotations(channel);
+    if (annotated !== undefined && sessionChannel(annotated)) {
+      const owning = annotated;
       const id = idOf(owning);
       /*
        * Asked of `restoreSession`, which consults the catalogue itself, rather than of
