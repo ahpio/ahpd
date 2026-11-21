@@ -22,8 +22,8 @@ Current progress and pending items only, as of 2026-11-21. *Outside this reposit
   - #401 (`f5257c229`) merged host/20261121-0555, the liveness ping and keep-awake. It closes as `built` on Softov's word. His dev daemon takes it at its next restart on main.
   - #418 (`4966eea67`) merged [host/20261121-1218-worktree-removals-are-a-queue](../plans/host/20261121-1218-worktree-removals-are-a-queue/plan.md). It closes as `built` on Softov's word. His dev daemon takes it at its next restart on main: the removal queue in `worktree-removals.json` and the four `vscode/*` cleanup methods.
   - #419 (`406667ee0`) merged [host/20261121-1553-turn-changesets-under-the-chat](../plans/host/20261121-1553-turn-changesets-under-the-chat/plan.md). It closes as `built` on Softov's word.
-  - #420, branch `test/random-cases-get-their-time`, is open and merges when check and check-windows are green. It fixes the git-volume case and the two plugin import cases.
-  - [plugin/20261121-1708-a-machine-operation-reads-its-record-once](../plans/plugin/20261121-1708-a-machine-operation-reads-its-record-once/plan.md) is the fix Softov chose for the computer cases that start many processes. Its brief went in the plan commit.
+  - #420 (`2f61bd9df`) merged branch `test/random-cases-get-their-time`. It fixes the git-volume case and the two plugin import cases.
+  - [plugin/20261121-1708-a-machine-operation-reads-its-record-once](../plans/plugin/20261121-1708-a-machine-operation-reads-its-record-once/plan.md) is built on its branch (`7e196fc32`), pushed. Its PR waits for Softov's OK of the text.
   - The parity brief is covered and deleted; its last commit is `8b6842e2c`. Its *Later* items went as follows.
     - The AHP 1.2.0 automations are built, and the worktree queue is #418.
     - The turn changesets are [host/20261121-1553-turn-changesets-under-the-chat](../plans/host/20261121-1553-turn-changesets-under-the-chat/plan.md).
@@ -102,7 +102,7 @@ Current progress and pending items only, as of 2026-11-21. *Outside this reposit
 ## Tests
 
 - The computer files that start scripted CLIs give each case 20 s, `PROCESS_CASE_MS`: [computer-cases-time-out-on-a-busy-machine.md](../problems/computer-cases-time-out-on-a-busy-machine.md) is `mitigated`.
-- A first-party load case of the server suite timed out once at a load near 10: [a-first-party-load-case-times-out-on-a-busy-machine.md](../problems/a-first-party-load-case-times-out-on-a-busy-machine.md).
+- The first-party load and plugin id cases get `IMPORT_CASE_MS` since #420.
 - Run one vitest suite at a time: `TMPDIR=/home/softov/tmp/ahpd-test flock /home/softov/tmp/ahpd-test/vitest.lock npx vitest run <package>`. A fresh worktree needs `pnpm schema` first.
 - `packages/sdk/test/fixtures/wire.jsonl` is rewritten by every run. It is not tracked since `8b63fce96`, so there is nothing to restore. Never print it.
 - An sdk host change is gated by the computer suite too.
