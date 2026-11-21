@@ -153,6 +153,11 @@ export function createQuery(ctx: SessionContext): Query {
    * a call a skill wrote for `Bash` reaches the shell the person can see. A
    * person's denials are the permission check's, which refuses a denied call
    * when the CLI asks about it, as VS Code's Claude leaves them.
+   *
+   * `bash` is aliased too, to whichever shell `Bash` is. A model now and then
+   * writes the name in lower case, and the CLI, whose tool names are
+   * case-sensitive, fails that call where it could have run it. An alias is
+   * one hop, so with the host's shell `bash` names the host's tool directly.
    */
   const denyOption = (): Bag => {
     const deny: string[] = hostHoldsTasks(ctx.values, ctx.offering) ? [...OWN_TASK_TOOLS] : [];
@@ -160,7 +165,7 @@ export function createQuery(ctx: SessionContext): Query {
     if (shell) deny.push('Bash');
     return {
       ...(deny.length > 0 ? { disallowedTools: deny } : {}),
-      ...(shell ? { toolAliases: { Bash: HOST_SHELL_TOOL } } : {}),
+      toolAliases: shell ? { Bash: HOST_SHELL_TOOL, bash: HOST_SHELL_TOOL } : { bash: 'Bash' },
     };
   };
 
