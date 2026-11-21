@@ -15,6 +15,7 @@ refs:
 On 2026-10-18 it failed `service install > names a relative configuration file in full` on CI for `61dbaeea`.
 On the same day it failed `answers with the option the person picked, and says which` in the policy/02 gates.
 Both tests pass when they run again, and the ACP test passes three times out of three alone.
+On 2026-11-21 CI's `windows (3/4)` on #429, run 44942705209, failed `computer-disposable.test.ts`: `lets the machine go when the session moves to this host at its first send, and keeps it when it asks for the same profile again before that send` with `ENOTEMPTY` on its temporary folder. That teardown already ends the holders first. #429 does not change `packages/computer`.
 
 ## Cause
 
