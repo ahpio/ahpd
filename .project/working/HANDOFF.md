@@ -22,7 +22,7 @@ Current progress and pending items only, as of 2026-11-21. *Outside this reposit
   - In ahpw: #109 (`c440209`) reads a canvas's `uri`, and #112 (`4da31ba`) adds the one-time trigger and the target to the automation form.
   - [pending/vscode-main-parity-checks.md](../pending/vscode-main-parity-checks.md) is the check by hand of the parity, 12 sections in VS Code, ahpw and `rpc`.
   - Softov's dev daemon takes #401, #418, #419, #422, #428 and #429 at its next restart on main. Tell him, and do not restart it.
-  - [briefs/vscode-methods-ahpd-does-not-serve.md](../briefs/vscode-methods-ahpd-does-not-serve.md) waits for Softov to pick the next groups. Disk usage and session move are built; shell authentication and agent extensions are the next candidates.
+  - [briefs/vscode-methods-ahpd-does-not-serve.md](../briefs/vscode-methods-ahpd-does-not-serve.md) has Softov's pick for each group, from 2026-11-21, in its section *The change*. Nine groups wait for "plan it", or for their VS Code handlers to be read first.
   - [briefs/ahpio-sandbox-runtime.md](../briefs/ahpio-sandbox-runtime.md) waits for "plan it". It forks Anthropic's runtime as `@ahpio/sandbox-runtime`, with a `network.enabled` gate and zod `^4.6.6`. The plan spans the fork's repository and ahpd.
   - [pending/ahp-1-2-0-package.md](../pending/ahp-1-2-0-package.md) waits for AHP 1.2.0 on npm, to drop the local 1.2.0 types.
   - `/github/ahpd` is on `briefs/record-edits`, whose one commit is on main as `c4516b3b0`. The branch can go on Softov's word. Its local `main` matches `origin/main`.

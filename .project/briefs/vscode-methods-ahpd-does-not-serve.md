@@ -10,7 +10,7 @@ refs:
 
 # The vscode/* methods ahpd does not serve
 
-VS Code main names 62 `vscode/*` methods, and ahpd serves 26 of them. This brief sorts the 36 others into groups. Each group says what the methods do in VS Code, what ahpd has, and whether it should get a plan. Softov picks the groups to plan.
+VS Code main names 62 `vscode/*` methods. ahpd served 26 of them when this brief was written, and serves 29 since #428 and #429. This brief sorts the 36 methods it did not serve into groups. Each group says what the methods do in VS Code, what ahpd has, and whether it should get a plan. Softov picks the groups to plan.
 
 ## What others do
 
@@ -40,15 +40,32 @@ The 36 methods, by group. "Client to host" is a request a client sends; "host to
 
 ## Who writes
 
-- `packages/sdk/src/host/vscodemethods.ts`: #418 adds four methods there. A plan from this brief starts after #418 merges.
+- `packages/sdk/src/host/vscodemethods.ts`: #418, #428 and #429 added methods there, and all three are merged.
 - `packages/sdk/src/host/gate.ts`: every new method needs a grant, and `users-gate-tables.test.ts` counts them.
 - No other branch or session writes these files now.
 
 ## The change
 
+Softov picked each group on 2026-11-21.
+
+| Group | Pick |
+| --- | --- |
+| Worktree disk usage | Built in #428. |
+| Session move | Built in #429. |
+| Shell authentication | Plan it. |
+| Agent extensions | Plan it. |
+| MCP authentication | Plan it. |
+| Chat workspace | Plan it, with a folder per chat first. |
+| Dev container environments | Plan it, with containers from an image first. |
+| Automation deletion | Read VS Code's handler, then plan it. |
+| Session import | Read VS Code's handler, then plan it. |
+| Sandbox certificates | Read VS Code's handlers, then plan it. |
+| Artifact integrations | Read `ARTIFACT_INTEGRATIONS_PROPOSAL.md`, then plan it. |
+| Diagnostic timing | Plan it, at low priority. |
+| Saved chat recovery | Left out for now. |
+| GitHub environment | Left out for now. |
+| Proxy and certificates | Left out for now. |
+
 - Each group that gets a plan is one plan, in VS Code's names and shapes.
-- Worktree disk usage, session move, shell authentication and agent extensions fit what ahpd has, and are the first candidates.
-- Chat workspace and dev container environments need a feature ahpd lacks: a chat folder of its own, and a container from an image.
-- Automation deletion, session import and sandbox certificates need their VS Code handlers read before a plan.
-- Saved chat recovery, GitHub environment, proxy and certificates, and artifact integrations depend on VS Code's own window, its Copilot, or GitHub's service. They stay out until a client of ahpd needs them.
-- Diagnostic timing fits ahpd's telemetry, at low priority.
+- A group that needs a feature ahpd lacks gets a plan for that feature first, linked by `requires`.
+- A group to read first gets its facts added to this brief before its plan.
