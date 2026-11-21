@@ -87,6 +87,7 @@ export interface VscodeMethods {
   'vscode/reconcileAgentHostDetachedWorktrees': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/removeSessionArtifact': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/stopBackgroundWork': (params: Record<string, unknown>) => Promise<unknown>;
+  'x-ahpd/backgroundToolCall': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/getAgentHostSessionStateFile': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/collectAgentHostDebugLogs': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/cancelAgentHostDebugLogs': (params: Record<string, unknown>) => Promise<unknown>;
@@ -514,6 +515,23 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
       if (!URL.canParse(chat)) throw new RpcError(INVALID_PARAMS, 'chat must be a valid URI string');
       if (spaceOf(chat) !== 'chat') throw new RpcError(INVALID_PARAMS, 'chat must be an Agent Host chat URI');
       return { stopped: await ctx.background.stop(chat, id) };
+    },
+    /**
+     * Move a running call to the background: this host's own method, beside
+     * the stop it mirrors, and the button a client draws for a call that
+     * carries `ahpd.backgroundToolCall`.
+     *
+     * The strings are checked as the stop checks them, and everything after
+     * is one answer, `false`: no offer, a call that already answered and a
+     * move its provider could not make are the same to a client.
+     */
+    'x-ahpd/backgroundToolCall': async (params) => {
+      const chat = stringParam(params, 'chat', 'an AHP chat URI');
+      const toolCallId = stringParam(params, 'toolCallId', 'a tool call id');
+      if (toolCallId.trim() === '') throw new RpcError(INVALID_PARAMS, 'toolCallId must be a non-empty string');
+      if (!URL.canParse(chat)) throw new RpcError(INVALID_PARAMS, 'chat must be a valid URI string');
+      if (spaceOf(chat) !== 'chat') throw new RpcError(INVALID_PARAMS, 'chat must be an Agent Host chat URI');
+      return { backgrounded: await ctx.background.move(chat, toolCallId) };
     },
     /**
      * Where the backend's own record of a session is.

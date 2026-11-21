@@ -1,6 +1,6 @@
 ---
 title: pi and cofold get the host shell by default
-status: todo
+status: done
 depends: [task-03-the-shell-tool-moves-a-sync-command.md]
 layer: "sdk, agent-cofold"
 refs:
@@ -23,8 +23,8 @@ A cofold session that has the host `bash` has no `shell_exec`.
 - `UPDATE: packages/sdk/src/host/tooling.ts:585-591` - pass the provider to `shellToolsFor`.
 - `UPDATE: packages/sdk/src/host/tooling.ts:691` - pass the session's provider to `contributingTo`, so the wire list agrees with what is bound.
 - `UPDATE: packages/agent-cofold/src/turnagent.ts:379-382` - turn `shell` off in the tools config when a bound host tool is `bash` with `overridesBuiltInTool`.
-- `UPDATE: packages/sdk/test/shell-tools.test.ts` - the switch per provider.
-- `CREATE: packages/agent-cofold/test/agent-cofold-host-shell.test.ts` - a session with the host `bash` has no `shell_exec`.
+- `CREATE: packages/sdk/test/shell-providers.test.ts` - the switch per provider.
+- `UPDATE: packages/agent-cofold/test/agent-cofold-tools.test.ts` - a session with the marked host `bash` has no `shell_exec`.
 
 ## Steps
 
@@ -36,13 +36,18 @@ A cofold session that has the host `bash` has no `shell_exec`.
 
 ## Validation
 
-- `packages/sdk/test/shell-tools.test.ts` holds these cases:
+- `packages/sdk/test/shell-providers.test.ts` holds these cases:
   - pi and cofold get `bash` with the value unset.
   - No provider gets it with `false`.
   - Claude gets it only with `true`.
   - No provider gets it on `win32`.
-- The cofold test: the bound tools hold `bash` and not `shell_exec`.
-- `npx vitest run packages/sdk/test/shell-tools.test.ts packages/agent-cofold packages/agent-pi` passes.
+- `packages/agent-cofold/test/agent-cofold-tools.test.ts`: the offered tools hold `bash` and not `shell_exec`; an unmarked `bash` keeps `shell_exec`.
+- `npx vitest run packages/sdk/test/shell-providers.test.ts packages/agent-cofold packages/agent-pi` passes.
 
 ## Resume
+
+Done on 2026-11-21.
+
+- `contributingTo` reads the provider through `providerOf`, which falls back to the session's own agent. `toolDefinitions` needed no change.
+- Not checked: whether VS Code pushes `enableCustomTerminalTool: false` on its own. If it does, a VS Code window turns the host shell off for pi and cofold too.
 

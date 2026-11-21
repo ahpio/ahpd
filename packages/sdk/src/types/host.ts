@@ -12,7 +12,7 @@ import type { CommandTerminal, TerminalStore } from './terminals.js';
 import type { Shells } from './shells.js';
 import type { CreatedModelOptions } from '../tools/modeloptions.js';
 import type { AcquireKeepAwake } from '../host/keepawake.js';
-import type { ChatBackgroundTasks } from './background.js';
+import type { CallMovable, ChatBackgroundTasks } from './background.js';
 import type { ChangesetOperationContribution, ChangesetSource } from './changes.js';
 import type { Worktrees } from './worktrees.js';
 import type { PullRequests } from './github.js';
@@ -2024,6 +2024,15 @@ export interface ToolCall {
    * client goes on holding its stop until there is nothing left to stop.
    */
   background(): ChatBackgroundTasks;
+  /**
+   * This call's offer to move to the background, and its report that it did.
+   *
+   * A tool whose work can go on after it answers offers the call while it
+   * runs; a person's `x-ahpd/backgroundToolCall` then calls the move, and the
+   * tool answers its model at once. A tool that starts its work in the
+   * background reports the row with `moved`, so the call names its row too.
+   */
+  movable(): CallMovable;
   /**
    * Read a resource this host serves, as text.
    *

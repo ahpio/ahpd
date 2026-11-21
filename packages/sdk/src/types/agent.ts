@@ -11,7 +11,7 @@ import type { ResourceStore } from './resources.js';
 import type { Principal } from './users.js';
 import type { Owner } from './usage.js';
 import type { CommandTerminal, StartTerminals, OutputTerminals, TerminalOutputs } from './terminals.js';
-import type { BackgroundTasks } from './background.js';
+import type { BackgroundTasks, MovableCalls } from './background.js';
 import type { MayRunTool, RunClientTool, ToolsChanged, ToolsEndpoint } from '../tools/server.js';
 import type { ComputerPort } from './computers.js';
 import type { MachineNeed } from './machine.js';
@@ -611,6 +611,16 @@ export interface Start {
    * Always offered, unlike `terminals`: a task is a record and needs no store.
    */
   backgroundTasks?: BackgroundTasks;
+  /**
+   * The running calls this backend can move to the background, as it learns
+   * them, and the calls whose work it already runs there.
+   *
+   * The backend runs the call, so it knows how to answer it early and keep
+   * its work going; the host writes what a client reads of it, the `_meta`
+   * keys `ahpd.backgroundToolCall` and `ahpd.backgroundWork`. A backend that
+   * can move nothing never calls it. Always offered, as `backgroundTasks` is.
+   */
+  movableCalls?: MovableCalls;
   /** A session of this backend's to continue, rather than starting a new one. */
   resume?: string;
   /** The prompt to resume *at*, so a fork leaves the turns after it behind. */

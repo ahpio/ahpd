@@ -724,6 +724,15 @@ export function createStream(ctx: SessionContext): Stream {
       // declined never ran, so it keeps none.
       if (ran) ctx.stampEnd(call);
       edited(id);
+      /*
+       * A call whose work goes on in the background names its row, before
+       * the completion the host writes the row's id on: a `Bash` result says
+       * its task, and a worker that runs in the background is its spawn's.
+       * Said here as well as on `task_updated`, because the two arrive in no
+       * fixed order.
+       */
+      const backgroundTaskId = str(bag(structured).backgroundTaskId);
+      if (id !== undefined && (backgroundTaskId !== undefined || ctx.spawning.get(id)?.foreground === false)) ctx.noteMoved(id, backgroundTaskId);
       ctx.emitOn(scope, {
         type: 'chat/toolCallComplete',
         turnId: scope.turn?.id,

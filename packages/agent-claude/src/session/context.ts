@@ -1,5 +1,5 @@
 import type { query, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
-import type { BackgroundTasks, Bag, BoundTool, LogLevel, OutputTerminals, Session, SessionOptions, ShellEnv, Start, SubagentChat, SubagentRequest, TerminalOutputs } from '@ahpd/sdk';
+import type { BackgroundTasks, Bag, MovableCalls, BoundTool, LogLevel, OutputTerminals, Session, SessionOptions, ShellEnv, Start, SubagentChat, SubagentRequest, TerminalOutputs } from '@ahpd/sdk';
 import type { AgentLogins } from '../logins.js';
 import type { OfferedModel } from '../models.js';
 import type { Asked, SpawnedProcess } from '../spawn.js';
@@ -197,6 +197,12 @@ export interface ClaudeSessionOptions extends SessionOptions {
    * harness leaves running are not reported: there is no host to draw them.
    */
   backgroundTasks?: BackgroundTasks;
+  /**
+   * The host's seam for the calls this session can move to the background,
+   * carried from `Start`. Absent where a session is built by hand, which then
+   * offers nothing.
+   */
+  movableCalls?: MovableCalls;
   /**
    * The host's output-terminal factory, carried from `Start`.
    *

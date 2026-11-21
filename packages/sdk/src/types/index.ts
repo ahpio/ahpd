@@ -44,8 +44,8 @@ export type { BroughtBack, ComputerPort, HandedAgent, HandedRecord, MachineSourc
 export type { ContainerConnect, ContainerConnectResult, ContainerPort, ContainerSink } from './containers.js';
 export type { SessionConfigAnswerer, SessionConfigAsk } from './completions.js';
 export type { Claim, CommandTerminal, Terminal, TerminalOptions, SpawnPty, TerminalStore, OpenTerminal, OpenedTerminal, StartTerminals, OutputTerminal, OutputTerminals, TerminalOutputs, ShellIntegration, ShellIntegrationAnswer, Screen, ScreenOptions, SpawnScreen } from './terminals.js';
-export type { HeldShell, ManagedShell, ShellClaim, ShellCommandResult, ShellCommandStatus, Shells, ShellType } from './shells.js';
-export type { BackgroundTask, BackgroundTaskKind, BackgroundTasks, ChatBackgroundTasks } from './background.js';
+export type { GoingOn, HeldShell, ManagedShell, ShellClaim, ShellCommandResult, ShellCommandStatus, Shells, ShellType } from './shells.js';
+export type { BackgroundTask, BackgroundTaskKind, BackgroundTasks, CallMovable, ChatBackgroundTasks, MovableCalls, MoveToBackground } from './background.js';
 export type { GitDir, Worktree, Worktrees } from './worktrees.js';
 export type {
   NewPullRequest, PullRequest, PullRequestAuthor, PullRequestCheck, PullRequestChecks, PullRequestComment, PullRequestCore, PullRequestDetail,

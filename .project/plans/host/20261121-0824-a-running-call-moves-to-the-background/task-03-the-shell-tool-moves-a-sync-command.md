@@ -1,6 +1,6 @@
 ---
 title: The host shell tool moves a sync command
-status: todo
+status: done
 depends: [task-01-a-call-offers-to-move.md]
 layer: "sdk"
 refs:
@@ -21,7 +21,8 @@ Each answers its model at once, gets the row of an `async` command, and wakes th
 - `UPDATE: packages/sdk/src/tools/shell.ts:294-341` - offer the `sync` call through `at.movable()`, and give a let-go command the `async` row.
 - `UPDATE: packages/sdk/src/host/shells.ts:349-420` - add a way to let a running command go on: the wake at its end that `start` has, in place of `hold`.
 - `UPDATE: packages/sdk/src/host/shellcommand.ts` - end a running `run` as `background` when asked, as a narrowed claim ends it.
-- `UPDATE: packages/sdk/test/shell-tools.test.ts` - a moved command and a narrowed one.
+- `UPDATE: packages/sdk/src/types/shells.ts` - `GoingOn`, the optional fourth argument of `run`.
+- `CREATE: packages/sdk/test/shell-move.test.ts` - a moved command, a command that answered first, and a narrowed one.
 
 ## Steps
 
@@ -39,12 +40,20 @@ Each answers its model at once, gets the row of an `async` command, and wakes th
 
 ## Validation
 
-- `packages/sdk/test/shell-tools.test.ts` holds these cases:
+- `packages/sdk/test/shell-move.test.ts` holds these cases:
   - A moved `sync` command answers at once and sets a row with a stop.
   - Its end removes the row and wakes the chat once.
   - A narrowed claim does the same.
   - A command that ends first answers `false` to the move.
-- `npx vitest run packages/sdk/test/shell-tools.test.ts packages/sdk/test/host-movable-calls.test.ts` passes.
+- `npx vitest run packages/sdk/test/shell-move.test.ts packages/sdk/test/shell-tools.test.ts packages/sdk/test/shell-async.test.ts` passes.
 
 ## Resume
+
+Done on 2026-11-21.
+
+- `executeShellCommand` takes `letGo` and `afterwards`. With `afterwards`, it goes on watching a command it answered `background` and reports the real end with its output. The end detection stays in one place.
+- `shells.run` takes `GoingOn { letGo, ended }`. It wakes the chat at the end through `wakeWith`, which `start` now shares.
+- A let-go command no longer goes through `shells.hold`. An `altBuffer` answer still does.
+- The `async` path reports `moved` too, so its call names its row.
+- Step 9 is not built: the offer stands until the call completes, where the host takes the flag off. A move after the answer finds the call answered and answers `false`. A withdraw there was one more content change for nothing.
 

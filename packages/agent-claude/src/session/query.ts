@@ -1231,13 +1231,18 @@ export function createQuery(ctx: SessionContext): Query {
           const spawn = id === undefined ? undefined : ctx.spawning.get(id);
           if (spawn !== undefined && typeof message.is_backgrounded === 'boolean') spawn.foreground = !message.is_backgrounded;
           ctx.noteTask(message);
+          // A call that waits on its task is one a person can move to the background.
+          if (id !== undefined && !ctx.completed.has(id)) ctx.offerMove(message);
           continue;
         }
         if (type === 'system' && str(message.subtype) === 'task_updated' && bag(message.patch).is_backgrounded === true) {
           const task = str(message.task_id);
           for (const [call, held] of ctx.tasks) {
-            const spawn = held === task ? ctx.spawning.get(call) : undefined;
+            if (held !== task) continue;
+            const spawn = ctx.spawning.get(call);
             if (spawn !== undefined) spawn.foreground = false;
+            // The call names its row from here, whoever moved it.
+            ctx.noteMoved(call, held);
           }
         }
         /*
