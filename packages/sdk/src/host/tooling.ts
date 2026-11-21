@@ -669,6 +669,7 @@ export function createTooling(ctx: HostContext): Tooling {
     startedWorkspaceless: ctx.startedWorkspaceless.has(uri),
     agents: agentNamesOf(uri),
     multipleDirectories: (sessions.get(uri)?.agent ?? (provider === undefined ? undefined : ctx.agents.get(provider)))?.multipleDirectories === true,
+    rootConfig: ctx.rootConfig,
   });
   /**
    * One tool's definition for a session, shaped for it, or nothing where the
@@ -2497,6 +2498,7 @@ export function createTooling(ctx: HostContext): Tooling {
     cancelWake: () => ctx.setWake(uri, chatUri, undefined),
     artifacts: () => [...(kept.artifacts(idOf(uri)) ?? [])],
     setArtifacts: (list) => { setArtifacts(uri, list); },
+    rootConfig: () => ctx.rootConfig,
     annotations: () => marksOf(idOf(uri)),
     markAnnotation: (action) => { markAnnotation(uri, action); },
     resourceComments: {
@@ -2684,6 +2686,7 @@ export function createTooling(ctx: HostContext): Tooling {
       cancelWake: needsSession,
       artifacts: needsSession,
       setArtifacts: needsSession,
+      rootConfig: () => ctx.rootConfig,
       // A mark is drawn on a session's files, and a call with no session has none.
       annotations: needsSession,
       markAnnotation: needsSession,

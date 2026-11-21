@@ -1380,6 +1380,8 @@ export interface ToolSession {
    * the set, which is what a tool that moves one chat alone needs.
    */
   multipleDirectories?: boolean | undefined;
+  /** The root config as the host holds it, which a tool shaped by a root key reads. */
+  rootConfig?: Readonly<Record<string, unknown>> | undefined;
 }
 
 /**
@@ -1941,6 +1943,8 @@ export interface ToolCall {
   artifacts(): Bag[];
   /** Replace them, and tell every client watching the session. */
   setArtifacts(list: Bag[]): void;
+  /** The root config as the host holds it now, which a tool shaped by a root key reads on each call. */
+  rootConfig(): Readonly<Record<string, unknown>>;
   /**
    * The marks on the calling session, as its annotations channel holds them.
    *
