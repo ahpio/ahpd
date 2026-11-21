@@ -55,4 +55,5 @@ Done on 2026-11-21.
 - `shells.run` takes `GoingOn { letGo, ended }`. It wakes the chat at the end through `wakeWith`, which `start` now shares.
 - A let-go command no longer goes through `shells.hold`. An `altBuffer` answer still does.
 - The `async` path reports `moved` too, so its call names its row.
+- Step 9 is not built: the offer stands until the call completes, where the host takes the flag off. A move after the answer finds the call answered and answers `false`. A withdraw there was one more content change for nothing.
 
