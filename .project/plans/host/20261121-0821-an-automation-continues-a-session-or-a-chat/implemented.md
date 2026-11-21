@@ -19,6 +19,12 @@ An automation says where its runs go with AHP 1.2.0's `target`: a new session, t
 - [`code://packages/sdk/src/host/handshake.ts`](../../../../packages/sdk/src/host/handshake.ts) - `targets`.
 - `docs/sdk/AUTOMATIONS.md` and `docs/sdk/AHP.md` - *Where a run goes*, and the refusals.
 
+## Verified
+
+- *where a run goes* in `automations.test.ts` and `automation-wake.test.ts` pass.
+- The sdk suite passes, 5121 cases. The server and computer suites each failed one case at a load average near 15: the first-party load case and the disposable git volume case. Both have problem files, and both files pass alone.
+- Typecheck and boundary pass.
+
 ## Departures from the plan
 
 - A queued run is linked to its session when its turn starts, not before the message is queued. The store links a run's session when its start resolves.
