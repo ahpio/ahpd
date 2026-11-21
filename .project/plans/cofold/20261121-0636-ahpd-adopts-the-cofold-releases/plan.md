@@ -13,6 +13,7 @@ problems: []
 refs:
   - git://fd7084712 - the commit of this repository the facts were checked at
   - git://f90a616 - the cofold commit the 2026-11-21 releases were tagged at
+  - git://f3a27a5cd - the last commit that holds the brief, `briefs/ahpd-adopts-the-cofold-releases.md`
   - "[code://packages/agent-cofold/src/agent.ts#L168-L193](../../../../packages/agent-cofold/src/agent.ts#L168-L193) - the effort and permission copies, which are already cofold's imports except the labels"
   - "[code://packages/agent-cofold/src/tools.ts#L1-L40](../../../../packages/agent-cofold/src/tools.ts#L1-L40) - the hand-written table of cofold's tools and the fields they act on"
   - "[code://packages/agent-cofold/src/pauses.ts](../../../../packages/agent-cofold/src/pauses.ts) - the pause bookkeeping the cofold plan names by functions that no longer exist"
