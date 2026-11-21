@@ -232,8 +232,8 @@ importers:
         specifier: ^0.5.0
         version: 0.5.0
       '@cofold/terminal':
-        specifier: ^0.5.0
-        version: 0.5.0
+        specifier: ^0.5.1
+        version: 0.5.1
       '@cofold/yaml':
         specifier: ^0.3.0
         version: 0.3.0
@@ -617,8 +617,8 @@ packages:
     peerDependencies:
       '@cofold/agents': '>=0.2 <0.5'
 
-  '@cofold/terminal@0.5.0':
-    resolution: {integrity: sha512-baFVrlVglmMf6iWHi4bRpdn+EFRbU4+VikUYVqbwb2Noh92+hKH29StDt8pw/VMwHtVJ6X60pgHZGb04z5whcA==}
+  '@cofold/terminal@0.5.1':
+    resolution: {integrity: sha512-pnuYgs7PvrAIV05V2I3L3EjeC8QXPkeVrVTbVf5IKogbxpjf73ebyDijaxG98pNVIPXYP+RYPQknDvXlGgltIQ==}
     engines: {node: '>=22'}
 
   '@cofold/tools@0.4.2':
@@ -3105,7 +3105,7 @@ snapshots:
     dependencies:
       '@cofold/agents': 0.4.0
 
-  '@cofold/terminal@0.5.0':
+  '@cofold/terminal@0.5.1':
     dependencies:
       '@cofold/commands': 0.3.0
 
