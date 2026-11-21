@@ -1,6 +1,6 @@
 ---
 title: A machine's record is read once per operation
-status: todo
+status: done
 depends: []
 layer: "computer"
 refs:
