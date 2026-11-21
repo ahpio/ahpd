@@ -1334,7 +1334,8 @@ export function gitChanges(): ChangesetSource {
      * is `<owner>:<branch>` to GitHub.
      */
     const pushedOwner = githubRemoteOf((await git(dir, ['remote', 'get-url', remote]))?.trim())?.owner;
-    const prHead = pushedOwner !== undefined && pushedOwner !== repo.owner ? `${pushedOwner}:${head}` : head;
+    const fork = pushedOwner !== undefined && pushedOwner !== repo.owner ? pushedOwner : undefined;
+    const prHead = fork !== undefined ? `${fork}:${head}` : head;
     const pushed = await run(dir, ['push', ...(upstream === undefined ? ['-u'] : []), remote, `${branch}:${head}`]);
     if (!pushed.ok) throw new Error(`Failed to push branch '${branch}': ${pushed.err}`);
     /*
@@ -1357,7 +1358,8 @@ export function gitChanges(): ChangesetSource {
      */
     if (said.title === '') throw new Error('A pull request title is required.');
     const why = said.fellBack === undefined ? '' : ` - ${said.fellBack}`;
-    const existing = (await github.ask.forBranch(repo, head, github.token, dir)).find((one) => one.state === 'open');
+    // Asked under the owner it was pushed to, so a fork's open request is found and not opened twice.
+    const existing = (await github.ask.forBranch(repo, head, github.token, dir, ...(fork === undefined ? [] : [fork]))).find((one) => one.state === 'open');
     if (existing !== undefined) {
       return {
         message: `Pushed ${branch}; its pull request is ${existing.url}${why}`,
