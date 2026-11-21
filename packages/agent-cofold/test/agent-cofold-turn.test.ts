@@ -208,8 +208,8 @@ it('runs a turn on the model the turn names, with no model in the session config
   const home = mkdtempSync(join(tmpdir(), 'ahpd-cofold-turn-model-'));
   const was = process.env.XDG_CONFIG_HOME;
   process.env.XDG_CONFIG_HOME = home;
-  mkdirSync(join(home, 'copapo'), { recursive: true });
-  writeFileSync(join(home, 'copapo', 'config.json'), JSON.stringify({
+  mkdirSync(join(home, 'cofold'), { recursive: true });
+  writeFileSync(join(home, 'cofold', 'config.json'), JSON.stringify({
     providers: [
       { id: 'open_router', baseUrl: 'https://openrouter.ai/api/v1', apiKey: 'k-open' },
       { id: 'moonshot', baseUrl: 'https://api.moonshot.ai/v1', apiKey: 'k-moon' },
@@ -268,8 +268,8 @@ it('sends the thinking level the turn\'s model selection carries', async () => {
   const home = mkdtempSync(join(tmpdir(), 'ahpd-cofold-turn-level-'));
   const was = process.env.XDG_CONFIG_HOME;
   process.env.XDG_CONFIG_HOME = home;
-  mkdirSync(join(home, 'copapo'), { recursive: true });
-  writeFileSync(join(home, 'copapo', 'config.json'), JSON.stringify({
+  mkdirSync(join(home, 'cofold'), { recursive: true });
+  writeFileSync(join(home, 'cofold', 'config.json'), JSON.stringify({
     providers: [{ id: 'open_router', baseUrl: 'https://openrouter.ai/api/v1', apiKey: 'k-open' }],
   }));
   const real = globalThis.fetch;
@@ -1078,7 +1078,7 @@ it('fails the turn, and not the daemon, when there is no model to run on', async
     const part = failure()?.action.part as { error?: { errorType?: string; message?: string }; resumable?: unknown };
     const message = String(part?.error?.message);
     expect(message).toContain('add "model"');
-    expect(message).toContain(join(home, 'copapo', 'config.json'));
+    expect(message).toContain(join(home, 'cofold', 'config.json'));
     // Typed by the stage it failed at, as VS Code's host types a send whose
     // model nothing resolves.
     expect(part?.error?.errorType).toBe('modelSelectionFailed');

@@ -49,8 +49,8 @@ const CONFIG = {
 const APP = { name: 'ahpd', version: '1.2.3', url: 'https://ahpio.com' };
 
 const put = (value: unknown): void => {
-  mkdirSync(join(home, 'copapo'), { recursive: true });
-  writeFileSync(join(home, 'copapo', 'config.json'), JSON.stringify(value));
+  mkdirSync(join(home, 'cofold'), { recursive: true });
+  writeFileSync(join(home, 'cofold', 'config.json'), JSON.stringify(value));
 };
 
 /** What an OpenAI-compatible endpoint answers for a model list. */

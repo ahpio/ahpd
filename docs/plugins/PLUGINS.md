@@ -2300,7 +2300,7 @@ per record with that record's values over these defaults.
 | `baseUrl` | The OpenAI-compatible endpoint a record that names none uses |
 | `models` | What the operator says of `baseUrl`'s models, each by its id on that endpoint: `supportsReasoningEffort`, the thinking levels it accepts, as VS Code's Custom Endpoint models declare it |
 | `instructions` | The system prompt a record that names none is created with |
-| `store` | The folder cofold's file store lives in, shared by every record: cofold's home, `$COFOLD_HOME`, or `~/.cofold` when that is unset. This is session data and not configuration; the harness config is read where copapo reads it, `~/.config/copapo/config.json` and a project's `.copapo.json` |
+| `store` | The folder cofold's file store lives in, shared by every record: cofold's home, `$COFOLD_HOME`, or `~/.cofold` when that is unset. This is session data and not configuration; the harness config is read where copapo reads it, `~/.config/cofold/config.json` and a project's `.cofold.json` |
 | `memory` | `true` to hold each record's store in memory, for a test |
 | `tools` | Which of the four cofold capabilities a session runs, and where `web_search` gets its providers. All four are on when it is absent |
 | `apiKey` | The daemon's own key, for a record that names none: `{ "$secret": "host:<name>" }` is read from the vault, or a function asked once per request so an expired one is not cached |
@@ -2332,7 +2332,7 @@ An approval is a question the host decides, saying what the call asks to do by c
 A shell call is drawn as a terminal with its bare command, and a call that is declined or cut short never leaves a file held as changing.
 A session opened with no working directory keeps its tools and works in the daemon's current directory.
 
-A turn with no model in the session settings, the record, the plugin options or the harness configuration fails with a sentence that says to add `"model"`, as `"<provider>/<model>"`, to `$XDG_CONFIG_HOME/copapo/config.json` or `~/.config/copapo/config.json`, or to the file `$COPAPO_CONFIG` names.
+A turn with no model in the session settings, the record, the plugin options or the harness configuration fails with a sentence that says to add `"model"`, as `"<provider>/<model>"`, to `$XDG_CONFIG_HOME/cofold/config.json` or `~/.config/cofold/config.json`, or to the file `$COFOLD_CONFIG` names.
 
 `tools` turns one off by naming it `false`, and gives `web_search` its providers:
 
@@ -2401,11 +2401,11 @@ harness runs:
 ### The harness configuration is the default
 
 `@ahpd/agent-cofold` reads the configuration cofold's own app, copapo, reads,
-through cofold's resolver under copapo's name: `$XDG_CONFIG_HOME/copapo/config.json`
-or `~/.config/copapo/config.json`, then the nearest `.copapo.json` at or above a
-session's folder, then the file `$COPAPO_CONFIG` names, each merging over the one
+through cofold's resolver under cofold's name: `$XDG_CONFIG_HOME/cofold/config.json`
+or `~/.config/cofold/config.json`, then the nearest `.cofold.json` at or above a
+session's folder, then the file `$COFOLD_CONFIG` names, each merging over the one
 before. So a person who has already pointed the harness at a provider does not
-say it again in the plugin's options. `COPAPO_CONFIG` is what a machine sets,
+say it again in the plugin's options. `COFOLD_CONFIG` is what a machine sets,
 since it is the one place a path can be moved for the harness alone. An
 OpenRouter file of your own,
 which the cofold repository also carries copyable at
