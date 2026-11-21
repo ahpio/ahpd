@@ -1,6 +1,6 @@
 ---
 title: create_session takes model options
-status: todo
+status: implemented
 depends: []
 layer: "sdk"
 refs:
@@ -37,3 +37,5 @@ It checks each against the chosen model's `configSchema`, and starts the new cha
 - The sdk vitest suite passes.
 
 ## Resume
+
+`tools/modeloptions.ts` reads `sessionModelOptions`, the two options and VS Code's checks, in VS Code's words. `vscode/modelconfiguration.ts` vendors the keys, the tiers, the aliases and `withExplicitModelConfiguration`. `create_session` offers the options in `forSession`, and passes them to `create` and `createChat`. The host resolves the selection in `tooling.ts`, from the calling chat's whole selection, and starts the first turn on it. A tool now sees the models with their `configSchema`. The cases are `modeloptions.test.ts` and *the model options behind sessionModelOptions* in `sessiontools.test.ts`.

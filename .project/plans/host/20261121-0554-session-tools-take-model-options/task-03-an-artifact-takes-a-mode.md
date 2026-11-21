@@ -1,6 +1,6 @@
 ---
 title: An artifact takes a mode
-status: todo
+status: implemented
 depends: []
 layer: "sdk"
 refs:
@@ -32,3 +32,5 @@ Without it, `mode` is not offered, and one sent anyway is ignored.
 - The sdk vitest suite passes.
 
 ## Resume
+
+`artifacts.ts` has `ARTIFACT_MODES`, `mode` and `modeRevision` on an entry, and VS Code's update and promotion rules in `recordArtifact`. `add_artifact_or_reference` offers `mode` in `forSession` while `chatResources` is on, and reads it in `run` only then. `artifactsIn` keeps a valid stored `mode` and a positive `modeRevision`. The cases are in `artifacttools.test.ts`.

@@ -1,6 +1,6 @@
 ---
 title: list_models says each model's options
-status: todo
+status: implemented
 depends: [01]
 layer: "sdk"
 refs:
@@ -30,3 +30,5 @@ With `inline`, `create_session`'s description lists the models and their options
 - The sdk vitest suite passes.
 
 ## Resume
+
+With `tool`, `list_models` gives each model an `options` string, and its description says so. `create_session`'s `model` description points at `list_models`. With `inline`, that description carries VS Code's catalog, *Available models by agent:*, from `createSessionModelChoices`. The cases are in `sessiontools.test.ts` and `modeloptions.test.ts`.
