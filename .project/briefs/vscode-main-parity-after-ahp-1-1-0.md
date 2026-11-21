@@ -44,7 +44,7 @@ VS Code's agent host at main `ddbdd50a9ed1` is the reference for every item. The
 
 ### Later
 
-- **AHP 1.2.0 automations**. AHP main adds `AutomationDefinition.target` and the one-time trigger `AutomationOneTimeTrigger`. VS Code main advertises `oneTime` and `targets.previousSession`. The host's own `_meta.ahpd.session` with `pinnedSession` maps onto `target`.
+- **AHP 1.2.0 automations**. AHP main adds `AutomationDefinition.target` and the one-time trigger `AutomationOneTimeTrigger`. VS Code main advertises `oneTime` and `targets.previousSession`. The host's own `_meta.ahpd.session` with `pinnedSession` maps onto `target`. Planned on 2026-11-21 in [host/20261121-0821-an-automation-runs-once-at-a-set-time](../plans/host/20261121-0821-an-automation-runs-once-at-a-set-time/plan.md) and [host/20261121-0821-an-automation-continues-a-session-or-a-chat](../plans/host/20261121-0821-an-automation-continues-a-session-or-a-chat/plan.md).
 - **Remote worktree cleanup**. VS Code main serves `vscode/sessionWorktreeCleanup`, `vscode/prepareSessionWorktreeCleanup`, `vscode/listManagedWorktrees` and `vscode/cleanupManagedWorktree` (`common/agentHostWorktreeCleanup.ts`). The host serves none of them.
 - **Turn changesets under the chat**. VS Code main serves `<chatUri>/changeset/turn/<turnId>` (`common/changesetUri.ts`), and its window still reads the session form. The host serves `turn/{turnId}` under the session ([`code://packages/sdk/src/sessions/changes.ts#L1438`](../../packages/sdk/src/sessions/changes.ts#L1438)).
 - **New `vscode/*` methods.** The Dev Container environment methods, `vscode/answerShellAuthentication`, and the GitHub environment and proxy methods of the window. Most are Copilot's.
