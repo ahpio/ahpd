@@ -1266,6 +1266,8 @@ it('reads running while the session it started is still working', async () => {
   const run = await client.handle({
     method: 'runAutomation', params: { channel: AUTOMATIONS, automation: ONE, requestId: 'req-1' },
   }) as { resource: string };
+  // Pending while its session is made, and running from its turn, as VS Code marks a run.
+  await until(async () => (await runState(client, run.resource)).lifecycle.status === 'running');
   const state = await runState(client, run.resource);
   expect(state.lifecycle.status).toBe('running');
   expect(state.lifecycle.startedAt).toBeTypeOf('string');

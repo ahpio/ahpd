@@ -220,6 +220,14 @@ export interface StartSession {
    * itself, sitting among rows somebody typed.
    */
   origin?: { kind: `${SessionOriginKind}`; automation: string; run: string };
+  /**
+   * Moves the run to `running`, called by the host as the run's turn starts.
+   *
+   * A run whose message waits in a chat's queue stays `pending` until the
+   * queue takes it up, as AHP 1.2.0 says of a run that continues a session.
+   * A store calls it itself once the start resolves, for a start that never did.
+   */
+  running?: () => void;
 }
 
 /** How a run's execution ended, for a store to record. */

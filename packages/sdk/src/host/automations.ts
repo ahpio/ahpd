@@ -697,12 +697,15 @@ export function createAutomations(ctx: HostContext): Automations {
    * session that opens silent, which is what a bot with no instructions gets,
    * and a turn with no text in it is an empty bubble rather than no turn.
    */
-  const beginIn = (session: string, wanted: StartSession): void => {
+  const beginIn = (session: string, wanted: StartSession, chatUri = ctx.defaultChatFor(session)): void => {
     if (wanted.text.trim() === '') return;
     const turnId = crypto.randomUUID();
     if (wanted.owner !== undefined) senders.set(turnId, wanted.owner);
-    const chat = byChat.get(ctx.defaultChatFor(session))?.chat;
-    if (chat !== undefined) void ctx.startTurn(chat, turnId, wanted.text, modelIn(wanted.model), { origin: { kind: 'automation' } });
+    const chat = byChat.get(chatUri)?.chat;
+    if (chat === undefined) return;
+    // Running from here, before a backend can end the turn it is handed.
+    wanted.running?.();
+    void ctx.startTurn(chat, turnId, wanted.text, modelIn(wanted.model), { origin: { kind: 'automation' } });
   };
 
   /**
