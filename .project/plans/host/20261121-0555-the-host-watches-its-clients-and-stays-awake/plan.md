@@ -1,7 +1,7 @@
 ---
 title: The host watches its clients and stays awake
 domain: host
-status: planned
+status: active
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -44,8 +44,8 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - A silent client is pinged and closed](task-01-a-silent-client-is-pinged-and-closed.md) | todo | - |
-| [02 - The machine stays awake while a chat works](task-02-the-machine-stays-awake-while-a-chat-works.md) | todo | - |
+| [01 - A silent client is pinged and closed](task-01-a-silent-client-is-pinged-and-closed.md) | implemented | - |
+| [02 - The machine stays awake while a chat works](task-02-the-machine-stays-awake-while-a-chat-works.md) | implemented | - |
 
 ## Risks and tradeoffs
 
@@ -54,15 +54,15 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 ## Resume state
 
-- **Done so far:** the plan, 2026-11-21.
-- **Next action:** [task-01-a-silent-client-is-pinged-and-closed.md](task-01-a-silent-client-is-pinged-and-closed.md), once the small fixes merge, since they add `keepAwakeWhileWorking`.
+- **Done so far:** the plan, 2026-11-21. Tasks 01 and 02 implemented on 2026-11-21.
+- **Next action:** Softov reviews the PR. The plan closes as `built` on his word.
 - **Open questions:** none.
 - **Watch out for:** a ping is the host's request, so its answer comes back as a response, not a request the host handles.
 
 ## Final verification checklist
 
-- [ ] A test: a silent socket gets a ping after 10 s and is closed 20 s later, with fake timers.
-- [ ] A test: a client that answers stays open.
-- [ ] A test: a turn starts a hold, and the hold ends 2 minutes after the last turn.
-- [ ] A test: `never` holds nothing.
-- [ ] The gates pass: typecheck, boundary and the sdk and server suites.
+- [x] A test: a silent socket gets a ping after 10 s and is closed 20 s later, with fake timers.
+- [x] A test: a client that answers stays open.
+- [x] A test: a turn starts a hold, and the hold ends 2 minutes after the last turn.
+- [x] A test: `never` holds nothing.
+- [x] The gates pass: typecheck, boundary and the sdk and server suites.

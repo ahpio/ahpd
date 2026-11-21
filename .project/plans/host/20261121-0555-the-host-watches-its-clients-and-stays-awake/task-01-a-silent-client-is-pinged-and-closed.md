@@ -1,6 +1,6 @@
 ---
 title: A silent client is pinged and closed
-status: todo
+status: implemented
 depends: []
 layer: "sdk"
 refs:
@@ -33,3 +33,5 @@ Any inbound data resets the wait, and a host under load defers the close.
 - The sdk vitest suite passes.
 
 ## Resume
+
+`liveness.ts` ports `ProtocolLivenessMonitor` and VS Code's `LoadEstimator`, with the 10 s and 20 s timings. `watchClient` checks a socket from its `initialize` or `reconnect` on, sends `ping` on the root channel through `peer.request`, and closes the socket on a timeout. `listen.ts` gives each socket one, on Node, Bun and Deno, and stops it at the close. A stdio connection is not checked, as VS Code skips a `MessagePort`. The cases are in `liveness.test.ts`, with fake timers.

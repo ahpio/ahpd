@@ -82,6 +82,7 @@ import { createSpawn } from './host/spawn.js';
 import { createBackground } from './host/background.js';
 import { createCanvases } from './host/canvases.js';
 import { createSandbox } from './host/sandbox.js';
+import { createKeepAwake, KEEP_AWAKE_KEY } from './host/keepawake.js';
 import { TOOL_RESULT_RESOURCE_LIMIT, toolResultResources } from './resources/toolresults.js';
 import { localPath, uriOf } from './resources/fileuri.js';
 import { createLifecycle } from './host/lifecycle.js';
@@ -1762,6 +1763,7 @@ export function createHost(options: HostOptions): Host {
   Object.assign(ctx, createSessionConfig(ctx));
   Object.assign(ctx, createRoot(ctx));
   Object.assign(ctx, createCatalogue(ctx));
+  ctx.keepAwake = createKeepAwake(options.keepAwake, () => ctx.rootConfig[KEEP_AWAKE_KEY], () => ctx.activeCount() > 0);
   Object.assign(ctx, createSpawn(ctx));
   // Under its own name rather than spread flat, because `heldTasks`, `rows`
   // and `forgetSession` are words other areas could reach for.
@@ -2245,6 +2247,7 @@ export function createHost(options: HostOptions): Host {
         ctx.stopWakes();
         ctx.agentMerge.stop();
         ctx.disposeSessionLifecycle();
+        ctx.keepAwake.stop();
         ctx.closed = true;
         ctx.stopLapses();
         unwatchProbes(true);

@@ -15,6 +15,7 @@ import { accountKey, RESTART_KEY } from './root.js';
 import { claimOf } from './terminals.js';
 import { writerOf } from './resourceannotations.js';
 import { SANDBOX_ROOT_KEY } from '../types/sandbox.js';
+import { KEEP_AWAKE_KEY } from './keepawake.js';
 import type { HeldCopies, TemplatePlugin } from '../types/clientplugins.js';
 import type { Bag } from '../types/common.js';
 import type { Grant } from '../types/users.js';
@@ -501,6 +502,8 @@ export function createActions(ctx: HostContext, conn: ConnectionContext): Action
         // and every chat's sandbox applied again, as VS Code's host does on a
         // root change.
         if (Object.hasOwn(config, SANDBOX_ROOT_KEY) || action.replace === true) ctx.sandbox.rootChanged();
+        // The keep-awake mode moved: the hold follows it at once.
+        if (Object.hasOwn(config, KEEP_AWAKE_KEY) || action.replace === true) ctx.keepAwake.update();
       };
       /*
        * The daemon's keys, which are not this host's to keep.

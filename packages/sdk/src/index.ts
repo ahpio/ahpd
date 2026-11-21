@@ -79,6 +79,8 @@ export {
 } from './sandbox.js';
 export type { SandboxOverrides } from './sandbox.js';
 export { SANDBOX_ENABLED_KEY, SANDBOX_ENABLED_PROPERTY, SANDBOX_ROOT_KEY } from './types/sandbox.js';
+export { KEEP_AWAKE_KEY, KEEP_AWAKE_RELEASE_DELAY, keepAwakeModeOf } from './host/keepawake.js';
+export type { AcquireKeepAwake, KeepAwakeHold, KeepAwakeMode } from './host/keepawake.js';
 export { nestedAgent } from './sessions/nested.js';
 export type { NestedAsked, NestedHost, NestedOptions, NestedStarted } from './sessions/nested.js';
 export { resolveNeeds, expandHome, partTarget, PART_ROOT, machinePathOf, hostPathOf } from './machines/machine.js';

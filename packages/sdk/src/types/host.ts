@@ -11,6 +11,7 @@ import type { Grant, Principal, Users } from './users.js';
 import type { CommandTerminal, TerminalStore } from './terminals.js';
 import type { Shells } from './shells.js';
 import type { CreatedModelOptions } from '../tools/modeloptions.js';
+import type { AcquireKeepAwake } from '../host/keepawake.js';
 import type { ChatBackgroundTasks } from './background.js';
 import type { ChangesetOperationContribution, ChangesetSource } from './changes.js';
 import type { Worktrees } from './worktrees.js';
@@ -1163,6 +1164,13 @@ export interface HostOptions {
    * Left out, root config is the host's own three keys and nothing else.
    */
   rootConfig?: RootConfigPort;
+  /**
+   * Takes a hold on the machine's idle sleep, for the host to keep while a
+   * chat works as `keepAwakeWhileWorking` says. `allowOnBattery` is false for
+   * `whenPluggedIn`. Absent, the host never holds: a host in a test or an
+   * embedder that brings no helper changes nothing on the machine.
+   */
+  keepAwake?: AcquireKeepAwake;
   /**
    * Where the root config a client pushed is kept between starts.
    *

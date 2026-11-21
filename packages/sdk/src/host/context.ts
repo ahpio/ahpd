@@ -95,6 +95,8 @@ export interface HostContext extends ChatRecord, Routing, Relay, Changesets, Fac
   shells: HostShells;
   /** Each chat's sandbox: its selection, the floor it is resolved within, and what was applied. */
   sandbox: Sandbox;
+  /** The hold on the machine's idle sleep while a chat works. */
+  keepAwake: { update(): void; stop(): void };
   /** The content backends hand this host to keep, and the provider a client reads it back through. */
   toolResults: ToolResultResources;
   /** The options `createHost` was given. */
