@@ -22,6 +22,8 @@ The branch does not change the loader or `packages/bot`.
 On 2026-11-17, at `c75b479ad` of plugin/20261117-0701, the same case timed out at 5000 ms in a full run of the server suite.
 The load average was near 15. That branch changes only `tunnel-devtunnel`.
 
+On 2026-11-21, on host/20261121-0821-an-automation-continues-a-session-or-a-chat, `loads bot with the options schema in its package.json` timed out at 5000 ms in a full run of the server suite. The load average was near 15. The file passed alone, 59 cases, and the branch does not change plugin loading.
+
 ## Cause
 
 Unknown.
