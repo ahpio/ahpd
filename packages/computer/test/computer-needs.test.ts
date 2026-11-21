@@ -1202,10 +1202,16 @@ it('fails every command into the machine when a vault-named value cannot be read
 it('drops only the unreadable variable and logs it, where the profile says drop', async () => {
   const state = join(temp(), 'docker.json');
   const first = await loadLogged(vaultedOptions(state, { secretUnreadable: 'drop' }), holding({ 'user:ada/token': 'ada-token', 'host:other': 'other-token' }));
-  await written(first.options, 'ada', { profile: 'claude' }, 'user:ada');
+  /*
+   * The machine is made, and found again, before anything is read of its
+   * arguments: a create that failed on a slow runner was once read as a machine
+   * with no variables at all, `[]` where two were expected.
+   */
+  expect(await written(first.options, 'ada', { profile: 'claude' }, 'user:ada')).toBeUndefined();
 
   const again = await loadLogged(vaultedOptions(state, { secretUnreadable: 'drop' }), holding({ 'host:other': 'other-token' }));
   const how = await again.options.computers?.how('ada', { command: 'true', env: { A: '1' } });
+  expect(how).toBeDefined();
   const args = how?.args ?? [];
   expect(args.flatMap((one, at) => (args[at - 1] === '-e' ? [one] : []))).toEqual(['OTHER_KEY', 'A']);
   expect(how?.env).toMatchObject({ OTHER_KEY: 'other-token', A: '1' });
