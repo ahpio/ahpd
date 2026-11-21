@@ -360,6 +360,11 @@ export const shellTools = (executable: string = shellOf()): HostTool[] => {
         letGo();
         return true;
       });
+      /*
+       * The offer stands until the call completes, which is where the host
+       * takes the flag off: a move between the answer and the completion
+       * finds `answered` and moves nothing.
+       */
       let release = true;
       try {
         const ran = await shells.run(ref.shell, command, timeoutMs, { letGo: going, ended: done });
@@ -369,7 +374,6 @@ export const shellTools = (executable: string = shellOf()): HostTool[] => {
           moveOn();
           release = false;
         }
-        else at.movable().withdraw();
         const result = worded(ref.shell, ran, timeoutMs);
         if (ran.status !== 'background' && result.keepShellBusy === true) {
           release = false;
@@ -379,7 +383,6 @@ export const shellTools = (executable: string = shellOf()): HostTool[] => {
       }
       catch (error) {
         answered = true;
-        at.movable().withdraw();
         throw error;
       }
       finally {
