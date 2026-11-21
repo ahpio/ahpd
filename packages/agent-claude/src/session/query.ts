@@ -4,6 +4,7 @@ import { idOf, mergeLogicalTurnUsage, reason, steerPart } from '@ahpd/sdk';
 import type { Bag } from '@ahpd/sdk';
 import type { HookCallback, Options, query, SDKUserMessage, SettingSource } from '@anthropic-ai/claude-agent-sdk';
 import { clearFor } from '../catalog.js';
+import { lastCostState } from '../transcript.js';
 import { bag, list, str, UUID } from './common.js';
 import type { PendingSdkMessage, SessionContext } from './context.js';
 import { contextOf } from './contextusage.js';
@@ -731,6 +732,24 @@ export function createQuery(ctx: SessionContext): Query {
       if (ctx.unwritten) ctx.sdkSessionId = undefined;
     }
     const options = optionsFor(agent, first, cut);
+    /*
+     * Where this CLI's running cost starts.
+     *
+     * A resumed CLI restores the total its transcript's last `cost-state`
+     * saved, and its first `result` reports that total plus the turn's spend.
+     * A fork or a rewind loads the transcript only up to its cut, and a CLI in
+     * a machine keeps its transcript there, so the total each restores is not
+     * one this host can read: the first `result` there sets the baseline and
+     * is charged nothing. A CLI that resumes nothing starts from zero.
+     */
+    const resumed = (options as { resume?: unknown }).resume;
+    const cutAt = (options as { resumeSessionAt?: unknown }).resumeSessionAt;
+    if (typeof resumed !== 'string') ctx.seedCost({});
+    else {
+      const saved = cutAt === undefined && ctx.options.spawn === undefined ? lastCostState(resumed) : undefined;
+      if (saved === undefined) ctx.costUnknown();
+      else ctx.seedCost(saved);
+    }
     /*
      * A CLI named under an id starts on a clean transcript, cleared once the
      * CLIs that could write it have exited: this session's last, which the

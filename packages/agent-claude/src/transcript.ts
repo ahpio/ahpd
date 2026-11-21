@@ -328,6 +328,49 @@ function sessionFiles(sessionId: string): { project: string; session: string } |
   return undefined;
 }
 
+/**
+ * What the CLI had spent on each model when it last saved its cost, by model.
+ *
+ * The CLI writes `{ type: "cost-state", modelUsage }` to the session's
+ * transcript and restores the last one when it resumes, so the first `result`
+ * after a resume reports the session's whole spend rather than this run's.
+ * Absent when the transcript is not on this host, cannot be read, or holds no
+ * such line.
+ */
+export function lastCostState(sessionId: string): Record<string, number> | undefined {
+  const states = costStates(sessionId);
+  return states[states.length - 1];
+}
+
+/**
+ * Every `cost-state` line of a session's transcript, in the order the CLI
+ * wrote them, each as what it had spent on each model. A model whose
+ * `costUSD` is not a number is left out of its line.
+ */
+export function costStates(sessionId: string): Record<string, number>[] {
+  const files = sessionFiles(sessionId);
+  if (files === undefined) return [];
+  let text: string;
+  try { text = readFileSync(join(files.project, `${files.session}.jsonl`), 'utf8'); }
+  catch { return []; }
+  const out: Record<string, number>[] = [];
+  for (const line of text.split('\n')) {
+    if (!line.includes('"cost-state"')) continue;
+    let entry: unknown;
+    try { entry = JSON.parse(line); }
+    catch { continue; }
+    const found = bag(entry);
+    if (found.type !== 'cost-state') continue;
+    const costs: Record<string, number> = {};
+    for (const [model, usage] of Object.entries(bag(found.modelUsage))) {
+      const cost = bag(usage).costUSD;
+      if (typeof cost === 'number' && Number.isFinite(cost)) costs[model] = cost;
+    }
+    out.push(costs);
+  }
+  return out;
+}
+
 /** One JSON object per line, which is what the CLI writes. */
 function readJsonl(path: string): unknown[] {
   try {

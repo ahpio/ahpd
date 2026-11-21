@@ -1,6 +1,6 @@
 ---
 title: The cost baseline starts from the transcript on resume
-status: todo
+status: done
 depends: []
 layer: "agent-claude"
 refs:
@@ -20,7 +20,7 @@ The first `result` after a resume is charged only what it added.
 - `UPDATE: packages/agent-claude/src/session/parts.ts:152-211` - add `seedCost(costs)`, which replaces `paid`, and `costUnknown()`, which makes the next `costOf` return nothing.
 - `UPDATE: packages/agent-claude/src/session/query.ts:632-654` - on resume, fork and rewind, seed the baseline before the query starts.
 - `UPDATE: packages/agent-claude/test/agent-claude-usage.test.ts` - add the resume cases.
-- `UPDATE: .project/specs/agent-backends.md` - say how a resumed Claude turn's cost is taken.
+- `UPDATE: .project/specs/usage.md` - say how a resumed Claude turn's cost is taken.
 
 ## Steps
 
@@ -36,7 +36,7 @@ The first `result` after a resume is charged only what it added.
 10. Add a test: after a resume with no `cost-state` line, the first turn has tokens and no cost.
 11. Add a test: the second turn after that resume has its own cost.
 12. Add a test: a fresh session with no resume reads no transcript.
-13. Correct the text in `.project/specs/agent-backends.md` on the cost of a Claude turn.
+13. Add the cost of a resumed Claude turn to `.project/specs/usage.md`.
 
 ## Validation
 
@@ -46,4 +46,10 @@ The first `result` after a resume is charged only what it added.
 - By hand: restart the daemon, send one turn on session `d5f25d91`, and read its line in `usage/2026-11-model.jsonl`. The cost is under $1.
 
 ## Resume
+
+Built 2026-11-21.
+`costStates` and `lastCostState` are in `transcript.ts`, and `seedCost` and `costUnknown` are in `parts.ts`.
+A fork, a rewind and a session in a machine call `costUnknown`, as the plan's *Answers* says.
+`agent-backends.md` has no text on cost, so the rule went to `usage.md`.
+The agent-claude suite passes, 698 tests.
 
