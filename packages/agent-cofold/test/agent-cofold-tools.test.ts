@@ -1240,3 +1240,29 @@ for (const row of ROWS) {
     }
   });
 }
+
+/*
+ * A run that is still winding down after a stop can ask once more. The
+ * question would land on the next turn, which never asked it, so the mapping
+ * says nothing and opens no request.
+ */
+it('maps an approval or a question that comes after a stop to nothing', () => {
+  let stopped = false;
+  const turn = mapTurn({
+    turnId: 't1',
+    chatUri: 'ahp-chat:/tools',
+    parts: [],
+    startedAt: Date.now(),
+    displayNameOf: (name) => name,
+    ownerOf: () => undefined,
+    cancelled: () => stopped,
+  });
+  const approval = { type: 'approval.requested', requestId: 'r1', callId: 'c1', name: 'shell_exec', input: { command: 'echo hi' } } as RunEvent;
+  const question = { type: 'input.requested', requestId: 'r2', questions: [{ id: 'which', prompt: 'Which?' }] } as unknown as RunEvent;
+  expect(turn.actions(approval).opened).toBeDefined();
+
+  stopped = true;
+  const late = [turn.actions({ ...approval, requestId: 'r3', callId: 'c3' } as RunEvent), turn.actions(question)];
+  expect(late.map((one) => one.actions)).toEqual([[], []]);
+  expect(late.map((one) => one.opened)).toEqual([undefined, undefined]);
+});

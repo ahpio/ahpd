@@ -617,7 +617,7 @@ export function createHandlers(ctx: SessionContext): Handlers {
      * rejects a permission without an active turn.
      * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentSideEffects.ts#L1739-L1748
      */
-    if (ctx.mapping === undefined) {
+    if (ctx.mapping === undefined || ctx.cancelRequested || ctx.replaced?.has(ctx.mapping.turnId) === true) {
       ctx.options.log?.(`${ctx.provider}: refusing a permission with no turn running: ${request.toolCall.toolCallId}`, 'warn');
       return 'cancelled';
     }
@@ -799,7 +799,8 @@ export function createHandlers(ctx: SessionContext): Handlers {
      * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/claude/claudeAgentSession.ts#L1346-L1349
      * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/claude/claudeElicitationBridge.ts#L50-L59
      */
-    if (ctx.mapping === undefined || (page === undefined && questions.length === 0)) return Promise.resolve({ action: 'cancel' });
+    if (ctx.mapping === undefined || ctx.cancelRequested || ctx.replaced?.has(ctx.mapping.turnId) === true
+      || (page === undefined && questions.length === 0)) return Promise.resolve({ action: 'cancel' });
     const id = nameOf(request, str(held.toolCallId));
     const message = str(held.message);
     const asking: Bag = {
