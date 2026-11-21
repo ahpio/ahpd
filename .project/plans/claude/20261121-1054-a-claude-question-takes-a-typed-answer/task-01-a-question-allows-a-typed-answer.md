@@ -1,6 +1,6 @@
 ---
 title: A question allows a typed answer
-status: todo
+status: implemented
 depends: []
 layer: "agent-claude"
 refs:
@@ -32,3 +32,5 @@ Each question of a Claude `AskUserQuestion` goes out with `allowFreeformInput: t
 - The agent-claude vitest suite passes.
 
 ## Resume
+
+`questionRequest` sends `allowFreeformInput: question.allowFreeformInput !== false`, with the decision named above it. The case in `agent-claude-tool-input.test.ts` expects `true`, `true`, `false`, the third question now saying `false`. The typed answer already reaches the tool: the cases at *Words typed beside a choice* in the same file send `freeformValues`. So `agent-claude-questions.test.ts` needed no change.
