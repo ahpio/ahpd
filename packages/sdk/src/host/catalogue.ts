@@ -684,6 +684,7 @@ export function createCatalogue(ctx: HostContext): Catalogue {
    */
   let announced = -1;
   const activeSessionsChanged = (): void => {
+    ctx.keepAwake?.update();
     const now = activeCount();
     const held = ctx.stateOf(ROOT)?.activeSessions;
     if (now === (typeof held === 'number' ? held : announced)) return;

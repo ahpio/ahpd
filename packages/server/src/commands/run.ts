@@ -115,6 +115,7 @@ import {
 } from './restart.js';
 import type { RestartOutcome } from './restart.js';
 import type { Options } from './options.js';
+import { holdIdleSleep, oncePerProcess } from '../keepawake.js';
 
 /** The listener an HTTP surface is on: the daemon's, the API's own or the model API's own. */
 type Place = 'daemon' | 'api' | 'model';
@@ -372,6 +373,8 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
     if (written(level, options.logLevel)) process.stderr.write(`${logLine(line, level, options.logTime, process.stderr)}\n`);
   };
   for (const warning of options.warnings) stamp(warning, 'warn');
+  /** The keep-awake helper's log, which says each kind of failure once. */
+  const keepAwakeLog = oncePerProcess({ warn: (line) => { stamp(line, 'warn'); }, debug: (line) => { stamp(line, 'debug'); } });
 
   /*
    * What this host calls its own sign-in resource.
@@ -1594,6 +1597,8 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
      * the host only shows what it is given and hands writes on.
      */
     rootConfig: daemonRootConfig(options, typed, openWire, (servers) => { mcpServers = servers as typeof mcpServers; }, async () => (await applyNow()).restart),
+    // The machine's idle sleep held while a chat works, as `keepAwakeWhileWorking` says.
+    keepAwake: (allowOnBattery) => holdIdleSleep(allowOnBattery, keepAwakeLog),
     /*
      * The root config a client pushed, kept between restarts, as VS Code's
      * host keeps its own: a daemon restarted for an upgrade comes back with

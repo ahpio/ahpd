@@ -1,6 +1,6 @@
 ---
 title: The machine stays awake while a chat works
-status: todo
+status: implemented
 depends: []
 layer: "server"
 refs:
@@ -34,3 +34,5 @@ It lets go 2 minutes after the last turn ends.
 - The server vitest suite passes.
 
 ## Resume
+
+The hold policy is in the host, `sdk/src/host/keepawake.ts`, since only the host knows the running count and holds the key. The daemon passes the helper as `HostOptions.keepAwake`, as VS Code's host is handed its `acquire`. `activeSessionsChanged` and a push of the key call `update`, and the host's close lets go. `server/src/keepawake.ts` ports the power save blocker: the three helpers, the 30 s power poll and the Linux power supply rules. A failing helper is logged once. The cases are `sdk/test/keepawake.test.ts`, `server/test/keepawake.test.ts`, and a turn in `turning.test.ts`.
