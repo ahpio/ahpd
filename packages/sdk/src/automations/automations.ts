@@ -909,19 +909,25 @@ export function memoryAutomations(options: AutomationsOptions = {}): AutomationS
       };
 
       /*
-       * Running before the session is asked for.
+       * Running as its turn starts.
        *
        * A backend can finish the turn it is given before `start` resolves -
        * the echo backend with no pace does exactly that - and a finished turn
-       * is what settles this run. Marking it running first means that ending
-       * finds a run with the `startedAt` the protocol requires, rather than a
-       * `pending` one where a completed ending has to be refused. A terminal
-       * lifecycle the ending produced is left alone below, so the start
-       * resolving cannot reopen it.
+       * is what settles this run. So the host calls `running` just before it
+       * starts the turn, and the ending finds the `startedAt` the protocol
+       * requires. A run whose message waits in a chat's queue stays `pending`
+       * until the queue takes it up, as AHP 1.2.0 says. A start that never
+       * calls it is marked running once it resolves.
+       * https://github.com/microsoft/agent-host-protocol/blob/e36b0a20/types/channels-automation/state.ts#L316-L346
        */
-      const running = { ...run.lifecycle, status: 'running', startedAt: now() };
-      persistRuns(resource, { ...run, lifecycle: running });
-      run.lifecycle = running;
+      const markRunning = (): void => {
+        if (run.lifecycle.status !== 'pending') return;
+        const running = { ...run.lifecycle, status: 'running', startedAt: now() };
+        persistRuns(resource, { ...run, lifecycle: running });
+        run.lifecycle = running;
+        said({ automation: resource, run: run.resource });
+      };
+      options.running = markRunning;
       /*
        * The run answered as recorded, and its session made after.
        *
@@ -934,11 +940,18 @@ export function memoryAutomations(options: AutomationsOptions = {}): AutomationS
       void (async () => {
         try {
           const session = await start(options);
+          markRunning();
           persistRuns(resource, { ...run, sessions: [session], primarySession: session });
           run.sessions = [session];
           run.primarySession = session;
         }
         catch (error) {
+          // A run the host already ended, as one whose queued message was
+          // withdrawn, keeps the ending it was given.
+          if (ended(run.lifecycle)) {
+            said({ automation: resource, run: run.resource });
+            return;
+          }
           // Failed, and why. A run that vanished would be indistinguishable
           // from one that never started. The protocol's failed lifecycle calls
           // the final timestamp `completedAt`, not `endedAt` - and no execution

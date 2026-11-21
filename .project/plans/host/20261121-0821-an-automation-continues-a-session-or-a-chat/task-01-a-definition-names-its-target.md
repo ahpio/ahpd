@@ -1,6 +1,6 @@
 ---
 title: A definition names its target
-status: todo
+status: implemented
 depends: []
 layer: "sdk"
 refs:
@@ -34,3 +34,5 @@ The host advertises both targets, and reads where an automation's runs go from `
 - The sdk vitest suite passes.
 
 ## Resume
+
+`types/automations-next.ts` holds the target types. `automations/targets.ts` holds `targetOf`, `continues`, `targetProblem` and `retargeted`. `wakeOf` reads `targetOf`, so a `previousSession` target and the older `pinned` mode take one path. The handshake advertises `targets: { previousSession: {}, chat: {} }`, and the wire check records it as a departure from 1.1.0.

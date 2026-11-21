@@ -1,7 +1,7 @@
 ---
 title: An automation continues a session or a chat
 domain: host
-status: planned
+status: active
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -75,9 +75,9 @@ a trigger or run -> automations.ts request -> targetOf(definition) -> new sessio
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - A definition names its target](task-01-a-definition-names-its-target.md) | todo | - |
-| [02 - A continued run waits in the queue](task-02-a-continued-run-waits-in-the-queue.md) | todo | 01 |
-| [03 - A chat target follows its chat](task-03-a-chat-target-follows-its-chat.md) | todo | 02 |
+| [01 - A definition names its target](task-01-a-definition-names-its-target.md) | implemented | - |
+| [02 - A continued run waits in the queue](task-02-a-continued-run-waits-in-the-queue.md) | implemented | 01 |
+| [03 - A chat target follows its chat](task-03-a-chat-target-follows-its-chat.md) | implemented | 02 |
 
 ## Risks and tradeoffs
 
@@ -87,16 +87,16 @@ a trigger or run -> automations.ts request -> targetOf(definition) -> new sessio
 
 ## Resume state
 
-- **Done so far:** the plan, 2026-11-21.
-- **Next action:** [task-01-a-definition-names-its-target.md](task-01-a-definition-names-its-target.md), after the one-time plan's task 01, which makes the types file.
+- **Done so far:** the plan, 2026-11-21. Tasks 01, 02 and 03 implemented on 2026-11-21.
+- **Next action:** Softov reviews the PR. The plan closes as `built` on his word.
 - **Open questions:** none.
 - **Watch out for:** the previous session is the previous run's primary session, even after that run left the history. `pinnedSession` is what keeps it then.
 
 ## Final verification checklist
 
-- [ ] A test: the handshake advertises both targets.
-- [ ] A test: an old pinned definition with no `target` continues its session, as `previousSession`.
-- [ ] A test: a `previousSession` run while a turn runs queues its message, stays `pending`, and runs when the turn ends; it never steers.
-- [ ] A test: a run whose previous session is gone starts a new session.
-- [ ] A test: a `chat` target to a missing chat is refused, its `session` is the host's, and it follows the chat's move.
-- [ ] The gates pass: typecheck, boundary, and the sdk and server suites.
+- [x] A test: the handshake advertises both targets.
+- [x] A test: an old pinned definition with no `target` continues its session, as `previousSession`.
+- [x] A test: a `previousSession` run while a turn runs queues its message, stays `pending`, and runs when the turn ends; it never steers.
+- [x] A test: a run whose previous session is gone starts a new session.
+- [x] A test: a `chat` target to a missing chat is refused, its `session` is the host's, and it follows the chat's move.
+- [x] The gates pass: typecheck, boundary, and the sdk and server suites.

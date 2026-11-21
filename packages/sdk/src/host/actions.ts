@@ -1,5 +1,6 @@
 import { APPROVAL_KEYS, filePersonRules } from '../access/personrules.js';
 import { oneTimeProblem, oneTimeRunOf } from '../automations/onetime.js';
+import { targetProblem } from '../automations/targets.js';
 import { isDeepStrictEqual } from 'node:util';
 import { IS_CLIENT_DISPATCHABLE } from '@microsoft/agent-host-protocol';
 import type { AnnotationsAction } from '@microsoft/agent-host-protocol';
@@ -22,6 +23,7 @@ import type { Bag } from '../types/common.js';
 import type { Grant } from '../types/users.js';
 import type { Origin } from './state.js';
 import type { ConnectionContext, HostContext } from './context.js';
+import type { Owner } from '../types/usage.js';
 
 /**
  * The protocol's own answer to "may a client send this?", by action type.
@@ -780,8 +782,25 @@ export function createActions(ctx: HostContext, conn: ConnectionContext): Action
         no(`One-time automation has already started: ${started}`);
         return;
       }
-      const oneTimeRefusal = oneTimeProblem(type === 'automation/createRequested' ? written : { ...existing?.definition, ...written });
+      const becomes = type === 'automation/createRequested' ? written : { ...existing?.definition, ...written };
+      const oneTimeRefusal = oneTimeProblem(becomes) ?? targetProblem(becomes);
       if (oneTimeRefusal !== undefined) { no(oneTimeRefusal); return; }
+      /*
+       * A chat target names a chat this host has, which the automation's owner
+       * may drive, and the host says which session owns it, replacing what the
+       * client sent, as AHP 1.2.0 asks.
+       * https://github.com/microsoft/agent-host-protocol/blob/e36b0a20/types/channels-automation/state.ts#L360-L392
+       */
+      const aimed = keyed(written['target']);
+      if (aimed['kind'] === 'chat') {
+        const chat = String(aimed['chat']);
+        const session = ctx.sessionFor(chat);
+        const known = session !== chat && knownSession(session) && (ctx.defaultChatFor(session) === chat || sessions.get(session)?.chats.has(chat) === true);
+        if (!known) { no(`Automation chat target not found: ${chat}`); return; }
+        const owner = type === 'automation/createRequested' ? ownerFor(connection) : (typeof existing?._meta?.['ahpd.owner'] === 'string' ? existing._meta['ahpd.owner'] as Owner : undefined);
+        if (owner !== undefined && kept.owner(idOf(session)) !== owner) { no(`Automation chat target may not be driven by this automation: ${chat}`); return; }
+        written['target'] = { kind: 'chat', session, chat };
+      }
       /*
        * Client plugins on the template, copied while the client that named
        * them is still here.

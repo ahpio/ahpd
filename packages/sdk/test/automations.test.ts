@@ -563,7 +563,7 @@ describe('a template that names client plugins', () => {
       params: { clientId: 'a', protocolVersions: ['0.9.0'], initialSubscriptions: [] },
     }) as { automations?: Record<string, unknown> };
     expect(answer.automations).toEqual({
-      create: {}, schedules: {}, oneTime: {}, runCancellation: {}, runHistoryLimit: RUN_HISTORY_LIMIT,
+      create: {}, schedules: {}, oneTime: {}, runCancellation: {}, targets: { previousSession: {}, chat: {} }, runHistoryLimit: RUN_HISTORY_LIMIT,
     });
     expect('customizations' in (answer.automations ?? {})).toBe(false);
   });
@@ -953,7 +953,7 @@ describe('a host that keeps client plugins', () => {
       params: { clientId: 'b', protocolVersions: ['0.9.0'], initialSubscriptions: [] },
     }) as { automations?: Record<string, unknown> };
     expect(answer.automations).toEqual({
-      create: {}, schedules: {}, oneTime: {}, runCancellation: {}, runHistoryLimit: RUN_HISTORY_LIMIT, customizations: {},
+      create: {}, schedules: {}, oneTime: {}, runCancellation: {}, targets: { previousSession: {}, chat: {} }, runHistoryLimit: RUN_HISTORY_LIMIT, customizations: {},
     });
   });
 });
@@ -1266,6 +1266,8 @@ it('reads running while the session it started is still working', async () => {
   const run = await client.handle({
     method: 'runAutomation', params: { channel: AUTOMATIONS, automation: ONE, requestId: 'req-1' },
   }) as { resource: string };
+  // Pending while its session is made, and running from its turn, as VS Code marks a run.
+  await until(async () => (await runState(client, run.resource)).lifecycle.status === 'running');
   const state = await runState(client, run.resource);
   expect(state.lifecycle.status).toBe('running');
   expect(state.lifecycle.startedAt).toBeTypeOf('string');
@@ -2312,5 +2314,107 @@ describe('a one-time automation', () => {
     });
     await settle();
     expect(refusals(p, AUTOMATIONS).at(-1)).toBe(`One-time automation has already started: ${String(run?.resource)}`);
+  });
+});
+
+/*
+ * Where a run goes, with AHP 1.2.0's `target`: a new session, the session of
+ * the last run, or one chat. A run that continues a session or a chat queues
+ * its message there and never steers a turn.
+ * https://github.com/microsoft/agent-host-protocol/blob/e36b0a20/types/channels-automation/state.ts#L289-L420
+ */
+describe('where a run goes', () => {
+  type Handle = { handle(r: { method: string; params: Record<string, unknown> }): Promise<unknown> };
+  const press = async (client: Handle, requestId: string): Promise<string> =>
+    ((await client.handle({ method: 'runAutomation', params: { channel: AUTOMATIONS, automation: ONE, requestId } })) as { resource: string }).resource;
+  const chatOf = async (client: Handle, session: string): Promise<string> =>
+    ((await client.handle({ method: 'subscribe', params: { channel: session } })) as { snapshot: { state: { defaultChat: string } } }).snapshot.state.defaultChat;
+  const queuedIn = async (client: Handle, chat: string): Promise<number> =>
+    (((await client.handle({ method: 'subscribe', params: { channel: chat } })) as { snapshot: { state: { queuedMessages?: unknown[] } } }).snapshot.state.queuedMessages ?? []).length;
+  /** A turn a person runs in a chat, long enough on a paced backend to keep it busy. */
+  const typing = async (client: Handle, chat: string): Promise<void> => {
+    await client.handle({
+      method: 'dispatchAction',
+      params: { channel: chat, action: { type: 'chat/turnStarted', turnId: 'p1', startedAt: new Date().toISOString(), message: { origin: { kind: 'user' }, text: Array.from({ length: 40 }, () => 'word').join(' ') } } },
+    });
+  };
+
+  it('reads target first, and the older pinned mode as previousSession', async () => {
+    const { targetOf } = await import('../src/automations/targets.js');
+    expect(targetOf({})).toEqual({ kind: 'newSession' });
+    expect(targetOf({ _meta: { ahpd: { session: 'pinned' } } })).toEqual({ kind: 'previousSession' });
+    expect(targetOf({ target: { kind: 'newSession' }, _meta: { ahpd: { session: 'pinned' } } })).toEqual({ kind: 'newSession' });
+    expect(targetOf({ target: { kind: 'chat', chat: 'c', session: 's' } })).toEqual({ kind: 'chat', chat: 'c', session: 's' });
+  });
+
+  it('refuses a target kind it does not know, and a chat it does not have', async () => {
+    const { client, peer: p } = await connected();
+    await client.handle({ method: 'subscribe', params: { channel: AUTOMATIONS } });
+    await write(client, { ...DEFINITION, target: { kind: 'elsewhere' } });
+    await write(client, { ...DEFINITION, target: { kind: 'chat', chat: 'ahp-session:/nobody', session: 'ahp-session:/nobody' } });
+    await settle();
+    expect(refusals(p, AUTOMATIONS)).toEqual([
+      'Automation target is not available: elsewhere',
+      'Automation chat target not found: ahp-session:/nobody',
+    ]);
+    expect(await entries(client)).toEqual([]);
+  });
+
+  it('continues the last run\'s session, and queues behind a turn in it, pending until the queue takes it', async () => {
+    const { client } = await connected(true, 10);
+    await write(client, { ...DEFINITION, message: { text: 'check' }, target: { kind: 'previousSession' } });
+    const first = await press(client, 'r1');
+    await until(async () => (await runState(client, first)).lifecycle.status === 'completed');
+    const session = String((await runState(client, first)).primarySession);
+    const chat = await chatOf(client, session);
+
+    await typing(client, chat);
+    const second = await press(client, 'r2');
+    await until(async () => await queuedIn(client, chat) === 1);
+    expect((await runState(client, second)).lifecycle.status).toBe('pending');
+
+    // The person's turn ends, the queue takes the message, and the run goes in the same session.
+    await until(async () => (await runState(client, second)).lifecycle.status === 'completed');
+    expect((await runState(client, second)).primarySession).toBe(session);
+  });
+
+  it('cancels a run whose message waits by taking the message out', async () => {
+    const { client } = await connected(true, 10);
+    await write(client, { ...DEFINITION, message: { text: 'check' }, target: { kind: 'previousSession' } });
+    const first = await press(client, 'r1');
+    await until(async () => (await runState(client, first)).lifecycle.status === 'completed');
+    const chat = await chatOf(client, String((await runState(client, first)).primarySession));
+
+    await typing(client, chat);
+    const second = await press(client, 'r2');
+    await until(async () => await queuedIn(client, chat) === 1);
+    await client.handle({ method: 'dispatchAction', params: { channel: second, action: { type: 'automationRun/cancelRequested' } } });
+    await until(async () => (await runState(client, second)).lifecycle.status === 'cancelled');
+    expect(await queuedIn(client, chat)).toBe(0);
+  });
+
+  it('moves a chat target with its chat, and leaves every other automation alone', async () => {
+    const { retargeted } = await import('../src/automations/targets.js');
+    const aimed = { resource: 'a', definition: { target: { kind: 'chat', chat: 'c', session: 's1' } } };
+    const other = { resource: 'b', definition: { target: { kind: 'chat', chat: 'd', session: 's1' } } };
+    const pinned = { resource: 'p', definition: { _meta: { ahpd: { session: 'pinned' } } } };
+    expect(retargeted([aimed, other, pinned], 's2', 'c')).toEqual([{ resource: 'a', target: { kind: 'chat', chat: 'c', session: 's2' } }]);
+    expect(retargeted([aimed], 's1', 'c')).toEqual([]);
+  });
+
+  it('sends each run to its chat, and names the chat\'s session itself', async () => {
+    const { client, store } = await connected();
+    // A session with a chat to aim at, made by a first plain run.
+    await write(client, { ...DEFINITION, message: { text: 'make me' } }, PLAIN);
+    const made = ((await client.handle({ method: 'runAutomation', params: { channel: AUTOMATIONS, automation: PLAIN, requestId: 'p' } })) as { resource: string }).resource;
+    await until(async () => (await runState(client, made)).lifecycle.status === 'completed');
+    const session = String((await runState(client, made)).primarySession);
+    const chat = await chatOf(client, session);
+
+    await write(client, { ...DEFINITION, message: { text: 'into the chat' }, target: { kind: 'chat', chat, session: 'ahp-session:/wrong' } });
+    expect(keyed(store.get(ONE)?.definition.target)).toEqual({ kind: 'chat', chat, session });
+    const run = await press(client, 'r1');
+    await until(async () => (await runState(client, run)).lifecycle.status === 'completed');
+    expect((await runState(client, run)).primarySession).toBe(session);
   });
 });

@@ -186,6 +186,7 @@ export function createChatMover(ctx: HostContext): (
     // chat's own.
     ctx.moveChatOutputs(found.uri, into, chatUri);
     ctx.moveChatLocalTurns(found.uri, into, chatUri);
+    ctx.moveChatAutomations(found.uri, into, chatUri);
     const road = byChat.get(chatUri);
     held.chats.delete(chatUri);
     byChat.drop(chatUri);

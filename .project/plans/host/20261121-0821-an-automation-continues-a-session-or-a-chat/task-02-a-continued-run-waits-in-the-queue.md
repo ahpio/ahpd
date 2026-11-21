@@ -1,6 +1,6 @@
 ---
 title: A continued run waits in the queue
-status: todo
+status: implemented
 depends: [01]
 layer: "sdk"
 refs:
@@ -36,3 +36,5 @@ A `previousSession` run puts its message in the previous session's queue, as AHP
 - The sdk vitest suite passes.
 
 ## Resume
+
+VS Code's `_queueInPreviousSession` links the run to the session and makes it primary, then queues the message. The run stays pending until a turn takes it. Here `request` skips `overlap` for a run that continues a session or a chat. A busy pinned chat queues the message through `queueIn`, with the template's model, where it used to hold the wake or refuse a press. `enqueue` takes hooks: `taken` marks the run running before its turn is said, and `withdrawn` cancels it. A cancel of the run calls `dequeue`. The store marks a run running through its new `running` hook, or when its start resolves. An archived previous session starts a new one.
