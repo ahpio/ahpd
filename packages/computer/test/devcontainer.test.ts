@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, beforeEach, expect, it } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { devContainer, hasDefinition, parseUp, pluginInstallLine, reachOf } from '../src/devcontainer.js';
 import { closeAll, keepingPort } from './support/closing.js';
 import type { Probe } from '../src/devcontainer.js';
@@ -12,7 +12,10 @@ import { adoptedDevContainer, dockerRuntime } from '../src/runtime.js';
 import type { DockerOptions } from '../src/runtime.js';
 import type { MadePart } from '../src/parts.js';
 import type { ContainerSink } from '../../sdk/src/types/containers.js';
-import { WAIT_MS } from '../../../tools/wait.ts';
+import { PROCESS_CASE_MS, WAIT_MS } from '../../../tools/wait.ts';
+
+// Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
+vi.setConfig({ testTimeout: PROCESS_CASE_MS });
 
 /*
  * The launcher: the Dev Container CLI, the host inside, and the pipes.

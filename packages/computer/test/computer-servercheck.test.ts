@@ -4,13 +4,17 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { fileResources } from '../../sdk/src/resources/resources.js';
 import { loadPlugins } from '../../server/src/plugins.js';
 import { closeAll, keeping } from './support/closing.js';
 import { profilesOf } from '../src/plugin.js';
 import { checkServer, fixesOf, osOf, reportFrom, SERVER_CHECK, SERVER_ITEMS, serverGate } from '../src/servercheck.js';
 import { sshRuntime } from '../src/ssh.js';
+import { PROCESS_CASE_MS } from '../../../tools/wait.ts';
+
+// Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
+vi.setConfig({ testTimeout: PROCESS_CASE_MS });
 
 /*
  * The server check: the script a box runs, the report read from its answer,
