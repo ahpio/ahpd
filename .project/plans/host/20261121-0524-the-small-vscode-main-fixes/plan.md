@@ -49,7 +49,7 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 | Task | Status | Depends on |
 | --- | --- | --- |
 | [01 - An Mcp rule names a server or a tool](task-01-an-mcp-rule-names-a-server-or-a-tool.md) | implemented | - |
-| [02 - Create PR pushes to the right remote](task-02-create-pr-pushes-to-the-right-remote.md) | todo | - |
+| [02 - Create PR pushes to the right remote](task-02-create-pr-pushes-to-the-right-remote.md) | implemented | - |
 | [03 - The root schema has the new keys](task-03-the-root-schema-has-the-new-keys.md) | todo | - |
 
 ## Risks and tradeoffs
@@ -59,8 +59,8 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 ## Resume state
 
-- **Done so far:** the plan, 2026-11-21. Task 01 implemented on 2026-11-21.
-- **Next action:** [task-02-create-pr-pushes-to-the-right-remote.md](task-02-create-pr-pushes-to-the-right-remote.md).
+- **Done so far:** the plan, 2026-11-21. Task 01 implemented on 2026-11-21. Task 02 implemented on 2026-11-21.
+- **Next action:** [task-03-the-root-schema-has-the-new-keys.md](task-03-the-root-schema-has-the-new-keys.md).
 - **Open questions:** none.
 - **Watch out for:** `alwaysAsks` already reads `<server>/<tool>` rules of the operator's table; the `Mcp` rules are the session's `permissions` lists.
 

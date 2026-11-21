@@ -11,6 +11,7 @@ import type { PullRequests } from '../types/github.js';
 import { commitPrompt, cutDiff, pullRequestPrompt, splitWords } from './changewords.js';
 import { baselineOf, capture, latestOf, removeAll } from './checkpoints.js';
 import { runGit } from '../repo/hardened.js';
+import { githubRemoteOf } from '../repo/git.js';
 import { uriOf } from '../resources/fileuri.js';
 import { INVALID_PARAMS } from '../rpc.js';
 
@@ -63,6 +64,36 @@ const git = (dir: string, args: string[]): Promise<string | undefined> =>
     runGit(dir, args, { timeout: 5000, maxBuffer: 32 * 1024 * 1024, env: quiet(), windowsHide: true },
       (error, out) => answer(error ? undefined : out));
   });
+
+/**
+ * The remote a branch with no upstream is pushed to, as VS Code chooses it:
+ * the branch's configured push remote (`branch.<name>.pushRemote`,
+ * `remote.pushDefault`, then `branch.<name>.remote`), else the remote the
+ * GitHub repository is read from, `origin` first, else `origin`, else the only
+ * remote. A repository whose GitHub remote is named `upstream` is pushed
+ * there, not to an `origin` it does not have.
+ * https://github.com/microsoft/vscode/blob/1808c5c2a55e/src/vs/platform/agentHost/node/agentHostGitService.ts
+ */
+export const pushRemoteOf = async (dir: string, branch: string): Promise<{ name: string; url: string | undefined }> => {
+  const listed = (await git(dir, ['remote', '-v'])) ?? '';
+  const remotes = [...new Map(listed.split('\n').flatMap((line) => {
+    const found = /^(\S+)\s+(\S+)\s+\(fetch\)$/.exec(line.trim());
+    return found ? [[found[1] as string, found[2] as string] as const] : [];
+  })).entries()].map(([name, url]) => ({ name, url }));
+  const named = (name: string | undefined): { name: string; url: string | undefined } | undefined => {
+    const clean = name?.trim();
+    return clean === undefined || clean === '' ? undefined : { name: clean, url: remotes.find((one) => one.name === clean)?.url };
+  };
+  const configured = named(await git(dir, ['config', '--get', `branch.${branch}.pushRemote`]))
+    ?? named(await git(dir, ['config', '--get', 'remote.pushDefault']))
+    ?? named(await git(dir, ['config', '--get', `branch.${branch}.remote`]));
+  if (configured !== undefined) return configured;
+  const origin = remotes.find((one) => one.name === 'origin');
+  const ordered = origin === undefined ? remotes : [origin, ...remotes.filter((one) => one !== origin)];
+  return ordered.find((one) => githubRemoteOf(one.url) !== undefined)
+    ?? origin
+    ?? (remotes.length === 1 ? remotes[0] as { name: string; url: string } : { name: 'origin', url: undefined });
+};
 
 /**
  * One `git` run, with the failure kept.
@@ -1289,14 +1320,21 @@ export function gitChanges(): ChangesetSource {
     const ahead = (await git(dir, ['rev-list', '--count', `${at.base}..${branch}`]))?.trim();
     if (ahead === '0') throw new Error('There are no branch changes to create a pull request for.');
     /*
-     * Pushed where the branch already goes, and to `origin` under its own
-     * name when it goes nowhere yet. `-u` only then: an upstream already
-     * chosen is not this operation's to change.
+     * Pushed where the branch already goes, and under its own name to the
+     * remote VS Code chooses when it goes nowhere yet. `-u` only then: an
+     * upstream already chosen is not this operation's to change.
      */
     const upstream = at.branch === branch ? at.upstream : undefined;
     const [remote, head] = upstream !== undefined && upstream.includes('/')
       ? [upstream.slice(0, upstream.indexOf('/')), upstream.slice(upstream.indexOf('/') + 1)]
-      : ['origin', branch];
+      : [(await pushRemoteOf(dir, branch)).name, branch];
+    /*
+     * The head names the owner of the remote pushed to where it is not the
+     * repository's, as VS Code's head owner follows the push: a fork's branch
+     * is `<owner>:<branch>` to GitHub.
+     */
+    const pushedOwner = githubRemoteOf((await git(dir, ['remote', 'get-url', remote]))?.trim())?.owner;
+    const prHead = pushedOwner !== undefined && pushedOwner !== repo.owner ? `${pushedOwner}:${head}` : head;
     const pushed = await run(dir, ['push', ...(upstream === undefined ? ['-u'] : []), remote, `${branch}:${head}`]);
     if (!pushed.ok) throw new Error(`Failed to push branch '${branch}': ${pushed.err}`);
     /*
@@ -1338,7 +1376,7 @@ export function gitChanges(): ChangesetSource {
     const opened = await github.ask.create(repo, {
       title: said.title,
       body: said.description,
-      head,
+      head: prHead,
       base: at.base,
       draft: asked?.draft === true,
     }, github.token, dir);
