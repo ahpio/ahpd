@@ -4,8 +4,8 @@ status: done
 depends: []
 layer: "agent-cofold"
 refs:
-  - "[code://packages/agent-cofold/src/agent.ts#L15-L26](../../../../../packages/agent-cofold/src/agent.ts#L15-L26) - the imports from `@cofold/agents` for the modes and efforts"
-  - "[code://packages/agent-cofold/src/agent.ts#L182-L193](../../../../../packages/agent-cofold/src/agent.ts#L182-L193) - the labels, which stay host-owned, and the descriptions, which come from cofold"
+  - "[code://packages/agent-cofold/src/agent.ts#L15-L26](../../../../packages/agent-cofold/src/agent.ts#L15-L26) - the imports from `@cofold/agents` for the modes and efforts"
+  - "[code://packages/agent-cofold/src/agent.ts#L182-L193](../../../../packages/agent-cofold/src/agent.ts#L182-L193) - the labels, which stay host-owned, and the descriptions, which come from cofold"
 ---
 
 ## Objective

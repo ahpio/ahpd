@@ -4,10 +4,10 @@ status: done
 depends: [task-05-acp-backend-and-main-plugins.md]
 layer: "server"
 refs:
-  - "[code://packages/server/src/commands/configure.ts#L268-L290](../../../../../packages/server/src/commands/configure.ts#L268-L290) - `listenerQuestion`, the switch and the port for the HTTP API and the model gateway"
-  - "[code://packages/server/src/commands/configure.ts#L370-L440](../../../../../packages/server/src/commands/configure.ts#L370-L440) - the found agents, the absent agents to install, and the confirm before any install line runs"
-  - "[code://packages/sdk/src/machines/agents.ts](../../../../../packages/sdk/src/machines/agents.ts) - `installLine`, the line for each agent on this system"
-  - "[code://packages/server/test/server-configure.test.ts](../../../../../packages/server/test/server-configure.test.ts) - the tests of both questions, at the end of the file"
+  - "[code://packages/server/src/commands/configure.ts#L268-L290](../../../../packages/server/src/commands/configure.ts#L268-L290) - `listenerQuestion`, the switch and the port for the HTTP API and the model gateway"
+  - "[code://packages/server/src/commands/configure.ts#L370-L440](../../../../packages/server/src/commands/configure.ts#L370-L440) - the found agents, the absent agents to install, and the confirm before any install line runs"
+  - "[code://packages/sdk/src/machines/agents.ts](../../../../packages/sdk/src/machines/agents.ts) - `installLine`, the line for each agent on this system"
+  - "[code://packages/server/test/server-configure.test.ts](../../../../packages/server/test/server-configure.test.ts) - the tests of both questions, at the end of the file"
 ---
 
 ## Objective

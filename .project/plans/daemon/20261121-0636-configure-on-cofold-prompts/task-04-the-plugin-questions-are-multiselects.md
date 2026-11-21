@@ -4,9 +4,9 @@ status: done
 depends: [task-03-the-configure-tests-keep-their-meaning.md]
 layer: "server"
 refs:
-  - "[code://packages/server/src/commands/configure.ts#L281-L305](../../../../../packages/server/src/commands/configure.ts#L281-L305) - the backend and other-plugin questions, now one multiselect each"
-  - "[code://packages/server/src/commands/configure.ts#L335-L375](../../../../../packages/server/src/commands/configure.ts#L335-L375) - the found-agent questions, now one multiselect, and the pi removal kept as a yes or no"
-  - "[code://packages/server/src/ask.ts](../../../../../packages/server/src/ask.ts) - `multiselect`, which the three questions call"
+  - "[code://packages/server/src/commands/configure.ts#L281-L305](../../../../packages/server/src/commands/configure.ts#L281-L305) - the backend and other-plugin questions, now one multiselect each"
+  - "[code://packages/server/src/commands/configure.ts#L335-L375](../../../../packages/server/src/commands/configure.ts#L335-L375) - the found-agent questions, now one multiselect, and the pi removal kept as a yes or no"
+  - "[code://packages/server/src/ask.ts](../../../../packages/server/src/ask.ts) - `multiselect`, which the three questions call"
 ---
 
 ## Objective

@@ -5,7 +5,7 @@ depends: [task-04-the-tool-table-and-tools-042.md]
 layer: "agent-cofold"
 refs:
   - npm://@cofold/tools@0.4.2 - `files({ requireRead })` and the dangling-link write
-  - "[code://packages/agent-cofold/src/tools.ts#L1-L40](../../../../../packages/agent-cofold/src/tools.ts#L1-L40) - where the file tools are built"
+  - "[code://packages/agent-cofold/src/tools.ts#L1-L40](../../../../packages/agent-cofold/src/tools.ts#L1-L40) - where the file tools are built"
 ---
 
 ## Objective

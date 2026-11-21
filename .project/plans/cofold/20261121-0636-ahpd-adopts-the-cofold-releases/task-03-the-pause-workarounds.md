@@ -4,8 +4,8 @@ status: done
 depends: []
 layer: "agent-cofold"
 refs:
-  - "[code://packages/agent-cofold/src/pauses.ts](../../../../../packages/agent-cofold/src/pauses.ts) - the pause bookkeeping, `createPauses`"
-  - "[code://packages/agent-cofold/src/runs.ts#L186-L226](../../../../../packages/agent-cofold/src/runs.ts#L186-L226) - where `run.finished` and the paused state are recorded"
+  - "[code://packages/agent-cofold/src/pauses.ts](../../../../packages/agent-cofold/src/pauses.ts) - the pause bookkeeping, `createPauses`"
+  - "[code://packages/agent-cofold/src/runs.ts#L186-L226](../../../../packages/agent-cofold/src/runs.ts#L186-L226) - where `run.finished` and the paused state are recorded"
 ---
 
 ## Objective

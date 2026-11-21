@@ -4,9 +4,9 @@ status: done
 depends: [task-04-the-plugin-questions-are-multiselects.md]
 layer: "server"
 refs:
-  - "[code://packages/server/src/commands/configure.ts#L48-L90](../../../../../packages/server/src/commands/configure.ts#L48-L90) - the backend and other-plugin lists, with their hints and first-run defaults"
-  - "[code://packages/server/src/commands/configure.ts#L296-L345](../../../../../packages/server/src/commands/configure.ts#L296-L345) - the backend question, and the found agents listed only once ACP is on"
-  - "[code://packages/agent-acp/package.json](../../../../../packages/agent-acp/package.json) - `@ahpd/agent-acp`, the ACP runtime"
+  - "[code://packages/server/src/commands/configure.ts#L48-L90](../../../../packages/server/src/commands/configure.ts#L48-L90) - the backend and other-plugin lists, with their hints and first-run defaults"
+  - "[code://packages/server/src/commands/configure.ts#L296-L345](../../../../packages/server/src/commands/configure.ts#L296-L345) - the backend question, and the found agents listed only once ACP is on"
+  - "[code://packages/agent-acp/package.json](../../../../packages/agent-acp/package.json) - `@ahpd/agent-acp`, the ACP runtime"
 ---
 
 ## Objective

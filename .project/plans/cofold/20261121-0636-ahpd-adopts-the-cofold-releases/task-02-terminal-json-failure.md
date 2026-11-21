@@ -4,7 +4,7 @@ status: done
 depends: []
 layer: "server"
 refs:
-  - "[code://packages/server/src/main.ts#L22-L23](../../../../../packages/server/src/main.ts#L22-L23) - the `failureOf` and `writeFailure` imports from `@cofold/terminal`"
+  - "[code://packages/server/src/main.ts#L22-L23](../../../../packages/server/src/main.ts#L22-L23) - the `failureOf` and `writeFailure` imports from `@cofold/terminal`"
 ---
 
 ## Objective

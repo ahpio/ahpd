@@ -4,7 +4,7 @@ status: done
 depends: []
 layer: "agent-cofold"
 refs:
-  - "[code://packages/agent-cofold/src/tools.ts#L16-L60](../../../../../packages/agent-cofold/src/tools.ts#L16-L60) - the hand-written table of cofold's tools and the fields they act on"
+  - "[code://packages/agent-cofold/src/tools.ts#L16-L60](../../../../packages/agent-cofold/src/tools.ts#L16-L60) - the hand-written table of cofold's tools and the fields they act on"
   - npm://@cofold/tools@0.4.2 - each tool declares `subject`
 ---
 
