@@ -4,22 +4,17 @@ title: What a release needs before its tag
 
 # What a release needs before its tag
 
-`v0.15.0-rc.4` is tagged on `e5776651c` (#376) on 2026-11-18. Its release run 44267371516 passed `parts`, `release` and `image`, and Softov approved the staged packages: npm serves `next: 0.15.0-rc.4`, and `latest` stays on `0.14.0`. Status at 2026-11-18.
+`v0.15.0` is tagged on `3bf557618` (#394) on 2026-11-20, and npm serves the 13 packages at `latest: 0.15.0`. ahpw `v0.9.0` is on `latest` beside it. Nothing is left for 0.15.0. Status at 2026-11-20.
 
 A pushed `v*` tag runs [release.yml](../../.github/workflows/release.yml) and stages every package. The tag comes last, and only on Softov's word.
 
-## Left
-
-The order of 0.15.0, as Softov chose on 2026-11-20. rc.4 is the last release candidate on npm.
-
-1. *The release PR,* #394, open as a draft on `release/0.15.0`. It holds the notes of #389 and the 13 packages at `0.15.0`. `node scripts/sdk-range.mjs --write` sets each first-party plugin's sdk range. `AHPD_TAG` is `0.15` in `docker/compose.yaml`, `docs/server/DOCKER.md` and `docs/README.md`. Dry run 44842989304 of `release.yml` on its branch passed, after #393 and #396 `parts`, `release` and `image`. A fix merged before the tag is rebased in and noted, and the dry run runs again.
-2. *Softov's review.* His working day on ahpw and ahpd since 2026-11-19, and the fixes he still reviews. It stands for the checks by hand in *Before 0.15.0* as well (Softov, 2026-11-20: "No, the working day covers it").
-3. *The tag.* #389, #393, #396 and the release PR #394 merged on 2026-11-20. `v0.15.0` is on `3bf557618`, pushed on Softov's word. Release run 44846720007 passed `parts`, `release` and `image`. npm's `latest` moves once Softov approves the 13 staged packages.
-4. *The web UI.* Softov approved the 13 ahpd packages on 2026-11-20, and npm serves 0.15.0 under `latest` now. The ahpw PR #107 set `@ahpd/sdk` to `^0.15.0`, with the peer `>=0.15.0 <0.16.0-0`, and merged as `d968e1f` on main. `v0.9.0` was pushed on Softov's word. Release run 44852565143 passed and staged `@ahpd/web@0.9.0`. Softov approved it on 2026-11-20, and `ahpd plugin install @ahpd/web` installs 0.9.0 beside sdk 0.15.0.
-
-Seven major problems wait for 0.16 by the same choice, and each says so in its *Fix*. `globalAutoApproveEnabled` keeps VS Code's meaning: [global-auto-approve-keeps-vs-codes-meaning.md](../decisions/global-auto-approve-keeps-vs-codes-meaning.md).
-
 ## Done
+
+- **0.15.0 and ahpw 0.9.0.** Softov chose the order on 2026-11-20.
+  - The notes PR #389, the fixes #393 and #396 and the release PR #394 merged on 2026-11-20. Dry run 44842989304 passed `parts`, `release` and `image` on the release branch.
+  - Softov's working day on ahpw and ahpd since 2026-11-19 stood for the checks by hand in *Before 0.15.0*. His words on 2026-11-20: "No, the working day covers it".
+  - `v0.15.0` is on `3bf557618`, pushed on Softov's word. Release run 44846720007 passed `parts`, `release` and `image`, and Softov approved the 13 staged packages. `npm i @ahpd/server@latest` in an empty folder says `0.15.0`, and `ghcr.io/ahpio/ahpd` has `0.15.0`, `0.15` and `latest`.
+  - The ahpw PR #107 set `@ahpd/sdk` to `^0.15.0`, with the peer `>=0.15.0 <0.16.0-0`, and merged as `d968e1f`. `v0.9.0` was pushed on Softov's word, and release run 44852565143 passed. Softov approved the staged package, and `ahpd plugin install @ahpd/web` installs 0.9.0 beside sdk 0.15.0.
 
 - **The check by hand.** Softov made `compclau` again on 2026-11-19. Its first failure was the sign-in, and a session with a connector worked.
 - **The fixes before 0.15.0.** Nine problems were fixed by seven plans, merged on 2026-11-18 as #377 to #383. Each plan is `built`, and its `implemented.md` holds the checks: host/20261118-1043, plugin/20261118-1103, host/20261118-1104, daemon/20261118-1105, plugin/20261118-1106, container/20261118-1107 and container/20261118-1108.
@@ -72,6 +67,7 @@ Seven major problems wait for 0.16 by the same choice, and each says so in its *
 
 ## Not in this release
 
+- Six major problems wait for 0.16, by Softov's choice for 0.15.0, and each says so in its *Fix*. `globalAutoApproveEnabled` keeps VS Code's meaning: [global-auto-approve-keeps-vs-codes-meaning.md](../decisions/global-auto-approve-keeps-vs-codes-meaning.md).
 - **AHP 1.1.0.** 0.15.0 speaks AHP 1.0.0, as rc.2 does, and AHP 1.1.0 goes in 0.16 (Softov, 2026-11-13). `@microsoft/agent-host-protocol@1.1.0` is on npm since 2026-11-13. Plan host/117 covers four of its changes and was read against the protocol on 2026-10-22, so 0.16 starts with a new read of it.
 - **The canvas `url`.** AHP 1.1.0 renames the experimental `CanvasState.url` to `uri`, and ahpd's canvases still send `url`. It goes in 0.16 with AHP 1.1.0 (Softov, 2026-11-13).
 - **The ahpd part as the release's own build.** [briefs/the-ahpd-part-is-the-releases-own-build.md](../briefs/the-ahpd-part-is-the-releases-own-build.md) goes in 0.16 (Softov, 2026-11-13).
