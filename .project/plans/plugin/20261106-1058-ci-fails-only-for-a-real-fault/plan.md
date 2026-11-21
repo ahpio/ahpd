@@ -7,9 +7,9 @@ created: 2026-11-06
 revalidated: 2026-11-21
 decisions:
   - decisions/on-windows-a-test-has-twenty-seconds.md
-problems:
-  - problems/three-cases-fail-at-random-on-windows.md
+problems: []
 refs:
+  - git://b0fb33f09 - the last commit that holds `problems/three-cases-fail-at-random-on-windows.md`, deleted once #420 fixed its disposable case and its computer-needs case had failed once only
   - git://f8706a399 - the last commit that holds `problems/two-attachment-cases-time-out-on-windows.md` and `problems/a-cofold-titling-case-times-out-on-windows.md`, which task 05 deletes
   - git://04a43a2f - the last commit that holds the brief `briefs/ci-fails-only-for-a-real-fault.md`, with the CI runs read
   - "[code://vitest.config.ts#L34](../../../../vitest.config.ts#L34) - `testTimeout`: 20 s on Windows, 5 s elsewhere"
