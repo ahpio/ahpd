@@ -211,8 +211,9 @@ export const presets: Record<string, AcpPreset> = {
   copapo: {
     ...rowOf('copapo'),
     args: ['acp'],
-    // copapo over ACP ignores the `mcpServers` a client sends, so a session this
-    // preset starts runs without the host's MCP servers.
+    // copapo 0.2.0 and later takes the stdio and http `mcpServers` a client
+    // sends with a session, and refuses an SSE one with a warning; 0.1.0 took
+    // none, so a session on it runs without the host's MCP servers.
     machine: xdgOf('copapo', ['config.json'], { COFOLD_HOME: '/ahpd/copapo/home' }),
   },
   devin: {

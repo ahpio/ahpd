@@ -1,6 +1,6 @@
 ---
 title: the pause workarounds
-status: todo
+status: done
 depends: []
 layer: "agent-cofold"
 refs:
@@ -29,3 +29,7 @@ ahpd no longer keeps a pause workaround that cofold now does itself, with the co
 
 - The agent-cofold tests pass.
 - The task's note names each removed workaround.
+
+## Result
+
+No change. `owePause`, `payPause`, `rejoin` and the synthesized pause `run.finished` were removed in `5ddb87dbe` (plugin/40, 2026-10-09). `route` in `pauses.ts` submits to `ctx.handle`, the handle the run was started or resumed with. The two `run.finished` that `turns.ts` builds are for a turn that never ran, which has no handle, and they stay.

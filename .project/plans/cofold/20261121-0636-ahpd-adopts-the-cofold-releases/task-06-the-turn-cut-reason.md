@@ -1,6 +1,6 @@
 ---
 title: the turn-cut reason
-status: todo
+status: done
 depends: []
 layer: "agent-cofold"
 refs:
@@ -26,3 +26,7 @@ ahpd shows the reason a turn was cut, as cofold gives it, in its transcripts.
 ## Validation
 
 - The new test passes, and the agent-cofold suite still passes.
+
+## Result
+
+No code change. cofold 0.4.0 writes the cancel reason into the marker, `[Request interrupted: <reason>]`. The transcript shows the marker as a `systemNotification` in the cut turn. A test in `agent-cofold-store.test.ts` now checks it for "a new message took its place".

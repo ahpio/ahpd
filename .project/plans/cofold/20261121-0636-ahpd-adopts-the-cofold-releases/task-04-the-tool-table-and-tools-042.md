@@ -1,6 +1,6 @@
 ---
 title: the tool table and the tools 0.4.2 bump
-status: todo
+status: done
 depends: []
 layer: "agent-cofold"
 refs:
@@ -31,3 +31,7 @@ ahpd reads what each cofold tool acts on from the tool, not from its own table.
 
 - Both commands exit 0.
 - Each approval prompt for a file tool names the same path as before, in the agent-cofold tests.
+
+## Result
+
+`@cofold/tools` is `^0.4.2`, with `0.4.2` in `minimumReleaseAgeExclude`. The table in `tools.ts` stays. `subject` was already in 0.4.1, and it is a display string. It is a workspace-relative path for a file tool, the glob for `list_files` and `search_files`, and the command for `shell_exec`. It names no permission kind and no absolute path, so it cannot replace a row without changing the approval prompt. 0.4.2's one change is the memory index reminder in `memory_write`.
