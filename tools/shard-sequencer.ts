@@ -32,7 +32,8 @@ export default class TimedSequencer extends BaseSequencer {
     const known = timings();
     const keyed = files.map((spec) => ({ spec, key: relative(root, spec.moduleId).split('\\').join('/') }));
     const sizes = keyed.map(({ key }) => known[key]).filter((ms): ms is number => ms !== undefined).sort((a, b) => a - b);
-    const middle = sizes[Math.floor(sizes.length / 2)] ?? 0;
+    // With no timing for any file, every file weighs the same, so the split is by count.
+    const middle = sizes[Math.floor(sizes.length / 2)] ?? 1;
     // Longest first, each to the shard with the least time so far: the usual
     // way to split work of unequal size across a fixed number of workers.
     const dealt = keyed
