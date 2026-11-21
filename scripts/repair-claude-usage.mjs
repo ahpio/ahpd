@@ -28,6 +28,11 @@
  * Each chat it changes is printed with its records' sum after the repair beside
  * the transcript's last total, which agree when every turn was recorded.
  *
+ * A second run changes nothing. A record it corrected carries the cost it had
+ * before in `meta['ahpd.repaired']`, and is not checked again. A chat whose
+ * records already sum to the transcript's last total is left as it is, which
+ * also covers a record corrected before the mark was written.
+ *
  * `--write` stops while `daemon.json` names a process that runs, because the
  * daemon reads its totals from these files only when it starts.
  */
@@ -38,6 +43,12 @@ import { join } from 'node:path';
 
 /** A cost that differs by less than this is the same cost. */
 const SAME = 0.000001;
+
+/** A chat's sum that differs from its transcript's total by less than this agrees with it. */
+const AGREES = 0.0001;
+
+/** The `meta` key a corrected record keeps its cost from before in. */
+const MARK = 'ahpd.repaired';
 
 const argv = process.argv.slice(2);
 const flag = (name) => {
@@ -161,7 +172,10 @@ for (const records of groups.values()) {
     unchecked.push(`${first.session} ${first.chat}`);
     continue;
   }
-  const states = costStates(file);
+  const states = costStates(file).filter((state) => state.at <= limit);
+  const total = states.at(-1)?.total;
+  const sum = records.reduce((held, record) => held + record.entry.cost.amount, 0);
+  if (total !== undefined && Math.abs(sum - total) < AGREES) continue;
   let before = -Infinity;
   let recorded = 0;
   let corrected = 0;
@@ -172,6 +186,7 @@ for (const records of groups.values()) {
     const since = states.filter((state) => state.at > before && state.at <= record.at);
     before = record.at;
     after += cost;
+    if (record.entry.meta?.[MARK] !== undefined) continue;
     const restored = Math.max(-Infinity, ...since.map((state) => state.total).filter((total) => total <= cost + SAME));
     if (restored === -Infinity || restored < SAME) continue;
     const amount = Math.max(0, cost - restored);
@@ -187,8 +202,7 @@ for (const records of groups.values()) {
   console.log(`${first.session} ${first.chat}`);
   for (const line of lines) console.log(line);
   console.log(`  recorded ${recorded.toFixed(4)}, corrected ${corrected.toFixed(4)}`);
-  const last = states.at(-1)?.total;
-  console.log(`  the chat's records sum to ${after.toFixed(4)} after the repair; its transcript's last total is ${last === undefined ? 'none' : last.toFixed(4)}`);
+  console.log(`  the chat's records sum to ${after.toFixed(4)} after the repair; its transcript's last total is ${total === undefined ? 'none' : total.toFixed(4)}`);
 }
 if (unchecked.length > 0) console.log(`${unchecked.length} chats not checked, because their transcript is not on this host.${verbose ? '' : ' Run with --verbose to name them.'}`);
 if (verbose) for (const group of unchecked) console.log(`  ${group}`);
@@ -203,6 +217,7 @@ else {
     const text = readFileSync(path, 'utf8').split('\n');
     for (const [index, amount] of held) {
       const entry = JSON.parse(text[index]);
+      entry.meta = { ...entry.meta, [MARK]: entry.cost.amount };
       entry.cost = { ...entry.cost, amount };
       if (entry.providerCost !== undefined) entry.providerCost = { ...entry.providerCost, amount };
       text[index] = JSON.stringify(entry);

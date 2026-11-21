@@ -25,4 +25,4 @@ node scripts/repair-claude-usage.mjs            # show what would change
 node scripts/repair-claude-usage.mjs --write    # change it, with a copy of each file
 ```
 
-Stop the daemon before `--write`, because it reads its totals only when it starts. The script needs the Claude transcripts in `~/.claude/projects`, and leaves a chat whose transcript is gone as it is. `--until <time>` limits it to records written up to that time.
+Stop the daemon before `--write`, because it reads its totals only when it starts. The script needs the Claude transcripts in `~/.claude/projects`, and leaves a chat whose transcript is gone as it is. `--until <time>` limits it to records written up to that time. A second run changes nothing: a corrected record keeps its earlier cost in `meta['ahpd.repaired']`.
