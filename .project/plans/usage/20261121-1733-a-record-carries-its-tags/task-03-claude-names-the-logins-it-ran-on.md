@@ -1,6 +1,6 @@
 ---
 title: A Claude turn names the logins it ran on
-status: todo
+status: done
 depends: [task-02-a-record-takes-the-tags-it-passed.md]
 layer: "agent-claude"
 refs:
@@ -41,3 +41,6 @@ The record then carries those logins' tags through task 02.
 
 ## Resume
 
+Built 2026-11-21.
+A run signs in with one login, so each usage names `ctx.login.id` through `withLogin` in `parts.ts`, and no list is kept per turn.
+A failover is a new run, so it names the next login, and the meter and `mergeLogicalTurnUsage` join the two.

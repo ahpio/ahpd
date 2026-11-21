@@ -1,6 +1,6 @@
 ---
 title: A usage record takes the tags of what it passed through
-status: todo
+status: done
 depends: [task-01-agents-and-connectors-hold-tags.md]
 layer: "sdk, server"
 refs:
@@ -55,3 +55,7 @@ A record with no tag has no `tags` field.
 
 ## Resume
 
+Built 2026-11-21.
+The host takes `HostOptions.usageTags`, with `agent(id)` and `connector(id)`, and `run.ts` fills it from the two channels.
+The proxy takes `ProxyOptions.connectorTags(id)` in the same way.
+The meter joins the connectors of every report of a turn, so a failed-over turn keeps both logins.

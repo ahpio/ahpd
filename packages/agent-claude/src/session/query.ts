@@ -1476,7 +1476,7 @@ export function createQuery(ctx: SessionContext): Query {
               // same place cache writes go, rather than beside them as fields
               // of their own.
               const total: Bag = used ?? {};
-              const meta: Bag = { ...bag(total._meta) };
+              const meta: Bag = { ...bag(ctx.withLogin(total)._meta) };
               if (cost !== undefined) meta['ahpd.cost'] = cost;
               if (figure !== undefined) {
                 meta.contextAttribution = figure.attribution;

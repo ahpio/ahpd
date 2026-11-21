@@ -26,6 +26,8 @@ export interface Parts {
   sum: () => Bag | undefined;
   /** Tell everybody the running turn what it has cost so far. */
   sayUsage: () => void;
+  /** A usage with the login this run signs in with, in `_meta['ahpd.connectors']`. */
+  withLogin: (usage: Bag) => Bag;
   /** What one `result` cost, as the change in `modelUsage` since the last. */
   costOf: (message: Bag) => Bag | undefined;
   /** Forget the cost baseline: the CLI's running total starts again. */
@@ -129,6 +131,20 @@ export function createParts(ctx: SessionContext): Parts {
     }
   };
 
+  /**
+   * A usage with the login this run signs in with, as `_meta['ahpd.connectors']`.
+   *
+   * A run signs in with one login, and a turn that fails over runs again on
+   * the next, so each run names its own and the host joins the runs' lists.
+   * The host reads each connector's tags into the turn's record. A run on no
+   * login names none.
+   */
+  const withLogin = (usage: Bag): Bag => {
+    const login = ctx.login?.id;
+    if (login === undefined) return usage;
+    return { ...usage, _meta: { ...bag(usage._meta), 'ahpd.connectors': [login] } };
+  };
+
   /** The sum so far, in the protocol's spelling, or nothing if no call reported. */
   const sum = (): Bag | undefined => (Object.keys(spent).length === 0 ? undefined : usageOf({ ...spent }, ctx.ran));
 
@@ -146,8 +162,9 @@ export function createParts(ctx: SessionContext): Parts {
    */
   const sayUsage = (): void => {
     const turn = ctx.active;
-    const used = sum();
-    if (turn === undefined || used === undefined) return;
+    const counted = sum();
+    if (turn === undefined || counted === undefined) return;
+    const used = withLogin(counted);
     turn.usage = mergeLogicalTurnUsage(ctx.resumedFrom?.usage, used);
     ctx.emit('chat', { type: 'chat/usage', turnId: turn.id, usage: used });
   };
@@ -397,7 +414,7 @@ export function createParts(ctx: SessionContext): Parts {
   };
 
   return {
-    setModifiedAt, endedAt, retitle, usageOf, newTurn, count, sum, sayUsage, costOf,
+    setModifiedAt, endedAt, retitle, usageOf, newTurn, count, sum, sayUsage, withLogin, costOf,
     newConversation, seedCost, costUnknown, inputNeededSet, inputNeededRemoved, openTurn, addPart, holdPart,
     stampStart, stampEnd, untimed, addFailure,
     /*

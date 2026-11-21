@@ -9,6 +9,7 @@ import { bag, reason } from '../utils/values.js';
 import { computerId, computersFor } from '../machines/computers.js';
 import { localPath, uriOf } from '../resources/fileuri.js';
 import { deepFreeze, frozenCopy } from '../utils/frozen.js';
+import { joinTags } from '../utils/tags.js';
 import { nestedAgent } from '../sessions/nested.js';
 import type { NestedAsked } from '../sessions/nested.js';
 import { idOf, uriFor, Status } from '../sessions/catalog.js';
@@ -1220,6 +1221,13 @@ export function createSpawn(ctx: HostContext): Spawn {
       // What the turn's check chose, read when each record is written and let
       // go of when the turn ends.
       keysOf,
+      // The agent's tags, then each connector's, read as each record is written.
+      ...(options.usageTags === undefined ? {} : {
+        tagsOf: (connectors: readonly string[]) => joinTags(
+          options.usageTags?.agent(agent.provider),
+          ...connectors.map((id) => options.usageTags?.connector(id)),
+        ),
+      }),
       owner: () => kept.owner(idOf(uri)),
       scope: () => charged.get(uri)?.scope,
     });

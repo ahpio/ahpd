@@ -1,6 +1,6 @@
 ---
 title: Usage groups and filters records by tag
-status: todo
+status: done
 depends: [task-02-a-record-takes-the-tags-it-passed.md]
 layer: "sdk, docs"
 refs:
@@ -50,3 +50,6 @@ A `tag` parameter keeps only the records that hold every tag it names.
 
 ## Resume
 
+Built 2026-11-21.
+The store's `groups` takes the filter as an optional fifth argument, so a store plugin that ignores it still answers.
+A tag row's name is the tag.

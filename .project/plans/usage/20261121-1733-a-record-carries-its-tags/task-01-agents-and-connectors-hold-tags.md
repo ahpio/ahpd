@@ -1,6 +1,6 @@
 ---
 title: An agent record and a connector hold tags
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:
@@ -49,3 +49,7 @@ The channels read, check, save and send them, and a live view has them at each c
 
 ## Resume
 
+Built 2026-11-21.
+The helpers are `tagsOf`, `tagsProblem` and `joinTags` in `packages/sdk/src/utils/tags.ts`, so `checkTags` is named `tagsProblem`.
+`AgentView.tags` is optional, because about twenty test fixtures and any plugin test build a view by hand.
+The channel's own view always holds a list, and `AgentsChannel.tagsOf(id)` reads it.
