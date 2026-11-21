@@ -14,7 +14,7 @@ Current progress and pending items only, as of 2026-11-21. *Outside this reposit
   - Also merged that day: #397 (`fd7084712`) host/117, #399 (`4b6abcbe4`) host/20261121-0524, and #400 (`1f299c526`) host/20261121-0554.
   - 46 plans went to `built` with the release as their review (`88251f665`).
   - host/117, host/20261121-0524, host/20261121-0554 and host/20261121-0555 have every task `implemented`, and close as `built` on Softov's word.
-  - #402 (`2360a50aa`) merged: Create PR finds a fork's open request, and the cases that start processes get 20 s. ahpw #109 (`c440209`) reads a canvas's `uri` before `url`.
+  - #402 (`2360a50aa`) merged: Create PR finds a fork's open request. The cases that start processes get 20 s. ahpw #109 (`c440209`) reads a canvas's `uri` before `url`.
   - Planned on 2026-11-21, not built: [host/20261121-0821-an-automation-runs-once-at-a-set-time](../plans/host/20261121-0821-an-automation-runs-once-at-a-set-time/plan.md), 2 tasks, then [host/20261121-0821-an-automation-continues-a-session-or-a-chat](../plans/host/20261121-0821-an-automation-continues-a-session-or-a-chat/plan.md), 3 tasks.
   - The brief [a-claude-question-takes-a-typed-answer.md](../briefs/a-claude-question-takes-a-typed-answer.md) waits for "plan it", with its decision accepted.
   - #401 (`f5257c229`) merged host/20261121-0555, the liveness ping and keep-awake. It closes as `built` on Softov's word. His dev daemon takes it at its next restart on main.
