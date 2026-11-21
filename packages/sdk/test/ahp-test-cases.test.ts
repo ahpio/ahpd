@@ -438,6 +438,10 @@ const ALLOWED: Record<string, (Differs & { because: string })[]> = {
   '232-chat-turnsloaded-prepends-older-turns': [{ start: ['turnsNextCursor'], because: RETAINED }],
   '233-chat-turnsloaded-dedupes-overlap-and-clears-cursor': [{ start: ['turnsNextCursor'], because: RETAINED }],
   '234-chat-truncated-clears-turns-next-cursor-when-clearing-all': [{ start: ['turnsNextCursor'], because: RETAINED }],
+  '272-chat-changesetschanged-clears-catalogue': [{
+    start: ['changesets'],
+    because: 'types/channels-chat/state.ts, ChatState.changesets: "Catalogue of changesets the server can produce for this chat."; the host says the ones its session\'s folder has once the chat is read',
+  }],
   // A client's announcement is answered with the session's whole list, the
   // backend's own, which replaces the case's.
   '035-session-activeclientset-adds-client': [{ reduced: ['customizations'], because: CUSTOMIZED }],
