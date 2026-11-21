@@ -1,6 +1,6 @@
 ---
 title: The root schema has the new keys
-status: todo
+status: implemented
 depends: []
 layer: "sdk"
 refs:
@@ -30,3 +30,5 @@ The root schema declares `keepAwakeWhileWorking`, `sessionModelOptions`, `chatRe
 - The sdk vitest suite passes.
 
 ## Resume
+
+The ten keys are in `vscoderootconfig.ts`, each copied from `agentHostSchema.ts` at `ddbdd50a9ed1`, with its line in a comment. `migrateLegacyCopilotCliEnabled` is gone, and `assistedApprovalInstructions` joins `clientOwnedApprovalRootConfigKeys`, as in VS Code main. `root-config.test.ts` checks the ten keys and the dropped one. The 1.145 window's patch in `wire.test.ts` still holds the dropped key. It now counts among the keys VS Code dropped, which a host keeps as pushed. The sdk suite passes, 4968 cases.

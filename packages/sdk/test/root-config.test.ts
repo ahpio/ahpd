@@ -229,16 +229,22 @@ it('declares every key VS Code pushes, as VS Code declares it', async () => {
     'mcpToolRoutingEnabled', 'mcpConnectorsEnabled', 'markdownPlanRichLinksEnabled',
     'workspaceSnapshotEnabled', 'agentOrchestrationLimits', 'artifactTools',
     'canvasesEnabled', 'autoAttachPullRequests', 'overlapProviderPreparation',
-    'migrateLegacyCopilotCliEnabled', 'sessionCatalogEnabled', 'showExternalSessions',
+    'sessionCatalogEnabled', 'showExternalSessions',
     'autoArchiveMergedSessionsAfterDays', 'autoDeleteArchivedMergedSessionsAfterDays',
     'copilotMultiRootEnabled', 'claudeMultiRootEnabled', 'codexMultiRootEnabled',
     'editAutoApprovePatterns', 'terminalAutoApproveRules',
     'agentMerge.enabled', 'agentMerge.addressReviews', 'agentMerge.fixCI',
     'agentMerge.resolveConflicts', 'agentMerge.mergePullRequest', 'agentMerge.mergeMethod',
     'agentMerge.replyAttribution', 'automationsEnabled', 'automationRunTimeoutMinutes',
+    // VS Code main at `ddbdd50a9ed1`.
+    'keepAwakeWhileWorking', 'sessionModelOptions', 'chatResources', 'hooksEnabled', 'mcpSkillsEnabled',
+    'mcpSkillsServerApprovals', 'extensionPermissionApprovals', 'mcpGalleryServiceUrl', 'browserUseEnabled',
+    'assistedApprovalInstructions',
   ];
   // The keys that are missing, rather than a boolean: one left out says which.
   expect(PUSHED.filter((key) => !(key in config.schema.properties))).toEqual([]);
+  // VS Code main no longer declares it.
+  expect(config.schema.properties).not.toHaveProperty('migrateLegacyCopilotCliEnabled');
   expect(config.values).toEqual({});
 
   // `TelemetryConfiguration.ON` and its three siblings, as literals.

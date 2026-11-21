@@ -1,9 +1,9 @@
-import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { pushRemoteOf } from '../src/sessions/changes.js';
+import { gitSync } from '../../../tools/git.ts';
 
 /*
  * The remote Create PR pushes a branch with no upstream to, in VS Code's
@@ -17,7 +17,7 @@ afterEach(() => { for (const dir of made.splice(0)) rmSync(dir, { recursive: tru
 const repo = (remotes: Record<string, string>, config: Record<string, string> = {}): string => {
   const dir = mkdtempSync(join(tmpdir(), 'ahpd-push-remote-'));
   made.push(dir);
-  const git = (...args: string[]): void => { execFileSync('git', args, { cwd: dir, stdio: 'ignore' }); };
+  const git = (...args: string[]): void => { gitSync(args, { cwd: dir }); };
   git('init', '-q');
   for (const [name, url] of Object.entries(remotes)) git('remote', 'add', name, url);
   for (const [key, value] of Object.entries(config)) git('config', key, value);
