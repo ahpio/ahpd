@@ -1,7 +1,7 @@
 ---
 title: A Claude call moves to the background
 domain: claude
-status: active
+status: built
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
