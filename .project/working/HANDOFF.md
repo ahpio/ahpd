@@ -13,8 +13,8 @@ Current progress and pending items only, as of 2026-11-21. *Outside this reposit
   - Merged on 2026-11-21: #393 (`bcec57901`) from beorn, #395 (`9ad9b0f98`), #396 (`2bb0f809e`) and #398 (`98a2b4cd7`), the image fix.
   - Also merged that day: #397 (`fd7084712`) host/117, #399 (`4b6abcbe4`) host/20261121-0524, and #400 (`1f299c526`) host/20261121-0554.
   - 46 plans went to `built` with the release as their review (`88251f665`).
-  - host/117, host/20261121-0524 and host/20261121-0554 have every task `implemented`, and close as `built` on Softov's word.
-  - host/20261121-0555, the liveness ping and keep-awake, is built on its branch in `/github/ahpd.worktrees/liveness`. Its PR follows the sdk and server suites.
+  - host/117, host/20261121-0524, host/20261121-0554 and host/20261121-0555 have every task `implemented`, and close as `built` on Softov's word.
+  - #401 (`f5257c229`) merged host/20261121-0555, the liveness ping and keep-awake. It closes as `built` on Softov's word. His dev daemon takes it at its next restart on main.
   - *Later* in [the brief](../briefs/vscode-main-parity-after-ahp-1-1-0.md) holds what the review of VS Code main left for later. That is AHP 1.2.0 automations, remote worktree cleanup, turn changesets under the chat, and the new `vscode/*` methods.
   - Left from host/20261121-0524: the lookup of an open PR names the head by the base owner. So a fork's open PR is not found before a create.
 - The last stable release is 0.14.0 (`v0.14.0`). `v0.15.0-rc.3` is tagged on `28dd315e0` (#320). Its release run 43394827388 passed `parts`, `release` and `image` on 2026-11-13, and staged the 13 packages under `next`. Softov approved them on 2026-11-13, and npm serves `0.15.0-rc.3` under `next` since 14:36 UTC. What the release needs is in [pending/release.md](../pending/release.md), and the checks by hand are ordered in [pending/triage.md](../pending/triage.md).
