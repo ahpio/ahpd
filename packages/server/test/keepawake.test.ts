@@ -96,8 +96,9 @@ describe('the daemon\'s log of the helper', () => {
     const { log: said, warned } = log();
     const once = oncePerProcess(said);
     for (let at = 0; at < 3; at++) {
-      holdIdleSleep(false, once, backend(async () => { throw new Error('Power source is unknown'); }, [])).release();
+      const hold = holdIdleSleep(false, once, backend(async () => { throw new Error('Power source is unknown'); }, []));
       await vi.advanceTimersByTimeAsync(0);
+      hold.release();
     }
     expect(warned).toEqual(['keep-awake: cannot inhibit idle sleep on this host: Power source is unknown']);
   });

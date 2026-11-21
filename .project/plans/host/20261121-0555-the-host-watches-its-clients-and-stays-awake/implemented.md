@@ -21,7 +21,7 @@ The host pings a client that is silent for 10 s, and closes it when it is still 
 ## Verified
 
 - `liveness.test.ts`, `sdk/test/keepawake.test.ts`, `server/test/keepawake.test.ts` and the keep-awake case of `turning.test.ts` pass.
-- Typecheck and boundary pass.
+- The sdk suite passes, 5110 cases, and the server suite, 1991 cases with this file fixed. Typecheck and boundary pass.
 
 ## Departures from the plan
 
