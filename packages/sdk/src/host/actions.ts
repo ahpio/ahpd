@@ -500,7 +500,11 @@ export function createActions(ctx: HostContext, conn: ConnectionContext): Action
         // https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentService.ts#L13661-L13662
         ctx.persistRootConfig();
         // Moving chats turned on or off moves every chat's offer of a move.
-        if (Object.hasOwn(config, 'chatMoves.enabled')) for (const chat of byChat.keys()) ctx.updateChatMovability(chat);
+        if (Object.hasOwn(config, 'chatMoves.enabled')) {
+          for (const chat of byChat.keys()) ctx.updateChatMovability(chat);
+          // And each session's `vscode.movable`, which reads the same setting.
+          for (const uri of ctx.sessions.keys()) ctx.changesetsAndMetaChanged(uri);
+        }
         // The root sandbox settings moved: every session's floor published
         // and every chat's sandbox applied again, as VS Code's host does on a
         // root change.

@@ -107,4 +107,30 @@ describe('managed worktrees, as VS Code\'s host lists and removes them', () => {
       .rejects.toThrow('A session, chat, or detached worktree record is still using this worktree.');
     expect(existsSync(orphan)).toBe(true);
   });
+
+  it('keeps a worktree in use while a chat that moved out of its session works in it', async () => {
+    const { project, branch, orphan, list, client } = await setup();
+    await client.handle({
+      method: 'dispatchAction',
+      params: { channel: 'ahp-root://', action: { type: 'root/configChanged', config: { 'chatMoves.enabled': true } } },
+    });
+    const spoken = async (channel: string, where: string): Promise<void> => {
+      await client.handle({ method: 'createSession', params: { channel, provider: 'echo', workingDirectories: [uriOf(where)] } });
+      const { defaultChat } = (await client.handle({ method: 'subscribe', params: { channel } }) as { snapshot: { state: { defaultChat: string } } }).snapshot.state;
+      const turns = async (): Promise<number> => ((await client.handle({ method: 'subscribe', params: { channel: defaultChat } }) as {
+        snapshot: { state: { turns: unknown[] } };
+      }).snapshot.state.turns.length);
+      await client.handle({
+        method: 'dispatchAction',
+        params: { channel: defaultChat, clientSeq: 0, action: { type: 'chat/turnStarted', turnId: 't1', startedAt: new Date().toISOString(), message: { text: 'hello', origin: { kind: 'user' } } } },
+      });
+      for (const until = Date.now() + WAIT_MS; Date.now() < until && await turns() === 0;) await new Promise((r) => { setTimeout(r, 10); });
+    };
+    await spoken('ahp-session:/inside', orphan);
+    await spoken('ahp-session:/home', project);
+    await client.handle({ method: 'vscode/moveSession', params: { session: 'ahp-session:/inside', destination: 'ahp-session:/home', after: null } });
+    // No session works in the orphan now, and the chat that moved still does.
+    expect(await list()).toEqual([{ repository: uriOf(project), worktree: uriOf(orphan), branch, cleanupStatus: { state: 'inUse' } }]);
+  });
 });
+

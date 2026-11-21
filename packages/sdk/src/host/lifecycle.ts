@@ -101,6 +101,8 @@ export interface RanIn {
 export interface Lifecycle {
   /** A session gone, with everything it held, and the backend's own copy of it. */
   removeSession(uri: string, acting?: Principal | Owner): Promise<void>;
+  /** End a session whose one chat moved under another: its row goes, and what the chat still uses stays. */
+  endMovedSession(uri: string): Promise<void>;
   /**
    * The sessions a restart has taken out of `sessions` and not yet put back, by
    * uri. A listing counts them as running, so it never prunes their records.
@@ -906,6 +908,36 @@ export function createLifecycle(ctx: HostContext): Lifecycle {
     if (announced) broadcast(ROOT, 'root/sessionRemoved', { channel: ROOT, session: uri });
     log(`disposed ${uri}`);
     if (failure !== undefined) throw failure;
+  };
+
+  /*
+   * The source of a session move, once its one chat is the destination's: as
+   * VS Code's host ends it. Unlike `removeSession`, nothing the chat still
+   * uses goes: the backend's conversation, the checkpoints, the scratch
+   * folder and the worktree stay. The worktree record is let go first, so the
+   * teardown does not take the tree away under the chat.
+   * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/agentService.ts#L8600-L8604
+   */
+  const endMovedSession = async (uri: string): Promise<void> => {
+    const held = sessions.get(uri);
+    if (held === undefined) return;
+    flushDeltas();
+    worktrees.delete(uri);
+    kept.setWorktree?.(idOf(uri), undefined);
+    kept.setAdditionalWorktrees?.(idOf(uri), []);
+    await teardown(held, uri);
+    forgetChats(idOf(uri));
+    kept.forget(idOf(uri));
+    owners.delete(uri);
+    const announced = !provisional(uri);
+    ctx.removeListedSession(uri);
+    removeNotifiedSummary(uri);
+    for (const [channel, open] of ctx.heldStates) {
+      if (channel === uri || (open.kind === 'chat' && ctx.sessionFor(channel) === uri)) ctx.closeState(channel);
+    }
+    activeSessionsChanged();
+    if (announced) broadcast(ROOT, 'root/sessionRemoved', { channel: ROOT, session: uri });
+    log(`ended ${uri}: its chat moved under another session`);
   };
 
   const restart = async (
@@ -1865,7 +1897,9 @@ export function createLifecycle(ctx: HostContext): Lifecycle {
 
   /** Whether a worktree is one a session of this host records, which keeps it in use. */
   const recordedTree = (path: string): boolean =>
-    [...sessions.keys(), ...kept.sessions().map((id) => ctx.nameOf(id))].some((uri) => treesOf(uri).some((tree) => tree.path === path));
+    [...sessions.keys(), ...kept.sessions().map((id) => ctx.nameOf(id))].some((uri) => treesOf(uri).some((tree) => tree.path === path))
+    // A chat that moved out of the session that made its tree goes on working there.
+    || [...ctx.chatRelaunches.values()].some((one) => one.directory === path);
 
   /*
    * A managed worktree a client asked to clean up, which no session records.
@@ -2876,7 +2910,7 @@ export function createLifecycle(ctx: HostContext): Lifecycle {
   };
 
   return {
-    removeSession, respawning, restart, moveSession, moveChatWorkspace, relaunchChat, chatIdOf, disposeProviderChat, ranIn, backendsOwn,
+    removeSession, endMovedSession, respawning, restart, moveSession, moveChatWorkspace, relaunchChat, chatIdOf, disposeProviderChat, ranIn, backendsOwn,
     getProviderForChat, chatConfig, effectiveChatConfigValues, initialChatConfig, keepChatOwnConfigValues, isolated, oweTree,
     requestSessionWorktreeRemoval, worktreeRemovals, worktreeRecorded: recordedTree, restoreSessionWorktree, canAutomaticallyDeleteArchivedSession, createDetachedWorktree,
     beginOrRun, startTurn, commandIn, beginTurn, modelIn, messageFrom, messageOf, messageAttachments, scratchFolder, createProviderSession,

@@ -537,6 +537,9 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
           // A worktree's disk usage is measured on this host's disk.
           // https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/protocolServerHandler.ts#L1256
           'vscode.worktreeDiskUsage': true,
+          // A single-chat session moves under another, whether or not moving chats is on now.
+          // https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/common/agentHostExtensionProtocol.ts#L128-L132
+          'vscode.sessionMove': true,
           'vscode.getAgentHostSessionStateFile.chat': true,
           // A debug-log collection its window follows may be called off.
           'vscode.debugLogsCancellation': true,

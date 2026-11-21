@@ -12,6 +12,7 @@ import { localPath, uriOf } from '../resources/fileuri.js';
 import { ROOT, spaceOf } from './channels.js';
 import { need, reason } from './common.js';
 import { ARCHIVE_COMMIT_MESSAGE, symlinkFolders } from './lifecycle.js';
+import { createSessionMover } from './sessionmethods.js';
 import { requireTrust } from './trust.js';
 import type { LogFile } from '../sessions/debuglogs.js';
 import type { ContainerConnect, ContainerConnectResult, ContainerSink } from '../types/containers.js';
@@ -89,6 +90,7 @@ export interface VscodeMethods {
   'vscode/listManagedWorktrees': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/cleanupManagedWorktree': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/measureWorktreeDiskUsage': (params: Record<string, unknown>) => Promise<unknown>;
+  'vscode/moveSession': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/cancelWorktreeDiskUsage': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/setAgentHostDetachedWorktreeArchived': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/deleteAgentHostDetachedWorktree': (params: Record<string, unknown>) => Promise<unknown>;
@@ -114,6 +116,7 @@ export interface VscodeMethods {
 
 export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): VscodeMethods {
   const { connection } = conn;
+  const moveSession = createSessionMover(ctx);
   const {
     agents, byChat, detached, dirOf, kept, leadOf, log, logs, options, ownerFor, owners,
     sessionFor, sessions, setArtifacts,
@@ -559,6 +562,7 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
     },
     'vscode/listManagedWorktrees': async (params) => await listManagedWorktrees(params),
     'vscode/measureWorktreeDiskUsage': async (params) => await measureWorktreeDiskUsage(params),
+    'vscode/moveSession': async (params) => await moveSession(connection, conn.tokensFor, params),
     'vscode/cancelWorktreeDiskUsage': (params) => {
       ctx.diskUsage.scans.get(connection)?.get(stringParam(params, 'requestId'))?.abort();
       return Promise.resolve({});

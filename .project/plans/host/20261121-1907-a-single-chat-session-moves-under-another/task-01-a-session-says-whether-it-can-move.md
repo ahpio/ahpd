@@ -1,6 +1,6 @@
 ---
 title: A session says whether it can move
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:

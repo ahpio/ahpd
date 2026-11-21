@@ -59,7 +59,8 @@ export interface Catalogue {
   /** Whether a chat, or a worker inside one of its calls, has a turn in progress. */
   hasActiveTurn(uri: string): boolean;
   /** Whether a chat is one a move is ever made of: moves on, a chat of its session's backend, not its default, resumable. */
-  isStructurallyMovable(uri: string): boolean;
+  /** `asSession` asks for the default chat of a session that moves whole, which a chat move never takes. */
+  isStructurallyMovable(uri: string, asSession?: boolean): boolean;
   /** Why a session refuses a move out of it or into it now: archived, or changing its workspace. */
   sessionMoveRefusal(session: string): MoveRefusal | undefined;
   /** Why a chat refuses its move now for its own state: no folder, or no turn yet. */
@@ -307,13 +308,13 @@ export function createCatalogue(ctx: HostContext): Catalogue {
    * never one: a move starts it again on the destination's backend, which is a
    * harness that has never seen its transcript.
    */
-  const isStructurallyMovable = (uri: string): boolean => {
+  const isStructurallyMovable = (uri: string, asSession = false): boolean => {
     if (ctx.rootConfig['chatMoves.enabled'] !== true) return false;
     const held = sessions.get(sessionHolding(uri) ?? '');
     const chat = held === undefined ? undefined : held.chats.get(uri);
     if (held === undefined || chat === undefined) return false;
     if (held.backends.has(uri)) return false;
-    if (held.defaultChat === uri) return false;
+    if ((held.defaultChat === uri) !== asSession) return false;
     const own = chat.agentId();
     if (own === undefined || own === '') return false;
     return chat.resumable?.() !== false;
