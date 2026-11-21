@@ -9,7 +9,7 @@ requires:
   - plans/host/20261121-0524-the-small-vscode-main-fixes/plan.md
 refs:
   - git://e5ba79bf4 - main when the plan was made
-  - "[briefs/vscode-main-parity-after-ahp-1-1-0.md](../../../briefs/vscode-main-parity-after-ahp-1-1-0.md) - the facts, section *Host liveness and keep-awake*"
+  - git://8b6842e2c - the last commit that holds `briefs/vscode-main-parity-after-ahp-1-1-0.md`, the facts, section *Host liveness and keep-awake*
   - "[code://packages/sdk/src/listen.ts#L531-L536](../../../../packages/sdk/src/listen.ts#L531-L536) - a socket's messages and its close"
   - "[code://packages/sdk/src/host/catalogue.ts#L686-L692](../../../../packages/sdk/src/host/catalogue.ts#L686-L692) - `activeSessionsChanged`, the count of sessions running a turn"
   - git://github.com/microsoft/vscode@ddbdd50a9ed1 - `node/protocolServerHandler.ts` L153-L154 and L858-L905, `node/agentHostKeepAwake.ts`, `node/agentHostPowerSaveBlocker.ts`

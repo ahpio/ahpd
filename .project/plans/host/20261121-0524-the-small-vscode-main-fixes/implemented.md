@@ -30,4 +30,4 @@ ahpd matches three small behaviours of VS Code main. A permission rule `Mcp`, `M
 ## Left for later
 
 - The lookup of an open PR still names the head by the base owner, so a fork's open PR is not found before a create.
-- No behaviour reads `keepAwakeWhileWorking`, `sessionModelOptions` or `chatResources` yet. The later plans of [the brief](../../../briefs/vscode-main-parity-after-ahp-1-1-0.md) do.
+- No behaviour reads `keepAwakeWhileWorking`, `sessionModelOptions` or `chatResources` yet. The later plans of the brief `briefs/vscode-main-parity-after-ahp-1-1-0.md` (`git://8b6842e2c`) do.

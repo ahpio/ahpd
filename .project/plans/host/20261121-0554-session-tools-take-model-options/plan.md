@@ -9,7 +9,7 @@ requires:
   - plans/host/20261121-0524-the-small-vscode-main-fixes/plan.md
 refs:
   - git://fd7084712 - main when the plan was made
-  - "[briefs/vscode-main-parity-after-ahp-1-1-0.md](../../../briefs/vscode-main-parity-after-ahp-1-1-0.md) - the facts, section *Session tool options*"
+  - git://8b6842e2c - the last commit that holds `briefs/vscode-main-parity-after-ahp-1-1-0.md`, the facts, section *Session tool options*
   - "[code://packages/sdk/src/tools/session.ts#L595-L615](../../../../packages/sdk/src/tools/session.ts#L595-L615) - `create_session`, which takes `model`, `agent` and `config`"
   - "[code://packages/sdk/src/tools/session.ts#L741](../../../../packages/sdk/src/tools/session.ts#L741) - `list_models`"
   - "[code://packages/sdk/src/tools/artifacts.ts#L94](../../../../packages/sdk/src/tools/artifacts.ts#L94) - one entry of `add_artifact_or_reference`"

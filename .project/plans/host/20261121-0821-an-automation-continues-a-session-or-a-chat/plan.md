@@ -9,7 +9,7 @@ requires:
   - plans/host/20261121-0821-an-automation-runs-once-at-a-set-time/plan.md
 refs:
   - git://cea147af8 - main when the plan was made
-  - "[briefs/vscode-main-parity-after-ahp-1-1-0.md](../../../briefs/vscode-main-parity-after-ahp-1-1-0.md) - section *Later*, AHP 1.2.0 automations"
+  - git://8b6842e2c - the last commit that holds `briefs/vscode-main-parity-after-ahp-1-1-0.md`, section *Later*, AHP 1.2.0 automations
   - "[code://packages/sdk/src/host/automations.ts#L117-L125](../../../../packages/sdk/src/host/automations.ts#L117-L125) - `wakeOf`, which reads `_meta.ahpd.session` and `pinnedSession`"
   - "[code://packages/sdk/src/host/automations.ts#L471-L475](../../../../packages/sdk/src/host/automations.ts#L471-L475) - `pinnedChat`, the session a pinned run continues"
   - "[code://packages/sdk/src/host/automations.ts#L615-L644](../../../../packages/sdk/src/host/automations.ts#L615-L644) - `request`, with the overlap rules"

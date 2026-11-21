@@ -7,7 +7,7 @@ created: 2026-11-21
 revalidated: 2026-11-21
 refs:
   - git://cea147af8 - main when the plan was made
-  - "[briefs/vscode-main-parity-after-ahp-1-1-0.md](../../../briefs/vscode-main-parity-after-ahp-1-1-0.md) - section *Later*, AHP 1.2.0 automations"
+  - git://8b6842e2c - the last commit that holds `briefs/vscode-main-parity-after-ahp-1-1-0.md`, section *Later*, AHP 1.2.0 automations
   - "[code://packages/sdk/src/host/handshake.ts#L491-L497](../../../../packages/sdk/src/host/handshake.ts#L491-L497) - the automation capabilities the host advertises"
   - "[code://packages/sdk/src/host/actions.ts#L729-L760](../../../../packages/sdk/src/host/actions.ts#L729-L760) - `automation/createRequested` and `automation/updateRequested`, where a definition is checked"
   - "[code://packages/server/src/scheduled.ts#L413-L439](../../../../packages/server/src/scheduled.ts#L413-L439) - `schedulesOf`, which reads only `schedule` triggers"

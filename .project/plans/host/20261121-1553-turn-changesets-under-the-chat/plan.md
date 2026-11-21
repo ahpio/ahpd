@@ -7,7 +7,7 @@ created: 2026-11-21
 revalidated: 2026-11-21
 refs:
   - git://80ee689aa - main when the plan was made
-  - "[briefs/vscode-main-parity-after-ahp-1-1-0.md](../../../briefs/vscode-main-parity-after-ahp-1-1-0.md) - section *Later*, turn changesets under the chat"
+  - git://8b6842e2c - the last commit that holds `briefs/vscode-main-parity-after-ahp-1-1-0.md`, section *Later*, turn changesets under the chat
   - "[code://packages/sdk/src/host/changesets.ts#L115-L154](../../../../packages/sdk/src/host/changesets.ts#L115-L154) - `catalogueOf`, `changesetAt` and `changesetOf`, which read the owner as a session"
   - "[code://packages/sdk/src/host/changesets.ts#L737-L743](../../../../packages/sdk/src/host/changesets.ts#L737-L743) - `relayedChannel`"
   - "[code://packages/sdk/src/host/facts.ts#L622-L631](../../../../packages/sdk/src/host/facts.ts#L622-L631) - where `session/changesetsChanged` is said"

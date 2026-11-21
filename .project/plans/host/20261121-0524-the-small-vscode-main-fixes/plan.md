@@ -8,7 +8,7 @@ revalidated: 2026-11-21
 requires: []
 refs:
   - git://b61f8a2f6 - main when the plan was made, and the last commit before the brief is used
-  - "[briefs/vscode-main-parity-after-ahp-1-1-0.md](../../../briefs/vscode-main-parity-after-ahp-1-1-0.md) - the facts this plan builds, section *Small fixes*"
+  - git://8b6842e2c - the last commit that holds `briefs/vscode-main-parity-after-ahp-1-1-0.md`, the facts this plan builds, section *Small fixes*
   - "[code://packages/sdk/src/access/permissionrules.ts#L73-L87](../../../../packages/sdk/src/access/permissionrules.ts#L73-L87) - `matchesPermissionRule`, with no `Mcp` case"
   - "[code://packages/sdk/src/host/permissions.ts#L78-L85](../../../../packages/sdk/src/host/permissions.ts#L78-L85) - `mcpServerOf`, the server a call's tool belongs to"
   - "[code://packages/sdk/src/host/spawn.ts#L626-L632](../../../../packages/sdk/src/host/spawn.ts#L626-L632) - the request the approval chain reads"

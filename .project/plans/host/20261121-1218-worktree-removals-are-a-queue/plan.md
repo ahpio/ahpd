@@ -7,7 +7,7 @@ created: 2026-11-21
 revalidated: 2026-11-21
 refs:
   - git://a0cd1337f - main when the plan was made
-  - "[briefs/vscode-main-parity-after-ahp-1-1-0.md](../../../briefs/vscode-main-parity-after-ahp-1-1-0.md) - section *Later*, remote worktree cleanup"
+  - git://8b6842e2c - the last commit that holds `briefs/vscode-main-parity-after-ahp-1-1-0.md`, section *Later*, remote worktree cleanup
   - "[code://packages/sdk/src/host/lifecycle.ts#L1784-L1854](../../../../packages/sdk/src/host/lifecycle.ts#L1784-L1854) - `requestSessionWorktreeRemoval`, which removes inline and only logs what it kept"
   - "[code://packages/sdk/src/host/lifecycle.ts#L1856-L1878](../../../../packages/sdk/src/host/lifecycle.ts#L1856-L1878) - `restoreSessionWorktree`"
   - "[code://packages/sdk/src/host/lifecycle.ts#L1596-L1601](../../../../packages/sdk/src/host/lifecycle.ts#L1596-L1601) - a tree's branch, `<prefix>agents/<name>`, under `<repo>.worktrees`"
