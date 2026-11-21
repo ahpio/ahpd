@@ -144,9 +144,10 @@ export function createCanvases(ctx: CanvasHost): Canvases {
    *
    * A `CanvasState` is the plugin's whole claim about the canvas, and the host
    * draws it: an unidentified one could not be drawn again under its instance,
-   * and a URL that a client cannot reach is a canvas that shows nothing. The
-   * URL itself is kept out of the sentence, because the host does not write one
-   * anywhere.
+   * and a `uri` that a client cannot reach is a canvas that shows nothing. The
+   * URI itself is kept out of the sentence, because the host does not write one
+   * anywhere. AHP 1.1.0 lets the host choose which sources it serves, and this
+   * host serves absolute http(s) URLs only.
    */
   const check = (method: string, by: string, state: CanvasState): void => {
     for (const member of ['instanceId', 'extensionId', 'canvasId'] as const) {
@@ -155,10 +156,10 @@ export function createCanvases(ctx: CanvasHost): Canvases {
         throw new Error(`plugin ${by}: ${method} needs state.${member} to be a non-empty string`);
       }
     }
-    const url = state.url;
-    if (url === undefined) return;
-    if (!isWebUrl(url)) {
-      throw new Error(`plugin ${by}: ${method} needs state.url to be an absolute http(s) URL with a host`);
+    const uri = state.uri;
+    if (uri === undefined) return;
+    if (!isWebUrl(uri)) {
+      throw new Error(`plugin ${by}: ${method} needs state.uri to be an absolute http(s) URL with a host`);
     }
   };
 
@@ -246,11 +247,11 @@ export function createCanvases(ctx: CanvasHost): Canvases {
       /*
        * The plugin that drew it is going, so its source is: the canvas's own
        * channel is told so before the canvas goes, as the protocol has a host
-       * clear `url` when the provider becomes unavailable.
-       * https://github.com/microsoft/agent-host-protocol/blob/5f16d81bb7045b66d7bc768d244feab75002d943/types/channels-canvas/state.ts#L48-L50
+       * clear `uri` when the provider becomes unavailable.
+       * https://github.com/microsoft/agent-host-protocol/blob/v1.1.0/types/channels-canvas/state.ts#L48-L64
        */
-      if (one.state.url !== undefined) {
-        const { url: _url, ...left } = one.state;
+      if (one.state.uri !== undefined) {
+        const { uri: _uri, ...left } = one.state;
         ctx.dispatch(one.resource, { type: 'canvas/stateChanged', canvas: left });
       }
       drop(one);

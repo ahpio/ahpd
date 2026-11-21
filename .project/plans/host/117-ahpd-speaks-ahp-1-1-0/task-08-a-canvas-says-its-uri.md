@@ -1,6 +1,6 @@
 ---
 title: A canvas says its uri
-status: todo
+status: implemented
 depends: [01]
 layer: "sdk"
 refs:
@@ -36,3 +36,5 @@ No canvas says `url`.
 - The sdk and server vitest suites pass.
 
 ## Resume
+
+A canvas says `uri`: the host's check, the clear when a plugin goes, the wire log's redaction, the example plugin, the tests and the docs. The check keeps absolute http(s) URLs only, which AHP 1.1.0 allows, since it lets the host choose the sources it serves. `pnpm typecheck` is clean. Six files pass, 156 cases. ahpw `src/resources/sessions/SessionHeader.tsx:114` reads `url` and needs its own PR.

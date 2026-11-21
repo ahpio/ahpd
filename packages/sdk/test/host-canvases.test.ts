@@ -22,7 +22,7 @@ const STATE: CanvasState = {
   extensionName: 'Canvas',
   title: 'Board',
   status: 'ready',
-  url: 'https://canvas.test/board',
+  uri: 'https://canvas.test/board',
 };
 
 /** A chat name, for the store's own cases, which need no session. */
@@ -390,6 +390,8 @@ describe('a second client of the session', () => {
       snapshot: { state: CanvasState };
     };
     expect(opened.snapshot.state).toEqual(STATE);
-    expect(opened.snapshot.state.url).toBe(STATE.url);
+    expect(opened.snapshot.state.uri).toBe(STATE.uri);
+    // AHP 1.1.0 renamed the experimental `url` to `uri`, and nothing says the old name.
+    expect(opened.snapshot.state).not.toHaveProperty('url');
   });
 });

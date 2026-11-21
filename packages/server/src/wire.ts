@@ -106,12 +106,12 @@ const redacted = (_key: string, value: unknown): unknown => {
     && value.params.token !== '<redacted>' && value.params.token !== '[REDACTED]') {
     return { ...value, params: { ...value.params, token: '<redacted>' } };
   }
-  if (value.type === 'canvas/stateChanged' && isRecord(value.canvas) && value.canvas.url !== undefined) {
-    return { ...value, canvas: { ...value.canvas, url: REDACTED_CANVAS_SOURCE } };
+  if (value.type === 'canvas/stateChanged' && isRecord(value.canvas) && value.canvas.uri !== undefined) {
+    return { ...value, canvas: { ...value.canvas, uri: REDACTED_CANVAS_SOURCE } };
   }
   if (typeof value.resource === 'string' && value.resource.toLowerCase().startsWith('ahp-canvas:')
-    && isRecord(value.state) && value.state.url !== undefined) {
-    return { ...value, state: { ...value.state, url: REDACTED_CANVAS_SOURCE } };
+    && isRecord(value.state) && value.state.uri !== undefined) {
+    return { ...value, state: { ...value.state, uri: REDACTED_CANVAS_SOURCE } };
   }
   return value;
 };

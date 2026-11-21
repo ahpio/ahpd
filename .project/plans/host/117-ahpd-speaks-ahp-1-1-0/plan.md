@@ -99,7 +99,7 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 | [05 - A model names its vendor](task-05-a-model-names-its-vendor.md) | todo | 01 |
 | [06 - The documents say 1.1.0](task-06-the-documents-say-1-1-0.md) | todo | 04, 05, 07, 08, 09 |
 | [07 - The chat config reads the package](task-07-the-chat-config-reads-the-package.md) | todo | 01 |
-| [08 - A canvas says its uri](task-08-a-canvas-says-its-uri.md) | todo | 01 |
+| [08 - A canvas says its uri](task-08-a-canvas-says-its-uri.md) | implemented | 01 |
 | [09 - The annotations channel is ahp-annotations](task-09-the-annotations-channel-is-ahp-annotations.md) | todo | 01 |
 
 ## Risks and tradeoffs
@@ -111,8 +111,8 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 ## Resume state
 
-- **Done so far:** the plan, 2026-10-22; checked again against AHP 1.1.0 and main on 2026-11-21. Tasks 02 and 03 are on main. Task 01 implemented on 2026-11-21.
-- **Next action:** [task-07-the-chat-config-reads-the-package.md](task-07-the-chat-config-reads-the-package.md), then 08 and 09.
+- **Done so far:** the plan, 2026-10-22; checked again against AHP 1.1.0 and main on 2026-11-21. Tasks 02 and 03 are on main. Task 01 implemented on 2026-11-21. Task 08 implemented on 2026-11-21.
+- **Next action:** [task-07-the-chat-config-reads-the-package.md](task-07-the-chat-config-reads-the-package.md), then 09.
 - **Open questions:** none.
 - **Watch out for:** `isActionKnownToVersion` says `chat/configChanged` is 1.1.0. Do not use it to hold the action back, since VS Code sends it on 1.0.0.
 
