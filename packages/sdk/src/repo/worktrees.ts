@@ -267,10 +267,11 @@ export function gitWorktrees(options: { log?: (line: string, level?: LogLevel) =
       const said = await git(repository, ['worktree', 'list', '--porcelain'], 10_000);
       const entries: { path: string; branch?: string }[] = [];
       for (const block of said.split(/\n\s*\n/)) {
-        const path = /^worktree (.+)$/m.exec(block)?.[1];
-        if (path === undefined) continue;
-        const branch = /^branch refs\/heads\/(.+)$/m.exec(block)?.[1];
-        entries.push({ path, ...(branch === undefined ? {} : { branch }) });
+        const path = /^worktree (.+)$/m.exec(block)?.[1]?.trim();
+        if (path === undefined || path === '') continue;
+        const branch = /^branch refs\/heads\/(.+)$/m.exec(block)?.[1]?.trim();
+        // In this host's own spelling, as `repository` answers: git writes a Windows path with forward slashes.
+        entries.push({ path: resolve(path), ...(branch === undefined ? {} : { branch }) });
       }
       // The first is the primary checkout, which is not a linked worktree.
       return entries.slice(1);
