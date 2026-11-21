@@ -1,0 +1,32 @@
+---
+title: The root schema has the new keys
+status: todo
+depends: []
+layer: "sdk"
+refs:
+  - "[code://packages/sdk/src/vscoderootconfig.ts](../../../../packages/sdk/src/vscoderootconfig.ts) - the root keys copied from VS Code"
+  - git://github.com/microsoft/vscode@ddbdd50a9ed1 - `common/agentHostSchema.ts` `platformRootSchema`
+---
+
+## Objective
+
+The root schema declares `keepAwakeWhileWorking`, `sessionModelOptions`, `chatResources`, `hooksEnabled`, `mcpSkillsEnabled`, `mcpSkillsServerApprovals`, `extensionPermissionApprovals`, `mcpGalleryServiceUrl`, `browserUseEnabled` and `assistedApprovalInstructions`, as VS Code main does.
+`migrateLegacyCopilotCliEnabled` is gone.
+
+## Files
+
+- `UPDATE: packages/sdk/src/vscoderootconfig.ts` - the ten keys, each with the comment that names its line in VS Code.
+- `UPDATE: packages/sdk/test/root-config.test.ts` - the keys are declared.
+
+## Steps
+
+1. Copy each key's type, title, description, enum and default from `agentHostSchema.ts` at `ddbdd50a9ed1`.
+2. Remove `migrateLegacyCopilotCliEnabled`.
+3. Add `assistedApprovalInstructions` to `clientOwnedApprovalRootConfigKeys` where VS Code has it there.
+
+## Validation
+
+- `packages/sdk/test/root-config.test.ts` - the ten keys are in the schema, and the old one is not.
+- The sdk vitest suite passes.
+
+## Resume
