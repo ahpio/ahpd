@@ -77,6 +77,7 @@ export function createChatMover(ctx: HostContext): (
   connection: Connection | undefined,
   tokensFor: (provider: string) => Record<string, string>,
   params: Record<string, unknown>,
+  asSession?: boolean,
 ) => Promise<{ session: string }> {
   const {
     activeSessionsChanged, beside, byChat, chatIdOf, chatMoveRefusal, chatSummary, chatsReordered, claims,
@@ -333,6 +334,7 @@ export function createChatMover(ctx: HostContext): (
     connection: Connection | undefined,
     tokensFor: (provider: string) => Record<string, string>,
     params: Record<string, unknown>,
+    asSession = false,
   ): Promise<{ session: string }> => {
     const chatUri = String(params.channel ?? '');
     const found = byChat.get(chatUri);
@@ -386,7 +388,7 @@ export function createChatMover(ctx: HostContext): (
      * process and starts another (plan host/47-p1).
      * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentService.ts#L9214-L9223
      */
-    if (!isStructurallyMovable(chatUri) || hasActiveTurn(chatUri)) throw refused('notMovable', `Chat ${chatUri} can't be moved.`);
+    if (!isStructurallyMovable(chatUri, asSession) || hasActiveTurn(chatUri)) throw refused('notMovable', `Chat ${chatUri} can't be moved.`);
     const destination = (typeof params.destination === 'object' && params.destination !== null
       ? params.destination
       : {}) as Record<string, unknown>;
@@ -2100,4 +2102,47 @@ export function createSessionMethods(ctx: HostContext, conn: ConnectionContext):
     },
   };
   return methods;
+}
+
+/**
+ * VS Code's `vscode/moveSession`: a session that holds one chat moves under
+ * another session. Its default chat moves through the chat mover, and the
+ * session ends after it, as VS Code's host ends one.
+ * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/agentService.ts#L8261-L8297
+ * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/agentService.ts#L8501-L8545
+ */
+export function createSessionMover(ctx: HostContext): (
+  connection: Connection | undefined,
+  tokensFor: (provider: string) => Record<string, string>,
+  params: Record<string, unknown>,
+) => Promise<{ session: string }> {
+  const moveChat = createChatMover(ctx);
+  return async (connection, tokensFor, params) => {
+    const session = String(params.session ?? '');
+    const destination = String(params.destination ?? '');
+    const after = params.after;
+    if (session === '' || destination === '') throw new RpcError(INVALID_PARAMS, 'session and destination are required');
+    if (after !== null && after !== undefined && typeof after !== 'string') throw new RpcError(INVALID_PARAMS, 'after must be a chat URI or null');
+    for (const one of [session, destination]) {
+      if (connection !== undefined && !ctx.sessionVisible(connection, one)) throw new RpcError(-32001, `Session not found: ${one}`);
+    }
+    const refused = (reason: string, message: string): RpcError => new RpcError(INVALID_PARAMS, message, { reason });
+    if (ctx.rootConfig['chatMoves.enabled'] !== true) throw refused('disabled', 'Moving chats is not enabled.');
+    if (session === destination) throw refused('destinationNotFound', 'A session can\'t move under itself.');
+    const held = ctx.sessions.get(session);
+    if (held === undefined) throw refused('notMovable', `Session ${session} is not available.`);
+    // Its default chat is its only chat, its workers apart.
+    if ([...held.chats.keys()].some((chat) => chat !== held.defaultChat)) throw refused('notMovable', `Session ${session} has more than one chat.`);
+    const chat = held.chats.get(held.defaultChat);
+    const own = chat?.agentId();
+    if (chat === undefined || own === undefined || own === '' || chat.resumable?.() === false)
+      throw refused('notMovable', `Session ${session} has no recorded conversation of its own to keep under another session.`);
+    await moveChat(connection, tokensFor, {
+      channel: held.defaultChat,
+      // A null `after` places it first, as a chat move with no anchor does.
+      destination: { kind: 'session', session: destination, ...(typeof after === 'string' ? { after } : {}) },
+    }, true);
+    await ctx.endMovedSession(session);
+    return { session: destination };
+  };
 }

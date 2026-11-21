@@ -1,7 +1,7 @@
 ---
 title: A single-chat session moves under another
 domain: host
-status: planned
+status: active
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -66,8 +66,8 @@ vscode/moveSession {session, destination, after} -> refusals -> movedTo(the sess
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - A session says whether it can move](task-01-a-session-says-whether-it-can-move.md) | todo | - |
-| [02 - A single-chat session moves under another](task-02-a-session-moves-under-another.md) | todo | 01 |
+| [01 - A session says whether it can move](task-01-a-session-says-whether-it-can-move.md) | done | - |
+| [02 - A single-chat session moves under another](task-02-a-session-moves-under-another.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -75,14 +75,14 @@ vscode/moveSession {session, destination, after} -> refusals -> movedTo(the sess
 
 ## Resume state
 
-- **Done so far:** the plan, 2026-11-21.
-- **Next action:** [task-01-a-session-says-whether-it-can-move.md](task-01-a-session-says-whether-it-can-move.md).
+- **Done so far:** tasks 01 and 02, 2026-11-21; see [implemented.md](implemented.md).
+- **Next action:** Softov's review of the PR.
 - **Open questions:** none.
 - **Watch out for:** a client that names no chat gets the session's default chat. After the move, the chat is a peer chat of the destination, never its default.
 
 ## Final verification checklist
 
-- [ ] A test: `vscode.movable` follows `chatMoves.enabled` and a second chat.
-- [ ] A test: a move makes the chat the destination's, ends the source, and keeps the chat's turns.
-- [ ] A test: each refusal in VS Code's reason and words.
-- [ ] The gates pass: typecheck, boundary, and the sdk suite.
+- [x] A test: `vscode.movable` follows `chatMoves.enabled` and a second chat.
+- [x] A test: a move makes the chat the destination's, ends the source, and keeps the chat's turns.
+- [x] A test: each refusal in VS Code's reason and words.
+- [x] The gates pass: typecheck, boundary, and the sdk suite.

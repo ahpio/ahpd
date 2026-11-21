@@ -1,6 +1,6 @@
 ---
 title: A single-chat session moves under another
-status: todo
+status: done
 depends: [01]
 layer: "sdk"
 refs:
