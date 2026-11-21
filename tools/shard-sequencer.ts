@@ -49,6 +49,14 @@ export default class TimedSequencer extends BaseSequencer {
       load[least] = (load[least] ?? 0) + one.ms;
       bucket[least]?.push(one.spec);
     }
+    /*
+     * One line on what the split was made from, so a run whose shards come out
+     * uneven says whether the timings matched its files: a path spelled
+     * differently on one system leaves every file untimed and the split by count.
+     */
+    const untimed = keyed.filter(({ key }) => known[key] === undefined);
+    const shown = untimed[0] === undefined ? '' : `, e.g. ${untimed[0].key}`;
+    process.stderr.write(`shard ${String(index)}/${String(count)}: ${String(bucket[index - 1]?.length ?? 0)} of ${String(files.length)} files, ${String(files.length - untimed.length)} timed${shown}, ${String(Math.round((load[index - 1] ?? 0) / 1000))} s recorded\n`);
     return bucket[index - 1] ?? [];
   }
 }
