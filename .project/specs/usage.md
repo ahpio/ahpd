@@ -88,6 +88,13 @@ AND it keeps the split into sent and received when the harness gave one.
 A cost of 0 on a turn that counted no token is no cost, so the record has none.
 A cost that is not known is absent, never 0.
 
+A Claude turn's cost is the change in the CLI's running total since the last `result`.
+WHEN a Claude query resumes a session on this host
+THEN the running total starts at the last `cost-state` line of the session's transcript.
+WHEN a fork, a rewind or a session in a machine resumes, or the transcript holds no `cost-state` line
+THEN the first `result` has no cost
+AND each `result` after it is charged its change from that first one.
+
 ### The model gateway charges a configured price
 
 WHEN a call through the model gateway uses a `modelGateway.models` entry that has a `price`
