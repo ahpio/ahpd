@@ -1,7 +1,7 @@
 
 {
   "name": "@ahpd/agent-claude",
-  "version": "0.15.0-rc.4",
+  "version": "0.15.0",
   "type": "module",
   "description": "Claude Code integration. Use your Claude subscription or API key from an ahpd plugin, or directly with @ahpd/sdk.",
   "keywords": [
@@ -65,7 +65,7 @@
     "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "@ahpd/sdk": ">=0.15.0-rc.4 <0.16.0-0",
+    "@ahpd/sdk": ">=0.15.0 <0.16.0-0",
     "@microsoft/agent-host-protocol": "^1.0.0"
   },
   "devDependencies": {
