@@ -1,0 +1,38 @@
+---
+title: A canvas says its uri
+status: todo
+depends: [01]
+layer: "sdk"
+refs:
+  - "[code://packages/sdk/src/host/canvases.ts#L150-L165](../../../../packages/sdk/src/host/canvases.ts#L150-L165) - the check of a canvas's `state.url`"
+  - "[code://packages/sdk/src/host/canvases.ts#L245-L256](../../../../packages/sdk/src/host/canvases.ts#L245-L256) - `url` cleared when the provider is gone"
+  - "[code://packages/server/src/wire.ts#L114](../../../../packages/server/src/wire.ts#L114) - the wire log redacts a canvas's `url`"
+  - "[code://packages/sdk/src/types/plugin.ts#L511](../../../../packages/sdk/src/types/plugin.ts#L511) - a plugin's `open`, typed with the package's `CanvasState`"
+---
+
+## Objective
+
+A canvas's state says `uri`, an absolute content URI, as AHP 1.1.0 renames the experimental `CanvasState.url`.
+No canvas says `url`.
+
+## Files
+
+- `UPDATE: packages/sdk/src/host/canvases.ts:150-165` - the check reads `state.uri`.
+- `UPDATE: packages/sdk/src/host/canvases.ts:245-256` - `uri` is cleared when the provider is gone.
+- `UPDATE: packages/server/src/wire.ts:114` - the wire log redacts `uri`.
+- `UPDATE: packages/sdk/test/host-canvases.test.ts` - the cases say `uri`.
+
+## Steps
+
+1. Run `rg "\\.url\\b|url:" packages/*/src` near each canvas, and list every place a canvas says `url`.
+2. Rename each to `uri`, keeping the absolute HTTP(S) check.
+3. Rename the redaction in `wire.ts`.
+4. Record in Resume that ahpw `src/resources/sessions/SessionHeader.tsx:114` reads `url`, for its own PR.
+
+## Validation
+
+- `packages/sdk/test/host-canvases.test.ts` - a canvas says `uri` and no `url`. The host refuses a relative `uri`.
+- `pnpm typecheck` passes against the package's `CanvasState`.
+- The sdk and server vitest suites pass.
+
+## Resume
