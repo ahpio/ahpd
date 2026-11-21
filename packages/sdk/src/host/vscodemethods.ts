@@ -6,6 +6,7 @@ import { AhpErrorCodes } from '@microsoft/agent-host-protocol';
 import { INTERNAL_ERROR, INVALID_PARAMS, METHOD_NOT_FOUND, RpcError, optionalStringParam, stringParam } from '../rpc.js';
 import { Status, idOf } from '../sessions/catalog.js';
 import { isWorktreeUnderRepository, worktreeFor, worktreesOf } from '../repo/worktrees.js';
+import { DiskUsageCancelled, identityOf, measureDiskUsage } from '../repo/diskusage.js';
 import { hostLogPath } from '../sessions/debuglogs.js';
 import { localPath, uriOf } from '../resources/fileuri.js';
 import { ROOT, spaceOf } from './channels.js';
@@ -87,6 +88,8 @@ export interface VscodeMethods {
   'vscode/prepareSessionWorktreeCleanup': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/listManagedWorktrees': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/cleanupManagedWorktree': (params: Record<string, unknown>) => Promise<unknown>;
+  'vscode/measureWorktreeDiskUsage': (params: Record<string, unknown>) => Promise<unknown>;
+  'vscode/cancelWorktreeDiskUsage': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/setAgentHostDetachedWorktreeArchived': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/deleteAgentHostDetachedWorktree': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/reconcileAgentHostDetachedWorktrees': (params: Record<string, unknown>) => Promise<unknown>;
@@ -134,6 +137,77 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
     ctx.worktreeRecorded(path) || [...detached.values()].some((one) => one.path === path) || await treeInUse(path);
   const archivedNow = (session: string): boolean => (kept.flags(idOf(session)) & Status.IsArchived) !== 0;
   const knownSession = (session: string): boolean => ctx.sessions.has(session) || kept.provider(idOf(session)) !== undefined;
+
+  /*
+   * A worktree's disk usage, as VS Code's host measures one: at most two scans
+   * across every connection, a request id of the asking connection's own, and
+   * a measure for a session kept until the session moves or runs a turn.
+   * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/protocolServerHandler.ts#L4148-L4189
+   * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/worktreeDiskUsage.ts#L42-L110
+   */
+  /** What a kept measure of a session is good for: the session idle, its last move, and the folder itself. */
+  const revisionOf = async (session: string, root: string): Promise<string | undefined> => {
+    if ((ctx.statusOf(session) & Status.InProgress) !== 0) return undefined;
+    const moved = ctx.rowOf(session).modifiedAt;
+    const identity = await identityOf(root);
+    return typeof moved === 'string' && moved !== '' && identity !== undefined ? `${moved}\u0000${identity}` : undefined;
+  };
+
+  const measureFor = async (root: string, signal: AbortSignal, session: string | undefined): Promise<number | undefined> => {
+    if (session === undefined) return await ctx.diskUsage.slot(() => measureDiskUsage(root, signal));
+    const key = `${session}\u0000${root}`;
+    const revision = await revisionOf(session, root);
+    const kept = ctx.diskUsage.kept.get(key);
+    if (revision === undefined) ctx.diskUsage.kept.delete(key);
+    else if (kept?.revision === revision) return kept.bytes;
+    const bytes = await ctx.diskUsage.slot(() => measureDiskUsage(root, signal));
+    // Kept only when nothing moved while it ran.
+    if (revision !== undefined && await revisionOf(session, root) === revision) ctx.diskUsage.kept.set(key, { revision, bytes });
+    return bytes;
+  };
+
+  const measureWorktreeDiskUsage = async (params: Record<string, unknown>): Promise<unknown> => {
+    const uri = stringParam(params, 'uri');
+    const requestId = stringParam(params, 'requestId');
+    const session = optionalStringParam(params, 'session');
+    let root: string;
+    try {
+      const parsed = new URL(uri);
+      if (parsed.protocol !== 'file:' || !uri.startsWith('file:/') || parsed.search !== '' || parsed.hash !== '') throw new Error('not a file URI');
+      root = localPath(uri);
+    }
+    catch {
+      throw new RpcError(INVALID_PARAMS, 'uri must be an absolute file URI');
+    }
+    if (!isAbsolute(root)) throw new RpcError(INVALID_PARAMS, 'uri must be an absolute file URI');
+    const mine = ctx.diskUsage.scans.get(connection) ?? new Map<string, AbortController>();
+    if (mine.has(requestId)) throw new RpcError(INVALID_PARAMS, 'requestId is already in use');
+    const scan = new AbortController();
+    mine.set(requestId, scan);
+    ctx.diskUsage.scans.set(connection, mine);
+    try {
+      // Two asks of one worktree for a session wait one behind the other, so the second reads what the first kept.
+      const run = (): Promise<number | undefined> => measureFor(root, scan.signal, session);
+      let bytes: number | undefined;
+      if (session === undefined) bytes = await run();
+      else {
+        const before = ctx.diskUsage.queues.get(root) ?? Promise.resolve();
+        const mineToo = before.catch(() => undefined).then(run);
+        ctx.diskUsage.queues.set(root, mineToo);
+        try { bytes = await mineToo; }
+        finally { if (ctx.diskUsage.queues.get(root) === mineToo) ctx.diskUsage.queues.delete(root); }
+      }
+      return bytes === undefined ? {} : { sizeBytes: bytes };
+    }
+    catch (error) {
+      if (error instanceof DiskUsageCancelled || scan.signal.aborted) throw new RpcError(INTERNAL_ERROR, 'Canceled');
+      throw error;
+    }
+    finally {
+      mine.delete(requestId);
+      if (mine.size === 0 && ctx.diskUsage.scans.get(connection) === mine) ctx.diskUsage.scans.delete(connection);
+    }
+  };
 
   /** Record a managed working directory a session has no tree record of, as VS Code adopts one before its cleanup. */
   const prepareSessionWorktreeCleanup = async (session: string): Promise<void> => {
@@ -484,6 +558,11 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
       return {};
     },
     'vscode/listManagedWorktrees': async (params) => await listManagedWorktrees(params),
+    'vscode/measureWorktreeDiskUsage': async (params) => await measureWorktreeDiskUsage(params),
+    'vscode/cancelWorktreeDiskUsage': (params) => {
+      ctx.diskUsage.scans.get(connection)?.get(stringParam(params, 'requestId'))?.abort();
+      return Promise.resolve({});
+    },
     'vscode/cleanupManagedWorktree': async (params) => {
       await cleanupManagedWorktree(params);
       return {};

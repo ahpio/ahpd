@@ -534,6 +534,9 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
             'vscode.prepareSessionWorktreeCleanup': true,
             'vscode.managedWorktrees': true,
           }),
+          // A worktree's disk usage is measured on this host's disk.
+          // https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/protocolServerHandler.ts#L1256
+          'vscode.worktreeDiskUsage': true,
           'vscode.getAgentHostSessionStateFile.chat': true,
           // A debug-log collection its window follows may be called off.
           'vscode.debugLogsCancellation': true,

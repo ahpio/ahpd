@@ -1,7 +1,7 @@
 ---
 title: A client measures a worktree's disk usage
 domain: host
-status: planned
+status: active
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -60,8 +60,8 @@ vscode/cancelWorktreeDiskUsage {requestId} -> that scan stops
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - A worktree's disk usage is measured and cancelled](task-01-measured-and-cancelled.md) | todo | - |
-| [02 - A session's measure is kept until it changes](task-02-a-sessions-measure-is-kept.md) | todo | 01 |
+| [01 - A worktree's disk usage is measured and cancelled](task-01-measured-and-cancelled.md) | done | - |
+| [02 - A session's measure is kept until it changes](task-02-a-sessions-measure-is-kept.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -69,14 +69,14 @@ vscode/cancelWorktreeDiskUsage {requestId} -> that scan stops
 
 ## Resume state
 
-- **Done so far:** the plan, 2026-11-21.
-- **Next action:** [task-01-measured-and-cancelled.md](task-01-measured-and-cancelled.md).
+- **Done so far:** tasks 01 and 02, 2026-11-21; see [implemented.md](implemented.md).
+- **Next action:** Softov's review of the PR.
 - **Open questions:** none.
 - **Watch out for:** Windows reports `blocks` too; a negative value fails the scan, as VS Code's does.
 
 ## Final verification checklist
 
-- [ ] A test: a tree with a file, a symlink and a hard link outside it answers the expected bytes.
-- [ ] A test: a cancel stops a scan, a used request id is refused, and a bad URI is refused.
-- [ ] A test: a session's second ask is answered from the cache, and a change of the session reads again.
-- [ ] The gates pass: typecheck, boundary, and the sdk suite.
+- [x] A test: a tree with a file, a symlink and a hard link outside it answers the expected bytes.
+- [x] A test: a cancel stops a scan, a used request id is refused, and a bad URI is refused.
+- [x] A test: a session's second ask is answered from the cache, and a change of the session reads again.
+- [x] The gates pass: typecheck, boundary, and the sdk suite.
