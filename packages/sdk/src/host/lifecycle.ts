@@ -1,4 +1,6 @@
 import { AhpErrorCodes } from '@microsoft/agent-host-protocol';
+import { createWorktreeRemovalQueue, memoryWorktreeRemovals } from './worktreeremovals.js';
+import type { RemovalOutcome, WorktreeRemoval, WorktreeRemovalQueue } from './worktreeremovals.js';
 import { INTERNAL_ERROR, INVALID_PARAMS, RpcError } from '../rpc.js';
 import { computerId, computersFor } from '../machines/computers.js';
 import { deleteNested } from '../sessions/nested.js';
@@ -169,6 +171,10 @@ export interface Lifecycle {
    * close of the agents that ran in the tree.
    */
   requestSessionWorktreeRemoval(uri: string, after?: Promise<unknown>): Promise<void>;
+  /** The worktree removals still to make, which the cleanup methods read and drive. */
+  worktreeRemovals: WorktreeRemovalQueue;
+  /** Whether a session of this host records a worktree at `path`. */
+  worktreeRecorded(path: string): boolean;
   /** A session's tree put back at its path on its branch, where `requestSessionWorktreeRemoval` took it, as VS Code restores a session's worktree. */
   restoreSessionWorktree(uri: string): Promise<void>;
   /**
@@ -1781,68 +1787,157 @@ export function createLifecycle(ctx: HostContext): Lifecycle {
    * goes only once git says it is clean. The folders this host linked into
    * the tree are not work, and are neither counted nor committed.
    */
-  const requestSessionWorktreeRemoval = (uri: string, after?: Promise<unknown>): Promise<void> => runExclusive(uri, async () => {
-    await after?.catch(() => undefined);
+  /** Run `step` under a session's worktree lock, and answer what it answers. */
+  const exclusive = <T>(uri: string, step: () => Promise<T>): Promise<T> => new Promise<T>((done, failed) => {
+    void runExclusive(uri, async () => { await step().then(done, failed); });
+  });
+
+  /** Whether a session is gone from this host, as a deleted one is: its removals stand without its archive bit. */
+  const gone = (uri: string): boolean => !sessions.has(uri) && kept.provider(idOf(uri)) === undefined;
+
+  /*
+   * One tree an archived session gave back, checked and removed.
+   *
+   * Only once the session has stopped, and only while it is still archived:
+   * an unarchive is the person changing their mind, and drops the record. A
+   * deleted session's tree goes on regardless, as VS Code removes a deleted
+   * owner's worktree.
+   *
+   * Removed without its branch, which is what makes it come back: the branch
+   * holds every commit the session made, and the tree is only a checkout of
+   * it. So a tree whose `HEAD` has left the branch is kept for now: commits
+   * made on a detached `HEAD` or on another branch are not on the branch a
+   * restore checks out. A dirty tree is kept for now too, because work nobody
+   * committed has nowhere to come back from, unless `archiveDirtyWorktree` is
+   * `commit`: then the work is committed on the branch first, and the tree
+   * goes only once git says it is clean. An archive the host made itself
+   * removes only a tree whose branch is pushed. The folders this host linked
+   * into the tree are not work, and are neither counted nor committed. A kept
+   * tree is `skipped`, and the queue tries it again later.
+   *
+   * `force` removes the tree whatever it holds, and is what a client sends
+   * after the person confirmed it.
+   * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/agentHostWorktreeCleanupService.ts#L719-L805
+   */
+  const removeSessionTree = (removal: WorktreeRemoval, force: boolean): Promise<RemovalOutcome> => exclusive(removal.owner, async () => {
+    const uri = removal.owner;
     const port = options.worktrees;
-    const trees = treesOf(uri);
-    if (port === undefined || trees.length === 0 || !archivedNow(uri) || sessions.has(uri)) return;
+    if (port === undefined) return { kind: 'dropped' };
+    if (!gone(uri) && !archivedNow(uri)) {
+      log(`dropped the removal of ${removal.path}: ${uri} is no longer archived`);
+      return { kind: 'dropped' };
+    }
+    if (sessions.has(uri) && !force) return { kind: 'inUse' };
+    if (!await present(removal.path)) return { kind: 'removed' };
     const linked = linkedOf(uri);
-    for (const tree of trees) {
-      if (!await present(tree.path)) continue;
-      if (tree.branch === undefined) {
-        log(`kept ${tree.path}: it has no branch of its own to come back on`);
-        continue;
-      }
-      const why = await offBranch(port, { ...tree, branch: tree.branch });
-      if (why !== undefined) {
-        log(`kept ${tree.path}: ${why}`);
-        continue;
-      }
-      const clean = async (): Promise<boolean> => await port.dirty(tree.path, linked).catch(() => true) === false;
-      /*
-       * An archive the host made itself never commits and never loses a
-       * commit: the tree goes only when it is synced with its remote,
-       * whatever `archiveDirtyWorktree` says.
-       */
-      if (kept.autoArchivedAt?.(idOf(uri)) !== undefined) {
-        const not = await unsynced(port, tree.path, linked);
-        if (not !== undefined) {
-          log(`kept ${tree.path}: ${not}`);
-          continue;
-        }
+    if (!force) {
+      if (removal.branch === undefined) return { kind: 'skipped', message: 'it has no branch of its own to come back on' };
+      const why = await offBranch(port, { repository: removal.repository, path: removal.path, base: removal.branch, branch: removal.branch });
+      if (why !== undefined) return { kind: 'skipped', message: why };
+      const clean = async (): Promise<boolean> => await port.dirty(removal.path, linked).catch(() => true) === false;
+      if (removal.mode === 'synced') {
+        const not = await unsynced(port, removal.path, linked);
+        if (not !== undefined) return { kind: 'skipped', message: not };
       }
       else if (!await clean()) {
-        if (ctx.archiveDirtyWorktree !== 'commit') {
-          log(`kept ${tree.path}: it has changes nobody committed`);
-          continue;
-        }
-        if (port.commit === undefined) {
-          log.warn(`kept ${tree.path}: it has changes nobody committed, and this host cannot commit them`);
-          continue;
-        }
-        if (sessions.has(uri) || !archivedNow(uri)) return;
-        const failed = await port.commit(tree.path, ARCHIVE_COMMIT_MESSAGE, linked).then(() => undefined, (error: unknown) =>
+        if (ctx.archiveDirtyWorktree !== 'commit') return { kind: 'skipped', message: 'it has changes nobody committed' };
+        if (port.commit === undefined) return { kind: 'skipped', message: 'it has changes nobody committed, and this host cannot commit them' };
+        const failed = await port.commit(removal.path, ARCHIVE_COMMIT_MESSAGE, linked).then(() => undefined, (error: unknown) =>
           error instanceof Error ? error.message : String(error));
-        if (failed !== undefined) {
-          log.warn(`kept ${tree.path}: could not commit its changes: ${failed}`);
-          continue;
-        }
-        if (!await clean()) {
-          log(`kept ${tree.path}: it still has changes after the commit`);
-          continue;
-        }
-        log(`committed the changes in ${tree.path} on ${tree.branch}`);
+        if (failed !== undefined) return { kind: 'failed', message: `could not commit its changes: ${failed}` };
+        if (!await clean()) return { kind: 'skipped', message: 'it still has changes after the commit' };
+        log(`committed the changes in ${removal.path} on ${removal.branch}`);
       }
-      // Asked again after the check, which waited: a session started in the
+      // Asked again after the checks, which waited: a session started in the
       // tree meanwhile, or an unarchive, keeps it.
-      if (sessions.has(uri) || !archivedNow(uri)) return;
-      await port.remove(tree.repository, tree.path, undefined, linked)
-        .then(() => { log(`removed ${tree.path} for the archived ${uri}, keeping ${tree.branch ?? ''}`); })
-        .catch((error: unknown) => {
-          log.warn(`kept ${tree.path}: ${error instanceof Error ? error.message : String(error)}`);
-        });
+      if (sessions.has(uri)) return { kind: 'inUse' };
+      if (!gone(uri) && !archivedNow(uri)) return { kind: 'dropped' };
     }
+    try {
+      await port.remove(removal.repository, removal.path, undefined, linked, force);
+    }
+    catch (error) {
+      return { kind: 'failed', message: error instanceof Error ? error.message : String(error) };
+    }
+    log(`removed ${removal.path} for the archived ${uri}, keeping ${removal.branch ?? ''}`);
+    return { kind: 'removed' };
   });
+
+  /** Whether a worktree is one a session of this host records, which keeps it in use. */
+  const recordedTree = (path: string): boolean =>
+    [...sessions.keys(), ...kept.sessions().map((id) => ctx.nameOf(id))].some((uri) => treesOf(uri).some((tree) => tree.path === path));
+
+  /*
+   * A managed worktree a client asked to clean up, which no session records.
+   * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/agentHostWorktreeCleanupService.ts#L197-L227
+   */
+  const removeManagedTree = (removal: WorktreeRemoval, force: boolean): Promise<RemovalOutcome> => exclusive(removal.path, async () => {
+    const port = options.worktrees;
+    if (port === undefined) return { kind: 'dropped' };
+    if (!await present(removal.path)) return { kind: 'removed' };
+    if (!force && recordedTree(removal.path)) return { kind: 'inUse' };
+    if (!force) {
+      const head = await port.head?.(removal.path).catch(() => undefined);
+      if (removal.branch !== undefined && head !== undefined && head !== removal.branch)
+        return { kind: 'skipped', message: `it has ${head} checked out rather than ${removal.branch}` };
+      if (await port.dirty(removal.path, []).catch(() => true) !== false) {
+        if (port.commit === undefined) return { kind: 'skipped', message: 'it has changes nobody committed, and this host cannot commit them' };
+        const failed = await port.commit(removal.path, ARCHIVE_COMMIT_MESSAGE, []).then(() => undefined, (error: unknown) =>
+          error instanceof Error ? error.message : String(error));
+        if (failed !== undefined) return { kind: 'failed', message: `could not commit its changes: ${failed}` };
+      }
+    }
+    try {
+      await port.remove(removal.repository, removal.path, undefined, [], force);
+    }
+    catch (error) {
+      return { kind: 'failed', message: error instanceof Error ? error.message : String(error) };
+    }
+    log(`removed the managed worktree ${removal.path}, keeping ${removal.branch ?? ''}`);
+    return { kind: 'removed' };
+  });
+
+  /** The removals this host still has to make, kept by the daemon's port where it hands one in. */
+  const worktreeRemovals = createWorktreeRemovalQueue(
+    options.worktreeRemovals ?? memoryWorktreeRemovals(),
+    (removal, force) => (removal.kind === 'session' ? removeSessionTree(removal, force) : removeManagedTree(removal, force)),
+    { info: (line) => { log(line); }, warn: (line) => { log.warn(line); } },
+    options.worktreeRemovalTimings,
+  );
+  // What a restart left in the queue gets its pass once the host has settled.
+  worktreeRemovals.resume(3_000);
+
+  /*
+   * An archived session's trees, given back: the one it ran in and each one
+   * a move left it, as VS Code's host archives a session's additional
+   * worktrees with it. Each becomes a record the queue works through, and
+   * the first attempt runs now; a tree kept for a reason is tried again
+   * later. The record stays, since it is what `restoreSessionWorktree` puts
+   * the tree back from.
+   * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/chatContributions/additionalWorktreeLifecycle/additionalWorktreeLifecycleService.ts#L47-L53
+   */
+  const requestSessionWorktreeRemoval = async (uri: string, after?: Promise<unknown>): Promise<void> => {
+    await exclusive(uri, async () => {
+      await after?.catch(() => undefined);
+      const port = options.worktrees;
+      const trees = treesOf(uri);
+      if (port === undefined || trees.length === 0 || !archivedNow(uri) || sessions.has(uri)) return;
+      const mode = kept.autoArchivedAt?.(idOf(uri)) !== undefined ? 'synced' : 'commit';
+      for (const tree of trees) {
+        if (!await present(tree.path)) continue;
+        if (tree.branch === undefined) {
+          log(`kept ${tree.path}: it has no branch of its own to come back on`);
+          continue;
+        }
+        worktreeRemovals.request({ kind: 'session', owner: uri, repository: tree.repository, path: tree.path, branch: tree.branch, mode });
+      }
+    });
+    await worktreeRemovals.processNow(worktreeRemovals.ofSession(uri), false);
+    for (const one of worktreeRemovals.ofSession(uri)) {
+      const status = worktreeRemovals.statusOf(one);
+      if (status.message !== undefined) log(`kept ${one.path}: ${status.message}`);
+    }
+  };
 
   /*
    * A session's trees, put back where `requestSessionWorktreeRemoval` took them.
@@ -1854,6 +1949,8 @@ export function createLifecycle(ctx: HostContext): Lifecycle {
    * Nothing to do for a session with no record or a tree that is there.
    */
   const restoreSessionWorktree = (uri: string): Promise<void> => runExclusive(uri, async () => {
+    // An unarchive takes back the removals it had asked for.
+    worktreeRemovals.dropSession(uri);
     const port = options.worktrees;
     if (port === undefined) return;
     const symlink = linkedOf(uri);
@@ -2781,7 +2878,7 @@ export function createLifecycle(ctx: HostContext): Lifecycle {
   return {
     removeSession, respawning, restart, moveSession, moveChatWorkspace, relaunchChat, chatIdOf, disposeProviderChat, ranIn, backendsOwn,
     getProviderForChat, chatConfig, effectiveChatConfigValues, initialChatConfig, keepChatOwnConfigValues, isolated, oweTree,
-    requestSessionWorktreeRemoval, restoreSessionWorktree, canAutomaticallyDeleteArchivedSession, createDetachedWorktree,
+    requestSessionWorktreeRemoval, worktreeRemovals, worktreeRecorded: recordedTree, restoreSessionWorktree, canAutomaticallyDeleteArchivedSession, createDetachedWorktree,
     beginOrRun, startTurn, commandIn, beginTurn, modelIn, messageFrom, messageOf, messageAttachments, scratchFolder, createProviderSession,
   };
 }

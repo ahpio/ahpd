@@ -1,6 +1,6 @@
 ---
 title: A client lists and removes managed worktrees
-status: todo
+status: done
 depends: [01]
 layer: "sdk"
 refs:

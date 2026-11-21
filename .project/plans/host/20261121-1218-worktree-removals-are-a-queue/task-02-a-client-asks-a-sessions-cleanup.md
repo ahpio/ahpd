@@ -1,6 +1,6 @@
 ---
 title: A client asks a session's cleanup
-status: todo
+status: done
 depends: [01]
 layer: "sdk"
 refs:

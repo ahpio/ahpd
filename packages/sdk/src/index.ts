@@ -80,6 +80,8 @@ export {
 export type { SandboxOverrides } from './sandbox.js';
 export { SANDBOX_ENABLED_KEY, SANDBOX_ENABLED_PROPERTY, SANDBOX_ROOT_KEY } from './types/sandbox.js';
 export { KEEP_AWAKE_KEY, KEEP_AWAKE_RELEASE_DELAY, keepAwakeModeOf } from './host/keepawake.js';
+export { createWorktreeRemovalQueue, memoryWorktreeRemovals } from './host/worktreeremovals.js';
+export type { RemovalOutcome, RemovalTimings, WorktreeCleanupStatus, WorktreeRemoval, WorktreeRemovalStore } from './host/worktreeremovals.js';
 export type { AcquireKeepAwake, KeepAwakeHold, KeepAwakeMode } from './host/keepawake.js';
 export { nestedAgent } from './sessions/nested.js';
 export type { NestedAsked, NestedHost, NestedOptions, NestedStarted } from './sessions/nested.js';

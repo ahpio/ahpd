@@ -1,7 +1,7 @@
 ---
 title: Worktree removals are a queue
 domain: host
-status: planned
+status: active
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -67,9 +67,9 @@ archive -> requestSessionWorktreeRemoval -> a removal record -> a pass -> port.r
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - A removal is a record a pass works through](task-01-a-removal-is-a-record.md) | todo | - |
-| [02 - A client asks a session's cleanup](task-02-a-client-asks-a-sessions-cleanup.md) | todo | 01 |
-| [03 - A client lists and removes managed worktrees](task-03-managed-worktrees.md) | todo | 01 |
+| [01 - A removal is a record a pass works through](task-01-a-removal-is-a-record.md) | done | - |
+| [02 - A client asks a session's cleanup](task-02-a-client-asks-a-sessions-cleanup.md) | done | 01 |
+| [03 - A client lists and removes managed worktrees](task-03-managed-worktrees.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -78,16 +78,16 @@ archive -> requestSessionWorktreeRemoval -> a removal record -> a pass -> port.r
 
 ## Resume state
 
-- **Done so far:** the plan, 2026-11-21.
-- **Next action:** [task-01-a-removal-is-a-record.md](task-01-a-removal-is-a-record.md).
+- **Done so far:** tasks 01 to 03, 2026-11-21; see [implemented.md](implemented.md).
+- **Next action:** Softov's review of the PR.
 - **Open questions:** none.
 - **Watch out for:** an unarchive between a pass's listing and its removal keeps the tree; the pass reads the archive bit again under the lock.
 
 ## Final verification checklist
 
-- [ ] A test: an archive writes a record, a pass removes the tree, and the record goes.
-- [ ] A test: a skipped or failed removal stays, with its status, and is tried again after its wait.
-- [ ] A test: an unarchive drops the records.
-- [ ] A test: `vscode/sessionWorktreeCleanup` answers the status, retries, and forces.
-- [ ] A test: `vscode/listManagedWorktrees` lists an orphan, and `vscode/cleanupManagedWorktree` removes it.
-- [ ] The gates pass: typecheck, boundary, and the sdk, server and computer suites.
+- [x] A test: an archive writes a record, a pass removes the tree, and the record goes.
+- [x] A test: a skipped or failed removal stays, with its status, and is tried again after its wait.
+- [x] A test: an unarchive drops the records.
+- [x] A test: `vscode/sessionWorktreeCleanup` answers the status, retries, and forces.
+- [x] A test: `vscode/listManagedWorktrees` lists an orphan, and `vscode/cleanupManagedWorktree` removes it.
+- [x] The gates pass: typecheck, boundary, and the sdk, server and computer suites.
