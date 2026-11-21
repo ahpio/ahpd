@@ -1,6 +1,6 @@
 ---
 title: A model names its vendor
-status: todo
+status: implemented
 depends: [01]
 layer: "sdk"
 refs:
@@ -29,3 +29,5 @@ The code already does both, so the task changes no source unless the test fails.
 - The sdk vitest suite passes.
 
 ## Resume
+
+The code already passes a model's `vendor` through, since `descriptors` spreads each model, and `setAgentModels` compares with `isDeepStrictEqual`. A case in `host-harness.test.ts`, beside the model list case, shows both. The vendor reaches `root/agentsChanged`, and a change of the vendor alone says the list again. No source changed.

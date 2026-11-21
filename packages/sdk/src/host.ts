@@ -35,8 +35,6 @@ import { idFor, idOf, mergeLogicalTurnUsage, uriFor, Status } from './sessions/c
 import { memorySessions } from './sessions/sessions.js';
 import { meter } from './usage/meter.js';
 import { debugLogs } from './sessions/debuglogs.js';
-import { reduceChatConfigChanged } from './vscode/chatconfig.js';
-import type { ChatConfigChangedAction } from './vscode/chatconfig.js';
 import type { Terminal } from './types/terminals.js';
 import type { SessionConfigAnswerer, SessionConfigAsk } from './types/completions.js';
 import type { MessageAttachment, MessageFrom } from './types/session.js';
@@ -55,10 +53,11 @@ import type { ChannelSubscriber, PublishOptions } from './types/plugin.js';
 import { bag, ownerFilter, ownerOfPrincipal } from './utils/values.js';
 import { reason } from './host/common.js';
 import { clientQueueBytes, replayBytes } from './host/limits.js';
+import { annotationsSummaryOf } from './host/annotationssummary.js';
 import {
   ROOT, RESTART_NEEDED, isRootChannel, AUTOMATIONS, AUTOMATIONS_ME, spaceOf, servedIn, methodIn, named,
   chatUriFor, subagentChatUri, WORKER_ACTIONS, toolCallOfSubagentChat, isAutomations, automationOwner,
-  parseResourceWatchChannelUri, schemeOf, ANNOTATIONS_PATH_SEGMENT, SHARED_SCHEME,
+  parseResourceWatchChannelUri, schemeOf, annotationsChannelOf, annotationsChannelsOf, sessionOfAnnotations, SHARED_SCHEME,
 } from './host/channels.js';
 import type { Space } from './host/channels.js';
 import { DELTA_WINDOW_MS, merger } from './host/deltas.js';
@@ -520,15 +519,12 @@ export function createHost(options: HostOptions): Host {
   /**
    * One action through the protocol's reducer for the kind of state it lands
    * on. A type the reducer does not know is said in this host's log, which is
-   * where the reducer's own warning goes. A chat's `chat/configChanged`, which
-   * VS Code's protocol adds ahead of the package, goes through VS Code's own
-   * case for it.
+   * where the reducer's own warning goes.
    */
   const reduced = (open: HeldState, action: Bag): Bag => {
     const said = (message: string): void => { log(message); };
     if (open.kind === 'root') return rootReducer(open.state as unknown as RootState, action as unknown as RootAction, said) as unknown as Bag;
     if (open.kind === 'session') return sessionReducer(open.state as unknown as SessionState, action as unknown as SessionAction, said) as unknown as Bag;
-    if (action.type === 'chat/configChanged') return reduceChatConfigChanged(open.state, action as unknown as ChatConfigChangedAction);
     return chatReducer(open.state as unknown as ChatState, action as unknown as ChatAction, said) as unknown as Bag;
   };
   /** Everything subscribed to a channel, which is not everything connected. */
@@ -636,6 +632,18 @@ export function createHost(options: HostOptions): Host {
   const marksOf = (id: string): AnnotationsState =>
     marks.get(id) ?? (kept.annotations?.(id) as AnnotationsState | undefined) ?? { annotations: [] };
 
+  /*
+   * The session's summary of its marks, on its held state and its row, kept
+   * as each mark lands, as VS Code's host keeps `SessionState.annotations`.
+   * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/agentHostStateManager.ts#L2765-L2772
+   */
+  const summarizeAnnotations = (uri: string): void => {
+    const held = states.get(uri);
+    if (held?.kind !== 'session') return;
+    held.state = { ...held.state, annotations: annotationsSummaryOf(uri, marksOf(idOf(uri))) };
+    ctx.markSummaryDirty(uri);
+  };
+
   /**
    * One mark on a session, kept and said.
    *
@@ -653,7 +661,9 @@ export function createHost(options: HostOptions): Host {
     const next = annotationsReducer(marksOf(id), action);
     marks.set(id, next);
     kept.setAnnotations?.(id, next as unknown as Bag);
-    dispatch(`${uri}${ANNOTATIONS_PATH_SEGMENT}`, action as unknown as Record<string, unknown>, origin);
+    // Said on both names, AHP 1.1.0's and the one a VS Code 1.145 window makes.
+    for (const channel of annotationsChannelsOf(uri)) dispatch(channel, action as unknown as Record<string, unknown>, origin);
+    summarizeAnnotations(uri);
     // The file's channel shows every session's comments on it.
     if (typeof resource === 'string' && resource !== '') emit(resourceAnnotations.channelOf(resource), action as unknown as Record<string, unknown>, origin);
   };
@@ -780,8 +790,15 @@ export function createHost(options: HostOptions): Host {
      * keeps everything.
      */
     const { action } = envelope;
+    /*
+     * `chat/configChanged` is the one exception. AHP 1.1.0 registers it at
+     * `1.1.0`, but VS Code's window sends and reads it on `1.0.0` too, and
+     * VS Code's host holds back only `chat/moved` by version.
+     * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/protocolServerHandler.ts#L4944-L4947
+     */
     if (connection.protocolVersion !== undefined
       && PROTOCOL_ACTIONS.has(String(action.type))
+      && action.type !== 'chat/configChanged'
       && !isActionKnownToVersion(action as unknown as StateAction, connection.protocolVersion)) return undefined;
     if (!isRootChannel(envelope.channel)) {
       if (!visible(connection, envelope.channel)) return undefined;
@@ -1629,7 +1646,7 @@ export function createHost(options: HostOptions): Host {
     // A session's channel goes through the session's own path, as its marks do; one with an audience is said to that audience alone.
     emit: (channel, action, origin, audience) => {
       if (audience !== undefined) emit(channel, action, origin, audience);
-      else (channel.endsWith(ANNOTATIONS_PATH_SEGMENT) ? dispatch : emit)(channel, action, origin);
+      else (sessionOfAnnotations(channel) !== undefined ? dispatch : emit)(channel, action, origin);
     },
     hasSession: (connection, session) => (sessions.has(session) || owners.has(session)) && visible(connection, session),
     sessionCommentsOn: (resource) => [...new Set([...kept.sessions(), ...marks.keys()])]
@@ -1642,8 +1659,9 @@ export function createHost(options: HostOptions): Host {
       const open = new Set<string>();
       for (const connection of connections) {
         for (const channel of connection.activeSubscriptions) {
-          if (!channel.endsWith(ANNOTATIONS_PATH_SEGMENT) || !sessionChannel(channel)) continue;
-          if (resourceAnnotations.within(resource, placesOf(channel.slice(0, -ANNOTATIONS_PATH_SEGMENT.length)))) open.add(channel);
+          const owning = sessionOfAnnotations(channel);
+          if (owning === undefined || !sessionChannel(owning)) continue;
+          if (resourceAnnotations.within(resource, placesOf(owning))) open.add(channel);
         }
       }
       return [...open];

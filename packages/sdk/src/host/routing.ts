@@ -4,7 +4,7 @@ import { idOf, uriFor } from '../sessions/catalog.js';
 import type { Connection } from '../types/host.js';
 import type { Bag } from '../types/common.js';
 import {
-  ROOT, SHARED_SCHEME, isRootChannel, isAutomations, automationsChannel, schemeOf, spaceOf, ownerUriOf,
+  ROOT, SHARED_SCHEME, isRootChannel, isAutomations, automationsChannel, schemeOf, spaceOf, ownerUriOf, AHP_ANNOTATIONS_SCHEME, annotationsChannelOf,
   chatOfCanvas, chatUriFor, nonPtyShellTerminalOf, toolCallOfSubagentChat, shapedSession,
 } from './channels.js';
 import type { ChannelKind, Space } from './channels.js';
@@ -181,7 +181,10 @@ export function createRouting(ctx: HostContext): Routing {
     const owner = ownerUriOf(channel);
     if (spaceHere(owner) === 'session') {
       const published = names.get(idOf(owner)) ?? ctx.kept.uri?.(idOf(owner));
-      return published === undefined ? channel : `${published}${channel.slice(owner.length)}`;
+      if (published === undefined) return channel;
+      // AHP 1.1.0's annotations name does not start with its session's URI, so it is made again from the published one.
+      if (schemeOf(channel) === AHP_ANNOTATIONS_SCHEME) return annotationsChannelOf(published);
+      return `${published}${channel.slice(owner.length)}`;
     }
     // A worker's chat is the name its records hold.
     if (ctx.workerOf(channel) !== undefined) return channel;

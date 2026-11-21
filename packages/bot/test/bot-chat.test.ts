@@ -830,7 +830,8 @@ it('keeps a queued message behind the steered turn', async () => {
   // The steered turn is the open one, and what was waiting is still waiting.
   const steered = await stateOf(client);
   expect(steered['activeTurn']).toMatchObject({ id: 't1', message: { text: 'hello' } });
-  expect(steered['queuedMessages']).toMatchObject([{ id: 'q1', message: { text: 'and then this' } }]);
+  // AHP 1.1.0 keeps the steered message in the same list, as `steering`, until the turn takes it in.
+  expect(steered['queuedMessages']).toMatchObject([{ id: 'q1', kind: 'queued', message: { text: 'and then this' } }, { id: 's1', kind: 'steering' }]);
   expect(heard.map((one) => one.text)).toEqual(['hello', 'stop that']);
 
   // The work behind the turn takes the steer in, and the turn goes on.

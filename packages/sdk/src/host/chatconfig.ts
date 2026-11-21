@@ -1,25 +1,22 @@
 /**
- * A chat's own config, as VS Code's protocol and host keep it ahead of the AHP
- * this host speaks: a property marked `chatMutable` may be set per chat with
- * `chat/configChanged`, the chat's state carries the values it set, and a
- * client's write is checked before it is taken.
+ * The checks on a chat's own config: a property marked `chatMutable` may be
+ * set per chat with `chat/configChanged`, and a client's write is checked
+ * before it is taken. AHP 1.1.0 declares `ChatConfigState`,
+ * `chat/configChanged` and `chatMutable`, and its chat reducer applies the
+ * action; these checks are VS Code's, which the package has no copy of.
  *
- * Vendored from VS Code's protocol copy (`ChatConfigState`,
- * `ChatConfigChangedAction` and the chat reducer's `chat/configChanged` case)
- * and from `sessionConfigProperties.ts` (`isChatConfigProperty`,
+ * From `sessionConfigProperties.ts` (`isChatConfigProperty`,
  * `filterChatConfigValues`, `validateChatConfigWrite`, and the part of
  * `getSessionConfigWriteError` that reads a property's own fields; its
  * approval-mode and workspace-property cases name keys this host does not
  * serve).
- * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/common/state/protocol/channels-chat/state.ts#L416-L445
- * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/common/state/protocol/channels-chat/actions.ts#L891-L910
- * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/common/state/protocol/channels-chat/reducer.ts#L958-L967
+ * https://github.com/microsoft/agent-host-protocol/blob/v1.1.0/types/channels-chat/state.ts#L430-L462
  * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/common/sessionConfigProperties.ts#L136-L150
  * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/common/sessionConfigProperties.ts#L167-L180
  * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/common/sessionConfigProperties.ts#L367-L381
  */
 
-/** One property of a session's config schema, in the fields read here. */
+/** One property of a session's config schema, in the fields of `SessionConfigPropertySchema` read here. */
 export type ConfigProperty = {
   readonly enum?: readonly unknown[];
   readonly enumDynamic?: boolean;
@@ -27,39 +24,10 @@ export type ConfigProperty = {
   readonly chatMutable?: boolean;
 };
 
-/** A session's config schema, in the fields read here. */
+/** A session's config schema, in the fields of `SessionConfigSchema` read here. */
 export type ConfigSchema = {
   readonly properties: Readonly<Record<string, ConfigProperty | undefined>>;
 };
-
-/**
- * A chat's configuration. `values` holds the chat's `chatMutable` properties
- * of the effective schema; `schema`, where present, is the chat's own.
- */
-export interface ChatConfigState {
-  schema?: unknown;
-  values: Record<string, unknown>;
-}
-
-/** Config values set on a chat changed, merged into its values or replacing them. */
-export interface ChatConfigChangedAction {
-  type: 'chat/configChanged';
-  config: Record<string, unknown>;
-  replace?: boolean;
-}
-
-/** The chat reducer's case for `chat/configChanged`. */
-export function reduceChatConfigChanged<S extends { config?: ChatConfigState }>(state: S, action: ChatConfigChangedAction): S {
-  return {
-    ...state,
-    config: {
-      ...state.config,
-      values: action.replace || !state.config
-        ? { ...action.config }
-        : { ...state.config.values, ...action.config },
-    },
-  };
-}
 
 /** Whether a chat may set `key` for itself; every other property is set on the session. */
 export function isChatConfigProperty(schema: ConfigSchema | undefined, key: string): boolean {

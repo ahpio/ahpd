@@ -1,7 +1,7 @@
 ---
 title: ahpd speaks AHP 1.1.0
 domain: host
-status: planned
+status: active
 priority: high
 created: 2026-10-22
 revalidated: 2026-11-21
@@ -68,12 +68,13 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 | A chat's config keeps inheriting a session's value where the chat set none | Softov, 2026-11-10, recorded in UPSTREAM.md Pass 8 | 07 |
 | Tasks 02 and 03 are dropped: per-chat config and `chatMutable` are on main | `7f7a74ffe`, `20e812035` | 02, 03 |
 | `vscode/chatconfig.ts` gives way to the package's `ChatConfigState`, `ChatConfigChangedAction` and `chatMutable` | (defaulted: the package ships the types the file vendored) | 07 |
-| `CreateChatParams.title` is read already; it takes the package's type | `code://packages/sdk/src/host/sessionmethods.ts#L1775` | 07 |
+| `CreateChatParams.title` is read already, from the untyped `params` every session method reads | `code://packages/sdk/src/host/sessionmethods.ts#L1775` | 07 |
+| `chat/configChanged` goes to a client on any version, though 1.1.0 registers it at `1.1.0` | VS Code `ddbdd50a9ed1` `protocolServerHandler.ts` L4944, which holds back only `chat/moved` | 07 |
 | Steering and queued entries share `queuedMessages`; `steeringMessage` mirrors the latest steering entry | (defaulted: AHP 1.1.0 `CHANGELOG.md`, *Changed*) | 04 |
 | agent-claude holds a list of steering entries, and each read of the CLI input removes the oldest | (defaulted: upstream `0b4e0632b1f`; the input loop in `query.ts` is first in, first out) | 04 |
 | A backend that submits a steer at once (cofold, pi, bot) emits no pending entry, as today | (defaulted: no pending state to show) | 04 |
 | No backend fills `vendor` yet; the host passes it through from `models()`, and a changed vendor is a changed list | Softov, 2026-10-22 | 05 |
-| A canvas says `uri`, an absolute content URI, and no `url` | (defaulted: AHP 1.1.0 renames the experimental field) | 08 |
+| A canvas says `uri`, an absolute content URI, and the host sends the same value as `url` beside it | VS Code `ddbdd50a9ed1` `withLegacyCanvasState`; a 1.145.2 window reads only `url` | 08 |
 | ahpw reads `uri` in its own PR, after this one | (defaulted: ahpw `SessionHeader.tsx:114` reads `url`; a change scoped to ahpd touches no other repo) | 08 |
 | A session's annotations channel is `ahp-annotations:/<uuid>` with the session's id, and the session's `annotations.resource` names it | (defaulted: AHP 1.1.0 and VS Code main `ddbdd50a9ed1`) | 09 |
 | The old `<session>/annotations` name keeps working beside it | (defaulted: VS Code 1.145.2 `c4453f8ea430` builds the old name itself) | 09 |
@@ -92,27 +93,27 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - The 1.1.0 package is installed](task-01-the-1-1-0-package-is-installed.md) | todo | - |
+| [01 - The 1.1.0 package is installed](task-01-the-1-1-0-package-is-installed.md) | implemented | - |
 | [02 - A chat keeps its own config](task-02-a-chat-keeps-its-own-config.md) | dropped | - |
 | [03 - Backend keys are chat-mutable](task-03-backend-keys-are-chat-mutable.md) | dropped | - |
-| [04 - Steering messages share the list](task-04-steering-messages-share-the-list.md) | todo | 01 |
-| [05 - A model names its vendor](task-05-a-model-names-its-vendor.md) | todo | 01 |
-| [06 - The documents say 1.1.0](task-06-the-documents-say-1-1-0.md) | todo | 04, 05, 07, 08, 09 |
-| [07 - The chat config reads the package](task-07-the-chat-config-reads-the-package.md) | todo | 01 |
-| [08 - A canvas says its uri](task-08-a-canvas-says-its-uri.md) | todo | 01 |
-| [09 - The annotations channel is ahp-annotations](task-09-the-annotations-channel-is-ahp-annotations.md) | todo | 01 |
+| [04 - Steering messages share the list](task-04-steering-messages-share-the-list.md) | implemented | 01 |
+| [05 - A model names its vendor](task-05-a-model-names-its-vendor.md) | implemented | 01 |
+| [06 - The documents say 1.1.0](task-06-the-documents-say-1-1-0.md) | implemented | 04, 05, 07, 08, 09 |
+| [07 - The chat config reads the package](task-07-the-chat-config-reads-the-package.md) | implemented | 01 |
+| [08 - A canvas says its uri](task-08-a-canvas-says-its-uri.md) | implemented | 01 |
+| [09 - The annotations channel is ahp-annotations](task-09-the-annotations-channel-is-ahp-annotations.md) | implemented | 01 |
 
 ## Risks and tradeoffs
 
-- A client on 1.0.0 reads a canvas's `url`. After task 08 it finds none until it reads `uri`, as the protocol's rename asks.
+- The old `url` stays on the wire until VS Code drops its transition layer. A later change removes it then.
 - VS Code 1.145.2 builds `<session>/annotations` itself, so task 09 serves both names. One action goes to every name a client subscribed to.
 - The package's own list leaves out `1.1.0`, so a refusal names a version that its list does not hold. The plan keeps the package's words.
 - A chat's config inherits, unlike 1.1.0. A 1.1.0 client that expects a schema default where the session has a value reads the session's value.
 
 ## Resume state
 
-- **Done so far:** the plan, 2026-10-22; checked again against AHP 1.1.0 and main on 2026-11-21. Tasks 02 and 03 are on main.
-- **Next action:** [task-01-the-1-1-0-package-is-installed.md](task-01-the-1-1-0-package-is-installed.md).
+- **Done so far:** the plan, 2026-10-22; checked again against AHP 1.1.0 and main on 2026-11-21. Tasks 02 and 03 are on main. Task 01 implemented on 2026-11-21. Task 08 implemented on 2026-11-21. Task 07 implemented on 2026-11-21. Task 09 implemented on 2026-11-21. Task 04 implemented on 2026-11-21. Task 05 implemented on 2026-11-21. Task 06 implemented on 2026-11-21.
+- **Next action:** Softov reviews the PR. The plan closes as `built` on his word.
 - **Open questions:** none.
 - **Watch out for:** `isActionKnownToVersion` says `chat/configChanged` is 1.1.0. Do not use it to hold the action back, since VS Code sends it on 1.0.0.
 
@@ -123,7 +124,7 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 - [ ] `vscode/chatconfig.ts` is gone, and the per-chat config tests pass on the package's types.
 - [ ] A test: two steers before a read leave no stale entry.
 - [ ] A test: a model's `vendor` reaches the root state, and a changed vendor is a changed list.
-- [ ] A test: a canvas says `uri` and no `url`.
+- [ ] A test: a canvas says `uri`, and `url` beside it.
 - [ ] A test: a session's annotations channel is `ahp-annotations:/<uuid>`, and `annotations.resource` names it.
 - [ ] The conformance test replays the actions through the 1.1.0 reducers.
 - [ ] The gates pass: typecheck, boundary, schema and vitest.

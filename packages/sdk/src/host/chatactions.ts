@@ -9,8 +9,8 @@ import { ALLOW_ALL_SESSION_OPTION_ID, grantOf, withGrant } from './permissions.j
 import { approvalSetting, filePersonRules, personOf } from '../access/personrules.js';
 import { autoApproved, requireTrust, requireWorktreeTrust } from './trust.js';
 import { readAgentPermissionResponseMeta } from '../vscode/agentpermissionresponsemeta.js';
-import { filterChatConfigValues, validateChatConfigWrite } from '../vscode/chatconfig.js';
-import type { ConfigSchema } from '../vscode/chatconfig.js';
+import { filterChatConfigValues, validateChatConfigWrite } from './chatconfig.js';
+import type { ConfigSchema } from './chatconfig.js';
 import type { Bag } from '../types/common.js';
 import type { Connection } from '../types/host.js';
 import type { Session } from '../types/session.js';

@@ -75,6 +75,13 @@ const MAX_STRING_LENGTH = 16 * 1024;
 /** What VS Code's traffic log writes in place of a canvas's source. */
 const REDACTED_CANVAS_SOURCE = '<redacted canvas source>';
 
+/** A canvas state with each source key it carries redacted. */
+const redactedSource = (state: Record<string, unknown>): Record<string, unknown> => ({
+  ...state,
+  ...(state.uri === undefined ? {} : { uri: REDACTED_CANVAS_SOURCE }),
+  ...(state.url === undefined ? {} : { url: REDACTED_CANVAS_SOURCE }),
+});
+
 /** VS Code's test for a value the replacer can look into: any object, an array too. */
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 
@@ -106,12 +113,13 @@ const redacted = (_key: string, value: unknown): unknown => {
     && value.params.token !== '<redacted>' && value.params.token !== '[REDACTED]') {
     return { ...value, params: { ...value.params, token: '<redacted>' } };
   }
-  if (value.type === 'canvas/stateChanged' && isRecord(value.canvas) && value.canvas.url !== undefined) {
-    return { ...value, canvas: { ...value.canvas, url: REDACTED_CANVAS_SOURCE } };
+  // A canvas's source as AHP 1.1.0's `uri` and as the old `url` the host sends beside it.
+  if (value.type === 'canvas/stateChanged' && isRecord(value.canvas) && (value.canvas.uri !== undefined || value.canvas.url !== undefined)) {
+    return { ...value, canvas: redactedSource(value.canvas) };
   }
   if (typeof value.resource === 'string' && value.resource.toLowerCase().startsWith('ahp-canvas:')
-    && isRecord(value.state) && value.state.url !== undefined) {
-    return { ...value, state: { ...value.state, url: REDACTED_CANVAS_SOURCE } };
+    && isRecord(value.state) && (value.state.uri !== undefined || value.state.url !== undefined)) {
+    return { ...value, state: redactedSource(value.state) };
   }
   return value;
 };

@@ -1,6 +1,6 @@
 ---
 title: Steering messages share the list
-status: todo
+status: implemented
 depends: [01]
 layer: "agent-claude"
 refs:
@@ -41,3 +41,5 @@ No steering id stays in the list after the CLI reads it.
 - `pnpm vitest run` passes in sdk and agent-claude.
 
 ## Resume
+
+`ctx.steering` is a list. A steer appends to it. The CLI's read removes the entry with its id and says its removal. A take-back removes its own entry, and a stop or a CLI put away empties the list. `agent-claude-steering-list.test.ts` holds back the CLI's reads: two steers, then two reads, say both removals. On the old slot it fails, with `s1` never removed. `sleep.ts` needed no change, since it counts both kinds already. The host keeps a steering entry until its backend says it read it, as the 1.1.0 reducer does. `host-steering.test.ts` now checks that no queued entry is left. The agent-claude suite passes, 688 cases.

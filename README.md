@@ -6,7 +6,7 @@
 [![docs](https://img.shields.io/badge/docs-ahpio.github.io%2Fahpd-0b7285)](https://ahpio.github.io/ahpd/)
 ![license MIT](https://img.shields.io/badge/license-MIT-blue)
 ![node >=22](https://img.shields.io/badge/node-%3E%3D22-5fa04e)
-![Agent Host Protocol 1.0.0](https://img.shields.io/badge/AHP-1.0.0-0b7285)
+![Agent Host Protocol 1.1.0](https://img.shields.io/badge/AHP-1.1.0-0b7285)
 ![runs on Node, Bun, Deno](https://img.shields.io/badge/runs%20on-Node%20%7C%20Bun%20%7C%20Deno-495057)
 
 **Run your AI agents anywhere. Control them from anywhere.**

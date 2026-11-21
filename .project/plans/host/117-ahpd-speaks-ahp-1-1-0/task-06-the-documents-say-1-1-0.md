@@ -1,6 +1,6 @@
 ---
 title: The documents say 1.1.0
-status: todo
+status: implemented
 depends: [04, 05, 07, 08, 09]
 layer: "docs"
 refs:
@@ -35,3 +35,5 @@ The README files, the protocol page and UPSTREAM.md say what ahpd serves of AHP 
 - `pnpm docs:build` passes.
 
 ## Resume
+
+The 14 README badges say 1.1.0. `docs/sdk/AHP.md` says 1.1.0 at its top, with the negotiation, the refusal and the parts not served. It describes the canvas `uri` with `url` beside it, and the `ahp-annotations:` channel with both names. `chat/configChanged` moves into the chat table, `chat/moved` is listed as not built, and the table says 36 of 37. The `chatMutable` note no longer calls it undeclared. UPSTREAM.md ticks the steering and vendor boxes of Pass 7, and Pass 8 lists the package, the canvas `uri` and the annotations channel as built. `pnpm docs:build` passes, and the lint finds nothing new in either file.

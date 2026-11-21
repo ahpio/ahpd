@@ -1244,7 +1244,7 @@ const state = {
   canvasId: 'board',
   title: 'Board',
   status: 'ready',
-  url: 'https://boards.acme.test/live/board-1',
+  uri: 'https://boards.acme.test/live/board-1',
 } satisfies CanvasState;
 const canvas = await host.openCanvas(chat, state);
 host.updateCanvas(canvas, { ...state, status: 'saving' });
@@ -1253,11 +1253,11 @@ host.closeCanvas(canvas);
 
 `openCanvas` brings the chat back first, as VS Code's host restores a session's chat before a canvas operation: a chat whose session sleeps is woken with it, and a chat no session holds is refused with `Canvas operation targeted a chat outside session '<session>'.`
 
-The state is your whole claim about the canvas, and the host draws it. `instanceId`, `extensionId` and `canvasId` are required and non-empty, and `title`, `status` and `url` are as the protocol declares them. An `open` under an `instanceId` that is already open on that chat replaces its state and answers the same channel, and one with the state it already has says nothing, as VS Code's host keeps a canvas it already shows. A canvas that is redrawn is therefore not a second one.
+The state is your whole claim about the canvas, and the host draws it. `instanceId`, `extensionId` and `canvasId` are required and non-empty, and `title`, `status` and `uri` are as the protocol declares them. An `open` under an `instanceId` that is already open on that chat replaces its state and answers the same channel, and one with the state it already has says nothing, as VS Code's host keeps a canvas it already shows. A canvas that is redrawn is therefore not a second one.
 
 A canvas belongs to the plugin that opened it. Only that plugin can update or close it, and a second plugin naming another's canvas is refused. A client cannot close one either. A canvas is the plugin's claim about a page it serves, and a client that hid one would leave the plugin drawing to nobody.
 
-`url` is one absolute http(s) URL with a host, or absent. Absent is a canvas with nothing to show. It is what a plugin says while its source is down or before it is ready, and clearing `url` is the plugin's to do. The host cannot see when something outside it went away. A URL that is not a page is refused, and the refusal names the rule rather than the URL. The host never writes a canvas URL to its log.
+`uri` is one absolute http(s) URL with a host, or absent. Absent is a canvas with nothing to show. It is what a plugin says while its source is down or before it is ready, and clearing `uri` is the plugin's to do. The host cannot see when something outside it went away. A URL that is not a page is refused, and the refusal names the rule rather than the URL. The host never writes a canvas URL to its log.
 
 Ask whether a remote person can reach the URL you give. A URL on `localhost` reaches a client on that machine and no other. A plugin that must draw for a remote window therefore serves the page through [its own route](#a-route-authenticates-its-own-caller) or a public address.
 

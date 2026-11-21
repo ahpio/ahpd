@@ -1,6 +1,6 @@
 ---
 title: The 1.1.0 package is installed
-status: todo
+status: implemented
 depends: []
 layer: "workspace"
 refs:
@@ -45,3 +45,5 @@ The workspace installs `@microsoft/agent-host-protocol@1.1.0`, and every gate pa
 - `pnpm typecheck` passes. Otherwise Resume names each error, with task 07, 08 or 09 to fix it.
 
 ## Resume
+
+Every range is `^1.1.0`, and the lockfile resolves 1.1.0. The package lists `1.0.0` and `0.9.0` as its baselines, and `PROTOCOL_VERSION` is `1.1.0`, so the refusal now says "server's version 1.1.0". `pnpm schema` passes. `pnpm typecheck` has 11 errors, all a canvas's `url`, for task 08. `host-handshake.test.ts` passes, 63 of 63.
