@@ -1,6 +1,6 @@
 ---
 title: Computer cases time out on a busy machine
-status: open
+status: mitigated
 date: 2026-11-13
 severity: minor
 blocks: []
@@ -72,9 +72,8 @@ The suite is red on a busy machine for no fault in the code.
 
 ## Workaround
 
-None. A second run is not a fix.
+On 2026-11-21, every computer test file that starts the scripted CLIs sets its own budget of `PROCESS_CASE_MS`, 20 s, in [`code://tools/wait.ts`](../../tools/wait.ts). A case that still times out at 20 s is a new sighting here.
 
 ## Fix
 
-- Give the cases that start the fake CLIs a longer timeout of their own.
-- Or start fewer processes in each case.
+- Start fewer processes in each case, so the default 5 s is enough again.
