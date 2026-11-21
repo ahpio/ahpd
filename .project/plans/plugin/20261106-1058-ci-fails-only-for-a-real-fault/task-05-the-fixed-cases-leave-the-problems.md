@@ -1,6 +1,6 @@
 ---
 title: The fixed cases leave the problem records
-status: todo
+status: done
 depends:
   - task-01-cofold-when-has-no-cap-of-its-own.md
   - task-02-servercheck-answers-docker-at-once.md
@@ -38,3 +38,5 @@ Each problem record holds only the cases that are still open, and a record with 
 - `lint-prose.mjs` passes on `three-cases-fail-at-random-on-windows.md`.
 
 ## Resume
+
+The titling and attachment records are deleted. `three-cases-fail-at-random-on-windows.md` keeps its path and holds the two computer cases, with the title "Two computer cases fail at random on Windows". `.project/working/problems-report-20261111.md` and `.project/working/HANDOFF.md` still link the deleted records; they are dated snapshots and stay as written.
