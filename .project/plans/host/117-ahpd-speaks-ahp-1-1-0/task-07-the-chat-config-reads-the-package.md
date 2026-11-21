@@ -1,6 +1,6 @@
 ---
 title: The chat config reads the package
-status: implemented
+status: done
 depends: [01]
 layer: "sdk"
 refs:

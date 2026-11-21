@@ -1,6 +1,6 @@
 ---
 title: A model names its vendor
-status: implemented
+status: done
 depends: [01]
 layer: "sdk"
 refs:

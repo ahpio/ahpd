@@ -1,7 +1,7 @@
 ---
 title: A machine operation reads its record once
 domain: plugin
-status: active
+status: built
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -68,10 +68,8 @@ operation -> containerOf (inspect) -> name only -> recordOf (inspect again)
 
 ## Resume state
 
-- **Done so far:** task 01, 2026-11-21; see [implemented.md](implemented.md).
-- **Next action:** Softov's review of the PR.
-- **Open questions:** none.
-- **Watch out for:** `running(found)` in `remove` reads the state from the record; a machine started again inside `remove` is not read again for it.
+- **Done so far:** built and closed on 2026-11-21, on Softov's word; see [implemented.md](implemented.md).
+- **Next action:** none.
 
 ## Final verification checklist
 

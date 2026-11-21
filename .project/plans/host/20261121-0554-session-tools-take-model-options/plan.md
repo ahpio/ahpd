@@ -1,7 +1,7 @@
 ---
 title: The session tools take model and display options
 domain: host
-status: active
+status: built
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -48,9 +48,9 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - create_session takes model options](task-01-create-session-takes-model-options.md) | implemented | - |
-| [02 - list_models says each model's options](task-02-list-models-says-each-models-options.md) | implemented | 01 |
-| [03 - An artifact takes a mode](task-03-an-artifact-takes-a-mode.md) | implemented | - |
+| [01 - create_session takes model options](task-01-create-session-takes-model-options.md) | done | - |
+| [02 - list_models says each model's options](task-02-list-models-says-each-models-options.md) | done | 01 |
+| [03 - An artifact takes a mode](task-03-an-artifact-takes-a-mode.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -59,10 +59,8 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 ## Resume state
 
-- **Done so far:** the plan, 2026-11-21. Tasks 01, 02 and 03 implemented on 2026-11-21.
-- **Next action:** Softov reviews the PR. The plan closes as `built` on his word.
-- **Open questions:** none.
-- **Watch out for:** VS Code keeps the calling chat's effort when `model` is omitted or names the calling chat's model.
+- **Done so far:** built and closed on 2026-11-21, on Softov's word; see [implemented.md](implemented.md).
+- **Next action:** none.
 
 ## Final verification checklist
 

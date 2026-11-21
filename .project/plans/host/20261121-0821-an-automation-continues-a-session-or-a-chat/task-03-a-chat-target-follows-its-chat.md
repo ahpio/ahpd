@@ -1,6 +1,6 @@
 ---
 title: A chat target follows its chat
-status: implemented
+status: done
 depends: [02]
 layer: "sdk"
 refs:

@@ -1,7 +1,7 @@
 ---
 title: A Claude question takes a typed answer
 domain: claude
-status: active
+status: built
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -56,7 +56,7 @@ AskUserQuestion -> questionRequest -> chat/inputRequested -> a client's answer w
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - A question allows a typed answer](task-01-a-question-allows-a-typed-answer.md) | implemented | - |
+| [01 - A question allows a typed answer](task-01-a-question-allows-a-typed-answer.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -64,10 +64,8 @@ AskUserQuestion -> questionRequest -> chat/inputRequested -> a client's answer w
 
 ## Resume state
 
-- **Done so far:** the plan, 2026-11-21. Task 01 implemented on 2026-11-21.
-- **Next action:** Softov reviews the PR. The plan closes as `built` on his word.
-- **Open questions:** none.
-- **Watch out for:** the restored question is built by the same `questionRequest`, so its case moves with the live one.
+- **Done so far:** built and closed on 2026-11-21, on Softov's word; see [implemented.md](implemented.md).
+- **Next action:** none.
 
 ## Final verification checklist
 

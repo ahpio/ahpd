@@ -1,7 +1,7 @@
 ---
 title: Turn changesets under the chat
 domain: host
-status: active
+status: built
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -70,10 +70,8 @@ chat snapshot -> chat.changesets -> subscribe <chatUri>/changeset/<scope> -> cha
 
 ## Resume state
 
-- **Done so far:** tasks 01 and 02, 2026-11-21; see [implemented.md](implemented.md).
-- **Next action:** Softov's review of the PR.
-- **Open questions:** none.
-- **Watch out for:** a subagent chat URI is held by its parent session; `ctx.sessionHolding` resolves it.
+- **Done so far:** built and closed on 2026-11-21, on Softov's word; see [implemented.md](implemented.md).
+- **Next action:** none.
 
 ## Final verification checklist
 

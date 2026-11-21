@@ -1,6 +1,6 @@
 ---
 title: A canvas says its uri
-status: implemented
+status: done
 depends: [01]
 layer: "sdk"
 refs:

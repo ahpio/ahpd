@@ -1,7 +1,7 @@
 ---
 title: Worktree removals are a queue
 domain: host
-status: active
+status: built
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -78,10 +78,8 @@ archive -> requestSessionWorktreeRemoval -> a removal record -> a pass -> port.r
 
 ## Resume state
 
-- **Done so far:** tasks 01 to 03, 2026-11-21; see [implemented.md](implemented.md).
-- **Next action:** Softov's review of the PR.
-- **Open questions:** none.
-- **Watch out for:** an unarchive between a pass's listing and its removal keeps the tree; the pass reads the archive bit again under the lock.
+- **Done so far:** built and closed on 2026-11-21, on Softov's word; see [implemented.md](implemented.md).
+- **Next action:** none.
 
 ## Final verification checklist
 

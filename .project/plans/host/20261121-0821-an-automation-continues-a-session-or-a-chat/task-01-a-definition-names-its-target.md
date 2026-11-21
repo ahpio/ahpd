@@ -1,6 +1,6 @@
 ---
 title: A definition names its target
-status: implemented
+status: done
 depends: []
 layer: "sdk"
 refs:

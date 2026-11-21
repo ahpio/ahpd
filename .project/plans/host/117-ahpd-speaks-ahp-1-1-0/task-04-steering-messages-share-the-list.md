@@ -1,6 +1,6 @@
 ---
 title: Steering messages share the list
-status: implemented
+status: done
 depends: [01]
 layer: "agent-claude"
 refs:

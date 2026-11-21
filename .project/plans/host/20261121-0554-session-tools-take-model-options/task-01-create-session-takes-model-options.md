@@ -1,6 +1,6 @@
 ---
 title: create_session takes model options
-status: implemented
+status: done
 depends: []
 layer: "sdk"
 refs:

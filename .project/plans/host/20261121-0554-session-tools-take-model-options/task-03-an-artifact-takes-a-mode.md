@@ -1,6 +1,6 @@
 ---
 title: An artifact takes a mode
-status: implemented
+status: done
 depends: []
 layer: "sdk"
 refs:

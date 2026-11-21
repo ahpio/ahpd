@@ -1,6 +1,6 @@
 ---
 title: The 1.1.0 package is installed
-status: implemented
+status: done
 depends: []
 layer: "workspace"
 refs:

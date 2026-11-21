@@ -1,6 +1,6 @@
 ---
 title: An Mcp rule names a server or a tool
-status: implemented
+status: done
 depends: []
 layer: "sdk"
 refs:

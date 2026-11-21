@@ -1,6 +1,6 @@
 ---
 title: list_models says each model's options
-status: implemented
+status: done
 depends: [01]
 layer: "sdk"
 refs:

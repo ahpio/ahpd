@@ -1,6 +1,6 @@
 ---
 title: A silent client is pinged and closed
-status: implemented
+status: done
 depends: []
 layer: "sdk"
 refs:

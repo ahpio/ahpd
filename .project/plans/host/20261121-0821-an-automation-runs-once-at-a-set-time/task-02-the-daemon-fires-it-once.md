@@ -1,6 +1,6 @@
 ---
 title: The daemon fires it once
-status: implemented
+status: done
 depends: [01]
 layer: "server"
 refs:

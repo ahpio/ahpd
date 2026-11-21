@@ -1,6 +1,6 @@
 ---
 title: The annotations channel is ahp-annotations
-status: implemented
+status: done
 depends: [01]
 layer: "sdk"
 refs:

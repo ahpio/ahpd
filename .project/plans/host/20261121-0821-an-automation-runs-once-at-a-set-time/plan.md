@@ -1,7 +1,7 @@
 ---
 title: An automation runs once at a set time
 domain: host
-status: active
+status: built
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -70,8 +70,8 @@ automation/createRequested -> actions.ts checks -> AutomationStore -> scheduled.
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - A one-time definition is advertised and checked](task-01-a-one-time-definition-is-checked.md) | implemented | - |
-| [02 - The daemon fires it once](task-02-the-daemon-fires-it-once.md) | implemented | 01 |
+| [01 - A one-time definition is advertised and checked](task-01-a-one-time-definition-is-checked.md) | done | - |
+| [02 - The daemon fires it once](task-02-the-daemon-fires-it-once.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -80,10 +80,8 @@ automation/createRequested -> actions.ts checks -> AutomationStore -> scheduled.
 
 ## Resume state
 
-- **Done so far:** the plan, 2026-11-21. Tasks 01 and 02 implemented on 2026-11-21.
-- **Next action:** Softov reviews the PR. The plan closes as `built` on his word.
-- **Open questions:** none.
-- **Watch out for:** a run started by `run` is not the trigger's run, so it leaves the one-time trigger to fire.
+- **Done so far:** built and closed on 2026-11-21, on Softov's word; see [implemented.md](implemented.md).
+- **Next action:** none.
 
 ## Final verification checklist
 

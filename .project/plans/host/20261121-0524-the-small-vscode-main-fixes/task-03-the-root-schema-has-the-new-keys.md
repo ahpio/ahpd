@@ -1,6 +1,6 @@
 ---
 title: The root schema has the new keys
-status: implemented
+status: done
 depends: []
 layer: "sdk"
 refs:

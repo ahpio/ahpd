@@ -1,6 +1,6 @@
 ---
 title: A question allows a typed answer
-status: implemented
+status: done
 depends: []
 layer: "agent-claude"
 refs:

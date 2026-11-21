@@ -1,6 +1,6 @@
 ---
 title: A continued run waits in the queue
-status: implemented
+status: done
 depends: [01]
 layer: "sdk"
 refs:

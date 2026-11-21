@@ -1,6 +1,6 @@
 ---
 title: A one-time definition is advertised and checked
-status: implemented
+status: done
 depends: []
 layer: "sdk"
 refs:

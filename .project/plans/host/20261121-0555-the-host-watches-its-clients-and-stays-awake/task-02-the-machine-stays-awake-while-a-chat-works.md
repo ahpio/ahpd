@@ -1,6 +1,6 @@
 ---
 title: The machine stays awake while a chat works
-status: implemented
+status: done
 depends: []
 layer: "server"
 refs:
