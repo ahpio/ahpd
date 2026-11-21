@@ -144,6 +144,40 @@ it('writes the corrected costs, keeps a copy, and leaves every other line as it 
   for (const index of [0, 1, 6]) expect(now[index]).toBe(lines[index]);
 });
 
+it('marks each record it corrects with the cost it had before', () => {
+  const config = daemonWith(billed);
+  expect(run(config, transcript(), '--write').status).toBe(0);
+  const marks = usageOf(config).map((one) => (one.meta as Record<string, unknown> | undefined)?.['ahpd.repaired']);
+  expect(marks).toEqual([undefined, undefined, 1.75, 1.75, 1.85, 2.15]);
+});
+
+it('changes nothing on a second run', () => {
+  const config = daemonWith(billed);
+  const claude = transcript();
+  expect(run(config, claude, '--write').status).toBe(0);
+  const once = readFileSync(join(config, 'usage', '2026-11-model.jsonl'), 'utf8');
+  const answer = run(config, claude, '--write');
+  expect(answer.status).toBe(0);
+  expect(answer.stdout).toContain('Nothing to change.');
+  expect(readFileSync(join(config, 'usage', '2026-11-model.jsonl'), 'utf8')).toBe(once);
+});
+
+it('leaves a chat whose records already sum to its transcript\'s last total', () => {
+  // Corrected before the mark was written: the sum agrees, but t3 is still above the 1.5 saved before it.
+  const config = daemonWith([...billed.slice(0, 2), record('2026-11-21T09:00:00.000Z', 't3', 1.75)]);
+  const answer = run(config, cliWith([{ at: '2026-11-21T07:11:00.000Z' }, { total: 1.5 }, { at: '2026-11-21T09:01:00.000Z' }, { total: 3.25 }]));
+  expect(answer.status).toBe(0);
+  expect(answer.stdout).toContain('Nothing to change.');
+});
+
+it('skips a marked record in a chat whose sum does not agree', () => {
+  const marked = { ...record('2026-11-21T09:00:00.000Z', 't3', 1.75), meta: { 'ahpd.repaired': 3.25 } };
+  const config = daemonWith([...billed.slice(0, 2), marked]);
+  const answer = run(config, cliWith([{ at: '2026-11-21T07:11:00.000Z' }, { total: 1.5 }, { at: '2026-11-21T09:01:00.000Z' }, { total: 9 }]));
+  expect(answer.status).toBe(0);
+  expect(answer.stdout).toContain('Nothing to change.');
+});
+
 it('stops before writing while the daemon runs', () => {
   const config = daemonWith(billed);
   // This test's own process stands for the daemon.
