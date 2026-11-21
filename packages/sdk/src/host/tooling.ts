@@ -13,6 +13,8 @@ import { CREATED_BY_META, SEND_REMOTE_MESSAGE } from '../sessions/remotesession.
 import { SESSION_TOOL_NAMES } from '../tools/session.js';
 import { ENABLE_CUSTOM_TERMINAL_TOOL, SHELL_TOOL_NAMES } from '../tools/shell.js';
 import { ARTIFACT_TOOL_NAMES, ENABLE_ARTIFACT_TOOLS } from '../tools/artifacts.js';
+import { resolveCreatedModelSelection } from '../tools/modeloptions.js';
+import type { CreatedModelOptions } from '../tools/modeloptions.js';
 import { bag, ownerOfPrincipal, reason, str } from '../utils/values.js';
 import { mayUseAgent, ownershipOf } from '../agents/usable.js';
 import { groupOf } from '../access/users.js';
@@ -36,7 +38,7 @@ import type { Owner } from '../types/usage.js';
 import type { ClientPlugins, SyncedPlugin } from '../types/clientplugins.js';
 import type { Connection, HostOptions, HostTool, SendMessageAnswer, SendMessageRequest, SessionlessToolCall, ToolCall, ToolCaller, TitleStrategy, ToolSession } from '../types/host.js';
 import type { Agent, BoundTool, McpServer, ToolCallFacts } from '../types/agent.js';
-import type { MessageFrom, Session, TurnOptions } from '../types/session.js';
+import type { Chosen, MessageFrom, Session, TurnOptions } from '../types/session.js';
 import type { DiscardedFileEdits } from '../types/changes.js';
 import type { ChatSummary, ToolDefinition } from '@microsoft/agent-host-protocol';
 import type { ToolsEndpoint } from '../tools/server.js';
@@ -437,6 +439,8 @@ export interface Tooling {
 interface ChatStart {
   title?: string;
   model?: string;
+  /** The model options a tool asked for, present while agents can choose them. */
+  modelOptions?: CreatedModelOptions;
   provider?: string;
   config?: Record<string, unknown>;
   prompt?: string;
@@ -667,9 +671,19 @@ export function createTooling(ctx: HostContext): Tooling {
     config: kept.config(idOf(uri)),
     bindings: sessionBindings(uri),
     startedWorkspaceless: ctx.startedWorkspaceless.has(uri),
-    agents: agentNamesOf(uri),
+    ...offeredTo(agentNamesOf(uri)),
     multipleDirectories: (sessions.get(uri)?.agent ?? (provider === undefined ? undefined : ctx.agents.get(provider)))?.multipleDirectories === true,
+    rootConfig: ctx.rootConfig,
   });
+  /** The agents a caller may start and their models, as one reading. */
+  const offeredTo = (agents: ToolSession['agents']): Pick<ToolSession, 'agents' | 'models'> => ({ agents, models: offeredModelsOf(agents) });
+  /** The models of the agents a caller may start, as `create_session` lists them. */
+  const offeredModelsOf = (agents: { provider: string }[] | undefined): ToolSession['models'] => {
+    const may = agents === undefined ? undefined : new Set(agents.map((one) => one.provider));
+    return [...learned].filter(([provider]) => may === undefined || may.has(provider)).flatMap(([provider, known]) => known.models.map((model) => ({
+      id: model.id, name: model.name, provider, ...(model.configSchema === undefined ? {} : { configSchema: model.configSchema }),
+    })));
+  };
   /**
    * One tool's definition for a session, shaped for it, or nothing where the
    * session does not support the tool: VS Code's host offers a tool to a
@@ -1943,13 +1957,20 @@ export function createTooling(ctx: HostContext): Tooling {
    * settings its agent names as inherited from its config.
    * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentService.ts#L2566-L2600
    */
-  const creationDefaults = (calling: { uri: string; chatUri: string }): { agent?: Agent; model?: string; config?: Record<string, unknown> } => {
+  const creationDefaults = (calling: { uri: string; chatUri: string }): { agent?: Agent; model?: Chosen; config?: Record<string, unknown> } => {
     const held = sessions.get(calling.uri);
     const agent = held?.backends.get(calling.chatUri)?.agent ?? held?.agent;
     const state = (ctx.stateOf(calling.chatUri) ?? {}) as Bag;
     const turns = Array.isArray(state.turns) ? state.turns as Bag[] : [];
     const message = (bag(state.activeTurn)?.message ?? state.draft ?? turns.at(-1)?.message) as Bag | undefined;
-    const model = str(bag(message?.model)?.id);
+    // The whole selection, so the new chat keeps the calling chat's effort and context size.
+    const chosen = bag(message?.model);
+    const id = str(chosen?.id);
+    const values_ = bag(chosen?.config);
+    const model: Chosen | undefined = id === undefined ? undefined : {
+      id,
+      ...(values_ === undefined ? {} : { config: Object.fromEntries(Object.entries(values_).filter(([, one]) => one === null || ['string', 'number', 'boolean'].includes(typeof one))) as NonNullable<Chosen['config']> }),
+    };
     // The calling chat's own config in force, which its backend answers.
     const values = byChat.get(calling.chatUri)?.chat.settings() ?? {};
     const config = agent?.inheritedChatConfig?.(values);
@@ -2012,7 +2033,10 @@ export function createTooling(ctx: HostContext): Tooling {
     // run one agent, as VS Code's create-chat takes it.
     // https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/shared/sessionServerTools.ts#L1375-L1378
     const defaults = calling === undefined ? undefined : creationDefaults(calling);
-    const model = asked.model ?? (defaults?.agent === agent ? defaults.model : undefined);
+    // The checks and the inheritance of VS Code's create-session.
+    // https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/shared/sessionServerTools.ts#L1419
+    const model = resolveCreatedModelSelection(asked.model, asked.modelOptions, agent.provider,
+      defaults?.agent === agent ? defaults.model : undefined, modelsKnown);
     // Minted in the format of the session's default chat, as VS Code's tool
     // mints a peer chat, so every client that sees the session addresses it.
     // https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/shared/sessionServerTools.ts#L1379
@@ -2075,7 +2099,7 @@ export function createTooling(ctx: HostContext): Tooling {
       // chat's credentials.
       // https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/shared/sessionServerTools.ts#L1373
       if (calling !== undefined) remember(calling.chatUri, firstTurn);
-      void ctx.startTurn(chat, firstTurn, asked.prompt, model === undefined ? undefined : { id: model }, asked.from);
+      void ctx.startTurn(chat, firstTurn, asked.prompt, model, asked.from);
     }
     if (budget !== undefined) countUp(budget, 'chats');
     return { chat: chatUri };
@@ -2098,9 +2122,9 @@ export function createTooling(ctx: HostContext): Tooling {
   };
 
   /** Models any session here can run on, each with the provider it belongs to. */
-  const modelsKnown = (): { id: string; name: string; provider: string }[] =>
+  const modelsKnown = (): { id: string; name: string; provider: string; configSchema?: Record<string, unknown> }[] =>
     [...learned].flatMap(([provider, known]) => known.models.map((model) => ({
-      id: model.id, name: model.name, provider,
+      id: model.id, name: model.name, provider, ...(model.configSchema === undefined ? {} : { configSchema: model.configSchema }),
     })));
 
   /** Every backend this host offers, whether or not it has named a model yet. */
@@ -2349,7 +2373,9 @@ export function createTooling(ctx: HostContext): Tooling {
       const agent = ctx.agents.get(provider);
       if (agent === undefined) throw new Error(noProvider(provider));
       const inherits = defaults.agent === agent;
-      const model = asked.model ?? (inherits ? defaults.model : undefined);
+      // https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/shared/sessionServerTools.ts#L1454
+      const model = resolveCreatedModelSelection(asked.model, asked.modelOptions, provider,
+        inherits ? defaults.model : undefined, modelsKnown);
       /*
        * Named for the client whose turn made it: `<provider>:/<uuid>` when an
        * older VS Code window sent the running turn, so that window sees the
@@ -2370,7 +2396,7 @@ export function createTooling(ctx: HostContext): Tooling {
         ...(inherits ? defaults.config ?? {} : {}),
         ...(checkedConfig(agent, asked.config) ?? {}),
         ...(asked.isolation !== undefined ? { isolation: asked.isolation } : {}),
-        ...(model !== undefined ? { model } : {}),
+        ...(model !== undefined ? { model: model.id } : {}),
       };
       // The same steps `createSession` takes for a client, in the same order:
       // the host's keys kept apart from the backend's, and a worktree made at
@@ -2408,7 +2434,7 @@ export function createTooling(ctx: HostContext): Tooling {
       if (opened === undefined || lead === undefined) throw new Error(`${made} did not start`);
       const firstTurn = crypto.randomUUID();
       remember(chatUri, firstTurn);
-      void ctx.startTurn(lead.chat, firstTurn, asked.prompt, model === undefined ? undefined : { id: model }, asked.from);
+      void ctx.startTurn(lead.chat, firstTurn, asked.prompt, model, asked.from);
       countUp(budget, 'sessions');
       return { session: made, chat: opened };
     },
@@ -2497,6 +2523,7 @@ export function createTooling(ctx: HostContext): Tooling {
     cancelWake: () => ctx.setWake(uri, chatUri, undefined),
     artifacts: () => [...(kept.artifacts(idOf(uri)) ?? [])],
     setArtifacts: (list) => { setArtifacts(uri, list); },
+    rootConfig: () => ctx.rootConfig,
     annotations: () => marksOf(idOf(uri)),
     markAnnotation: (action) => { markAnnotation(uri, action); },
     resourceComments: {
@@ -2642,12 +2669,14 @@ export function createTooling(ctx: HostContext): Tooling {
         const agent = ctx.agents.get(provider);
         if (agent === undefined) throw new Error(noProvider(provider));
         const made = uriFor(crypto.randomUUID());
+        // No calling chat, so nothing to inherit: the options are checked against the model named.
+        const model = resolveCreatedModelSelection(asked.model, asked.modelOptions, provider, undefined, modelsKnown);
         // The backend's own settings, checked, and the two keys this call owns
         // over them, as a session made from a turn builds them.
         const config: Record<string, unknown> = {
           ...(checkedConfig(agent, asked.config) ?? {}),
           ...(asked.isolation !== undefined ? { isolation: asked.isolation } : {}),
-          ...(asked.model !== undefined ? { model: asked.model } : {}),
+          ...(model !== undefined ? { model: model.id } : {}),
         };
         // None named, the daemon's `workspacelessFolder` says where it works.
         const where = asked.workingDirectory ?? await scratchFolder(made);
@@ -2660,7 +2689,7 @@ export function createTooling(ctx: HostContext): Tooling {
         if (opened === undefined || lead === undefined) throw new Error(`${made} did not start`);
         const first = crypto.randomUUID();
         sent(first);
-        void ctx.startTurn(lead.chat, first, asked.prompt, asked.model === undefined ? undefined : { id: asked.model }, asked.from);
+        void ctx.startTurn(lead.chat, first, asked.prompt, model, asked.from);
         return { session: made, chat: opened };
       },
       createChat: async (session, asked) => await openChat(session, asked),
@@ -2684,6 +2713,7 @@ export function createTooling(ctx: HostContext): Tooling {
       cancelWake: needsSession,
       artifacts: needsSession,
       setArtifacts: needsSession,
+      rootConfig: () => ctx.rootConfig,
       // A mark is drawn on a session's files, and a call with no session has none.
       annotations: needsSession,
       markAnnotation: needsSession,
@@ -2714,7 +2744,8 @@ export function createTooling(ctx: HostContext): Tooling {
       if (one.grant !== undefined && !callerMay(caller, one.grant)) return [];
       // No session means no strategy of its own: the deferred one this host
       // gives every session is the one a person is offered.
-      const session: ToolSession = { titleStrategy: strategyOf(''), agents: agentNames(caller.principal, caller.root === true) };
+      const agents = agentNames(caller.principal, caller.root === true);
+      const session: ToolSession = { titleStrategy: strategyOf(''), agents, rootConfig: ctx.rootConfig, models: offeredModelsOf(agents) };
       if (one.isEnabledForSession?.(session) === false) return [];
       const asked = one.forSession?.(session);
       const definition = asked?.definition === undefined ? one.definition : { ...one.definition, ...asked.definition };

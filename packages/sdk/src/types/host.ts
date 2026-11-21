@@ -10,6 +10,7 @@ import type { ResourceProvider, ResourceStore } from './resources.js';
 import type { Grant, Principal, Users } from './users.js';
 import type { CommandTerminal, TerminalStore } from './terminals.js';
 import type { Shells } from './shells.js';
+import type { CreatedModelOptions } from '../tools/modeloptions.js';
 import type { ChatBackgroundTasks } from './background.js';
 import type { ChangesetOperationContribution, ChangesetSource } from './changes.js';
 import type { Worktrees } from './worktrees.js';
@@ -1380,6 +1381,10 @@ export interface ToolSession {
    * the set, which is what a tool that moves one chat alone needs.
    */
   multipleDirectories?: boolean | undefined;
+  /** The root config as the host holds it, which a tool shaped by a root key reads. */
+  rootConfig?: Readonly<Record<string, unknown>> | undefined;
+  /** The models of the agents in `agents`, or of every agent where it is absent, each with its `configSchema`. */
+  models?: { id: string; name: string; provider: string; configSchema?: Record<string, unknown> }[] | undefined;
 }
 
 /**
@@ -1765,7 +1770,7 @@ export interface ToolCall {
   /** The chats of a running session, the default first. Empty for one that is not running. */
   chats(session: string): { resource: string; title: string }[];
   /** Models any session here can run on, each with the provider it belongs to. */
-  models(): { id: string; name: string; provider: string }[];
+  models(): { id: string; name: string; provider: string; configSchema?: Record<string, unknown> }[];
   /**
    * The provider ids this host offers, in the order it holds them.
    *
@@ -1835,6 +1840,8 @@ export interface ToolCall {
     workingDirectory: string;
     provider?: string;
     model?: string;
+    /** The model options the call asked for, present while agents can choose them; checked against the model's `configSchema`. */
+    modelOptions?: CreatedModelOptions;
     config?: Record<string, unknown>;
     isolation?: 'worktree' | 'folder';
     title: string;
@@ -1867,6 +1874,8 @@ export interface ToolCall {
   createChat(session: string, options: {
     title?: string;
     model?: string;
+    /** As `create` takes it. */
+    modelOptions?: CreatedModelOptions;
     provider?: string;
     config?: Record<string, unknown>;
     prompt: string;
@@ -1941,6 +1950,8 @@ export interface ToolCall {
   artifacts(): Bag[];
   /** Replace them, and tell every client watching the session. */
   setArtifacts(list: Bag[]): void;
+  /** The root config as the host holds it now, which a tool shaped by a root key reads on each call. */
+  rootConfig(): Readonly<Record<string, unknown>>;
   /**
    * The marks on the calling session, as its annotations channel holds them.
    *
