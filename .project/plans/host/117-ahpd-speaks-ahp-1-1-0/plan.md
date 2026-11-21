@@ -98,7 +98,7 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 | [03 - Backend keys are chat-mutable](task-03-backend-keys-are-chat-mutable.md) | dropped | - |
 | [04 - Steering messages share the list](task-04-steering-messages-share-the-list.md) | implemented | 01 |
 | [05 - A model names its vendor](task-05-a-model-names-its-vendor.md) | implemented | 01 |
-| [06 - The documents say 1.1.0](task-06-the-documents-say-1-1-0.md) | todo | 04, 05, 07, 08, 09 |
+| [06 - The documents say 1.1.0](task-06-the-documents-say-1-1-0.md) | implemented | 04, 05, 07, 08, 09 |
 | [07 - The chat config reads the package](task-07-the-chat-config-reads-the-package.md) | implemented | 01 |
 | [08 - A canvas says its uri](task-08-a-canvas-says-its-uri.md) | implemented | 01 |
 | [09 - The annotations channel is ahp-annotations](task-09-the-annotations-channel-is-ahp-annotations.md) | implemented | 01 |
@@ -112,8 +112,8 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 ## Resume state
 
-- **Done so far:** the plan, 2026-10-22; checked again against AHP 1.1.0 and main on 2026-11-21. Tasks 02 and 03 are on main. Task 01 implemented on 2026-11-21. Task 08 implemented on 2026-11-21. Task 07 implemented on 2026-11-21. Task 09 implemented on 2026-11-21. Task 04 implemented on 2026-11-21. Task 05 implemented on 2026-11-21.
-- **Next action:** [task-06-the-documents-say-1-1-0.md](task-06-the-documents-say-1-1-0.md).
+- **Done so far:** the plan, 2026-10-22; checked again against AHP 1.1.0 and main on 2026-11-21. Tasks 02 and 03 are on main. Task 01 implemented on 2026-11-21. Task 08 implemented on 2026-11-21. Task 07 implemented on 2026-11-21. Task 09 implemented on 2026-11-21. Task 04 implemented on 2026-11-21. Task 05 implemented on 2026-11-21. Task 06 implemented on 2026-11-21.
+- **Next action:** Run the server and computer suites, then open the PR.
 - **Open questions:** none.
 - **Watch out for:** `isActionKnownToVersion` says `chat/configChanged` is 1.1.0. Do not use it to hold the action back, since VS Code sends it on 1.0.0.
 
