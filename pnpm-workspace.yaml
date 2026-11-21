@@ -25,7 +25,7 @@ minimumReleaseAgeExclude:
   - '@cofold/remote@0.4.0 || 0.5.0'
   - '@cofold/sdk@0.2.0'
   - '@cofold/store-file@0.2.2'
-  - '@cofold/tools@0.4.1'
+  - '@cofold/tools@0.4.1 || 0.4.2'
   - '@cofold/config@0.3.0 || 0.3.1'
   - '@cofold/terminal@0.3.0 || 0.4.0 || 0.5.0'
   - '@cofold/yaml@0.3.0'

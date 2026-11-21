@@ -1,6 +1,6 @@
 ---
 title: the read-before-write and dangling-link switches
-status: todo
+status: done
 depends: [task-04-the-tool-table-and-tools-042.md]
 layer: "agent-cofold"
 refs:
@@ -26,3 +26,7 @@ ahpd uses cofold's read-before-write switch where a harness asks for it, and get
 ## Validation
 
 - The default is on. The agent-cofold tests refuse a write without a read.
+
+## Result
+
+No change. `requireRead` and the dangling-link write are in `@cofold/tools` 0.4.1. `toolsOf` in `capabilities.ts` passes `files.requireRead` through and keeps the rule on by default, and `agent-cofold-options.test.ts` covers both.

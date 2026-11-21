@@ -1180,6 +1180,14 @@ it('runs a new message in place of resuming a paused run, the run let go first',
   expect(after.view.types('chat').at(-1)).toBe('chat/turnComplete');
   const runs = await createFileStore({ root }).runs.list({ sessionId: 'one' });
   expect(runs.map((one) => one.status)).toEqual(['completed', 'cancelled']);
+  /*
+   * And the turn it cut says why when it is read back: cofold writes the
+   * reason ahpd cancelled with into the marker, and the transcript shows the
+   * marker as a notice in that turn, not as a stop the person made.
+   */
+  const read = await turnsOf(createFileStore({ root }), 'one');
+  expect((read[0]?.responseParts as Bag[]).filter((part) => part.kind === 'systemNotification'))
+    .toEqual([{ kind: 'systemNotification', content: '[Request interrupted: a new message took its place]' }]);
 });
 
 it('keeps two chats of one session in two conversations, each with its own turn', async () => {

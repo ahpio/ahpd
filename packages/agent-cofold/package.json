@@ -71,7 +71,7 @@
     "@cofold/config": "^0.3.1",
     "@cofold/model-openai-compat": "^0.3.0",
     "@cofold/store-file": "^0.2.2",
-    "@cofold/tools": "^0.4.1"
+    "@cofold/tools": "^0.4.2"
   },
   "ahpd": {
     "entry": "./dist/index.js",
