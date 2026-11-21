@@ -1,6 +1,6 @@
 ---
 title: An Mcp rule names a server or a tool
-status: todo
+status: implemented
 depends: []
 layer: "sdk"
 refs:
@@ -16,7 +16,7 @@ A rule `Mcp` matches every MCP call, `Mcp(<server>)` every call of that server, 
 
 - `UPDATE: packages/sdk/src/access/permissionrules.ts:55-87` - `mcpServerName` and `mcpToolName` on the request, and the `Mcp` case.
 - `UPDATE: packages/sdk/src/host/spawn.ts:626-632` - the request carries the call's server and tool.
-- `UPDATE: packages/sdk/test/host-permissions.test.ts` - the `Mcp` cases.
+- `CREATE: packages/sdk/test/permissionrules-mcp.test.ts` - the `Mcp` cases.
 
 ## Steps
 
@@ -27,7 +27,9 @@ A rule `Mcp` matches every MCP call, `Mcp(<server>)` every call of that server, 
 
 ## Validation
 
-- `packages/sdk/test/host-permissions.test.ts` - `Mcp`, `Mcp(s)` and `Mcp(s/t)` match a call of `s`; `Mcp(other)` and a server with `/` do not.
+- `packages/sdk/test/permissionrules-mcp.test.ts` - `Mcp`, `Mcp(s)` and `Mcp(s/t)` match a call of `s`; `Mcp(other)` and a server with `/` do not.
 - The sdk vitest suite passes.
 
 ## Resume
+
+A request carries `mcpServerName` and `mcpToolName`, and `matchesPermissionRule` has VS Code's `Mcp` case. `spawn.ts` takes the server from `mcpServerOf` and the tool from what ends the call's name after its last `__`. The `permissions` text names the two `Mcp` forms in its three copies. The case is a unit test of the matcher, `permissionrules-mcp.test.ts`, since `host-permissions.test.ts` drives a whole host.
