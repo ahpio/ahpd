@@ -8,3 +8,13 @@
  * being written.
  */
 export const WAIT_MS = process.platform === 'win32' ? 15_000 : 4_000;
+
+/*
+ * The budget of a case that starts scripted CLIs as processes of their own,
+ * set by its file with `vi.setConfig`.
+ *
+ * Each call to a scripted `docker`, `devcontainer` or `virsh` is a node
+ * process, and a case with a few connects needs more than 5 s on a busy
+ * machine. Windows' 20 s for every platform, for these files alone.
+ */
+export const PROCESS_CASE_MS = 20_000;

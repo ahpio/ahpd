@@ -90,7 +90,7 @@ Current progress and pending items only, as of 2026-11-21. *Outside this reposit
 
 ## Tests
 
-- Six computer cases time out on this machine at any load, and pass on CI: [computer-cases-time-out-on-a-busy-machine.md](../problems/computer-cases-time-out-on-a-busy-machine.md).
+- The computer files that start scripted CLIs give each case 20 s, `PROCESS_CASE_MS`: [computer-cases-time-out-on-a-busy-machine.md](../problems/computer-cases-time-out-on-a-busy-machine.md) is `mitigated`.
 - A first-party load case of the server suite timed out once at a load near 10: [a-first-party-load-case-times-out-on-a-busy-machine.md](../problems/a-first-party-load-case-times-out-on-a-busy-machine.md).
 - Run one vitest suite at a time: `TMPDIR=/home/softov/tmp/ahpd-test flock /home/softov/tmp/ahpd-test/vitest.lock npx vitest run <package>`. A fresh worktree needs `pnpm schema` first.
 - `packages/sdk/test/fixtures/wire.jsonl` is rewritten by every run. It is not tracked since `8b63fce96`, so there is nothing to restore. Never print it.
@@ -105,7 +105,7 @@ Current progress and pending items only, as of 2026-11-21. *Outside this reposit
   - `nested-process.test.ts` leaves refs under `refs/agents/` in the repository: [nested-process-cases-write-checkpoints-into-the-repository.md](../problems/nested-process-cases-write-checkpoints-into-the-repository.md).
   - `host-attachments.test.ts`: [two-attachment-cases-time-out-on-windows.md](../problems/two-attachment-cases-time-out-on-windows.md).
   - `computer-servercheck.test.ts` runs without docker or virsh since #396.
-  - `container-relay.test.ts`: [the-relay-case-waits-4-s-for-a-nested-daemon-from-source.md](../problems/the-relay-case-waits-4-s-for-a-nested-daemon-from-source.md).
+  - `container-relay.test.ts` waits up to 15 s for the nested daemon's first answer, in a 20 s case.
   - `computer-disposable.test.ts`: two cases in [a-disposable-machine-case-fails-at-random.md](../problems/a-disposable-machine-case-fails-at-random.md).
   - `host-files.test.ts`: [a-workspace-less-case-removes-its-home-while-a-folder-is-busy.md](../problems/a-workspace-less-case-removes-its-home-while-a-folder-is-busy.md).
   - `changes-refresh.test.ts` and `worktrees.test.ts`: [git-cases-time-out-on-windows.md](../problems/git-cases-time-out-on-windows.md).

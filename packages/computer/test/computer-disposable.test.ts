@@ -1,4 +1,4 @@
-import { WAIT_MS } from '../../../tools/wait.ts';
+import { PROCESS_CASE_MS, WAIT_MS } from '../../../tools/wait.ts';
 import { machinePathOf } from '@ahpd/sdk';
 import { endHolders } from '../../../tools/holders.ts';
 import { posix } from '../../../tools/posix.ts';
@@ -23,6 +23,9 @@ import type { HostOptions } from '../../sdk/src/types/host.js';
 import type { MachineNeed } from '../../sdk/src/types/machine.js';
 import type { Peer } from '../../sdk/src/types/rpc.js';
 import { gitSync } from '../../../tools/git.ts';
+
+// Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
+vi.setConfig({ testTimeout: PROCESS_CASE_MS });
 
 /*
  * A disposable machine: offered as a source, made when a session starts, and

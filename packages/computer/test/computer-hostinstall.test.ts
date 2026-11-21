@@ -5,11 +5,15 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { hostInstallOf } from '../src/hostinstall.js';
 import type { Part } from '../src/parts.js';
 import { quote, sshRuntime } from '../src/ssh.js';
 import type { SshMachine } from '../src/ssh.js';
+import { PROCESS_CASE_MS } from '../../../tools/wait.ts';
+
+// Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
+vi.setConfig({ testTimeout: PROCESS_CASE_MS });
 
 /*
  * The ahpd this host installs on a box it reaches over ssh.
