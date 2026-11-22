@@ -95,7 +95,7 @@ vscode/refreshSandboxCertificate -> the status read again -> session _meta['vsco
 ## Resume state
 
 - **Done so far:** nothing.
-- **Next action:** none until a feature turns termination on: no ahpd setting does today, so every chat would say `notRequired`. [ideas/a-chat-pushes-without-seeing-its-token.md](../../../ideas/a-chat-pushes-without-seeing-its-token.md) is the likely one. Then [task-01-a-chat-terminates-tls.md](task-01-a-chat-terminates-tls.md). Parked on Softov's word, 2026-11-22.
+- **Next action:** none until a feature turns termination on: no ahpd setting does today, so every chat would say `notRequired`. [briefs/a-machine-never-holds-the-git-token.md](../../../briefs/a-machine-never-holds-the-git-token.md) is the likely one. Then [task-01-a-chat-terminates-tls.md](task-01-a-chat-terminates-tls.md). Parked on Softov's word, 2026-11-22.
 - **Open questions:** none.
 - **Watch out for:** srt's termination needs Node; it throws on Bun older than 1.4.
 
