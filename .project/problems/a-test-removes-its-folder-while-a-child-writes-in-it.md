@@ -35,6 +35,8 @@ Since #440, `tools/test-tmpdir.ts` sets `maintenance.auto=false` and `gc.auto=0`
 On 2026-11-22 CI's `windows (3/4)` on #439, run on `5e20b12c6` with #440 in, failed the same case with the same error. So git's background maintenance is not the writer, or not the only one.
 The failed case took 9.4 s, and its removal tries again for 5.5 s. So the folder holds a file for seconds after the teardown starts, and not only for a moment.
 Since `test/a-failed-removal-names-what-is-left`, the disposable teardown removes its folders with `removeFolder` in `tools/holders.ts`. A removal that fails names the files still in the folder and the holders still seen.
+On 2026-11-22 CI's `windows (3/4)` on #443, run 45003389117, failed the same case again. It said `Still in it: docker.json. Holders: none.` So the file left is the fake `docker`'s state, and no call of it was alive at the check.
+Either a call wrote the state again after the removal deleted it and ended before the check, or something else held the file open. Since `test/a-left-docker-state-names-its-last-call`, the message also gives each file's age and the last three calls that the state records.
 
 ## Impact
 
