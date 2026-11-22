@@ -3,13 +3,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { memoryAutomations } from '../src/automations/automations.js';
-import { createHost } from '../src/host.js';
+import { createHost, ROOT } from '../src/host.js';
 import { idOf } from '../src/sessions/catalog.js';
 import { memorySessions } from '../src/sessions/sessions.js';
 import {
   defaultChatOf, echo, firstMessage, hello, peer, settle,
 } from './support/host.js';
+import { directory } from './users-gate-helpers.js';
 import type { Bag } from '../src/types/common.js';
+import type { Grant, Users } from '../src/types/users.js';
 
 /*
  * An automation deleted with the sessions its runs made, as VS Code's window
@@ -52,6 +54,42 @@ async function joined(store = memoryAutomations()) {
   const client = host.accept(peer());
   const answer = await client.handle(hello(['0.9.0'])) as { _meta?: Record<string, unknown> };
   return { client, store, sessions, answer };
+}
+
+/** The record the host advertises to a person who signs in. */
+const USERS_RECORD = {
+  resource: 'ahpd://users',
+  resource_name: 'ahpd users',
+  authorization_servers: ['https://example.com'],
+  required: false,
+};
+
+/** A directory of people, each holding the grants it names. */
+const users = (tokens: Record<string, Grant[]>): Users => ({ ...directory(tokens), resource: USERS_RECORD });
+
+/** What a person needs to delete an automation and a session a client remembers. */
+const REMOVER: Grant[] = ['automation:remove', 'session:create', 'session:list', 'session:read', 'session:write'];
+
+/**
+ * A host with people in it, and a signed-in client for each token, sharing one
+ * automation store and one session store.
+ */
+async function servingUsers(tokens: Record<string, Grant[]>, store = memoryAutomations()) {
+  const dir = mkdtempSync(join(tmpdir(), 'ahpd-delete-'));
+  made.push(dir);
+  const sessions = memorySessions();
+  const host = createHost({
+    path: dir, agents: [echo({ path: dir, pace: 0 })], users: users(tokens), automations: store, sessions,
+  });
+  hosts.push(host);
+  const clients: Record<string, Client> = {};
+  for (const token of Object.keys(tokens)) {
+    const client = host.accept(peer());
+    await client.handle(hello(['0.9.0']));
+    await client.handle({ method: 'authenticate', params: { channel: ROOT, resource: USERS_RECORD.resource, token } });
+    clients[token] = client;
+  }
+  return { host, clients, store, sessions };
 }
 
 /** A session open on this host, announced by a first message so a listing holds it. */
@@ -246,6 +284,61 @@ describe('deleting an automation', () => {
       await new Promise((done) => { setTimeout(done, 5); });
     }
 
+    expect(store.receiptOf?.('r')?.sessions).toEqual([RUN_ONE]);
+    expect(await listed(again)).not.toContain(RUN_ONE);
+  });
+
+  it("refuses another person's session under legacySessions, and deletes nothing", async () => {
+    const { clients, store } = await servingUsers({ ana: REMOVER, bob: REMOVER });
+    store.create(ONE, definition());
+    await live(clients.ana!, LEGACY);
+
+    await expect(deleteOne(clients.bob!, { deleteHistory: true, legacySessions: [LEGACY] }))
+      .rejects.toThrow("Only the session's owner can delete it.");
+
+    // Refused whole, before the automation went.
+    expect(store.get(ONE)).toBeDefined();
+    expect(await listed(clients.ana!)).toContain(LEGACY);
+  });
+
+  it("deletes the caller's own session named under legacySessions", async () => {
+    const { clients, store } = await servingUsers({ bob: REMOVER });
+    store.create(ONE, definition());
+    await live(clients.bob!, LEGACY);
+
+    expect(await deleteOne(clients.bob!, { deleteHistory: true, legacySessions: [LEGACY] })).toEqual([LEGACY]);
+
+    expect(store.get(ONE)).toBeUndefined();
+    expect(await listed(clients.bob!)).not.toContain(LEGACY);
+  });
+
+  it('finishes a deletion in progress as the requester it kept', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ahpd-delete-'));
+    made.push(dir);
+    const sessions = memorySessions();
+    const agent = echo({ path: dir, pace: 0 });
+    const before = createHost({ path: dir, agents: [agent], users: users({ bob: REMOVER }), automations: memoryAutomations(), sessions });
+    const client = before.accept(peer());
+    await client.handle(hello(['0.9.0']));
+    await client.handle({ method: 'authenticate', params: { channel: ROOT, resource: USERS_RECORD.resource, token: 'bob' } });
+    await live(client, RUN_ONE);
+    await before.close();
+
+    // What the automation file holds after the daemon removed the definition
+    // and stopped before its sessions went, with the person who asked.
+    const store = memoryAutomations({
+      deletions: [{ automation: ONE, sessions: [RUN_ONE], requestIds: ['r'], requester: 'user:bob' }],
+    });
+    const after = createHost({ path: dir, agents: [agent], users: users({ bob: REMOVER }), automations: store, sessions });
+    hosts.push(after);
+    const again = after.accept(peer());
+    await again.handle(hello(['0.9.0']));
+    await again.handle({ method: 'authenticate', params: { channel: ROOT, resource: USERS_RECORD.resource, token: 'bob' } });
+    for (let i = 0; i < 200 && store.receiptOf?.('r') === undefined; i++) {
+      await new Promise((done) => { setTimeout(done, 5); });
+    }
+
+    // The resumed deletion passed the requester it kept, so the session went.
     expect(store.receiptOf?.('r')?.sessions).toEqual([RUN_ONE]);
     expect(await listed(again)).not.toContain(RUN_ONE);
   });

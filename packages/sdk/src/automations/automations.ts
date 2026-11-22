@@ -841,12 +841,14 @@ export function memoryAutomations(options: AutomationsOptions = {}): AutomationS
 
     deletionOf: (automation) => deletions.get(automation),
     deletions: () => [...deletions.values()],
-    beginDeletion: (automation, sessions, requestId) => {
+    beginDeletion: (automation, sessions, requestId, requester) => {
       const before = deletions.get(automation);
+      const keptRequester = before?.requester ?? requester;
       const next: AutomationDeletion = {
         automation,
         sessions: [...new Set([...(before?.sessions ?? []), ...sessions])],
         requestIds: [...new Set([...(before?.requestIds ?? []), ...(requestId === undefined ? [] : [requestId])])],
+        ...(keptRequester === undefined ? {} : { requester: keptRequester }),
       };
       const nextDeletions = new Map(deletions).set(automation, next);
       persistDeletions(nextDeletions, receipts);

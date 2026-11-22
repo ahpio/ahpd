@@ -733,7 +733,7 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
           throw new RpcError(INVALID_PARAMS, `legacySessions must name session URIs: ${one}`);
       }
       const requestId = optionalStringParam(params, 'requestId', 'a request id');
-      return await ctx.deleteAutomation(automation, deleteHistory, legacySessions, requestId);
+      return await ctx.deleteAutomation(automation, deleteHistory, legacySessions, requestId, connection.principal);
     },
     /*
      * Dropping what a deletion answered once the client has it, as VS Code

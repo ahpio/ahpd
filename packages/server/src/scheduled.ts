@@ -405,8 +405,10 @@ export function scheduledAutomations(options: ScheduledOptions): ScheduledStore 
     return {
       rows: out,
       deletions: Array.isArray(held.deletions)
-        ? held.deletions.filter((one) => typeof one?.automation === 'string'
-          && Array.isArray(one.sessions) && Array.isArray(one.requestIds))
+        ? held.deletions
+          .filter((one) => typeof one?.automation === 'string'
+            && Array.isArray(one.sessions) && Array.isArray(one.requestIds))
+          .map(({ requester, ...rest }) => (typeof requester === 'string' ? { ...rest, requester } : rest))
         : [],
       receipts: Array.isArray(held.deletionReceipts)
         ? held.deletionReceipts.filter((one) => typeof one?.requestId === 'string'

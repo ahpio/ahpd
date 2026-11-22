@@ -248,6 +248,13 @@ export interface AutomationDeletion {
   sessions: string[];
   /** The `requestId` of every request waiting for its answer. */
   requestIds: string[];
+  /**
+   * Whose deletion it is: the owner of the principal that asked.
+   *
+   * Kept because a restart finishes the deletion with no client behind it, and
+   * each session it deletes is still checked against the person who asked.
+   */
+  requester?: Owner;
 }
 
 /** What a deletion answered, by the request id that asked for it. */
@@ -349,9 +356,10 @@ export interface AutomationStore {
    *
    * A second request for the same automation joins the sessions and the request
    * ids already there, so its answer comes when the first one's does. Answers
-   * what the store now holds.
+   * what the store now holds. `requester` is whose deletion it is, kept from the
+   * request that started it: a second request joins it and does not move it.
    */
-  beginDeletion?(automation: string, sessions: string[], requestId?: string): AutomationDeletion;
+  beginDeletion?(automation: string, sessions: string[], requestId?: string, requester?: Owner): AutomationDeletion;
   /**
    * Record that a deletion ended, with the sessions actually deleted.
    *
