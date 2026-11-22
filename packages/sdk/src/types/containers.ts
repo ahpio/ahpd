@@ -43,6 +43,23 @@ export interface ContainerConnect {
    */
   resume?: boolean;
   /**
+   * Whether the user's state is kept on a volume beside the workspace.
+   *
+   * The nested host's configuration and the agents' sessions are linked to a
+   * second volume, so a container made again reaches the same state. Absent is
+   * not `true`.
+   */
+  persistUserState?: boolean;
+  /**
+   * Whether the container runs with the options the command sandbox needs.
+   *
+   * The container's seccomp, AppArmor and system paths are unconfined, and
+   * `/dev/net/tun` is a device in it. That weakens the container's own
+   * isolation, so only an explicit `true` asks for it and an absent value does
+   * not.
+   */
+  sandboxEnabled?: boolean;
+  /**
    * Whose the container is, when the connection is somebody's.
    *
    * The client does not send it and is never asked: the host fills it from the
@@ -93,8 +110,60 @@ export interface ContainerEnvironmentConnect {
   name: string;
   /** Whether a container that is stopped may be started again, as `ContainerConnect`'s is. */
   resume?: boolean;
+  /** Whether the user's state is kept on a volume, as `ContainerConnect`'s is. */
+  persistUserState?: boolean;
+  /** Whether the container runs with the sandbox's options, as `ContainerConnect`'s is. */
+  sandboxEnabled?: boolean;
   /** Whose the environment is, filled from the connection as `ContainerConnect`'s is. */
   owner?: Owner;
+}
+
+/** The point of a connect a user state report is about. */
+export type ContainerUserStateStage = 'mount' | 'up' | 'link' | 'userCommands';
+
+/**
+ * One stage of a connect that keeps the user's state, as the reference reports
+ * it.
+ *
+ * `mount` says whether a state volume was added or the container already had
+ * one; `up` and `userCommands` say whether the CLI stage succeeded; `link` says
+ * what became of the folders and carries their counts. The fields are VS
+ * Code's, so a client reads them the same way.
+ * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/common/agentHostExtensionProtocol.ts
+ */
+export interface ContainerUserState {
+  /** The stage this report is about. */
+  stage: ContainerUserStateStage;
+  /**
+   * What happened at that stage.
+   *
+   * `mount`: `added`, `existingContainer` or `failed`.
+   * `up` and `userCommands`: `succeeded` or `failed`.
+   * `link`: `linked`, `homeNotFound`, `noMount` or `failed`.
+   */
+  outcome: string;
+  /** Which step failed, when the outcome is `failed`. */
+  reason?: string;
+  /** The link script's last step, when it failed. */
+  step?: string;
+  /** The exit code of the stage's command, when it has one. */
+  exitCode?: number;
+  /** Where the state volume is, classed as its mount target. */
+  target?: 'workspaces' | 'volume';
+  /** Folders whose state from an earlier container replaced the container's own folder. */
+  restoredFolders?: number;
+  /** Folders moved from the container to the state volume. */
+  movedFolders?: number;
+  /** Folders made on both sides and linked. */
+  createdFolders?: number;
+  /** Folders that were already linked. */
+  existingFolders?: number;
+  /** Folders that were not linked. */
+  skippedFolders?: number;
+  /** The sorted, comma-separated reasons the folders were not linked. */
+  skipReasons?: string;
+  /** The stage's own sentence, when it failed. */
+  errorMessage?: string;
 }
 
 /** What a client is told once the container is up and a host is running in it. */
@@ -110,6 +179,13 @@ export interface ContainerConnectResult {
   remoteWorkspaceFolder: string;
   /** The same folder as this host knows it, when the launcher knows it. */
   hostWorkspaceFolder?: string;
+  /**
+   * Whether the running container has the options the command sandbox needs.
+   *
+   * Read from the container itself rather than from what the connect asked
+   * for: a container made earlier keeps the settings it was made with.
+   */
+  sandboxSupported: boolean;
 }
 
 /**
@@ -124,6 +200,20 @@ export interface ContainerSink {
   message(text: string): void;
   /** The launcher's or the nested host's own output, for a person watching. */
   output(text: string): void;
+  /**
+   * One stage of a connect that keeps the user's state.
+   *
+   * Optional, because a sink that does not report a connect's stages is not
+   * asked to: the host's own sink forwards it as a notification.
+   */
+  userState?(notice: ContainerUserState): void;
+  /**
+   * Whether the running container has the options the command sandbox needs.
+   *
+   * Optional, as `userState` is: a sink that does not report a connect's facts
+   * is not asked to.
+   */
+  sandboxSupport?(supported: boolean): void;
   /** The relay ended. The reason is absent when it was simply stopped. */
   close(reason?: string): void;
 }

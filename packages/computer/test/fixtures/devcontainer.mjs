@@ -123,6 +123,17 @@ if (verb === 'read-configuration') {
   process.exit(0);
 }
 
+/*
+ * `run-user-commands`: the lifecycle commands `up` leaves for after the state
+ * folders are linked. It answers the same one-line result `up` does.
+ */
+if (verb === 'run-user-commands') {
+  const made = held.userCommands ?? { outcome: 'success' };
+  process.stdout.write(`${JSON.stringify(made)}\n`);
+  keep();
+  process.exit(held.userCommandsCode ?? (made.outcome === 'success' ? 0 : 1));
+}
+
 if (verb === 'up') {
   /*
    * Whether another `up` runs beside this one, which a test of one folder's
@@ -310,9 +321,19 @@ if (verb === 'up') {
         // `runArgs` reach an image or Dockerfile definition's container alone;
         // a Compose one takes its service's labels from its Compose files.
         const runArgs = said.dockerComposeFile === undefined && Array.isArray(said.runArgs) ? said.runArgs : [];
+        // What those arguments and the service's own options put on the
+        // container, which `docker inspect` reports back.
+        const securityOpt = [];
+        const devices = [];
+        for (let i = 0; i < runArgs.length; i++) {
+          if (runArgs[i] === '--security-opt') securityOpt.push(String(runArgs[i + 1]));
+          if (runArgs[i] === '--device') devices.push(String(runArgs[i + 1]));
+        }
         for (const one of held.composes ?? []) {
           const service = one.config?.services?.[said.service] ?? {};
           Object.assign(labels, service.labels ?? {});
+          securityOpt.push(...(service.security_opt ?? []));
+          devices.push(...(service.devices ?? []));
         }
         const typed = [];
         for (let i = 0; i < runArgs.length; i++) {
@@ -378,6 +399,8 @@ if (verb === 'up') {
             return [`${read('source')}:${read('target')}`];
           })])],
           ...(typed.length === 0 ? {} : { typed }),
+          ...(securityOpt.length === 0 ? {} : { securityOpt }),
+          ...(devices.length === 0 ? {} : { devices }),
           // The container's own environment: the image's, with the override's
           // `containerEnv` laid over it, which is what `${containerEnv:NAME}`
           // in a `remoteEnv` resolves from.

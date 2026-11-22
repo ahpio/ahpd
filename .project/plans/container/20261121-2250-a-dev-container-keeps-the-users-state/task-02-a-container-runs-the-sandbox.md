@@ -1,6 +1,6 @@
 ---
 title: A container runs the sandbox and says so
-status: todo
+status: done
 depends: [task-01-a-container-keeps-the-users-state.md]
 layer: "sdk, computer"
 refs:
@@ -34,3 +34,5 @@ With `sandboxEnabled`, a container runs with the options the command sandbox nee
 - The sdk and computer vitest suites pass, one at a time.
 
 ## Resume
+
+`packages/computer/src/containersandbox.ts` writes the override for a folder's definition and for a Compose service, and `devcontainer.ts` passes it to `up`, inspects the running container for every connect and reports `sandboxSupported`. An environment's generated configuration carries the same `runArgs`. `containersandbox.test.ts` covers both override shapes, the Compose discovery, the check on sample inspect output, and a folder and an environment connect with and without the option.

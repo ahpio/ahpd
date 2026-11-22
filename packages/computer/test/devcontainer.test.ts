@@ -229,6 +229,7 @@ it('makes the container the folder asks for, and answers the reference shape', a
     address: 'devcontainer:abc123',
     remoteWorkspaceFolder: at(folder),
     hostWorkspaceFolder: folder,
+    sandboxSupported: false,
   });
   // The id labels are the same pair every other call about this folder uses,
   // so the CLI finds the folder's own container rather than making another.
