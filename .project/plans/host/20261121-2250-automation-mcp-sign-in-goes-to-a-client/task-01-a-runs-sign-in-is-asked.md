@@ -1,6 +1,6 @@
 ---
 title: A run's MCP sign-in is asked of the clients
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:

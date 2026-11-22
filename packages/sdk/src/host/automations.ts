@@ -9,7 +9,7 @@ import { presetById } from '../automations/triggerpresets.js';
 import { localPath } from '../resources/fileuri.js';
 import { createRuleEngine } from '../automations/triggers.js';
 import { wakeMessage } from '../automations/wakemessage.js';
-import { bag, ownerOfPrincipal } from '../utils/values.js';
+import { bag, ownerOfPrincipal, str, strings } from '../utils/values.js';
 import { AUTOMATIONS, isAutomationResource } from './channels.js';
 import { CLOSING, need, noProvider } from './common.js';
 import { refusalReason } from './gate.js';
@@ -23,6 +23,7 @@ import type { AutomationWake, SessionEventKind, SessionRule } from '../types/tri
 import type { Owner } from '../types/usage.js';
 import type { Principal } from '../types/users.js';
 import type { HostContext } from './context.js';
+import type { Connection } from '../types/host.js';
 import type { MessageFrom } from '../types/session.js';
 import { mayTrust } from './trust.js';
 
@@ -106,6 +107,44 @@ const ownerOf = (entry: AutomationEntry): Owner | undefined => {
   const held = entry._meta?.['ahpd.owner'];
   return typeof held === 'string' && /^(?:user|team|project|root):.+$/.test(held) ? held as Owner : undefined;
 };
+
+/** One MCP server of a session that needs a sign-in, as its customization draws it. */
+interface SignIn {
+  /** The customization id a client's `authenticate` target names. */
+  id: string;
+  /** The server's name, as the request says which server it is. */
+  name: string;
+  /** The `authRequired` state the server holds. */
+  state: Bag;
+}
+
+/**
+ * What one challenge is, as a key: the resource and the scopes it asks for, the
+ * reason it asks, and the client it names.
+ *
+ * Two states with one key are one thing to ask a window, so a server that says
+ * the same challenge twice is asked once. A token that expired is a different
+ * reason from one never given, and a challenge naming a client is not the same
+ * as one that does not, so both are asked.
+ */
+const challengeKeyOf = (state: Bag): string => JSON.stringify([
+  str(bag(state.resource).resource) ?? '',
+  strings(state.requiredScopes),
+  str(state.reason) ?? '',
+  str(bag(state.oauthClient).clientId) ?? '',
+]);
+
+/**
+ * The MCP servers a session publishes that need a sign-in.
+ *
+ * Read from the top level of the list. A server a plugin carries is one of the
+ * plugin's parts and not an entry of its own: it is owned by that connector,
+ * and its sign-in is the connector's to get rather than this round's to ask.
+ */
+const signingIn = (customizations: Bag[]): SignIn[] => customizations
+  .filter((one) => one.type === 'mcpServer' && bag(one.state).kind === 'authRequired')
+  .map((one) => ({ id: str(one.id) ?? '', name: str(one.name) ?? '', state: bag(one.state) }))
+  .filter((one) => one.id !== '');
 
 /**
  * What an automation says about waking, from `_meta.ahpd` on its definition.
@@ -256,7 +295,7 @@ export interface Automations {
 
 export function createAutomations(ctx: HostContext): Automations {
   const {
-    options, sessions, byChat, senders, charged, origins, kept,
+    options, sessions, byChat, senders, charged, origins, kept, connections, ownerFor,
     dispatch, log, fire, statusOf, principalFor, admitted, placedIn,
     resolveCreatedSessionConfig, createProviderSession, backendsOwn, modelIn, unheld, forWhom, leadOf,
     scratchFolder, turnInstructions,
@@ -267,6 +306,17 @@ export function createAutomations(ctx: HostContext): Automations {
    * sessions and its primary session, which the next move is said against.
    */
   const runStates = new Map<string, Pick<AutomationRun, 'automation' | 'lifecycle' | 'sessions' | 'primarySession'>>();
+
+  /**
+   * The challenges each run's session has been asked a client about, by the
+   * session and then by the server.
+   *
+   * One challenge is one question, so a server that keeps saying it is asked
+   * once. A server that leaves `authRequired` has its entry dropped, and one
+   * that comes back asks again - a different token, or the same one refused,
+   * is what a later round is for.
+   */
+  const askedSignIns = new Map<string, Map<string, Set<string>>>();
 
   /** The run each manual request made, by its `requestId`, for the daemon's run. */
   const manualRunRequests = new Map<string, { automation: string; run: string }>();
@@ -1537,11 +1587,91 @@ export function createAutomations(ctx: HostContext): Automations {
   /** The rule engine, with the clock a test may hand it and the host's own answer. */
   const engine = createRuleEngine({ onMatch: woke });
 
-  /*
-   * Every event every session does, every turn as it starts, and everything a
-   * session does that is not an event, for as long as this host runs.
+  /**
+   * The connections one owner's work may be asked of: every connection where
+   * nobody owns anything, and the owner's own on a host with people in it. An
+   * automation nobody owns is asked of nobody there, because there is no
+   * person it belongs to whose window could hold the token.
+   */
+  const connectionsOf = (owner: Owner | undefined): Connection[] => {
+    if (owner === undefined && options.users !== undefined) return [];
+    return [...connections].filter((one) => ownerFor(one) === owner);
+  };
+
+  /**
+   * Ask each of the automation owner's connections, in turn, to sign a server in.
    *
-   * The three subscriptions are held rather than dropped, because a rule
+   * The first client that reports a sign-in ends the round: it holds a token
+   * already and pushes it through `authenticate` itself, which is the whole of
+   * what this asks of it. Anything else - a refusal, an error, a client that
+   * does not serve the method - is logged at debug and the next connection is
+   * asked, because no window being able to answer is the ordinary case for a
+   * run nobody is looking at.
+   */
+  const askForSignIn = async (session: string, owner: Owner | undefined, server: SignIn): Promise<void> => {
+    const auth: Bag = { ...server.state };
+    delete auth.kind;
+    for (const connection of connectionsOf(owner)) {
+      const who = connection.clientId === '' ? 'a client' : connection.clientId;
+      try {
+        const answer = await connection.peer.request('vscode/requestMcpAuthentication', {
+          target: { kind: 'mcpServer', session, customizationId: server.id },
+          serverName: server.name,
+          auth,
+        });
+        if (bag(answer).authenticated === true) return;
+        log.debug(`${session}: ${who} did not sign ${server.name} in`);
+      }
+      catch (error) {
+        log.debug(`${session}: ${who} could not be asked to sign ${server.name} in: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  };
+
+  /**
+   * A run's session published its customizations: ask about every server that
+   * needs a sign-in and whose challenge this session has not asked yet.
+   *
+   * A session no automation runs is not read at all, which is where a window's
+   * own session stays its window's to prompt. A server that has left
+   * `authRequired` has what was asked about it dropped, so a challenge that
+   * comes later is asked again.
+   */
+  const readCustomizations = (session: string, customizations: Bag[]): void => {
+    const from = origins.get(session);
+    if (from === undefined) return;
+    const asking = signingIn(customizations);
+    const asked = askedSignIns.get(session) ?? new Map<string, Set<string>>();
+    const still = new Set(asking.map((one) => one.id));
+    for (const id of [...asked.keys()]) {
+      if (!still.has(id)) asked.delete(id);
+    }
+    if (asking.length === 0) {
+      askedSignIns.delete(session);
+      return;
+    }
+    askedSignIns.set(session, asked);
+    const entry = options.automations?.get(from.automation);
+    if (entry === undefined) return;
+    const owner = ownerOf(entry);
+    for (const server of asking) {
+      const keys = asked.get(server.id) ?? new Set<string>();
+      asked.set(server.id, keys);
+      const key = challengeKeyOf(server.state);
+      if (keys.has(key)) continue;
+      // Marked before it is asked, so a second action saying the same thing
+      // while the first round is still out does not ask it twice.
+      keys.add(key);
+      void askForSignIn(session, owner, server);
+    }
+  };
+
+  /*
+   * Every event every session does, every turn as it starts, everything a
+   * session does that is not an event, and every customization list a session
+   * publishes, for as long as this host runs.
+   *
+   * The subscriptions are held rather than dropped, because a rule
    * outliving the host it belongs to would be a rule firing into a closed
    * daemon: `stop` is what the host's own close calls. Every turn as it starts
    * is what a rule about a long turn is timed from, since a turn that says
@@ -1556,6 +1686,7 @@ export function createAutomations(ctx: HostContext): Automations {
   });
   const stopTurns = ctx.sessionEvents.turns((turn) => { engine.started(turn); });
   const stopMoving = ctx.sessionEvents.moved((session) => { engine.moved(session); });
+  const stopCustomizations = ctx.sessionEvents.customizations(readCustomizations);
   for (const one of options.automations?.list() ?? []) watchFor(one.resource);
 
   /**
@@ -1571,6 +1702,7 @@ export function createAutomations(ctx: HostContext): Automations {
    */
   const gone = (session: string): void => {
     engine.end(session);
+    askedSignIns.delete(session);
     for (const [automation, one] of watched) {
       if (one.wake.session !== 'pinned' || one.wake.pinnedSession !== session) continue;
       if (waiting.get(automation) === undefined) continue;
@@ -1590,6 +1722,8 @@ export function createAutomations(ctx: HostContext): Automations {
     stopEvents();
     stopTurns();
     stopMoving();
+    stopCustomizations();
+    askedSignIns.clear();
     waiting.clear();
     engine.close();
   };
