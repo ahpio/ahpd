@@ -39,6 +39,8 @@ On 2026-11-22 CI's `windows (3/4)` on #443, run 45003389117, failed the same cas
 Either a call wrote the state again after the removal deleted it and ended before the check, or something else held the file open. Since `test/a-left-docker-state-names-its-last-call`, the message also gives each file's age and the last three calls that the state records.
 On 2026-11-22 CI's `windows (3/4)` on #446, run 45050213305, failed the same case. It said `Still in it: docker.json written 5524ms ago (last calls: volume ls --format). Holders: none.`
 The removal tries again for 5.5 s, so the state was written when the removal started. The last call was `docker volume ls`, and no call was alive at the check.
+That call is the part-volume sweep, which starts 30 s after the plugin starts. The case moves its fake clock 1 s for each 5 ms of real time, so a slow run passes 30 s. The close cleared the sweep's timer, but did not wait for a sweep that had started.
+Since `computer/a-close-waits-for-the-part-volume-sweep`, the close waits for it.
 
 ## Impact
 

@@ -1107,17 +1107,22 @@ export const apply: Plugin['apply'] = (host, options) => {
    * its SDK cache once startup's own work is out of the way. A file that
    * cannot be read names nothing to keep, so nothing is removed.
    * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentSdkDownloader.ts#L241-L242
+   * A close waits for a sweep that has started, so no `docker` call of it
+   * outlives the plugin.
    */
+  let swept: Promise<unknown> | undefined;
   const sweeping = setTimeout(() => {
     let named: Part[];
     try { named = readParts(); }
     catch { return; }
-    for (const docker of [dockered, ...Object.values(farDockers)]) {
-      docker.removeUnusedPartVolumes?.((volume) => requestedVolume(volume, named)).catch(() => { /* the next start sweeps again */ });
-    }
+    swept = Promise.allSettled([dockered, ...Object.values(farDockers)]
+      .map((docker) => docker.removeUnusedPartVolumes?.((volume) => requestedVolume(volume, named))));
   }, PART_VOLUME_SWEEP_DELAY_MS);
   sweeping.unref?.();
-  host.registerClose(() => { clearTimeout(sweeping); });
+  host.registerClose(async () => {
+    clearTimeout(sweeping);
+    await swept;
+  });
 
   /**
    * The runtime, with a stretch around every change of state, and the computer
