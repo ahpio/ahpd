@@ -25,6 +25,8 @@ import type { Screen, SpawnPty, SpawnScreen, Terminal } from '../src/types/termi
 const DIR = tmpdir();
 const SESSION = 'ahp-session:/shells';
 const CHAT = 'ahp-chat:/shells-1';
+/** The wrapper the host writes for this platform's tools. */
+const WRAPPER = process.platform === 'win32' ? 'askpass.cmd' : 'askpass.sh';
 
 /** The pseudoterminals a case started, and what each was given. */
 interface FakePty {
@@ -167,11 +169,12 @@ describe('the helper\'s variables in a session\'s shells', () => {
     held.release();
 
     const env = made.pty.started.at(-1)?.env ?? {};
-    expect(env.SUDO_ASKPASS).toBe(join(made.folder, 'askpass.sh'));
-    expect(env.SSH_ASKPASS).toBe(join(made.folder, 'askpass.sh'));
+    expect(env.SUDO_ASKPASS).toBe(join(made.folder, WRAPPER));
+    expect(env.SSH_ASKPASS).toBe(join(made.folder, WRAPPER));
     expect(env.SSH_ASKPASS_REQUIRE).toBe('force');
-    expect(env.GIT_ASKPASS).toBe(join(made.folder, 'askpass.sh'));
-    expect(env[SHELL_AUTH_SOCKET]).toBe(join(made.folder, 'socket'));
+    expect(env.GIT_ASKPASS).toBe(join(made.folder, WRAPPER));
+    if (process.platform === 'win32') expect(env[SHELL_AUTH_SOCKET]).toMatch(/^\\\\\.\\pipe\\ahpd-shell-auth-/);
+    else expect(env[SHELL_AUTH_SOCKET]).toBe(join(made.folder, 'socket'));
     expect(env[SHELL_AUTH_TOKEN]).toMatch(/^[0-9a-f-]{36}$/);
     // The same chat's next shell is given the same token.
     const again = await shells.acquire({ chat: CHAT, toolCallId: 'call-2' });
@@ -236,7 +239,7 @@ describe('the helper\'s variables in a session\'s shells', () => {
       expect(env.SSH_ASKPASS).toBeUndefined();
       expect(env.GIT_ASKPASS).toBeUndefined();
       // The host's own helper is still what sudo is pointed at.
-      expect(env.SUDO_ASKPASS).toBe(join(made.folder, 'askpass.sh'));
+      expect(env.SUDO_ASKPASS).toBe(join(made.folder, WRAPPER));
     }
     finally {
       if (had.SSH_ASKPASS === undefined) delete process.env.SSH_ASKPASS;

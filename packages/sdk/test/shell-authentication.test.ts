@@ -1,9 +1,9 @@
-import { execFile } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import { mkdtempSync, readlinkSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
-import { promisify } from 'node:util';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createAsking } from '../src/host/asking.js';
 import { createShellAuthentication, realCallerPaths } from '../src/host/shellauth.js';
@@ -24,7 +24,8 @@ import type { Bag } from '../src/types/common.js';
 
 const CHAT = 'ahp-chat:/one';
 const SESSION = 'ahp-session:/one';
-const exec = promisify(execFile);
+/** The wrapper the host writes for this platform's tools. */
+const WRAPPER = process.platform === 'win32' ? 'askpass.cmd' : 'askpass.sh';
 
 /** One action the host said, and the channel it said it on. */
 interface Said {
@@ -97,25 +98,51 @@ const until = async (ok: () => boolean): Promise<void> => {
   throw new Error('the host said nothing in time');
 };
 
-/** Run the helper as the program would, and keep what it wrote to its output. */
-const helper = async (
+/**
+ * Run the wrapper the host names, as a program that honors the variable does.
+ *
+ * On Windows that wrapper is a batch file, which is not an executable image:
+ * a tool runs it through `cmd.exe`, and so does this. `/s` makes cmd strip one
+ * surrounding pair of quotes, so the line needs an outer pair, and what is
+ * left is the wrapper and the prompt, each quoted as its own argument.
+ */
+const launch = (
   env: Record<string, string>,
   prompt: string,
   overrides: Record<string, string> = {},
-): Promise<{ code: number; stdout: string }> => {
-  try {
-    const { stdout } = await exec(env.SUDO_ASKPASS ?? '', [prompt], {
-      env: { ...process.env, ...env, ...overrides },
-    });
-    return { code: 0, stdout };
+): ChildProcess => {
+  const wrapper = env.SUDO_ASKPASS ?? '';
+  const options = { env: { ...process.env, ...env, ...overrides } };
+  if (process.platform !== 'win32' || !/\.cmd$/i.test(wrapper)) return execFile(wrapper, [prompt], options);
+  const quoted = (value: string): string => `"${value.replaceAll('"', '""')}"`;
+  const line = `"${quoted(wrapper)} ${quoted(prompt)}"`;
+  return execFile(process.env.ComSpec ?? 'cmd.exe', ['/d', '/s', '/c', line], {
+    ...options,
+    windowsVerbatimArguments: true,
+  });
+};
+
+/** Run the helper as the program would, and keep what it wrote to its output. */
+const helper = (
+  env: Record<string, string>,
+  prompt: string,
+  overrides: Record<string, string> = {},
+): Promise<{ code: number; stdout: string }> => new Promise((resolve) => {
+  const child = launch(env, prompt, overrides);
+  let stdout = '';
+  child.stdout?.setEncoding('utf8');
+  child.stdout?.on('data', (chunk: string) => { stdout += chunk; });
+  child.on('error', () => resolve({ code: 1, stdout: '' }));
+  child.on('close', (code) => resolve({ code: typeof code === 'number' ? code : 1, stdout }));
+});
+
+/** End a launched wrapper and the helper it runs, which on Windows is its child. */
+const endProcess = (child: ChildProcess): void => {
+  if (process.platform === 'win32' && child.pid !== undefined) {
+    spawnSync('taskkill', ['/T', '/F', '/PID', String(child.pid)], { stdio: 'ignore' });
+    return;
   }
-  catch (error) {
-    const failed = error as { code?: unknown; stdout?: unknown };
-    return {
-      code: typeof failed.code === 'number' ? failed.code : 1,
-      stdout: typeof failed.stdout === 'string' ? failed.stdout : '',
-    };
-  }
+  child.kill();
 };
 
 /**
@@ -201,11 +228,12 @@ describe('a command asks the person for a password', () => {
   it('turns the helper\'s prompt into the request and the answer into its output', async () => {
     const { state, sent, env, folder, methods, logs } = await open();
     running(state);
-    expect(env.SUDO_ASKPASS).toBe(join(folder, 'askpass.sh'));
-    expect(env.SSH_ASKPASS).toBe(join(folder, 'askpass.sh'));
+    expect(env.SUDO_ASKPASS).toBe(join(folder, WRAPPER));
+    expect(env.SSH_ASKPASS).toBe(join(folder, WRAPPER));
     expect(env.SSH_ASKPASS_REQUIRE).toBe('force');
-    expect(env.GIT_ASKPASS).toBe(join(folder, 'askpass.sh'));
-    expect(env[SHELL_AUTH_SOCKET]).toBe(join(folder, 'socket'));
+    expect(env.GIT_ASKPASS).toBe(join(folder, WRAPPER));
+    if (process.platform === 'win32') expect(env[SHELL_AUTH_SOCKET]).toMatch(/^\\\\\.\\pipe\\ahpd-shell-auth-/);
+    else expect(env[SHELL_AUTH_SOCKET]).toBe(join(folder, 'socket'));
     expect(env[SHELL_AUTH_TOKEN]).toMatch(/^[0-9a-f-]{36}$/);
 
     const pending = helper(env, 'Password:');
@@ -385,9 +413,9 @@ describe('a command asks the person for a password', () => {
     expect(completions(sent)).toMatchObject([{ response: 'cancel' }]);
 
     // A helper that goes on its own ends the request the chat still shows.
-    const child = execFile(env.SUDO_ASKPASS ?? '', ['Password:'], { env: { ...process.env, ...env } });
+    const child = launch(env, 'Password:');
     await until(() => requests(sent).length === 3);
-    child.kill();
+    endProcess(child);
     await until(() => completions(sent).length === 2);
     expect(completions(sent).at(-1)).toMatchObject({ response: 'cancel' });
   });
