@@ -35,6 +35,14 @@ export interface ContainerConnect {
   /** What the client calls this container on screen. */
   name: string;
   /**
+   * Whether a container that is stopped may be started again.
+   *
+   * A source is suspended when it is stopped, and a connect that does not say
+   * `true` is refused in VS Code's words rather than silently starting a
+   * container the client believed was down. Absent is not `true`.
+   */
+  resume?: boolean;
+  /**
    * Whose the container is, when the connection is somebody's.
    *
    * The client does not send it and is never asked: the host fills it from the
@@ -83,6 +91,8 @@ export interface ContainerEnvironmentConnect {
   image: string;
   /** What the client calls this environment on screen. */
   name: string;
+  /** Whether a container that is stopped may be started again, as `ContainerConnect`'s is. */
+  resume?: boolean;
   /** Whose the environment is, filled from the connection as `ContainerConnect`'s is. */
   owner?: Owner;
 }
@@ -163,6 +173,22 @@ export interface ContainerPort {
    * launcher.
    */
   connectEnvironment?(options: ContainerEnvironmentConnect, sink: ContainerSink): Promise<ContainerConnectResult>;
+  /**
+   * Remove an environment: its containers, its volumes and its cached
+   * configuration, and answer whether it acted.
+   *
+   * `vscode/devContainers/removeEnvironment`. Unlike a folder's `remove`, the
+   * workspace is this host's own volume, so it goes with the container and
+   * nothing of the environment is left behind. The owner is the principal the
+   * removing connection belongs to: on a host with users, only the principal
+   * that made an environment may remove it, and another's attempt is refused
+   * with a sentence rather than answered `false`.
+   *
+   * Optional, because a launcher that knows only folders serves no such
+   * method, and a client that asks is refused the way it is for an absent
+   * launcher.
+   */
+  removeEnvironment?(environmentId: string, owner?: Owner): Promise<boolean>;
   /** Write one frame to the host inside this connection's container. */
   send(connectionId: string, data: string): void | Promise<void>;
   /**

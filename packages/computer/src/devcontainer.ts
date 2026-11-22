@@ -6,8 +6,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ContainerConnect, ContainerConnectResult, ContainerEnvironmentConnect, ContainerPort, ContainerSink, Owner, PluginSpec } from '@ahpd/sdk';
+import { isDevContainerEnvironmentId } from '@ahpd/sdk';
 import { byName } from './byname.js';
-import { prepareEnvironment } from './environments.js';
+import { prepareEnvironment, removeEnvironment, type PreparedEnvironment } from './environments.js';
 import { sameHostPath } from './hostpath.js';
 import { userLabelOf } from './gitdir.js';
 import { IMAGE_PATH, MACHINE_PARTS, partsSaid, pathWith } from './parts.js';
@@ -860,6 +861,19 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
   const environmentRoot = environmentCache
     ?? join(tmpdir(), `ahpd-devcontainer-environments-${String(process.getuid?.() ?? 'user')}`);
   const environmentDirectory = (environmentId: string): string => join(environmentRoot, environmentId);
+  /**
+   * Whose each environment is, as the connect that made it was told.
+   *
+   * The client cannot name an owner, so this is what a removal is checked
+   * against: on a host with users, only the principal that made an environment
+   * may remove it. An environment this daemon did not see made has no entry,
+   * and a removal of one is not refused for want of a record.
+   */
+  const environmentOwners = new Map<string, Owner | undefined>();
+  /** The environments this daemon removed, whose ids are not used again. */
+  const removedEnvironments = new Set<string>();
+  /** The environment each live relay is into, for a removal that closes them all. */
+  const liveEnvironments = new Map<string, string>();
 
   /** The CLI's own environment: this process's, plus whatever the caller named. */
   const where = (): Record<string, string> => ({ ...process.env, ...env }) as Record<string, string>;
@@ -1131,6 +1145,7 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
     const ended = (why?: string): void => {
       if (live.get(connectionId) !== child) return;
       live.delete(connectionId);
+      liveEnvironments.delete(connectionId);
       log(`${connectionId} ended${why === undefined ? '' : `: ${why}`}`);
       sink.close(why);
     };
@@ -1190,6 +1205,15 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
       const known = existing === undefined
         ? undefined
         : await existing(one.workspaceFolder).catch(() => undefined);
+      /*
+       * A container that exists and is not up waits for a connect that says it
+       * may be started. `up` starts a stopped container silently, so without
+       * this a client that believed the container was down would find it
+       * running under its feet.
+       */
+      if (known !== undefined && !known.running && one.resume !== true) {
+        throw new Error(`Dev Container for '${one.name}' is stopped.`);
+      }
       let made: { containerId: string; remoteWorkspaceFolder: string };
       /*
        * The id this computer is listed and recorded under, which is not the same
@@ -1285,15 +1309,80 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
       if (plugins.length === 0) {
         throw new Error('The host inside the container would have no backend and would not start. Name at least one under the computer plugin\'s devcontainer.plugins - "@ahpd/agent-cofold" runs this way and no other');
       }
-      const prepared = await prepareEnvironment(
-        { environmentId: one.environmentId, image: one.image },
-        environmentDirectory(one.environmentId),
-        {
-          docker: (argv) => runCli(docker, argv),
-          devcontainer: (argv) => run([...base, ...argv], sink),
-        },
-      );
-      return await startHost(one.connectionId, sink, prepared);
+      // A removed environment's id is not used again, so a connect that still
+      // names it is told it was deleted rather than given a new container.
+      if (removedEnvironments.has(one.environmentId)) {
+        throw new Error(`Dev Container '${one.name}' was deleted.`);
+      }
+      /*
+       * The relay is known to a removal before the container is made, so one
+       * that arrives while this connect is still running is closed with the
+       * rest rather than left behind in a container that is about to go.
+       */
+      liveEnvironments.set(one.connectionId, one.environmentId);
+      let prepared: PreparedEnvironment;
+      try {
+        prepared = await prepareEnvironment(
+          {
+            environmentId: one.environmentId,
+            image: one.image,
+            name: one.name,
+            ...(one.resume === undefined ? {} : { resume: one.resume }),
+          },
+          environmentDirectory(one.environmentId),
+          {
+            docker: (argv) => runCli(docker, argv),
+            devcontainer: (argv) => run([...base, ...argv], sink),
+          },
+        );
+      }
+      catch (error) {
+        liveEnvironments.delete(one.connectionId);
+        throw error;
+      }
+      // First connect wins: an environment is its maker's, and a later client
+      // that reaches the same volume does not become its owner.
+      if (!environmentOwners.has(one.environmentId)) environmentOwners.set(one.environmentId, one.owner);
+      try {
+        return await startHost(one.connectionId, sink, prepared);
+      }
+      catch (error) {
+        liveEnvironments.delete(one.connectionId);
+        throw error;
+      }
+    },
+
+    /*
+     * An environment removed: every relay into it closed, then its container
+     * and its volumes.
+     *
+     * A removal is the environment's owner's alone. The mark goes on before
+     * the relays are closed, so a connect that arrives while the removal is
+     * running is refused, and comes off again when the removal fails, so a
+     * client is not told an environment was deleted that is still there.
+     */
+    removeEnvironment: async (environmentId: string, owner?: Owner): Promise<boolean> => {
+      if (!isDevContainerEnvironmentId(environmentId)) {
+        throw new Error(`Invalid Dev Container environment identifier: ${environmentId}`);
+      }
+      if (environmentOwners.has(environmentId) && environmentOwners.get(environmentId) !== owner) {
+        throw new Error(`Dev Container environment '${environmentId}' was made by another user.`);
+      }
+      removedEnvironments.add(environmentId);
+      try {
+        for (const [connectionId, environment] of [...liveEnvironments]) {
+          if (environment !== environmentId) continue;
+          const child = live.get(connectionId);
+          if (child !== undefined) await stop(child);
+        }
+        await removeEnvironment(environmentId, environmentDirectory(environmentId), (argv) => runCli(docker, argv));
+      }
+      catch (error) {
+        removedEnvironments.delete(environmentId);
+        throw error;
+      }
+      environmentOwners.delete(environmentId);
+      return true;
     },
 
     send: (connectionId: string, data: string): void => {
@@ -1303,6 +1392,7 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
     },
 
     disconnect: (connectionId: string): void => {
+      liveEnvironments.delete(connectionId);
       const child = live.get(connectionId);
       if (child === undefined) return;
       // Asked to stop, and the ending is reported by the same path a crash

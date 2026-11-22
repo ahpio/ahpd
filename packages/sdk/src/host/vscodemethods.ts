@@ -162,6 +162,7 @@ export interface VscodeMethods {
   'vscode/devContainers/isDockerAvailable': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/devContainers/connect': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/devContainers/connectEnvironment': (params: Record<string, unknown>) => Promise<unknown>;
+  'vscode/devContainers/removeEnvironment': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/devContainers/disconnect': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/devContainers/relaySend': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/devContainers/stop': (params: Record<string, unknown>) => Promise<unknown>;
@@ -397,6 +398,16 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
   };
 
   /**
+   * The `resume` flag a connect carries.
+   *
+   * Absent unless the client said `true` or `false`: whether a stopped source
+   * may be started again is the client's statement, and a value of any other
+   * type is not one.
+   */
+  const resumeOf = (params: Record<string, unknown>): boolean | undefined =>
+    typeof params.resume === 'boolean' ? params.resume : undefined;
+
+  /**
    * The other two strings a `connect` carries, checked with the id: an
    * absolute folder on this host and a name, refused in one sentence, as
    * VS Code's protocol checks a connect.
@@ -411,10 +422,11 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
     const id = connectionIdOf(params);
     const folder = normalizeDevContainerWorkspaceFolder(typeof params.workspaceFolder === 'string' ? params.workspaceFolder : '', process.platform);
     const name = typeof params.name === 'string' ? params.name : '';
+    const resume = resumeOf(params);
     if (!isAbsolute(folder) || folder.includes('\0') || name.trim() === '' || name.includes('\0')) {
       throw new RpcError(INVALID_PARAMS, 'workspaceFolder must be an absolute host path and name must be non-empty');
     }
-    return { connectionId: id, workspaceFolder: folder, name };
+    return { connectionId: id, workspaceFolder: folder, name, ...(resume === undefined ? {} : { resume }) };
   };
 
   /**
@@ -431,6 +443,7 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
     const environmentId = typeof params.environmentId === 'string' ? params.environmentId : '';
     const image = typeof params.image === 'string' ? params.image : '';
     const name = typeof params.name === 'string' ? params.name : '';
+    const resume = resumeOf(params);
     if (
       !isDevContainerEnvironmentId(environmentId)
       || !DEV_CONTAINER_ENVIRONMENT_IMAGES.includes(image)
@@ -439,7 +452,7 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
     ) {
       throw new RpcError(INVALID_PARAMS, 'environmentId must be a valid identifier, image must be supported, and name must be non-empty');
     }
-    return { connectionId: id, environmentId, image, name };
+    return { connectionId: id, environmentId, image, name, ...(resume === undefined ? {} : { resume }) };
   };
 
   /**
@@ -1375,6 +1388,26 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
         (sink, owner) => connectEnvironment.call(port, owner === undefined ? one : { ...one, owner }, sink),
         async () => { await port.disconnect(one.connectionId); },
       );
+    },
+    /*
+     * An environment removed with its volumes, and the owner it is checked
+     * against taken from the connection the ask arrived on.
+     *
+     * The reference sends `{ environmentId }` and answers with whether the
+     * removal acted; the sentence for another principal's environment is the
+     * port's, because only a launcher knows whose an environment is.
+     */
+    'vscode/devContainers/removeEnvironment': async (params) => {
+      const port = need(options.containers, 'vscode/devContainers/removeEnvironment');
+      const remove = port.removeEnvironment;
+      if (remove === undefined) {
+        throw new RpcError(METHOD_NOT_FOUND, 'Method not found: vscode/devContainers/removeEnvironment');
+      }
+      const environmentId = typeof params.environmentId === 'string' ? params.environmentId : '';
+      if (!isDevContainerEnvironmentId(environmentId)) {
+        throw new RpcError(INVALID_PARAMS, 'environmentId must be a valid identifier');
+      }
+      return await remove.call(port, environmentId, ownerFor(connection));
     },
     'vscode/devContainers/disconnect': async (params) => {
       const launcher = need(options.containers, 'vscode/devContainers/disconnect');

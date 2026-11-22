@@ -129,6 +129,7 @@ export const NEEDS: Record<string, Grant> = {
   // operations: the params name a workspace folder, not a `computer://` URI.
   'vscode/devContainers/connect': 'container:connect',
   'vscode/devContainers/connectEnvironment': 'container:connect',
+  'vscode/devContainers/removeEnvironment': 'container:remove',
   'vscode/devContainers/disconnect': 'container:disconnect',
   'vscode/devContainers/relaySend': 'container:relay',
   /*

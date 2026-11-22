@@ -526,6 +526,9 @@ if (verb === 'ps') {
     },
   );
   const format = args.includes('--format') ? args[args.indexOf('--format') + 1] : undefined;
+  // `--quiet` is the ids alone, one a line, which is what a caller removing
+  // containers by label asks for.
+  const quiet = args.includes('--quiet') || args.includes('-q');
   for (const machine of held.machines) {
     /*
      * The same projection `inspect` makes: a machine that is not somebody
@@ -534,6 +537,10 @@ if (verb === 'ps') {
      */
     const labels = machine.bare === true ? { ...(machine.labels ?? {}) } : { 'ahpd.computer': '1', ...(machine.labels ?? {}) };
     if (!asked.every((one) => labelled(labels, one))) continue;
+    if (quiet) {
+      process.stdout.write(`${String(machine.id ?? machine.name)}\n`);
+      continue;
+    }
     const row = {
       // The short id and the name, as `docker ps` prints them. The short form is
       // what makes an id recorded in full matchable against a listing.
