@@ -37,12 +37,11 @@ Softov wants VS Code's `vscode/listAgentExtensions` and `vscode/setAgentExtensio
 
 ## The change
 
-- The two methods answer ahpd's plugins in VS Code's shape: one entry per plugin a session or chat can load.
+- The two methods answer ahpd's plugins in VS Code's shape. One entry is one ahpd plugin a session or chat can load, such as `computer` or `push`. Agent plugins are not entries, since the Plugins page lists them, as [the research note](../research/vscode-extensions-plugins-and-customizations.md) explains. Softov, 2026-11-22, "one row per plugin" and "ahpd plugins (Recommended)".
 - `source` says where the plugin came from: the user's, the project's, or another plugin's.
 - `status` comes from the plugin's live state in the session, as the plugin brief defines it.
 - `setAgentExtensionEnabled` sets the session's or chat's own decision in `enablement.ts`.
 
 ## Open points
 
-- Whether an entry is a whole plugin, or each thing a plugin adds. Softov said both "a view of what plugins add" and "it can be the plugin already". To be asked before a plan.
 - `mode`'s meaning for ahpd. To be asked once the plugin brief settles how a session loads plugins.
