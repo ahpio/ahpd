@@ -19,6 +19,7 @@ The computer plugin runs on `@ahpio/sandbox-runtime@0.0.83-rc.0`, ahpio's fork o
 - [`code://packages/computer/package.json`](../../../../packages/computer/package.json) - the dependency at one exact version, and Node `>=22.12.0`.
 - [`code://packages/computer/src/sandbox.ts`](../../../../packages/computer/src/sandbox.ts) - the CLI and `SandboxManager` under the new name. The settings always carry `filesystem.denyWrite`, since 0.0.83 refuses a file without it.
 - [`code://pnpm-workspace.yaml`](../../../../pnpm-workspace.yaml) - an override that resolves the runtime's zod to `^4.6.6`. pnpm took zod 3.25.76 from the fork's range, and the advisory covers it.
+- [`code://packages/agent-claude/package.json`](../../../../packages/agent-claude/package.json) - zod `^4.6.6`, so the whole tree loads one zod, 4.6.7. With the runtime's zod at 4.6.7 and agent-claude's at 4.5.4, two copies loaded and the Claude session CLI did not start.
 - [`code://.github/workflows/ci.yml`](../../../../.github/workflows/ci.yml) - the Linux shards install bubblewrap, socat and ripgrep, and allow user namespaces.
 
 ## Verified
@@ -26,11 +27,13 @@ The computer plugin runs on `@ahpio/sandbox-runtime@0.0.83-rc.0`, ahpio's fork o
 - `packages/computer/test/sandbox-runtime-fork.test.ts`, 3 cases on Linux with the real runtime. The whole network reaches a loopback host, and no allowed domain does not. A read denial holds with the whole network allowed. On CI a runtime that does not start fails the cases.
 - The computer suite: 43 files, 666 passed and 1 skipped, with ripgrep on the `PATH`.
 - `packages/sdk/test/containers.test.ts` and `container-relay.test.ts`: 17 passed.
-- `pnpm audit`: no advisory has a path through `@ahpio/sandbox-runtime`. The zod 4.5.4 finding through `@anthropic-ai/claude-agent-sdk` is not this plan's.
+- `pnpm audit`: no zod advisory is left in the tree.
+- The full unit suite: 559 files, 9640 passed and 32 skipped.
 
 ## Departures from the plan
 
 - The zod override in `pnpm-workspace.yaml` and the `denyWrite` default were not in task 03's files. Both were needed for the plan's checks to pass.
+- agent-claude's zod range was not in task 03's files. One zod copy in the tree was needed for the Claude backend to start.
 - The Linux CI step was not in task 03's files. Without it the end-to-end cases cannot run on CI.
 
 ## Left for later
