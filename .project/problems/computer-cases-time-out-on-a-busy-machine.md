@@ -65,6 +65,7 @@ On 2026-11-21, CI's `windows (4/4)` on #429, run 44942705209, timed out `agent-a
 
 On 2026-11-21, CI's `windows (4/4)` on #426, run 44943835612, timed out the same case at 20 s. #426 does not change `packages/agent-acp` or `packages/computer`.
 On 2026-11-22, CI's `windows (4/4)` on #448, run 45066610106, timed out the same case at 20 s. #448 does not change `packages/agent-acp`. Its host check returns before the runtime on Windows.
+On Windows that case took 15 s to 17 s when it passed, and the next case, with the same machine, took 2.5 s. The difference is the first import of the computer plugin's source, which took 1.3 s locally. Since `test/the-acp-machine-cases-load-the-computer-plugin-first`, the file imports it once in a `beforeAll`, outside the cases' budget.
 
 On 2026-11-22, the local computer suite under the lock, on branch `build/agents/e5cc1506`, timed out `computer-refusal.test.ts`: `refuses a named machine on a host with no computers port` at 5000 ms. The branch does not change `packages/computer`, and the same file passed on that branch an hour before.
 
