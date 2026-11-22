@@ -10,7 +10,7 @@ import { DiskUsageCancelled, identityOf, measureDiskUsage } from '../repo/diskus
 import { hostLogPath } from '../sessions/debuglogs.js';
 import { localPath, uriOf } from '../resources/fileuri.js';
 import { URI } from '../vscode/uri.js';
-import { bag, ownerOfPrincipal, str } from '../utils/values.js';
+import { bag, str } from '../utils/values.js';
 import { ROOT, spaceOf } from './channels.js';
 import { need, reason } from './common.js';
 import { ARCHIVE_COMMIT_MESSAGE, symlinkFolders } from './lifecycle.js';
@@ -747,24 +747,6 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
   };
 
   /**
-   * Refuse an import of a session this connection may not own.
-   *
-   * Adopting makes a session this host's own and charges it to the person who
-   * imported it, so the caller is held to the check the gate holds a session's
-   * owner to: the owner, or a role that holds `session:*`. A session nobody
-   * owns yet is the one an import is for, so any caller may claim it. A host
-   * with no users directory, and the root connection, have nobody to name and
-   * are refused nothing.
-   */
-  const mayImport = (session: string): void => {
-    if (connection.principal === undefined || connection.root === true) return;
-    const owner = kept.owner(idOf(session));
-    if (owner === undefined || owner === ownerOfPrincipal(connection.principal)) return;
-    if (connection.principal.can('session:*')) return;
-    throw new RpcError(AhpErrorCodes.PermissionDenied, "Only the session's owner can import it.");
-  };
-
-  /**
    * Give a chat's draft the model the backend restored, as VS Code's host
    * offers an imported chat the selection its provider imported: the text and
    * origin the person already had, and the model the turns last ran on.
@@ -867,17 +849,19 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
       // The name the session is known by, which a row this restore registered
       // has just settled.
       const name = ctx.nameOf(id);
-      // Whether the session is the caller's is asked before its turns are read
-      // again or it is adopted. One nobody knows is already refused above.
-      mayImport(name);
       const turns = (wasLoaded ? await ctx.reloadSession(id) : undefined) ?? restored ?? [];
       const model = modelOf(turns);
       const chat = ctx.defaultChatFor(name);
       if (model !== undefined) offerModel(id, chat, model);
       /*
-       * The person whose import adopted it owns it from then on, written
-       * before the adoption is announced so the announcement carries the
-       * owner, and never over an owner the session already has.
+       * The person whose import adopted it owns it from then on, as a person's
+       * first turn on an external session does: checked for the same thing,
+       * the session being external and having no owner yet, and written before
+       * the adoption is announced so the announcement carries the owner.
+       * Neither a turn nor an import asks the caller to be the session's owner:
+       * a member may drive a session that is not theirs, and the session it
+       * drives is the host's either way.
+       * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/chatContributions/externalSessionAdoption/externalSessionAdoptionContribution.ts#L25-L30
        */
       const who = ownerFor(connection);
       if (ctx.isExternal(name) && who !== undefined && kept.owner(id) === undefined) {

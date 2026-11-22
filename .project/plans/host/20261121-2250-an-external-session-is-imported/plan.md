@@ -71,8 +71,8 @@ vscode/importSession {session, takeOver?} -> restoreSession -> the chat's turns 
 
 ## Resume state
 
-- **Done so far:** task 01: `vscode/importSession` restores the session, reads a loaded session's turns again, offers the restored model to the draft, adopts the session, and refuses an unknown one. The method is gated by `session:create` and advertised in `_meta`. Typecheck and boundary pass; the sdk suite has not been run here.
-- **Next action:** run `packages/sdk/test/session-import.test.ts` and the sdk vitest suite, then fix what fails.
+- **Done so far:** task 01: `vscode/importSession` restores the session, reads a loaded session's turns again, offers the restored model to the draft, adopts the session, and refuses an unknown one. Who may import is the rule a person's first turn follows: no ownership check of the caller, an unowned external session claimed by the first person to adopt it, and a later import answered with the owner unchanged. The method is gated by `session:create` and advertised in `_meta`. Typecheck and boundary pass; the sdk suite ran under the lock and its one failing case, two test users sharing a client id, is fixed.
+- **Next action:** rerun `packages/sdk/test/session-import.test.ts` and the sdk vitest suite.
 - **Open questions:** none.
 - **Watch out for:** a session already adopted answers its URI again; it is not refused.
 

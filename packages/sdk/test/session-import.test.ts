@@ -170,26 +170,33 @@ describe('importing a session', () => {
     expect(refused?.message).toBe('Session not found: ahp-session:/nobody');
   });
 
-  it('refuses another person\'s session on a host with users', async () => {
+  /*
+   * The rule a person's first turn follows: a member may drive a session that
+   * is not theirs, so the first person whose action adopts an external session
+   * owns it and a later one neither takes it over nor is refused.
+   * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/chatContributions/externalSessionAdoption/externalSessionAdoptionContribution.ts#L25-L30
+   */
+  it('is adopted by the first person to import it, and not taken over by a later one', async () => {
     external('older', [{ type: 'user', uuid: 'u1', message: { role: 'user', content: 'earlier' } }]);
     const store = memorySessions();
     const host = serving(WORK, [], { sessions: store, users: directory() });
     const ana = host.accept(peer());
     const bo = host.accept(peer());
     const signIn = async (client: Client, token: string): Promise<void> => {
-      await client.handle(hello(['0.9.0'], { initialSubscriptions: ['ahp-root://'] }));
+      await client.handle(hello(['0.9.0'], { clientId: token, initialSubscriptions: ['ahp-root://'] }));
       await client.handle({ method: 'authenticate', params: { channel: 'ahp-root://', resource: 'ahpd://users', token } });
     };
     await signIn(ana, 'ana');
     await signIn(bo, 'bo');
+    // Nobody owns it yet, so a member importing it claims it.
+    expect(await bo.handle({ method: 'vscode/importSession', params: { session: 'ahp-session:/older' } }))
+      .toEqual({ session: 'ahp-session:/older' });
+    expect(store.owner('older')).toBe('user:bo');
+
+    // A later import is answered, as a turn on somebody else's session is, and
+    // the owner it already has stands.
     expect(await ana.handle({ method: 'vscode/importSession', params: { session: 'ahp-session:/older' } }))
       .toEqual({ session: 'ahp-session:/older' });
-    expect(store.owner('older')).toBe('user:ana');
-
-    const refused = await bo.handle({ method: 'vscode/importSession', params: { session: 'ahp-session:/older' } })
-      .then(() => undefined, (error: { code: number; message: string }) => error);
-    expect(refused?.code).toBe(AhpErrorCodes.PermissionDenied);
-    expect(refused?.message).toBe("Only the session's owner can import it.");
-    expect(store.owner('older')).toBe('user:ana');
+    expect(store.owner('older')).toBe('user:bo');
   });
 });
