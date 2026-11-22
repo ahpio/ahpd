@@ -95,7 +95,7 @@ const onAStdin = (): ContainerPort & { children: ChildProcessWithoutNullStreams[
       // What the nested host says outside the protocol is a person's to read.
       child.stderr.on('data', (chunk: Buffer) => { sink.output(String(chunk)); });
       child.once('close', (code) => { live.delete(one.connectionId); sink.close(code === 0 ? undefined : `exit ${String(code)}`); });
-      return { address: 'devcontainer:test', remoteWorkspaceFolder: '/workspaces/Box', hostWorkspaceFolder: root };
+      return { address: 'devcontainer:test', remoteWorkspaceFolder: '/workspaces/Box', hostWorkspaceFolder: root, sandboxSupported: false };
     },
     send: (id, data) => { live.get(id)?.stdin.write(`${data}\n`); },
     disconnect: (id) => { live.get(id)?.kill('SIGTERM'); live.delete(id); },

@@ -455,6 +455,7 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
     const name = typeof params.name === 'string' ? params.name : '';
     const resume = resumeOf(params);
     const persistUserState = optionOf(params, 'persistUserState');
+    const sandboxEnabled = optionOf(params, 'sandboxEnabled');
     if (!isAbsolute(folder) || folder.includes('\0') || name.trim() === '' || name.includes('\0')) {
       throw new RpcError(INVALID_PARAMS, 'workspaceFolder must be an absolute host path and name must be non-empty');
     }
@@ -464,6 +465,7 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
       name,
       ...(resume === undefined ? {} : { resume }),
       ...(persistUserState === undefined ? {} : { persistUserState }),
+      ...(sandboxEnabled === undefined ? {} : { sandboxEnabled }),
     };
   };
 
@@ -483,6 +485,7 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
     const name = typeof params.name === 'string' ? params.name : '';
     const resume = resumeOf(params);
     const persistUserState = optionOf(params, 'persistUserState');
+    const sandboxEnabled = optionOf(params, 'sandboxEnabled');
     if (
       !isDevContainerEnvironmentId(environmentId)
       || !DEV_CONTAINER_ENVIRONMENT_IMAGES.includes(image)
@@ -498,6 +501,7 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
       name,
       ...(resume === undefined ? {} : { resume }),
       ...(persistUserState === undefined ? {} : { persistUserState }),
+      ...(sandboxEnabled === undefined ? {} : { sandboxEnabled }),
     };
   };
 
@@ -727,6 +731,9 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
       },
       userState: (notice: ContainerUserState) => {
         connection.peer.notify('vscode/devContainers/userState', { connectionId: one.connectionId, ...notice });
+      },
+      sandboxSupport: (supported: boolean) => {
+        connection.peer.notify('vscode/devContainers/sandboxSupport', { connectionId: one.connectionId, supported });
       },
       output: (data) => {
         connection.peer.notify('vscode/devContainers/output', { connectionId: one.connectionId, data });

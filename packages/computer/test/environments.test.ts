@@ -330,7 +330,7 @@ it('relays a host inside a container made from the environment image', async () 
     where,
   ) as ContainerConnectResult;
 
-  expect(result).toEqual({ address: 'devcontainer:abc123', remoteWorkspaceFolder: '/workspaces/ubuntu' });
+  expect(result).toEqual({ address: 'devcontainer:abc123', remoteWorkspaceFolder: '/workspaces/ubuntu', sandboxSupported: false });
   const dockerHeld = JSON.parse(readFileSync(dockerState, 'utf8')) as {
     volumes: Record<string, Volume>;
     machines: { labels?: Record<string, string> }[];

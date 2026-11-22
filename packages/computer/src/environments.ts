@@ -1,6 +1,7 @@
 import { chmod, lstat, mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DEV_CONTAINER_ENVIRONMENT_IMAGES, isDevContainerEnvironmentId, type ContainerUserState, type Owner } from '@ahpd/sdk';
+import { sandboxRunArgs } from './sandbox.js';
 import {
   buildLinkCommand,
   devContainerId,
@@ -95,6 +96,8 @@ export interface EnvironmentSource {
   resume?: boolean;
   /** Whether the user's state is kept on a state volume. */
   persistUserState?: boolean;
+  /** Whether the container runs with the options the command sandbox needs. */
+  sandboxEnabled?: boolean;
   /** The principal the connect belongs to, which owns a volume it makes. */
   owner?: Owner;
 }
@@ -449,6 +452,7 @@ export const prepareEnvironment = async (
     // The volume is made for root and given to the remote user below; changing
     // the image user's ids to this host's would put the two out of step.
     updateRemoteUserUID: false,
+    ...(source.sandboxEnabled === true ? { runArgs: [...sandboxRunArgs] } : {}),
   }), { mode: 0o600 });
   const up = await commands.devcontainer([
     'up', '--log-level', 'debug',

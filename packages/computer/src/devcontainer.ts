@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ContainerConnect, ContainerConnectResult, ContainerEnvironmentConnect, ContainerPort, ContainerSink, ContainerUserState, Owner, PluginSpec } from '@ahpd/sdk';
 import { byName } from './byname.js';
+import { isSandboxSupported, prepareSandboxOverride, type SandboxOverride } from './containersandbox.js';
 import { authorizeEnvironmentRemoval, prepareEnvironment, removeEnvironment, type PreparedEnvironment } from './environments.js';
 import {
   buildLinkCommand,
@@ -853,6 +854,8 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
   const adopted = options.adopted;
   const environmentCache = options.environmentCache;
   const live = new Map<string, ChildProcessWithoutNullStreams>();
+  /** The sandbox overrides a connect wrote, by connection, removed when it ends. */
+  const sandboxOverrides = new Map<string, SandboxOverride>();
   /*
    * The remote workspace each folder's container was made with, for this
    * daemon's life.
@@ -918,12 +921,12 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
   };
 
   /** One command, collected and streamed. */
-  const run = (argv: string[], sink: ContainerSink): Promise<{ code: number; stdout: string; stderr: string }> =>
+  const run = (argv: string[], sink: ContainerSink, environment: Record<string, string> = {}): Promise<{ code: number; stdout: string; stderr: string }> =>
     new Promise((resolve, reject) => {
       // Echoed first, as the reference does: a person watching a container
       // build should see the command whose output follows.
       sink.output(`$ ${[command, ...argv].map(quote).join(' ')}\n`);
-      const child = spawn(command, argv, { stdio: ['ignore', 'pipe', 'pipe'], env: where(), windowsHide: true });
+      const child = spawn(command, argv, { stdio: ['ignore', 'pipe', 'pipe'], env: { ...where(), ...environment }, windowsHide: true });
       let stdout = '';
       let stderr = '';
       // The CLI echoes the `docker run` it builds at info level, which carries
@@ -1157,6 +1160,25 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
     }
   };
 
+  /** Whether a running container has the options the command sandbox needs, and its notice. */
+  const inspectSandbox = async (sink: ContainerSink, id: string): Promise<boolean> => {
+    const inspected = await runCli(docker, ['inspect', '--format', '{{json .}}', id]);
+    if (inspected.code !== 0) {
+      throw new Error(`Cannot inspect Dev Container sandbox options (exit ${String(inspected.code)}): ${inspected.stderr.trim()}`);
+    }
+    const supported = isSandboxSupported(inspected.stdout);
+    sink.sandboxSupport?.(supported);
+    return supported;
+  };
+
+  /** Take a connect's sandbox override away, when it wrote one. */
+  const discardSandbox = async (connectionId: string): Promise<void> => {
+    const override = sandboxOverrides.get(connectionId);
+    if (override === undefined) return;
+    sandboxOverrides.delete(connectionId);
+    await override.remove();
+  };
+
   /**
    * Start a host inside a container this launcher made or found, and relay it.
    *
@@ -1176,7 +1198,7 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
     made: { containerId: string; remoteWorkspaceFolder: string },
     machine?: string,
     hostWorkspaceFolder?: string,
-  ): Promise<ContainerConnectResult> => {
+  ): Promise<Omit<ContainerConnectResult, 'sandboxSupported'>> => {
     const remote = made.remoteWorkspaceFolder;
     /*
      * How every command below reaches that container.
@@ -1315,6 +1337,7 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
       if (live.get(connectionId) !== child) return;
       live.delete(connectionId);
       liveEnvironments.delete(connectionId);
+      void discardSandbox(connectionId);
       log(`${connectionId} ended${why === undefined ? '' : `: ${why}`}`);
       sink.close(why);
     };
@@ -1461,13 +1484,31 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
          * made one, reaches the same computer - decision
          * `a-dev-container-is-reached-by-docker-exec`.
          */
+        /*
+         * The sandbox override, beside the definition and for this `up` only.
+         *
+         * A container made with these options keeps them; a later connect reads
+         * what the container really has rather than what it asked for. The
+         * override's folder is this connection's and goes when it ends.
+         */
+        let sandboxArgs: readonly string[] = [];
+        let sandboxEnvironment: Record<string, string> = {};
+        if (one.sandboxEnabled === true) {
+          const configuration = await readConfiguration((argv) => run([...base, ...argv], sink), one.workspaceFolder);
+          const override = await prepareSandboxOverride(configuration, one.workspaceFolder, where());
+          sandboxOverrides.set(one.connectionId, override);
+          sandboxArgs = override.args;
+          sandboxEnvironment = override.environment;
+        }
         const up = await run(
           [
             ...base, 'up', '--log-level', 'debug', '--workspace-folder', one.workspaceFolder, ...idLabels(label, one.workspaceFolder),
+            ...sandboxArgs,
             ...userStateMount.args,
             ...(persistUserState ? ['--skip-post-create'] : []),
           ],
           sink,
+          sandboxEnvironment,
         );
         const fresh = parseUp(up.stdout);
         // A result is taken with the CLI's exit 0 beside it, and anything else
@@ -1483,6 +1524,7 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
               errorMessage: masked(up.stdout.trim() || up.stderr.trim()),
             });
           }
+          await discardSandbox(one.connectionId);
           throw new Error(`Dev Container CLI returned an invalid result: ${masked(up.stdout.trim() || up.stderr.trim())}`);
         }
         if (persistUserState) sink.userState?.({ stage: 'up', outcome: 'succeeded' });
@@ -1495,15 +1537,22 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
           machine = (await existing(one.workspaceFolder).catch(() => undefined))?.id;
         }
       }
-      // A container that was found rather than brought up still reaches the up
-      // stage successfully, which is what a client waiting on the four notices
-      // reads from it.
-      if (persistUserState && (adopts || reachesKnown)) {
-        sink.userState?.({ stage: 'up', outcome: 'succeeded' });
+      try {
+        // A container that was found rather than brought up still reaches the up
+        // stage successfully, which is what a client waiting on the four notices
+        // reads from it.
+        if (persistUserState && (adopts || reachesKnown)) {
+          sink.userState?.({ stage: 'up', outcome: 'succeeded' });
+        }
+        await linkUserState(sink, machine, made.containerId, persistUserState, keepExistingFolders);
+        if (persistUserState) await runUserCommands(sink, made.containerId);
+        const supported = await inspectSandbox(sink, made.containerId);
+        return { ...await startHost(one.connectionId, sink, made, machine, one.workspaceFolder), sandboxSupported: supported };
       }
-      await linkUserState(sink, machine, made.containerId, persistUserState, keepExistingFolders);
-      if (persistUserState) await runUserCommands(sink, made.containerId);
-      return await startHost(one.connectionId, sink, made, machine, one.workspaceFolder);
+      catch (error) {
+        await discardSandbox(one.connectionId);
+        throw error;
+      }
     },
 
     /*
@@ -1539,6 +1588,7 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
             name: one.name,
             ...(one.resume === undefined ? {} : { resume: one.resume }),
             ...(one.persistUserState === undefined ? {} : { persistUserState: one.persistUserState }),
+            ...(one.sandboxEnabled === undefined ? {} : { sandboxEnabled: one.sandboxEnabled }),
             ...(one.owner === undefined ? {} : { owner: one.owner }),
           },
           environmentDirectory(one.environmentId),
@@ -1554,7 +1604,8 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
         throw error;
       }
       try {
-        return await startHost(one.connectionId, sink, prepared);
+        const supported = await inspectSandbox(sink, prepared.containerId);
+        return { ...await startHost(one.connectionId, sink, prepared), sandboxSupported: supported };
       }
       catch (error) {
         liveEnvironments.delete(one.connectionId);
@@ -1598,8 +1649,9 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
       child?.stdin.write(`${data}\n`);
     },
 
-    disconnect: (connectionId: string): void => {
+    disconnect: async (connectionId: string): Promise<void> => {
       liveEnvironments.delete(connectionId);
+      await discardSandbox(connectionId);
       const child = live.get(connectionId);
       if (child === undefined) return;
       // Asked to stop, and the ending is reported by the same path a crash
@@ -1620,6 +1672,7 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
      */
     close: async (): Promise<void> => {
       await Promise.all([...live.values()].map((child) => stop(child)));
+      await Promise.all([...sandboxOverrides.keys()].map(discardSandbox));
     },
   };
 };

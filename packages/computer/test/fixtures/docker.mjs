@@ -615,19 +615,41 @@ const recordOf = (found) => ({
     Env: Object.entries(found.env ?? {}).map(([key, value]) => `${key}=${value}`),
     User: found.user ?? '',
   },
+  // What AppArmor confines the machine with, as Docker answers it: an empty
+  // name when the host has no profile for it, which is a machine the command
+  // sandbox can still run in by its other options.
+  AppArmorProfile: found.appArmorProfile ?? '',
   // The limits as docker records them: nanoseconds of CPU per second, and
   // bytes. A gauge is drawn against these, so the units have to be real.
   HostConfig: {
     ...(found.cpus === undefined ? {} : { NanoCpus: Number(found.cpus) * 1e9 }),
     Memory: 0,
+    /*
+     * The options the command sandbox is decided from, as a real Docker always
+     * records them: a machine made without them carries none, and one the
+     * sandbox override reached carries its security options and the tun device.
+     * `null` is what Docker answers for a list it was not given, which a reader
+     * takes as empty.
+     */
+    Privileged: found.privileged === true,
+    SecurityOpt: found.securityOpt ?? [],
+    MaskedPaths: found.maskedPaths ?? [],
+    ReadonlyPaths: found.readonlyPaths ?? [],
+    Devices: (found.devices ?? []).map((one) => {
+      const [onHost, inContainer, permissions] = String(one).split(':');
+      return {
+        PathOnHost: onHost,
+        PathInContainer: inContainer ?? onHost,
+        CgroupPermissions: permissions ?? 'rwm',
+      };
+    }),
   },
   // As `docker inspect` reports them, because a caller's path is read
   // through these to find where it is inside the machine - and `RW`, which is
   // what says whether the machine may write what is mounted there. The short
   // form spells read-only as a third `:ro` and nothing else is read-only, so a
   // scripted machine that leaves the mode off is one writing where it is bound.
-  Mounts: (found.mounts ?? []).map((one) => {
-    const [source, target, mode] = mountParts(one);
+  Mounts: (found.mounts ?? []).map((one) => {    const [source, target, mode] = mountParts(one);
     // A source this Docker holds as a named volume is a volume mount; anything
     // else is a bind, which is what a folder's workspace is.
     const volume = (held.volumes ?? {})[source] !== undefined;

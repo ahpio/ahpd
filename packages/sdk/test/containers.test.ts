@@ -107,7 +107,7 @@ const launcher = (options: { available?: boolean; fail?: string; halts?: boolean
       sink.output(`$ devcontainer up --workspace-folder ${one.workspaceFolder}\n`);
       if (options.fail !== undefined) throw new Error(options.fail);
       sinks.set(one.connectionId, sink);
-      return { address: 'devcontainer:abc123', remoteWorkspaceFolder: `/workspaces/${one.name}` };
+      return { address: 'devcontainer:abc123', remoteWorkspaceFolder: `/workspaces/${one.name}`, sandboxSupported: false };
     },
     send: (id, data) => { sent.push({ connectionId: id, data }); },
     disconnect: (id) => { stopped.push(id); sinks.delete(id); },

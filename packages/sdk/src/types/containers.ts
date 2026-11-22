@@ -51,6 +51,15 @@ export interface ContainerConnect {
    */
   persistUserState?: boolean;
   /**
+   * Whether the container runs with the options the command sandbox needs.
+   *
+   * The container's seccomp, AppArmor and system paths are unconfined, and
+   * `/dev/net/tun` is a device in it. That weakens the container's own
+   * isolation, so only an explicit `true` asks for it and an absent value does
+   * not.
+   */
+  sandboxEnabled?: boolean;
+  /**
    * Whose the container is, when the connection is somebody's.
    *
    * The client does not send it and is never asked: the host fills it from the
@@ -103,6 +112,8 @@ export interface ContainerEnvironmentConnect {
   resume?: boolean;
   /** Whether the user's state is kept on a volume, as `ContainerConnect`'s is. */
   persistUserState?: boolean;
+  /** Whether the container runs with the sandbox's options, as `ContainerConnect`'s is. */
+  sandboxEnabled?: boolean;
   /** Whose the environment is, filled from the connection as `ContainerConnect`'s is. */
   owner?: Owner;
 }
@@ -168,6 +179,13 @@ export interface ContainerConnectResult {
   remoteWorkspaceFolder: string;
   /** The same folder as this host knows it, when the launcher knows it. */
   hostWorkspaceFolder?: string;
+  /**
+   * Whether the running container has the options the command sandbox needs.
+   *
+   * Read from the container itself rather than from what the connect asked
+   * for: a container made earlier keeps the settings it was made with.
+   */
+  sandboxSupported: boolean;
 }
 
 /**
@@ -189,6 +207,13 @@ export interface ContainerSink {
    * asked to: the host's own sink forwards it as a notification.
    */
   userState?(notice: ContainerUserState): void;
+  /**
+   * Whether the running container has the options the command sandbox needs.
+   *
+   * Optional, as `userState` is: a sink that does not report a connect's facts
+   * is not asked to.
+   */
+  sandboxSupport?(supported: boolean): void;
   /** The relay ended. The reason is absent when it was simply stopped. */
   close(reason?: string): void;
 }
