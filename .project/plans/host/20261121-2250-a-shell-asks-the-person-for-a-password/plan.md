@@ -87,15 +87,15 @@ sudo -A / ssh / git -> SUDO_ASKPASS, SSH_ASKPASS, GIT_ASKPASS -> the helper -> t
 
 ## Resume state
 
-- **Done so far:** tasks 01 and 02. The helper's variables reach a local chat's agent process, the terminal tool's shells, pi's own shell, cofold's shell, Claude's CLI and the ACP server; a person's terminal and anything in a machine get none. `pnpm typecheck` and `pnpm boundary` pass.
-- **Next action:** run the suites named in [implemented.md](implemented.md) under the lock, and fix what fails. No suite has been run by the session that wrote the code.
+- **Done so far:** tasks 01 and 02, the final checklist. The helper's variables reach a local chat's agent process, the terminal tool's shells, pi's own shell, cofold's shell, Claude's CLI and the ACP server; a person's terminal and anything in a machine get none. `pnpm typecheck`, `pnpm boundary`, the sdk, agent-claude, agent-acp and agent-cofold suites, and the three named test files pass.
+- **Next action:** rerun agent-pi after the mock fix, and the server and computer suites. Fix what fails.
 - **Open questions:** none.
-- **Watch out for:** `git add` is denied in that session, so commit 5692ecf25 and the task 02 commit do not carry the files the tasks created: `packages/sdk/src/host/askpass.ts`, `packages/sdk/src/host/shellauth.ts`, `packages/sdk/test/shell-authentication.test.ts`, `packages/sdk/test/shell-authentication-env.test.ts` and `implemented.md` are untracked. Stage them and amend. A Windows test needs the named pipe path, not a socket file.
+- **Watch out for:** commit 5692ecf25 alone does not build, because the files it imports arrive in the task 02 commit 2e025b363. A Windows test needs the named pipe path, not a socket file, and the helper's parent through the `.cmd` wrapper is untested.
 
 ## Final verification checklist
 
-- [ ] A test: the helper's prompt becomes a request with the purpose and `_meta`, and the answer reaches the helper.
-- [ ] A test: the answer is in no chat action and in no log line.
-- [ ] A test: a prompt with no running turn, or with the setting off, is cancelled at once.
-- [ ] A test: Claude's and ACP's processes, and the terminal tool's shells, get the variables while the setting is on.
-- [ ] The gates pass: typecheck, boundary, and the sdk suite.
+- [x] A test: the helper's prompt becomes a request with the purpose and `_meta`, and the answer reaches the helper.
+- [x] A test: the answer is in no chat action and in no log line.
+- [x] A test: a prompt with no running turn, or with the setting off, is cancelled at once.
+- [x] A test: Claude's and ACP's processes, and the terminal tool's shells, get the variables while the setting is on.
+- [x] The gates pass: typecheck, boundary, and the sdk suite.
