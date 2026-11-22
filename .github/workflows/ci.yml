@@ -174,7 +174,9 @@ jobs:
   # own, under the same bound, split over two because one runner took from 208 s
   # to past 300 s for the same commit.
   processes:
-    runs-on: ubuntu-latest
+    # 24.04, as the sandbox runtime's own CI: on 26.04 its seccomp helper's
+    # nested user namespace is refused, so a sandboxed command cannot start.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       # Every shard reports, so one red shard does not hide another.
