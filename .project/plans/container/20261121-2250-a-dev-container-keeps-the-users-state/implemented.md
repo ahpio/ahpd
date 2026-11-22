@@ -22,7 +22,8 @@ A client can now ask a dev container connect to keep the user's state on a secon
 
 - `pnpm typecheck` passes.
 - `pnpm boundary` passes, with no undeclared imports.
-- `packages/computer/test/userstate.test.ts` and `packages/computer/test/containersandbox.test.ts` were written for this plan, and every existing suite that builds a `ContainerPort` was updated for the required `sandboxSupported`. The vitest suites were not run here; the sdk and computer packages are to be run one at a time under the lock.
+- The reviewer fixed two test faults. The fake `docker` answered the link script's `command -v flock` before its link answer. The Compose discovery case wrote no `dockerComposeFile: []`, which VS Code's test writes.
+- `packages/computer/test/userstate.test.ts` and `packages/computer/test/containersandbox.test.ts` were written for this plan, and every existing suite that builds a `ContainerPort` was updated for the required `sandboxSupported`. The reviewer ran them under the lock: computer 663 cases and sdk 5276 pass.
 
 ## Departures from the plan
 
