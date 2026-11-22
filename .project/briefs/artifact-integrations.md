@@ -38,9 +38,10 @@ Softov wants VS Code's artifact integrations researched, then planned, so ahpd s
 
 - The facts this brief still needs come first: the proposal's contracts, VS Code's host side, and ahpd's Agent Merge, compared point by point.
 - Plans follow, each one feature.
+- While the root setting `artifactIntegrations` is on, Agent Merge does not run, and its saved choices stay as they are. Softov, 2026-11-22, "Off while integrations on (Recommended)".
+- The GitHub integration is new code built to VS Code's integration model, and Agent Merge stays as it is. Softov, 2026-11-22, "New code as VS Code's".
 
 ## Open points
 
-- Not asked yet: which parts come first, and whether Agent Merge yields to integrations as in VS Code.
-- Not asked yet: whether the GitHub integration reuses Agent Merge's repairs.
+- Not asked yet: which parts come first.
 - Each is to be asked before this brief is final.
