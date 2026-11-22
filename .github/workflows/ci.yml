@@ -39,6 +39,14 @@ jobs:
       # rather than resolving to something nobody wrote down.
       - run: pnpm install --frozen-lockfile
 
+      # What the sandbox runtime needs on Linux, so its tests run it for real.
+      # Ubuntu 24.04 stops unprivileged user namespaces, which bubblewrap makes.
+      - name: The sandbox runtime's tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap socat ripgrep
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
       # Before the tests: the boundary is the claim these packages make, and a
       # host that imports a backend is worth failing for even when it passes.
       # On one shard, because they do not depend on which tests it runs.
