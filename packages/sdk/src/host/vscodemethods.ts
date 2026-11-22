@@ -9,6 +9,7 @@ import { isWorktreeUnderRepository, worktreeFor, worktreesOf } from '../repo/wor
 import { DiskUsageCancelled, identityOf, measureDiskUsage } from '../repo/diskusage.js';
 import { hostLogPath } from '../sessions/debuglogs.js';
 import { localPath, uriOf } from '../resources/fileuri.js';
+import { URI } from '../vscode/uri.js';
 import { ROOT, spaceOf } from './channels.js';
 import { need, reason } from './common.js';
 import { ARCHIVE_COMMIT_MESSAGE, symlinkFolders } from './lifecycle.js';
@@ -64,6 +65,45 @@ const CONTAINER_TAIL = 24;
 const DEV_CONTAINER_SOURCE = 'devcontainer://';
 
 /**
+ * Whether a value is one automation's resource, as VS Code checks one: the
+ * `ahp-automation` scheme, a path, and no authority, query or fragment.
+ * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/protocolServerHandler.ts#L4012-L4014
+ */
+const isAutomationUri = (value: string): boolean => {
+  try {
+    const uri = URI.parse(value);
+    return uri.scheme === 'ahp-automation' && uri.path !== '' && uri.authority === ''
+      && uri.query === '' && uri.fragment === '';
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Whether a value is a session a deletion may name: a session's own URI, and
+ * not a chat's, a terminal's, a file's or a plugin's.
+ */
+const isSessionUri = (value: string): boolean => {
+  try {
+    const uri = URI.parse(value);
+    const space = spaceOf(value);
+    return uri.path !== '' && uri.authority === '' && uri.query === '' && uri.fragment === ''
+      && (space === 'session' || space === undefined);
+  } catch {
+    return false;
+  }
+};
+
+/** The session URIs a deletion carries under `legacySessions`. */
+const legacySessionsOf = (params: Record<string, unknown>): string[] => {
+  const value = params.legacySessions;
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.some((one) => typeof one !== 'string'))
+    throw new RpcError(INVALID_PARAMS, 'legacySessions must be an array of session URIs');
+  return value;
+};
+
+/**
  * A dev container's folder as a path of the platform the host runs on. On
  * Windows a host URI's path, `/c:/work`, names the file it is the path of,
  * and every separator is a backslash, as VS Code's protocol reads one.
@@ -96,6 +136,7 @@ export interface VscodeMethods {
   'vscode/measureWorktreeDiskUsage': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/moveSession': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/setChatWorkspace': (params: Record<string, unknown>) => Promise<unknown>;
+  'vscode/deleteAutomation': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/cancelWorktreeDiskUsage': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/setAgentHostDetachedWorktreeArchived': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/deleteAgentHostDetachedWorktree': (params: Record<string, unknown>) => Promise<unknown>;
@@ -670,6 +711,27 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
       }
       finally { ctx.chatWorkspaceMoves.delete(chat); }
       return {};
+     * Deleting an automation, and with `deleteHistory` the sessions its runs
+     * made. The history a client remembers itself arrives under
+     * `legacySessions`, and is refused unless the same request deletes it.
+     * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/protocolServerHandler.ts#L4003-L4031
+     */
+    'vscode/deleteAutomation': async (params) => {
+      const automation = stringParam(params, 'automation', 'an automation URI');
+      if (!isAutomationUri(automation)) {
+        throw new RpcError(INVALID_PARAMS, `automation must be an ahp-automation URI with a path and no authority, query or fragment: ${automation}`);
+      }
+      if (params.deleteHistory !== undefined && typeof params.deleteHistory !== 'boolean')
+        throw new RpcError(INVALID_PARAMS, 'deleteHistory must be a boolean');
+      const deleteHistory = params.deleteHistory === true;
+      const legacySessions = legacySessionsOf(params);
+      if (legacySessions.length > 0 && !deleteHistory)
+        throw new RpcError(INVALID_PARAMS, 'legacySessions may be given only with deleteHistory');
+      for (const one of legacySessions) {
+        if (!isSessionUri(one))
+          throw new RpcError(INVALID_PARAMS, `legacySessions must name session URIs: ${one}`);
+      }
+      return await ctx.deleteAutomation(automation, deleteHistory, legacySessions);
     },
     'vscode/cancelWorktreeDiskUsage': (params) => {
       ctx.diskUsage.scans.get(connection)?.get(stringParam(params, 'requestId'))?.abort();

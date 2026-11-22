@@ -14,7 +14,7 @@ import { AUTOMATIONS, isAutomationResource } from './channels.js';
 import { CLOSING, need, noProvider } from './common.js';
 import { refusalReason } from './gate.js';
 import type { Bag } from '../types/common.js';
-import type { AutomationEntry, AutomationRun, AutomationRunState, RunEnding, StartSession } from '../types/automations.js';
+import type { AutomationEntry, AutomationRun, AutomationRunState, AutomationStore, RunEnding, StartSession } from '../types/automations.js';
 import type { ConnectorOwner } from '../types/connectors.js';
 import type { PluginStarts, ChatRequest, TriggerTypeDefinition } from '../types/plugin.js';
 import type { RuleMatch } from '../automations/triggers.js';
@@ -234,6 +234,14 @@ export interface Automations {
   wirePluginStarts(): void;
   /** The clock, wired to the only thing that can act on it. */
   due(event: { automation: string; origin: Bag }): void;
+  /**
+   * Delete an automation, and the sessions its runs made when `deleteHistory`.
+   *
+   * `legacySessions` names sessions a client remembers from before their
+   * automation origin was kept, deleted with the rest. Answered with the URIs
+   * of the sessions actually deleted.
+   */
+  deleteAutomation(automation: string, deleteHistory: boolean, legacySessions: string[]): Promise<string[]>;
 }
 
 export function createAutomations(ctx: HostContext): Automations {
@@ -1651,9 +1659,63 @@ export function createAutomations(ctx: HostContext): Automations {
     request(automation, origin, undefined, `${automation} was due`, false);
   };
 
+  /**
+   * The sessions whose kept automation origin names this automation.
+   *
+   * Read off the session store rather than off the automation's run history,
+   * which a restart does not keep.
+   */
+  const runSessionsOf = (automation: string): string[] => kept.sessions()
+    .filter((id) => kept.automationOrigin?.(id)?.automation === automation)
+    .map((id) => ctx.nameOf(id));
+
+  /** The run of this automation that has not ended, where it has one. */
+  const goingRunOf = (store: AutomationStore, entry: AutomationEntry): string | undefined => entry.runs
+    .map((one) => store.runOf(String(bag(one).resource)))
+    .find((one) => one !== undefined && !OVER.has(String(one.lifecycle.status)))?.resource;
+
+  /**
+   * Delete one automation, and the sessions its runs made when asked.
+   *
+   * The checks are the `automation/removed` action's, so this door cannot
+   * delete what the catalogue's cannot. A chat automation continues one
+   * conversation, so it deletes neither its run sessions nor `legacySessions`.
+   */
+  const deleteAutomation = async (
+    automation: string, deleteHistory: boolean, legacySessions: string[],
+  ): Promise<string[]> => {
+    const store = need(options.automations, 'vscode/deleteAutomation');
+    const found = store.get(automation);
+    if (found === undefined) return [];
+    if (!found.operations.includes('remove'))
+      throw new RpcError(INTERNAL_ERROR, `Automation operation 'remove' is not available: ${automation}`);
+    if (goingRunOf(store, found) !== undefined)
+      throw new RpcError(INTERNAL_ERROR, 'Automation has an active or recovering run and cannot be removed');
+    const chat = targetOf(found.definition).kind === 'chat';
+    const sessions = chat ? [] : [...new Set([...runSessionsOf(automation), ...legacySessions])];
+    store.remove(automation);
+    // The copies its template named, which nothing names any more.
+    const plugins = options.clientPlugins;
+    if (plugins !== undefined) {
+      plugins.collectGarbage((options.automations?.list() ?? [])
+        .flatMap((one) => (one.customizations ?? []).map((copy) => localPath(copy.uri))));
+    }
+    if (!deleteHistory) return [];
+    const deleted: string[] = [];
+    for (const uri of sessions) {
+      try {
+        await ctx.removeSession(uri);
+        deleted.push(uri);
+      } catch (error) {
+        log.warn(`Deleting ${automation} could not delete ${uri}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    return deleted;
+  };
+
   return {
     moveChatAutomations, manualRunRequests, settleRun, cancelRun, gone, stop, changed, beginAutomation, startForAutomation, startForPlugin, startForPluginChat, due,
-    wireTriggerTypes, wirePluginStarts,
+    deleteAutomation, wireTriggerTypes, wirePluginStarts,
   };
 }
 

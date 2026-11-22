@@ -72,7 +72,7 @@ vscode/acknowledgeAutomationDeletion {requestId} -> the receipt is dropped
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - An automation is deleted, with its runs on request](task-01-deleted-with-its-runs.md) | todo | - |
+| [01 - An automation is deleted, with its runs on request](task-01-deleted-with-its-runs.md) | done | - |
 | [02 - A deletion keeps a receipt until acknowledged](task-02-a-deletion-keeps-a-receipt.md) | todo | 01 |
 
 ## Risks and tradeoffs
@@ -81,8 +81,8 @@ vscode/acknowledgeAutomationDeletion {requestId} -> the receipt is dropped
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-deleted-with-its-runs.md](task-01-deleted-with-its-runs.md).
+- **Done so far:** task 01. `vscode/deleteAutomation` checks the URI, refuses `legacySessions` without `deleteHistory`, an automation with a going run, and an automation its store will not remove; it collects the sessions whose kept automation origin names it plus `legacySessions` (none for a chat automation), removes the definition, deletes the sessions when asked, and answers their URIs. The three `vscode.automationHistory*` flags are advertised, both methods need `automation:remove`, and the served count is 61.
+- **Next action:** [task-02-a-deletion-keeps-a-receipt.md](task-02-a-deletion-keeps-a-receipt.md).
 - **Open questions:** none.
 - **Watch out for:** ahpw sends the plain remove action; it must keep the run sessions.
 
