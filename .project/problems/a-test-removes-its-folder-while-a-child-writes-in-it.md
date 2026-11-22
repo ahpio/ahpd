@@ -37,6 +37,8 @@ The failed case took 9.4 s, and its removal tries again for 5.5 s. So the folder
 Since `test/a-failed-removal-names-what-is-left`, the disposable teardown removes its folders with `removeFolder` in `tools/holders.ts`. A removal that fails names the files still in the folder and the holders still seen.
 On 2026-11-22 CI's `windows (3/4)` on #443, run 45003389117, failed the same case again. It said `Still in it: docker.json. Holders: none.` So the file left is the fake `docker`'s state, and no call of it was alive at the check.
 Either a call wrote the state again after the removal deleted it and ended before the check, or something else held the file open. Since `test/a-left-docker-state-names-its-last-call`, the message also gives each file's age and the last three calls that the state records.
+On 2026-11-22 CI's `windows (3/4)` on #446, run 45050213305, failed the same case. It said `Still in it: docker.json written 5524ms ago (last calls: volume ls --format). Holders: none.`
+The removal tries again for 5.5 s, so the state was written when the removal started. The last call was `docker volume ls`, and no call was alive at the check.
 
 ## Impact
 
