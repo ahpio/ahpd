@@ -1,6 +1,6 @@
 ---
 title: The computer plugin runs on the fork
-status: todo
+status: done
 depends: [task-02-the-forks-first-release.md]
 layer: "computer"
 refs:
@@ -33,3 +33,5 @@ The computer plugin depends on `@ahpio/sandbox-runtime` at one exact version, an
 - The computer vitest suite passes, and the computer suite on Windows CI.
 
 ## Resume
+
+Done 2026-11-22, as [implemented.md](implemented.md) says.

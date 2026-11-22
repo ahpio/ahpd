@@ -965,7 +965,7 @@ A backend reads its chat's resolved sandbox from `Start.computers.sandbox(chat)`
 
 ### The runtime
 
-`@vscode/sandbox-runtime`, the runtime VS Code's terminal sandbox runs, enforces the settings. A backend asks `Start.computers.sandboxed(id, options)` for each command it runs for its agent and each MCP server it starts, and runs the descriptor it gets back:
+`@ahpio/sandbox-runtime` enforces the settings. It is ahpio's fork of Anthropic's sandbox runtime, which VS Code's terminal sandbox runs, with `network.enabled` added so a chat can allow the whole network. A backend asks `Start.computers.sandboxed(id, options)` for each command it runs for its agent and each MCP server it starts, and runs the descriptor it gets back:
 
 - a command runs inside the runtime while the chat's sandbox is on, as VS Code's terminal sandbox wraps one;
 - an MCP server runs inside it while `sandboxMcpServers` is on too, as VS Code's MCP sandbox starts one;

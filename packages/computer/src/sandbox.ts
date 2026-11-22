@@ -10,7 +10,7 @@ import type { ProviderConfiguration, SandboxConfigValue, Spawn, SpawnOptions } f
  * The agent sandbox as this plugin hosts it: the root `sandbox` property it
  * declares, how a machine is made to host the sandbox runtime and checked,
  * and how a command and an MCP server are started inside
- * `@vscode/sandbox-runtime`, the runtime VS Code's terminal sandbox runs.
+ * `@ahpio/sandbox-runtime`, ahpio's fork of the runtime VS Code's terminal sandbox runs.
  */
 
 /** One platform's filesystem lists, the fields of `SandboxFileSystemSetting`. */
@@ -148,7 +148,7 @@ export const isSandboxSupported = (output: string): boolean => {
 export interface SandboxPlace {
   /** The Node the CLI runs on. */
   execPath: string;
-  /** The runtime's CLI, `dist/cli.js` of `@vscode/sandbox-runtime`, or `srt` where it is on the `PATH`. */
+  /** The runtime's CLI, `dist/cli.js` of `@ahpio/sandbox-runtime`, or `srt` where it is on the `PATH`. */
   srtPath?: string;
   /** The folder holding the runtime's package, which a sandboxed command reads. */
   appRoot?: string;
@@ -162,7 +162,7 @@ export interface SandboxPlace {
 
 /** This host's runtime: the package this plugin depends on, run with this daemon's Node. */
 export const hostSandboxPlace = (scope: string, configDir: string): SandboxPlace => {
-  const appRoot = dirname(createRequire(import.meta.url).resolve('@vscode/sandbox-runtime/package.json'));
+  const appRoot = dirname(createRequire(import.meta.url).resolve('@ahpio/sandbox-runtime/package.json'));
   return {
     execPath: process.execPath,
     srtPath: join(appRoot, 'dist', 'cli.js'),
@@ -205,12 +205,12 @@ export const sandboxSettingsOf = (sandbox: SandboxConfigValue, place: SandboxPla
   const allowWrite = unique([cwd, place.tempDir, ...(fileSystem.allowWrite ?? []).map(expand)]).filter((one) => one !== configPath);
   const allowRead = unique([...(fileSystem.allowRead ?? []).map(expand), ...runtimeReads, ...allowWrite]);
   const denyRead = unique([...(fileSystem.denyRead ?? []).map(expand), configPath, place.platform === 'win32' ? undefined : place.home]);
-  const denyWrite = fileSystem.denyWrite === undefined ? undefined : unique(fileSystem.denyWrite.map(expand));
+  const denyWrite = unique((fileSystem.denyWrite ?? []).map(expand));
   const settings: Record<string, unknown> = {
     network: sandbox.allowNetwork === true
       ? { allowedDomains: [], deniedDomains: [], enabled: false }
       : { allowedDomains: sandbox.allowedNetworkDomains ?? [], deniedDomains: sandbox.deniedNetworkDomains ?? [] },
-    filesystem: { denyRead, allowRead, allowWrite, ...(denyWrite === undefined ? {} : { denyWrite }) },
+    filesystem: { denyRead, allowRead, allowWrite, denyWrite },
   };
   const merge = (target: Record<string, unknown>, added: Record<string, unknown>): void => {
     for (const [key, value] of Object.entries(added)) {
@@ -289,7 +289,7 @@ export const sandboxedServer = (place: SandboxPlace, configPath: string, options
  * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/workbench/contrib/terminalContrib/chatAgentTools/browser/tools/runInTerminalTool.ts#L1001-L1005
  */
 export const hostSandboxRefusal = async (): Promise<string | undefined> => {
-  const { SandboxManager } = await import('@vscode/sandbox-runtime');
+  const { SandboxManager } = await import('@ahpio/sandbox-runtime');
   const { errors } = SandboxManager.checkDependencies();
   if (errors.length > 0) return `Sandbox dependencies not available: ${errors.join(', ')}`;
   if (process.platform !== 'linux') return undefined;

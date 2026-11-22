@@ -174,7 +174,9 @@ jobs:
   # own, under the same bound, split over two because one runner took from 208 s
   # to past 300 s for the same commit.
   processes:
-    runs-on: ubuntu-latest
+    # 24.04, as the sandbox runtime's own CI: on 26.04 its seccomp helper's
+    # nested user namespace is refused, so a sandboxed command cannot start.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       # Every shard reports, so one red shard does not hide another.
@@ -193,6 +195,18 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      # What the sandbox runtime needs on Linux, so its tests run it for real,
+      # as the runtime's own CI sets it up. Ubuntu 24.04 gives a nested user
+      # namespace no capabilities, which bubblewrap and the runtime's seccomp
+      # helper need. The last line fails here rather than in the tests.
+      - name: The sandbox runtime's tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap socat ripgrep apparmor-profiles
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          sudo sysctl -w kernel.unprivileged_userns_clone=1 || true
+          bwrap --unshare-pid --unshare-user --cap-drop ALL --ro-bind / / --proc /proc true
 
       - name: Tests
         run: timeout 450 pnpm test:processes --shard=${{ matrix.shard }}/2

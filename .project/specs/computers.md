@@ -218,7 +218,7 @@ The default chat's state is also at the top, where older clients read it.
 ### A command runs inside the sandbox runtime
 
 WHEN a backend asks `Start.computers.sandboxed` for a command and the chat's sandbox is on
-THEN the answer runs the command inside `@vscode/sandbox-runtime` with the chat's settings
+THEN the answer runs the command inside `@ahpio/sandbox-runtime` with the chat's settings
 AND an MCP server runs inside it only while `sandboxMcpServers` is on.
 A person's terminal and a `!` command are left alone.
 

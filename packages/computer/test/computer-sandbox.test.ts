@@ -15,7 +15,7 @@ import type { HostOptions } from '../../sdk/src/types/host.js';
  * The sandbox as this plugin hosts it: the root `sandbox` property it
  * declares, a machine made to host the runtime and checked by its real Docker
  * settings, and a command and an MCP server started inside
- * `@vscode/sandbox-runtime` with a chat's settings.
+ * `@ahpio/sandbox-runtime` with a chat's settings.
  */
 
 const REPO = join(import.meta.dirname, '../../..');
@@ -115,7 +115,7 @@ it('reads whether a container can host the sandbox runtime from its real Docker 
 
 it('starts a command and an MCP server inside the runtime this plugin depends on, with the chat\'s settings', () => {
   const place = { ...hostSandboxPlace('ahp-chat:/one', '/tmp/ahpd-config'), home: '/home/me', platform: 'linux' as const };
-  expect(place.srtPath?.endsWith(join('@vscode', 'sandbox-runtime', 'dist', 'cli.js'))).toBe(true);
+  expect(place.srtPath?.endsWith(join('@ahpio', 'sandbox-runtime', 'dist', 'cli.js'))).toBe(true);
   const settings = sandboxSettingsOf({
     enabled: 'on',
     allowedNetworkDomains: ['registry.npmjs.org'],
