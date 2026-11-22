@@ -4,11 +4,20 @@ title: "Handoff: where ahpd stands, and what is pending"
 
 # Handoff: where `ahpd` stands, and what is pending
 
-Current progress and pending items only, as of 2026-11-21. *Outside this repository* was last checked on 2026-11-04.
+Current progress and pending items only, as of 2026-11-22. *Outside this repository* was last checked on 2026-11-04.
 `node ~/.claude/skills/do-spec/scripts/plans.mjs` lists the backlog, and each plan's Resume state is its detail. What merged is in `git log`, and what was released is in [docs/updates/](../../docs/updates/).
 
 ## Main
 
+- **2026-11-22.** Seven of the `20261121-2250` builds are merged. Each plan closes as `built` on Softov's word.
+  - #431 (`ec0876a52`) chat workspace, #432 (`7661f184a`) automation deletion, #433 (`b7623c608`) shell authentication, #434 (`a27918599`) session from a conversation, #435 (`3f1db3491`) MCP sign-in, #438 (`4d64a4b40`) turn timing.
+  - #437 (`2a21890db`) ends a fake `docker` by its mark where there is no `/proc`. It did not stop the Windows `ENOTEMPTY` of computer-disposable.
+  - #440 turns off git's background maintenance in every test, which [the problem](../problems/a-test-removes-its-folder-while-a-child-writes-in-it.md) now names as the likely writer. It also adds [a bring-back case sees another file's scratch folder](../problems/a-bring-back-case-sees-another-files-scratch-folder.md).
+  - #439 fixes [a nested chat's changeset URI](../problems/a-nested-chats-changeset-uri-reaches-the-outer-client-unmapped.md). Its check-windows was red on the `ENOTEMPTY` case, so it waits for #440.
+  - #436, the dev container from an image, is rebased locally in `build-next-image` with `SERVED = 69`, and waits for #440.
+  - Next, in order: session import (`build-next-import`, `SERVED` 70 after #436), then user state (`build-next-userstate`, rebased after #436). Their suites pass locally, except the nested leak that #439 fixes.
+  - The fork's first npm publish is Softov's: [pending/sandbox-runtime-first-release.md](../pending/sandbox-runtime-first-release.md). The CA plan and fork task 03 wait for it.
+  - Softov's dev daemon takes #431 to #438 at its next restart on main. Tell him, and do not restart it.
 - **2026-11-21.** 0.15.0 is released: `v0.15.0` is on `3bf557618` (#394), and npm serves the 13 packages under `latest`. `ghcr.io/ahpio/ahpd` has `0.15.0`, `0.15` and `latest`. ahpw `v0.9.0` is on `d968e1f`, with `@ahpd/web` under `latest`. [pending/release.md](../pending/release.md) is closed.
   - Merged on 2026-11-21: #393 (`bcec57901`) from beorn, #395 (`9ad9b0f98`), #396 (`2bb0f809e`) and #398 (`98a2b4cd7`), the image fix.
   - 46 plans went to `built` with the release as their review (`88251f665`).
