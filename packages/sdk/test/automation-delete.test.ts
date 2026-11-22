@@ -85,7 +85,7 @@ async function servingUsers(tokens: Record<string, Grant[]>, store = memoryAutom
   const clients: Record<string, Client> = {};
   for (const token of Object.keys(tokens)) {
     const client = host.accept(peer());
-    await client.handle(hello(['0.9.0']));
+    await client.handle(hello(['0.9.0'], { clientId: token }));
     await client.handle({ method: 'authenticate', params: { channel: ROOT, resource: USERS_RECORD.resource, token } });
     clients[token] = client;
   }
