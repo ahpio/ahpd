@@ -1,0 +1,371 @@
+import { createHash } from 'node:crypto';
+import { chmod, lstat, mkdir, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { DEV_CONTAINER_ENVIRONMENT_IMAGES, isDevContainerEnvironmentId } from '@ahpd/sdk';
+
+/**
+ * Dev container environments: a workspace in a Docker volume.
+ *
+ * An environment is not a folder's `devcontainer.json`. Its workspace lives in
+ * a volume this module names and labels, and the container is made from an
+ * image on the allowed list, so the workspace outlives the container and a
+ * second connect reaches the same one. The volume's labels are the definition:
+ * a name alone would not survive another environment making a volume beside it.
+ *
+ * The names, the labels and the state volume's computation are VS Code's, so a
+ * container made here is the container its own window made for the same
+ * environment.
+ * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/devContainerEnvironments.ts
+ */
+
+/** The label that names the environment a volume belongs to. */
+export const ENVIRONMENT_LABEL = 'vscode.agents.environment';
+
+/** The label of a volume that holds a dev container environment's workspace. */
+export const ENVIRONMENT_VOLUME_LABEL = 'dev.container.volume';
+
+/** The id label naming the volume, given to `up` and to the container it makes. */
+export const ENVIRONMENT_VOLUME_NAME_LABEL = 'vsc.devcontainer.volume.name';
+
+/** The id label naming the folder in the volume, which here is the volume itself. */
+export const ENVIRONMENT_VOLUME_FOLDER_LABEL = 'vsc.devcontainer.volume.folder';
+
+/** Where the environment's volume is mounted, so its workspace is a folder under it. */
+export const ENVIRONMENT_VOLUME_TARGET = '/workspaces';
+
+/** The label that names the dev container a state volume belongs to. */
+const STATE_ID_LABEL = 'vscode.dev-container-state.id';
+
+/** How much of the computed dev container id names a state volume. */
+const STATE_VOLUME_ID_LENGTH = 12;
+
+/** One command, as it exited and what it said. */
+export interface EnvironmentCommandResult {
+  code: number;
+  stdout: string;
+  stderr: string;
+}
+
+/** One program the environment's preparation runs. */
+export type EnvironmentCommand = (argv: string[]) => Promise<EnvironmentCommandResult>;
+
+/** The two programs preparation reaches: Docker, and the Dev Container CLI. */
+export interface EnvironmentCommands {
+  /** Docker's own commands: volumes, `ps`, the folder and the ownership of it. */
+  docker: EnvironmentCommand;
+  /** The CLI's `up`. */
+  devcontainer: EnvironmentCommand;
+}
+
+/** What preparation is asked for, beside the client's connection. */
+export interface EnvironmentSource {
+  environmentId: string;
+  image: string;
+  /** What the client calls the environment, for a refusal that names it. */
+  name?: string;
+  /** Whether a container that is stopped may be started again. */
+  resume?: boolean;
+}
+
+/** An environment's prepared container and the volume its workspace is in. */
+export interface PreparedEnvironment {
+  containerId: string;
+  /** The workspace folder inside the container. */
+  remoteWorkspaceFolder: string;
+  /** The volume that holds it, which removal takes away with the container. */
+  volumeName: string;
+  /** The id labels the container was made with, which name it in later commands. */
+  idLabels: string[];
+}
+
+/** One JSON object from a command's output, or nothing. */
+const record = (text: string): Record<string, unknown> | undefined => {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : undefined;
+  }
+  catch { return undefined; }
+};
+
+/** A command that did not exit zero, with what it said. */
+const checked = (answer: EnvironmentCommandResult, what: string): EnvironmentCommandResult => {
+  if (answer.code === 0) return answer;
+  const said = answer.stderr.trim() || answer.stdout.trim();
+  throw new Error(`${what} failed: ${said === '' ? `exit ${String(answer.code)}` : said}`);
+};
+
+/** One word for `/bin/sh`, quoted as one. */
+const quote = (word: string): string => `'${word.replace(/'/g, `'\\''`)}'`;
+
+/**
+ * The name New Dev Container proposes for an image: its tag, so the Ubuntu base
+ * image makes a volume called `ubuntu`.
+ */
+const volumeBaseName = (image: string): string =>
+  /:(?<variant>[a-zA-Z0-9][a-zA-Z0-9_.-]*)$/.exec(image)?.groups?.variant ?? 'devcontainer';
+
+/** The environment's id labels, which name the volume and its folder. */
+export const environmentIdLabels = (volumeName: string): string[] => [
+  `${ENVIRONMENT_VOLUME_NAME_LABEL}=${volumeName}`,
+  `${ENVIRONMENT_VOLUME_FOLDER_LABEL}=${volumeName}`,
+];
+
+/**
+ * The Dev Container CLI's `${devcontainerId}` for a container's id labels.
+ *
+ * The CLI hashes the labels as a sorted JSON object and writes the number in
+ * base 32; the state volume's name is its last twelve characters. Computed here
+ * because a free volume name has to skip one whose state volume exists, and
+ * because removal finds a state volume by its name when it carries no other
+ * label we can use.
+ * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/devContainerState.ts
+ */
+export const devContainerId = (idLabels: readonly string[]): string => {
+  const labels: Record<string, string> = {};
+  for (const pair of idLabels) {
+    const at = pair.indexOf('=');
+    if (at !== -1) labels[pair.slice(0, at)] = pair.slice(at + 1);
+  }
+  const hash = createHash('sha256').update(JSON.stringify(labels, Object.keys(labels).sort()), 'utf8').digest('hex');
+  return BigInt(`0x${hash}`).toString(32).padStart(52, '0');
+};
+
+/**
+ * The state volume's name for a container's id labels.
+ *
+ * Our id labels name no folder, so the name is `vscode-state-` and the end of
+ * the computed id, with no folder part between them.
+ */
+export const stateVolumeName = (idLabels: readonly string[]): string =>
+  `vscode-state-${devContainerId(idLabels).slice(-STATE_VOLUME_ID_LENGTH)}`;
+
+/** Whether a volume's labels say it is the state volume of this dev container. */
+export const isStateVolumeFor = (labels: unknown, idLabels: readonly string[]): boolean =>
+  typeof labels === 'object' && labels !== null
+  && (labels as Record<string, unknown>)[STATE_ID_LABEL] === devContainerId(idLabels);
+
+/**
+ * Make a folder owner-only, and refuse one that is not a folder this user owns.
+ *
+ * The environment's configuration is written here, and its parent is in a place
+ * every process on the machine can reach, so the mode is set on every use
+ * rather than trusted from the create.
+ */
+export const prepareOwnerOnlyDirectory = async (directory: string): Promise<void> => {
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  const found = await lstat(directory);
+  if (found.isSymbolicLink() || !found.isDirectory()) {
+    throw new Error(`${directory} is not a folder this host may keep an environment's configuration in`);
+  }
+  if (process.platform !== 'win32') await chmod(directory, 0o700);
+};
+
+/** Whether a container state from `docker ps` says the container may be used. */
+const isEnvironmentRunning = (state: string): boolean =>
+  ['running', 'paused', 'restarting'].includes(state.trim().toLowerCase());
+
+/** The volumes that carry every one of these labels. */
+const listVolumes = async (docker: EnvironmentCommand, labels: readonly string[] = []): Promise<string[]> => {
+  const found = checked(
+    await docker(['volume', 'ls', ...labels.flatMap((label) => ['--filter', `label=${label}`]), '--format', '{{.Name}}']),
+    'docker volume ls',
+  );
+  return found.stdout.trim().split(/\r?\n/).filter((one) => one !== '');
+};
+
+/** Whether a volume carries the environment's label. */
+const isEnvironmentVolume = async (docker: EnvironmentCommand, volumeName: string, environmentId: string): Promise<boolean> => {
+  const labels = record(checked(await docker(['volume', 'inspect', '--format', '{{json .Labels}}', volumeName]), 'docker volume inspect').stdout.trim());
+  return labels?.[ENVIRONMENT_LABEL] === environmentId;
+};
+
+/** The environment's workspace volume, found by its labels rather than its name. */
+const findEnvironmentVolume = async (docker: EnvironmentCommand, environmentId: string): Promise<string | undefined> =>
+  (await listVolumes(docker, [`${ENVIRONMENT_VOLUME_LABEL}=true`, `${ENVIRONMENT_LABEL}=${environmentId}`]))[0];
+
+/**
+ * Make the environment's workspace volume under the first free name.
+ *
+ * `ubuntu`, then `ubuntu-2`, and so on. A name whose state volume exists is not
+ * free: another environment made it, and mounting this one's state over there
+ * would write into a workspace that is not ours.
+ * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/devContainerEnvironments.ts
+ */
+const createEnvironmentVolume = async (
+  docker: EnvironmentCommand,
+  environmentId: string,
+  image: string,
+  existingVolumes: readonly string[],
+): Promise<string> => {
+  const base = volumeBaseName(image);
+  const taken = new Set(existingVolumes);
+  for (let index = 1; index <= 1000; index++) {
+    const volumeName = index === 1 ? base : `${base}-${index}`;
+    if (taken.has(volumeName) || taken.has(stateVolumeName(environmentIdLabels(volumeName)))) continue;
+    checked(
+      await docker([
+        'volume', 'create',
+        '--label', `${ENVIRONMENT_VOLUME_LABEL}=true`,
+        '--label', `${ENVIRONMENT_LABEL}=${environmentId}`,
+        volumeName,
+      ]),
+      'docker volume create',
+    );
+    // Creating a volume that already exists succeeds without changing it, so an
+    // environment made at the same time may own the name.
+    if (await isEnvironmentVolume(docker, volumeName, environmentId)) return volumeName;
+    taken.add(volumeName);
+  }
+  throw new Error('No free Docker volume name was found for the Dev Container environment.');
+};
+
+/**
+ * Make or find an environment's container, keeping its workspace in its volume.
+ *
+ * The volume is found by its labels or made, the folder is created inside it
+ * before the container starts, the container is made from `image` with the
+ * volume at `/workspaces`, and the volume and folder are given to the remote
+ * user so agent worktrees may be made beside the workspace.
+ */
+export const prepareEnvironment = async (
+  source: EnvironmentSource,
+  cacheDirectory: string,
+  commands: EnvironmentCommands,
+): Promise<PreparedEnvironment> => {
+  if (!isDevContainerEnvironmentId(source.environmentId)) {
+    throw new Error(`Invalid Dev Container environment identifier: ${source.environmentId}`);
+  }
+  if (!DEV_CONTAINER_ENVIRONMENT_IMAGES.includes(source.image)) {
+    throw new Error(`Unsupported Dev Container environment image: ${source.image}`);
+  }
+  await prepareOwnerOnlyDirectory(cacheDirectory);
+  const existingVolumes = await listVolumes(commands.docker);
+  const volumeName = await findEnvironmentVolume(commands.docker, source.environmentId)
+    ?? await createEnvironmentVolume(commands.docker, source.environmentId, source.image, existingVolumes);
+  const idLabels = environmentIdLabels(volumeName);
+  const workspace = `${ENVIRONMENT_VOLUME_TARGET}/${volumeName}`;
+  const containerStates = checked(
+    await commands.docker([
+      'ps', '-a', '--format', '{{.State}}',
+      ...idLabels.flatMap((label) => ['--filter', `label=${label}`]),
+    ]),
+    'docker ps',
+  ).stdout.split(/\r?\n/).filter((state) => state.trim() !== '');
+  /*
+   * A container that exists and is not up waits for a connect that says it may
+   * be started, as a stopped folder's container does. `up` would start it
+   * silently otherwise, and a client that believed the environment was down
+   * would find it running under its feet.
+   */
+  if (containerStates.length > 0 && !containerStates.some(isEnvironmentRunning) && source.resume !== true) {
+    throw new Error(`Dev Container for '${source.name ?? source.environmentId}' is stopped.`);
+  }
+  if (containerStates.length === 0) {
+    // New Dev Container makes the workspace folder before the container, which
+    // starts in it.
+    checked(
+      await commands.docker([
+        'run', '--rm',
+        '--mount', `type=volume,source=${volumeName},target=${ENVIRONMENT_VOLUME_TARGET}`,
+        '--entrypoint', 'mkdir',
+        source.image, '-p', workspace,
+      ]),
+      'mkdir',
+    );
+  }
+  const configPath = join(cacheDirectory, 'devcontainer.json');
+  await writeFile(configPath, JSON.stringify({
+    image: source.image,
+    workspaceFolder: workspace,
+    workspaceMount: `type=volume,source=${volumeName},target=${ENVIRONMENT_VOLUME_TARGET}`,
+    // The volume is made for root and given to the remote user below; changing
+    // the image user's ids to this host's would put the two out of step.
+    updateRemoteUserUID: false,
+  }), { mode: 0o600 });
+  const up = await commands.devcontainer([
+    'up', '--log-level', 'debug',
+    '--override-config', configPath,
+    ...idLabels.flatMap((label) => ['--id-label', label]),
+  ]);
+  const lines = up.stdout.trim().split(/\r?\n/);
+  const result = record(lines[lines.length - 1] ?? '');
+  const containerId = typeof result?.containerId === 'string' ? result.containerId : '';
+  const remoteUser = typeof result?.remoteUser === 'string' ? result.remoteUser : '';
+  if (
+    up.code !== 0
+    || result?.outcome !== 'success'
+    || containerId === ''
+    || remoteUser === ''
+    || result.remoteWorkspaceFolder !== workspace
+  ) {
+    throw new Error('The Dev Container CLI returned an invalid environment container.');
+  }
+  const ownership = `chown "$(id -u ${quote(remoteUser)}):$(id -g ${quote(remoteUser)})" ${quote(ENVIRONMENT_VOLUME_TARGET)} ${quote(workspace)}`;
+  checked(
+    await commands.docker(['exec', '--user', 'root', '-w', '/', containerId, '/bin/sh', '-c', ownership]),
+    'chown',
+  );
+  return {
+    containerId,
+    remoteWorkspaceFolder: workspace,
+    volumeName,
+    idLabels,
+  };
+};
+
+/** Whether a volume is this environment's state volume, and not another's under the same name. */
+const isEnvironmentStateVolume = async (
+  docker: EnvironmentCommand,
+  volumeName: string,
+  idLabels: readonly string[],
+  environmentId: string,
+): Promise<boolean> => {
+  const labels = record(checked(await docker(['volume', 'inspect', '--format', '{{json .Labels}}', volumeName]), 'docker volume inspect').stdout.trim());
+  // State volumes made before they carried the environment's label have none.
+  return isStateVolumeFor(labels, idLabels)
+    && (labels?.[ENVIRONMENT_LABEL] === undefined || labels[ENVIRONMENT_LABEL] === environmentId);
+};
+
+/**
+ * Remove an environment's containers, its volumes, and its cached configuration.
+ *
+ * Its containers are found by the id labels of its workspace volume, which no
+ * other volume has while that volume exists; its volumes are everything that
+ * carries its environment label, and a state volume made before it carried the
+ * label is found by its name and identity instead.
+ */
+export const removeEnvironment = async (
+  environmentId: string,
+  cacheDirectory: string,
+  docker: EnvironmentCommand,
+): Promise<void> => {
+  if (!isDevContainerEnvironmentId(environmentId)) {
+    throw new Error(`Invalid Dev Container environment identifier: ${environmentId}`);
+  }
+  const volumeName = await findEnvironmentVolume(docker, environmentId);
+  const volumes = new Set(await listVolumes(docker, [`${ENVIRONMENT_LABEL}=${environmentId}`]));
+  if (volumeName !== undefined) {
+    const idLabels = environmentIdLabels(volumeName);
+    const containers = checked(
+      await docker(['ps', '--all', '--quiet', ...idLabels.flatMap((label) => ['--filter', `label=${label}`])]),
+      'docker ps',
+    ).stdout.trim().split(/\r?\n/).filter((one) => one !== '');
+    for (const container of containers) {
+      checked(await docker(['rm', '--force', container]), 'docker rm');
+    }
+    const stateName = stateVolumeName(idLabels);
+    if (
+      !volumes.has(stateName)
+      && (await listVolumes(docker)).includes(stateName)
+      && await isEnvironmentStateVolume(docker, stateName, idLabels, environmentId)
+    ) {
+      volumes.add(stateName);
+    }
+  }
+  for (const volume of volumes) {
+    checked(await docker(['volume', 'rm', volume]), 'docker volume rm');
+  }
+  await rm(cacheDirectory, { recursive: true, force: true });
+};
