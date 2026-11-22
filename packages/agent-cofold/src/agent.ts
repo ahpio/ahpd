@@ -22,9 +22,9 @@ import type { Agent, Bag, Listed, MachineNeed, Offered, Session, Start } from '@
 import { harnessConfig, harnessConfigPath } from './config.js';
 import type { HarnessConfig } from './config.js';
 import type { ToolsConfig } from './capabilities.js';
-import { cofoldSession, takeRecord } from './session.js';
-import { turnsOf } from './transcript.js';
-import { commandsOf } from './turnagent.js';
+import { cofoldSession, sessionIdOf, takeRecord } from './session.js';
+import { turnsOf, writeImportedHistory } from './transcript.js';
+import { AGENT_ID, commandsOf } from './turnagent.js';
 
 /** What an embedder, or a plugin's options, may set. */
 export interface CofoldOptions {
@@ -1126,6 +1126,22 @@ export function cofoldAgent(options: CofoldOptions = {}): CofoldAgent {
       const turns = await turnsOf(store, id, ends);
       readEnds.set(id, ends);
       return turns;
+    },
+    /*
+     * A conversation a client brought, written into the store before the
+     * session that continues it starts.
+     *
+     * The session id is the one a start under the same uri derives, so the
+     * session that follows finds the conversation and appends to it, as a
+     * cofold session left on disk is continued.
+     */
+    importConversation: async (imported) => {
+      await writeImportedHistory(store, imported.turns, {
+        sessionId: sessionIdOf(imported.uri),
+        agentId: AGENT_ID,
+        ...(imported.workingDirectory === undefined ? {} : { workspace: imported.workingDirectory }),
+        ...(imported.model === undefined ? {} : { model: imported.model.id }),
+      });
     },
     /*
      * The session runs a cofold agent: a turn becomes `run()`'s event stream
