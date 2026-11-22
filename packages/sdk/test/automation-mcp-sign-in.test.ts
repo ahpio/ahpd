@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { memoryAutomations } from '../src/automations/automations.js';
 import { createHost, ROOT } from '../src/host.js';
+import { bag } from '../src/utils/values.js';
 import { echo, hello, peer, settle } from './support/host.js';
 import { directory } from './users-gate-helpers.js';
 import type { Agent, Start } from '../src/types/agent.js';
@@ -86,16 +87,7 @@ function signing(path: string) {
       return session;
     },
   };
-  return {
-    agent,
-    started,
-    /** The last session this backend built, which a run's is. */
-    last: (): Started => {
-      const one = started.at(-1);
-      if (one === undefined) throw new Error('no session was started');
-      return one;
-    },
-  };
+  return { agent, started };
 }
 
 type Backend = ReturnType<typeof signing>;
@@ -112,17 +104,25 @@ async function served(tokens: Record<string, Grant[]> = { ana: OWNER, bob: OWNER
   const dir = mkdtempSync(join(tmpdir(), 'ahpd-sign-in-'));
   made.push(dir);
   const backend = signing(dir);
+  const store = memoryAutomations();
   const host = createHost({
-    path: dir, agents: [backend.agent], users: users(tokens), automations: memoryAutomations(),
+    path: dir, agents: [backend.agent], users: users(tokens), automations: store,
   });
   hosts.push(host);
-  return { host, backend };
+  return { host, backend, store };
 }
 
-/** A client that has said hello, and signed in as `token` where one is named. */
-async function joined(host: ReturnType<typeof createHost>, token?: string, p: Peer = peer()) {
+/**
+ * A client that has said hello under `clientId`, and signed in as `token`
+ * where one is named.
+ *
+ * The id is the client's own because a client id is the first person's who
+ * signed in under it: two people never share one, and a second connection of
+ * one person says a different one.
+ */
+async function joined(host: ReturnType<typeof createHost>, clientId: string, token?: string, p: Peer = peer()) {
   const client = host.accept(p);
-  await client.handle(hello(['0.9.0']));
+  await client.handle(hello(['0.9.0'], { clientId }));
   if (token !== undefined) {
     await client.handle({ method: 'authenticate', params: { channel: ROOT, resource: USERS_RECORD.resource, token } });
   }
@@ -155,14 +155,41 @@ const definition = (): Bag => ({
   session: { provider: 'echo' },
 });
 
-/** Write the automation as the client that owns it, and press Run. */
-async function automated(client: ReturnType<ReturnType<typeof createHost>['accept']>, backend: Backend) {
+/** Wait until `ready` holds, for at most five seconds. */
+const until = async (ready: () => boolean): Promise<boolean> => {
+  const deadline = Date.now() + 5000;
+  while (!ready() && Date.now() < deadline) await new Promise((done) => { setTimeout(done, 5); });
+  return ready();
+};
+
+/**
+ * Write the automation as the client that owns it, and press Run.
+ *
+ * `runAutomation` answers with the run it recorded and starts that run in the
+ * background, so the session is waited for rather than read on the answer.
+ */
+async function automated(
+  client: ReturnType<ReturnType<typeof createHost>['accept']>,
+  backend: Backend,
+  store: ReturnType<typeof memoryAutomations>,
+) {
+  const before = backend.started.length;
   await client.handle({
     method: 'dispatchAction',
     params: { channel: AUTOMATIONS, action: { type: 'automation/createRequested', resource: ONE, definition: definition() } },
   });
-  await client.handle({ method: 'runAutomation', params: { channel: AUTOMATIONS, automation: ONE, requestId: 'r' } });
-  return backend.last();
+  const asked = await client.handle({ method: 'runAutomation', params: { channel: AUTOMATIONS, automation: ONE, requestId: 'r' } }) as {
+    resource: string;
+  };
+  if (!await until(() => backend.started.length > before)) {
+    const lifecycle = bag(store.runOf?.(asked.resource)?.lifecycle);
+    const why = bag(lifecycle.error).message;
+    throw new Error(`the automation did not start a session: ${String(lifecycle.status)}${why === undefined ? '' : `: ${String(why)}`}`);
+  }
+  const run = backend.started[before];
+  if (run === undefined) throw new Error('the automation did not start a session');
+  await settle(4);
+  return run;
 }
 
 /** Say what a session's customizations are now. */
@@ -177,16 +204,16 @@ const stateOf = (session: Started, id: string, state: Bag): void => {
 
 describe("an automation's MCP sign-in", () => {
   it("asks the owner's clients in turn, and the first sign-in ends the round", async () => {
-    const { host, backend } = await served();
+    const { host, backend, store } = await served();
     const order: string[] = [];
     const first = asking('ana-1', order, () => ({ authenticated: false }));
     const second = asking('ana-2', order, () => ({ authenticated: true }));
     const other = asking('bob', order, () => ({ authenticated: true }));
-    const ana1 = await joined(host, 'ana', first.peer);
-    await joined(host, 'ana', second.peer);
-    await joined(host, 'bob', other.peer);
+    const ana1 = await joined(host, 'ana-1', 'ana', first.peer);
+    await joined(host, 'ana-2', 'ana', second.peer);
+    await joined(host, 'bob-1', 'bob', other.peer);
 
-    const run = await automated(ana1, backend);
+    const run = await automated(ana1, backend, store);
     published(run, [server()]);
     await settle(10);
 
@@ -203,14 +230,14 @@ describe("an automation's MCP sign-in", () => {
   });
 
   it('asks one challenge once, however often the server says it', async () => {
-    const { host, backend } = await served();
+    const { host, backend, store } = await served();
     const order: string[] = [];
     const first = asking('ana-1', order, () => ({ authenticated: false }));
     const second = asking('ana-2', order, () => ({ authenticated: false }));
-    const ana1 = await joined(host, 'ana', first.peer);
-    await joined(host, 'ana', second.peer);
+    const ana1 = await joined(host, 'ana-1', 'ana', first.peer);
+    await joined(host, 'ana-2', 'ana', second.peer);
 
-    const run = await automated(ana1, backend);
+    const run = await automated(ana1, backend, store);
     published(run, [server()]);
     await settle(10);
     expect(first.asked).toHaveLength(1);
@@ -225,14 +252,14 @@ describe("an automation's MCP sign-in", () => {
   });
 
   it('asks again once the server has left the challenge and come back to it', async () => {
-    const { host, backend } = await served();
+    const { host, backend, store } = await served();
     const order: string[] = [];
     const first = asking('ana-1', order, () => ({ authenticated: false }));
     const second = asking('ana-2', order, () => ({ authenticated: false }));
-    const ana1 = await joined(host, 'ana', first.peer);
-    await joined(host, 'ana', second.peer);
+    const ana1 = await joined(host, 'ana-1', 'ana', first.peer);
+    await joined(host, 'ana-2', 'ana', second.peer);
 
-    const run = await automated(ana1, backend);
+    const run = await automated(ana1, backend, store);
     published(run, [server()]);
     await settle(10);
     expect(first.asked).toHaveLength(1);
@@ -247,14 +274,14 @@ describe("an automation's MCP sign-in", () => {
   });
 
   it('does not ask a server a connector owns', async () => {
-    const { host, backend } = await served();
+    const { host, backend, store } = await served();
     const order: string[] = [];
     const first = asking('ana-1', order, () => ({ authenticated: false }));
     const second = asking('ana-2', order, () => ({ authenticated: true }));
-    const ana1 = await joined(host, 'ana', first.peer);
-    await joined(host, 'ana', second.peer);
+    const ana1 = await joined(host, 'ana-1', 'ana', first.peer);
+    await joined(host, 'ana-2', 'ana', second.peer);
 
-    const run = await automated(ana1, backend);
+    const run = await automated(ana1, backend, store);
     published(run, [fromConnector(), server()]);
     await settle(10);
 
@@ -267,7 +294,7 @@ describe("an automation's MCP sign-in", () => {
     const { host, backend } = await served();
     const order: string[] = [];
     const first = asking('ana-1', order, () => ({ authenticated: true }));
-    const ana1 = await joined(host, 'ana', first.peer);
+    const ana1 = await joined(host, 'ana-1', 'ana', first.peer);
 
     const uri = 'ahp-session:/mine';
     await ana1.handle({ method: 'createSession', params: { channel: uri, provider: 'echo' } });
