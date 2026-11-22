@@ -299,6 +299,17 @@ export interface Start {
   /** Directories beside it the agent may also work in. */
   additional?: string[];
   /**
+   * Variables for the agent's own process, over the environment it would
+   * otherwise be started with.
+   *
+   * The host puts the shell authentication helper's variables and the chat's
+   * token here while that setting is on, so a command the agent runs may ask
+   * the person for a password. Absent when the setting is off, and for a
+   * session in a machine: the helper reaches this host's socket, which a
+   * process in a machine cannot.
+   */
+  env?: Record<string, string>;
+  /**
    * Whether one folder is trusted, by the host's one trust value.
    *
    * The host answers it for any folder, the session's own included, because

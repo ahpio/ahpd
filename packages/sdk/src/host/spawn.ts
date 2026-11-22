@@ -1167,6 +1167,14 @@ export function createSpawn(ctx: HostContext): Spawn {
     const machine = computerId(config.computer);
     const offHost = machine !== undefined && options.computers?.remote?.(machine) === true;
     /*
+     * The shell authentication variables this chat's agent process is given.
+     *
+     * Only a chat on this host: the helper reaches a socket here, and a
+     * process in a machine cannot. A host inside a machine gives its own when
+     * its own setting is on.
+     */
+    const helperEnv = machine === undefined ? ctx.shellAuth.envFor(chatUri) : {};
+    /*
      * A machine whose port can hand over a socket, which is a node that dialled
      * this host: the host inside it is reached over that socket instead of a
      * command. The port is asked for every machine, so the answer for one it
@@ -1475,6 +1483,11 @@ export function createSpawn(ctx: HostContext): Spawn {
        * never heard of the key, and the answer to either is the same.
        */
       ...(options.shellEnv === undefined ? {} : { shellEnv: frozenCopy(options.shellEnv) }),
+      /*
+       * The helper's variables, on this host only, and only while the setting
+       * is on: `envFor` answers nothing otherwise.
+       */
+      ...(Object.keys(helperEnv).length === 0 ? {} : { env: frozenCopy(helperEnv) }),
       ...(credentials && Object.keys(credentials).length > 0 ? { credentials } : {}),
       ...(workingDirectory !== undefined ? { workingDirectory } : {}),
       ...(additional !== undefined && additional.length > 0 ? { additional: frozenCopy(additional) } : {}),

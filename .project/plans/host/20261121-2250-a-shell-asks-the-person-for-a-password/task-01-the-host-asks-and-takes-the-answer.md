@@ -1,6 +1,6 @@
 ---
 title: The host asks a prompt and takes the answer
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:

@@ -144,6 +144,7 @@ export interface VscodeMethods {
   'vscode/reconcileAgentHostDetachedWorktrees': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/removeSessionArtifact': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/stopBackgroundWork': (params: Record<string, unknown>) => Promise<unknown>;
+  'vscode/answerShellAuthentication': (params: Record<string, unknown>) => Promise<unknown>;
   'x-ahpd/backgroundToolCall': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/getAgentHostSessionStateFile': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/collectAgentHostDebugLogs': (params: Record<string, unknown>) => Promise<unknown>;
@@ -885,6 +886,24 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
       if (!URL.canParse(chat)) throw new RpcError(INVALID_PARAMS, 'chat must be a valid URI string');
       if (spaceOf(chat) !== 'chat') throw new RpcError(INVALID_PARAMS, 'chat must be an Agent Host chat URI');
       return { stopped: await ctx.background.stop(chat, id) };
+    },
+    /**
+     * The person's answer to a command's prompt, or their refusal with none.
+     *
+     * The strings are checked as the stop checks them; the answer itself is
+     * handed straight to the helper and goes nowhere else. `delivered` is
+     * `false` for a prompt that already ended, which is what the reference
+     * host answers a request it no longer holds.
+     * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/protocolServerHandler.ts#L3865-L3886
+     */
+    'vscode/answerShellAuthentication': async (params) => {
+      const chat = stringParam(params, 'chat', 'an AHP chat URI');
+      const requestId = stringParam(params, 'requestId', 'a request id');
+      const answer = optionalStringParam(params, 'answer');
+      if (requestId.trim() === '') throw new RpcError(INVALID_PARAMS, 'requestId must be a non-empty string');
+      if (!URL.canParse(chat)) throw new RpcError(INVALID_PARAMS, 'chat must be a valid URI string');
+      if (spaceOf(chat) !== 'chat') throw new RpcError(INVALID_PARAMS, 'chat must be an Agent Host chat URI');
+      return { delivered: ctx.shellAuth.answer(chat, requestId, answer) };
     },
     /**
      * Move a running call to the background: this host's own method, beside

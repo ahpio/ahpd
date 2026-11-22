@@ -259,6 +259,13 @@ export function createShells(ctx: HostContext): HostShells {
        * the store puts no integration into a shell whose scripts are not there.
        */
       const machine = machineOf(session);
+      /*
+       * The shell authentication variables this chat's commands run with.
+       *
+       * A shell on this host reaches the host's socket; one in a machine does
+       * not, and the host inside the machine gives its own.
+       */
+      const helperEnv = machine === undefined ? ctx.shellAuth.envFor(claim.chat) : {};
       let asked: HeldShellOptions = {
         uri: ctx.nonPtyShellTerminalUri(session, claim.chat, key),
         cwd: whereOf(session, chat),
@@ -267,6 +274,7 @@ export function createShells(ctx: HostContext): HostShells {
         nonInteractive: true,
         preventShellHistory: true,
         kept: { chat: claim.chat, key, session },
+        ...(Object.keys(helperEnv).length === 0 ? {} : { env: helperEnv }),
         ...(machine === undefined ? {} : { machine }),
       };
       if (machine !== undefined) {

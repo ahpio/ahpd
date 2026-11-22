@@ -745,6 +745,21 @@ export function claude(options: ClaudeOptions): Agent<Session> {
        */
       const inside = insideOf(start);
       const cwd = workingDirectory(start.workingDirectory);
+      /*
+       * The variables the CLI's own process is started with.
+       *
+       * The host's shell authentication variables, on this host only: a CLI in
+       * a machine cannot reach the helper's socket. A token a client pushed is
+       * the variable the CLI reads, which is this file's business and not the
+       * host's: the host knows a token belongs to `https://api.anthropic.com`
+       * and stops there, which is what keeps `createHost` the protocol and
+       * nothing else.
+       */
+      const pushedToken = start.credentials?.[ANTHROPIC];
+      const cliEnv: Record<string, string> = {
+        ...(inside === undefined && start.env !== undefined ? start.env : {}),
+        ...(pushedToken === undefined ? {} : { ANTHROPIC_API_KEY: pushedToken }),
+      };
       // The fork anchors of the turns read back, for a session that carries the
       // same conversation on. A fork is a conversation of its own, whose
       // entries its CLI writes.
@@ -824,6 +839,7 @@ export function claude(options: ClaudeOptions): Agent<Session> {
       // The operator's environment for this session's shells, carried as the
       // host resolved it, so the Bash hook writes the lines once.
       ...(start.shellEnv === undefined ? {} : { shellEnv: start.shellEnv }),
+      ...(Object.keys(cliEnv).length === 0 ? {} : { env: cliEnv }),
       // How long the CLI has to answer its handshake, which this variant's own
       // option decides and which the backend's default answers without one.
       ...(options.handshakeTimeoutMs === undefined ? {} : { handshakeTimeoutMs: options.handshakeTimeoutMs }),
@@ -878,17 +894,6 @@ export function claude(options: ClaudeOptions): Agent<Session> {
       // The outputs the host keeps for this chat, which is where a `Bash`
       // result too large to send keeps the output Claude saved for it.
       ...(start.terminalOutputs ? { terminalOutputs: start.terminalOutputs } : {}),
-      /*
-       * A pushed token, as the variable the CLI reads.
-       *
-       * Which variable that is, is this file's business and not the host's:
-       * the host knows a token belongs to `https://api.anthropic.com` and
-       * stops there, which is what keeps `createHost` the protocol and
-       * nothing else.
-       */
-      ...(start.credentials?.[ANTHROPIC]
-        ? { env: { ANTHROPIC_API_KEY: start.credentials[ANTHROPIC] } }
-        : {}),
       // The declared options this variant was configured with, which its
       // sessions are built from. A record's are read live instead, so a turn
       // sees an edit without the daemon rebuilding the agent.

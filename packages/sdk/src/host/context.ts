@@ -48,6 +48,7 @@ import type { SessionLifecycle } from './sessionlifecycle.js';
 import type { Canvases } from './canvases.js';
 import type { Sandbox } from './sandbox.js';
 import type { Asking } from './asking.js';
+import type { ShellAuthentication } from './shellauth.js';
 import type { Logger } from '../log.js';
 
 /**
@@ -599,6 +600,11 @@ export interface HostContext extends ChatRecord, Routing, Relay, Changesets, Fac
    * under, and what settles or cancels them.
    */
   asks: Asking;
+  /**
+   * The socket a command's authentication prompt comes through, the tokens
+   * each chat's processes carry, and the helper's files.
+   */
+  shellAuth: ShellAuthentication;
   /**
    * Let the state this host holds of a session go, its own and its chats',
    * for a session the residency lets go.

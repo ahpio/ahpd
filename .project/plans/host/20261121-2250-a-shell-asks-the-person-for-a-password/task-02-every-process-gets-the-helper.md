@@ -1,6 +1,6 @@
 ---
 title: Every process ahpd starts gets the helper
-status: todo
+status: done
 depends: [task-01-the-host-asks-and-takes-the-answer.md]
 layer: "sdk, agent-acp, agent-pi, agent-cofold"
 refs:

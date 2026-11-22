@@ -1032,6 +1032,12 @@ export function piSession(
       ...(options.baseUrl !== undefined ? { baseUrl: options.baseUrl } : {}),
       ...(options.apiKey !== undefined ? { apiKey: options.apiKey } : {}),
       ...(tools.length > 0 ? { tools } : {}),
+      /*
+       * The host's shell authentication variables, for the shell pi runs
+       * commands in: pi is in this process, so there is no agent process to
+       * put them on.
+       */
+      ...(start.env === undefined ? {} : { env: start.env }),
       ...(instructions.length > 0 ? { instructions } : {}),
       // The inline extension pi loads is this host's, and this is the handler
       // it calls before a tool runs.
