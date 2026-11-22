@@ -65,7 +65,7 @@ a run's session -> session/customizationsChanged with an MCP server authRequired
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - A run's MCP sign-in is asked of the clients](task-01-a-runs-sign-in-is-asked.md) | todo | - |
+| [01 - A run's MCP sign-in is asked of the clients](task-01-a-runs-sign-in-is-asked.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -73,10 +73,10 @@ a run's session -> session/customizationsChanged with an MCP server authRequired
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-runs-sign-in-is-asked.md](task-01-a-runs-sign-in-is-asked.md).
+- **Done so far:** [task-01](task-01-a-runs-sign-in-is-asked.md) - a run's session is watched for `authRequired` servers, and the automation owner's connections are asked in turn. See [implemented.md](implemented.md).
+- **Next action:** nothing; every task is done.
 - **Open questions:** none.
-- **Watch out for:** a chat automation's run reuses a session a person may have open. The host asks about it all the same, as VS Code's does.
+- **Watch out for:** a chat automation's run reuses a session a person may have open. The host asks about it all the same, as VS Code's does. A server a connector owns is read as one of a plugin's children, which is the only owner this protocol draws; it is skipped.
 
 ## Final verification checklist
 
