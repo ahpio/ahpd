@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, rmSync } from 'node:fs';
+import { readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
 
@@ -74,11 +74,12 @@ export const endHolders = async (folders: readonly string[], ms = 5_000): Promis
  * Remove `folder` and all it holds, trying again while Windows still finishes
  * an earlier delete.
  *
- * A removal that still fails names what is left in the folder and the holders
- * still seen, so a failure on a runner says which file and which process held
- * it.
+ * A removal that still fails names what is left in the folder, how long ago
+ * each file was last written, and the holders still seen, so a failure on a
+ * runner says which file and which process held it. `about` adds what a caller
+ * knows of a file it left, such as the last calls a fake CLI recorded there.
  */
-export const removeFolder = (folder: string): void => {
+export const removeFolder = (folder: string, about?: (path: string) => string | undefined): void => {
   try {
     rmSync(folder, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
@@ -86,7 +87,17 @@ export const removeFolder = (folder: string): void => {
     let left: string[] = [];
     try { left = readdirSync(folder, { recursive: true }).map(String); }
     catch { /* the folder is gone after all */ }
-    const shown = left.length > 20 ? [...left.slice(0, 20), `and ${String(left.length - 20)} more`] : left;
+    const described = left.map((one) => {
+      const path = join(folder, one);
+      let age = '';
+      try { age = ` written ${String(Math.round(Date.now() - statSync(path).mtimeMs))}ms ago`; }
+      catch { /* gone since the listing */ }
+      let more: string | undefined;
+      try { more = about?.(path); }
+      catch { /* nothing to add */ }
+      return `${one}${age}${more === undefined ? '' : ` (${more})`}`;
+    });
+    const shown = described.length > 20 ? [...described.slice(0, 20), `and ${String(described.length - 20)} more`] : described;
     const seen = holders([folder]);
     throw new Error(
       `${error instanceof Error ? error.message : String(error)}. Still in it: ${shown.join(', ') || 'nothing'}. Holders: ${seen.join(', ') || 'none'}.`,

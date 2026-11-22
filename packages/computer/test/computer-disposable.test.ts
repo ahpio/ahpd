@@ -57,11 +57,18 @@ afterEach(async () => {
   // moment after the close, which failed a removal with ENOTEMPTY, so each one
   // that names the folder is ended first, and each removal tries again.
   await endHolders([loose, state].filter((one): one is string => one !== undefined));
-  if (loose !== undefined) removeFolder(loose);
+  if (loose !== undefined) removeFolder(loose, lastCalls);
   loose = undefined;
-  if (state !== undefined) removeFolder(state);
+  if (state !== undefined) removeFolder(state, lastCalls);
   state = undefined;
 });
+
+/** The last calls the fake `docker` recorded in a state file it left, newest last. */
+const lastCalls = (path: string): string | undefined => {
+  if (!path.endsWith('docker.json')) return undefined;
+  const calls = (JSON.parse(readFileSync(path, 'utf8')) as { calls?: unknown[][] }).calls ?? [];
+  return `last calls: ${calls.slice(-3).map((one) => one.slice(0, 3).join(' ')).join('; ') || 'none'}`;
+};
 
 const temp = (): string => {
   loose = mkdtempSync(join(tmpdir(), 'ahpd-disposable-'));
