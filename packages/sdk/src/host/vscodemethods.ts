@@ -25,7 +25,8 @@ import {
   userInteractionAttributes, userInteractionRecord,
 } from './timing.js';
 import type { LogFile } from '../sessions/debuglogs.js';
-import type { ContainerConnect, ContainerConnectResult, ContainerSink } from '../types/containers.js';
+import { DEV_CONTAINER_ENVIRONMENT_IMAGES, isDevContainerEnvironmentId, type ContainerConnect, type ContainerConnectResult, type ContainerEnvironmentConnect, type ContainerSink } from '../types/containers.js';
+import type { Owner } from '../types/usage.js';
 import type { ConnectionContext, DetachedWorktree, HostContext } from './context.js';
 
 /**
@@ -160,6 +161,7 @@ export interface VscodeMethods {
   'vscode/reportChatUserInteraction': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/devContainers/isDockerAvailable': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/devContainers/connect': (params: Record<string, unknown>) => Promise<unknown>;
+  'vscode/devContainers/connectEnvironment': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/devContainers/disconnect': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/devContainers/relaySend': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/devContainers/stop': (params: Record<string, unknown>) => Promise<unknown>;
@@ -416,6 +418,31 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
   };
 
   /**
+   * The strings an environment connect carries, refused in one sentence as
+   * VS Code's protocol checks them.
+   *
+   * The id and the image are checked here rather than left to the launcher,
+   * because the client is told what it got wrong before any container is made.
+   * The name is the client's spelling and is not a path.
+   * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/devContainerAgentHostProtocol.ts
+   */
+  const environmentAsk = (params: Record<string, unknown>): ContainerEnvironmentConnect => {
+    const id = connectionIdOf(params);
+    const environmentId = typeof params.environmentId === 'string' ? params.environmentId : '';
+    const image = typeof params.image === 'string' ? params.image : '';
+    const name = typeof params.name === 'string' ? params.name : '';
+    if (
+      !isDevContainerEnvironmentId(environmentId)
+      || !DEV_CONTAINER_ENVIRONMENT_IMAGES.includes(image)
+      || name.trim() === ''
+      || name.includes('\0')
+    ) {
+      throw new RpcError(INVALID_PARAMS, 'environmentId must be a valid identifier, image must be supported, and name must be non-empty');
+    }
+    return { connectionId: id, environmentId, image, name };
+  };
+
+  /**
    * The one string a `disconnect` or a `relaySend` carries.
    *
    * The reference sends `{ connectionId }` and `{ connectionId, data }`,
@@ -460,7 +487,9 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
     const here = atPath(folder);
     for (const [who, held] of ctx.relays) {
       if (who === connection) continue;
-      for (const one of held.values()) if (atPath(one.folder) === here) return true;
+      for (const one of held.values()) {
+        if (one.folder !== undefined && atPath(one.folder) === here) return true;
+      }
     }
     return false;
   };
@@ -506,7 +535,9 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
     const here = atPath(path);
     if ((await ctx.listSessions()).some((summary) => summary.workingDirectories.some((one) => atPath(localPath(one)) === here))) return true;
     for (const held of ctx.relays.values()) {
-      for (const one of held.values()) if (atPath(one.folder) === here) return true;
+      for (const one of held.values()) {
+        if (one.folder !== undefined && atPath(one.folder) === here) return true;
+      }
     }
     return placedOn(path);
   };
@@ -567,11 +598,118 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
     if (relayedByAnother(folder) || placedOn(folder)) return false;
     const here = atPath(folder);
     for (const [id, held] of [...conn.containers]) {
-      if (atPath(held.folder) !== here) continue;
+      if (held.folder === undefined || atPath(held.folder) !== here) continue;
       conn.containers.delete(id);
       await port.disconnect(id);
     }
     return await act.call(port, folder);
+  };
+
+  /**
+   * One relay into a container, whichever ask made it.
+   *
+   * The connection id is held before the first await, so a second connect under
+   * the same name cannot slip in while this one is building an image. The
+   * ending, the sink, the owner and the cleanup are the same for a folder's
+   * container and an environment's; `begin` is the launcher call that differs,
+   * `release` ends whatever the launcher began when the connect does not
+   * finish, and `trust` is the folder's check, run here so a refusal frees the
+   * name.
+   */
+  const startRelay = async (
+    one: ContainerConnect | ContainerEnvironmentConnect,
+    held: { name: string; folder?: string; environment?: string },
+    begin: (sink: ContainerSink, owner: Owner | undefined) => Promise<ContainerConnectResult>,
+    release: () => Promise<void>,
+    trust?: () => Promise<void>,
+  ): Promise<unknown> => {
+    if (conn.containers.has(one.connectionId)) {
+      throw new RpcError(INVALID_PARAMS, 'Dev Container connectionId is already in use');
+    }
+    conn.containers.set(one.connectionId, { ...held, tail: [] });
+    if (trust !== undefined) {
+      await trust().catch((refused: unknown) => { conn.containers.delete(one.connectionId); throw refused; });
+    }
+    /*
+     * A starting line, because "asked for" and "never asked" otherwise look the
+     * same in this log: the only other thing written about a container is its
+     * ending, and by then the question has moved on.
+     */
+    const about = 'workspaceFolder' in one ? `in ${one.workspaceFolder}` : `for environment ${one.environmentId}`;
+    log(`dev container ${one.connectionId} starting ${about}`);
+    /**
+     * The relay ended, whoever ended it.
+     *
+     * The map is what says whether this connection still owns it: an
+     * explicit `disconnect` forgets the name first, so the client that
+     * asked is not told what it already knows.
+     */
+    const ended = (why?: string): void => {
+      const kept = conn.containers.get(one.connectionId);
+      if (!conn.containers.delete(one.connectionId)) return;
+      connection.peer.notify('vscode/devContainers/relayClose', { connectionId: one.connectionId });
+      connection.peer.notify('vscode/devContainers/closeConnection', { connectionId: one.connectionId });
+      if (why !== undefined && why !== '') {
+        /*
+         * The launcher's own last words, which are usually the reason.
+         *
+         * `ended: exit 1` was all this said, and the cause - a path that
+         * does not exist inside the container, an install that failed -
+         * was sent only to whichever client happened to be watching.
+         */
+        const tail = (kept?.tail ?? []).filter((line) => line.trim() !== '').slice(-8);
+        log(`dev container ${one.connectionId} ended: ${why}${
+          tail.length === 0 ? '' : `\n  ${tail.join('\n  ')}`}`);
+      }
+    };
+    const sink: ContainerSink = {
+      message: (data) => {
+        connection.peer.notify('vscode/devContainers/relayMessage', { connectionId: one.connectionId, data });
+      },
+      output: (data) => {
+        connection.peer.notify('vscode/devContainers/output', { connectionId: one.connectionId, data });
+        // Kept for an ending to explain itself, bounded so a long build
+        // cannot grow the daemon's memory with output nobody will read.
+        const kept = conn.containers.get(one.connectionId);
+        if (kept === undefined) return;
+        for (const line of String(data).split('\n')) {
+          if (line.trim() !== '') kept.tail.push(line);
+        }
+        if (kept.tail.length > CONTAINER_TAIL) {
+          kept.tail.splice(0, kept.tail.length - CONTAINER_TAIL);
+        }
+      },
+      close: (why) => { ended(why); },
+    };
+    let result: ContainerConnectResult;
+    try {
+      /*
+       * Whose the container is, which the client cannot say.
+       *
+       * The connection is the whole of the answer: a person who has signed
+       * in owns what their relay runs, and a connection the host made for
+       * itself is the host.
+       */
+      result = await begin(sink, ownerFor(connection));
+      log(`dev container ${one.connectionId} up: ${result.address} (${result.remoteWorkspaceFolder})`);
+    }
+    catch (error) {
+      // Nothing left running: the launcher is told to release whatever it
+      // had begun, and the name is free again.
+      conn.containers.delete(one.connectionId);
+      try { await release(); } catch { /* already gone */ }
+      log.error(`dev container ${one.connectionId} failed: ${reason(error)}`);
+      throw error;
+    }
+    if (!conn.alive) {
+      // The client went while the image was building. Its containers are
+      // not something to leave behind for nobody.
+      conn.containers.delete(one.connectionId);
+      try { await release(); } catch { /* already gone */ }
+      log(`dev container ${one.connectionId} abandoned: the client went away while it was starting`);
+      throw new Error(`The connection went away while ${one.connectionId} was starting`);
+    }
+    return { connectionId: one.connectionId, name: one.name, ...result };
   };
 
   return {
@@ -1208,96 +1346,35 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
     'vscode/devContainers/connect': async (params) => {
       const launcher = need(options.containers, 'vscode/devContainers/connect');
       const one = containerAsk(params);
-      // In VS Code's words for a connection id this client holds.
-      // https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/devContainerAgentHostProtocol.ts#L159-L162
-      if (conn.containers.has(one.connectionId)) {
-        throw new RpcError(INVALID_PARAMS, 'Dev Container connectionId is already in use');
+      return await startRelay(
+        one,
+        { name: one.name, folder: one.workspaceFolder },
+        (sink, owner) => launcher.connect(owner === undefined ? one : { ...one, owner }, sink),
+        async () => { await launcher.disconnect(one.connectionId); },
+        () => vouchedFor(one.workspaceFolder, 'Workspace trust is required to start a Dev Container'),
+      );
+    },
+    /*
+     * An environment's container, made from an image the client chose.
+     *
+     * The reference client asks this to make an environment it named, and the
+     * answer is a relay's, as a folder connect's is: there is no folder to
+     * trust here, because the workspace is a volume the host makes. A launcher
+     * without the method is refused as an absent launcher is.
+     */
+    'vscode/devContainers/connectEnvironment': async (params) => {
+      const port = need(options.containers, 'vscode/devContainers/connectEnvironment');
+      const connectEnvironment = port.connectEnvironment;
+      if (connectEnvironment === undefined) {
+        throw new RpcError(METHOD_NOT_FOUND, 'Method not found: vscode/devContainers/connectEnvironment');
       }
-      // Held before the first await, so a second connect under the same
-      // name cannot slip in while this one is building an image.
-      conn.containers.set(one.connectionId, { name: one.name, folder: one.workspaceFolder, tail: [] });
-      await vouchedFor(one.workspaceFolder, 'Workspace trust is required to start a Dev Container')
-        .catch((refused: unknown) => { conn.containers.delete(one.connectionId); throw refused; });
-      /*
-       * A starting line, because "asked for" and "never asked" otherwise
-       * look the same in this log: the only other thing written about a
-       * container is its ending, and by then the question has moved on.
-       */
-      log(`dev container ${one.connectionId} starting in ${one.workspaceFolder}`);
-      /**
-       * The relay ended, whoever ended it.
-       *
-       * The map is what says whether this connection still owns it: an
-       * explicit `disconnect` forgets the name first, so the client that
-       * asked is not told what it already knows.
-       */
-      const ended = (why?: string): void => {
-        const held = conn.containers.get(one.connectionId);
-        if (!conn.containers.delete(one.connectionId)) return;
-        connection.peer.notify('vscode/devContainers/relayClose', { connectionId: one.connectionId });
-        connection.peer.notify('vscode/devContainers/closeConnection', { connectionId: one.connectionId });
-        if (why !== undefined && why !== '') {
-          /*
-           * The launcher's own last words, which are usually the reason.
-           *
-           * `ended: exit 1` was all this said, and the cause - a path that
-           * does not exist inside the container, an install that failed -
-           * was sent only to whichever client happened to be watching.
-           */
-          const tail = (held?.tail ?? []).filter((line) => line.trim() !== '').slice(-8);
-          log(`dev container ${one.connectionId} ended: ${why}${
-            tail.length === 0 ? '' : `\n  ${tail.join('\n  ')}`}`);
-        }
-      };
-      const sink: ContainerSink = {
-        message: (data) => {
-          connection.peer.notify('vscode/devContainers/relayMessage', { connectionId: one.connectionId, data });
-        },
-        output: (data) => {
-          connection.peer.notify('vscode/devContainers/output', { connectionId: one.connectionId, data });
-          // Kept for an ending to explain itself, bounded so a long build
-          // cannot grow the daemon's memory with output nobody will read.
-          const held = conn.containers.get(one.connectionId);
-          if (held === undefined) return;
-          for (const line of String(data).split('\n')) {
-            if (line.trim() !== '') held.tail.push(line);
-          }
-          if (held.tail.length > CONTAINER_TAIL) {
-            held.tail.splice(0, held.tail.length - CONTAINER_TAIL);
-          }
-        },
-        close: (why) => { ended(why); },
-      };
-      let result: ContainerConnectResult;
-      try {
-        /*
-         * Whose the container is, which the client cannot say.
-         *
-         * The connection is the whole of the answer: a person who has signed
-         * in owns what their relay runs, and a connection the host made for
-         * itself is the host.
-         */
-        const owner = ownerFor(connection);
-        result = await launcher.connect(owner === undefined ? one : { ...one, owner }, sink);
-        log(`dev container ${one.connectionId} up: ${result.address} (${result.remoteWorkspaceFolder})`);
-      }
-      catch (error) {
-        // Nothing left running: the launcher is told to release whatever it
-        // had begun, and the name is free again.
-        conn.containers.delete(one.connectionId);
-        try { await launcher.disconnect(one.connectionId); } catch { /* already gone */ }
-        log.error(`dev container ${one.connectionId} failed: ${reason(error)}`);
-        throw error;
-      }
-      if (!conn.alive) {
-        // The client went while the image was building. Its containers are
-        // not something to leave behind for nobody.
-        conn.containers.delete(one.connectionId);
-        try { await launcher.disconnect(one.connectionId); } catch { /* already gone */ }
-        log(`dev container ${one.connectionId} abandoned: the client went away while it was starting`);
-        throw new Error(`The connection went away while ${one.connectionId} was starting`);
-      }
-      return { connectionId: one.connectionId, name: one.name, ...result };
+      const one = environmentAsk(params);
+      return await startRelay(
+        one,
+        { name: one.name, environment: one.environmentId },
+        (sink, owner) => connectEnvironment.call(port, owner === undefined ? one : { ...one, owner }, sink),
+        async () => { await port.disconnect(one.connectionId); },
+      );
     },
     'vscode/devContainers/disconnect': async (params) => {
       const launcher = need(options.containers, 'vscode/devContainers/disconnect');

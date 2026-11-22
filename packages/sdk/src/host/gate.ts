@@ -128,6 +128,7 @@ export const NEEDS: Record<string, Grant> = {
   // by proxy, so it is a grant of its own rather than the machine scheme's
   // operations: the params name a workspace folder, not a `computer://` URI.
   'vscode/devContainers/connect': 'container:connect',
+  'vscode/devContainers/connectEnvironment': 'container:connect',
   'vscode/devContainers/disconnect': 'container:disconnect',
   'vscode/devContainers/relaySend': 'container:relay',
   /*

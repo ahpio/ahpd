@@ -41,7 +41,7 @@ export type {
 export type { DirectoryNeed, FileNeed, EnvNeed, CopyNeed, PartNeed, StateNeed, Seed, ResolvedSeed, StateMode, MachineNeed, NeedKind, ResolvedNeed } from './machine.js';
 export type { Entry, Metadata, Read, ResourceChange, ResourceProvider, ResourceStore, SchemeDescription, Watcher, WatchOptions, Write } from './resources.js';
 export type { BroughtBack, ComputerPort, HandedAgent, HandedRecord, MachineSource, NestedSpawn, SandboxedSpawn, Spawn, SpawnOptions } from './computers.js';
-export type { ContainerConnect, ContainerConnectResult, ContainerPort, ContainerSink } from './containers.js';
+export type { ContainerConnect, ContainerConnectResult, ContainerEnvironmentConnect, ContainerPort, ContainerSink } from './containers.js';
 export type { SessionConfigAnswerer, SessionConfigAsk } from './completions.js';
 export type { Claim, CommandTerminal, Terminal, TerminalOptions, SpawnPty, TerminalStore, OpenTerminal, OpenedTerminal, StartTerminals, OutputTerminal, OutputTerminals, TerminalOutputs, ShellIntegration, ShellIntegrationAnswer, Screen, ScreenOptions, SpawnScreen } from './terminals.js';
 export type { GoingOn, HeldShell, ManagedShell, ShellClaim, ShellCommandResult, ShellCommandStatus, Shells, ShellType } from './shells.js';
