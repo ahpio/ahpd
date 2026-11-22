@@ -1775,7 +1775,7 @@ export function createAutomations(ctx: HostContext): Automations {
         .flatMap((one) => (one.customizations ?? []).map((copy) => localPath(copy.uri))));
     }
     if (!deleteHistory) return [];
-    if (store.beginDeletion === undefined) {
+    if (store.beginDeletion === undefined || store.deletionOf === undefined) {
       const deleted: string[] = [];
       for (const uri of sessions) if (await deleteSession(automation, uri)) deleted.push(uri);
       return deleted;
