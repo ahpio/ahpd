@@ -73,7 +73,7 @@ createSession _meta['vscode.importConversation'] {transferId} or {turns, model?,
 | Task | Status | Depends on |
 | --- | --- | --- |
 | [01 - A conversation is staged and taken by createSession](task-01-staged-and-taken.md) | done | - |
-| [02 - Claude writes an imported conversation](task-02-claude-writes-an-import.md) | todo | 01 |
+| [02 - Claude writes an imported conversation](task-02-claude-writes-an-import.md) | done | 01 |
 | [03 - Pi and cofold write an imported conversation](task-03-pi-and-cofold-write-an-import.md) | todo | 01 |
 
 ## Risks and tradeoffs
@@ -83,8 +83,8 @@ createSession _meta['vscode.importConversation'] {transferId} or {turns, model?,
 
 ## Resume state
 
-- **Done so far:** task 01: the method, the staged state, the reader, `Agent.importConversation`, the capability and `createSession`'s import.
-- **Next action:** [task-02-claude-writes-an-import.md](task-02-claude-writes-an-import.md).
+- **Done so far:** task 01: the method, the staged state, the reader, `Agent.importConversation`, the capability and `createSession`'s import. Task 02: the Claude writer, the read-back, and the resume.
+- **Next action:** [task-03-pi-and-cofold-write-an-import.md](task-03-pi-and-cofold-write-an-import.md).
 - **Open questions:** none.
 - **Watch out for:** a chunk is cut at a UTF-16 surrogate pair boundary by VS Code; join chunks as strings, never as bytes.
 
