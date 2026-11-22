@@ -660,6 +660,16 @@ function buildTurns(messages: unknown[], forkAnchorUuids?: Map<string, string>):
       const said = typeof message.content === 'string'
         ? message.content
         : list(message.content).map((b) => str(bag(b).text)).filter(Boolean).join('\n');
+      /*
+       * Whether this frame opens a turn of its own, by the same tests the
+       * branches below apply: a prompt does, and a frame of results, a CLI
+       * echo, a stop or a steer does not.
+       */
+      const opens = said !== ''
+        && frame.isCompactSummary !== true
+        && !isCliEcho(message.content)
+        && !said.startsWith(INTERRUPTED)
+        && frame.isQueuedCommand !== true;
 
       // The turn the results below belong to, which is the one the prompt
       // before them opened.
@@ -737,8 +747,10 @@ function buildTurns(messages: unknown[], forkAnchorUuids?: Map<string, string>):
         if (meta !== undefined) call._meta = meta;
       }
       // A frame of tool results is part of the turn the prompt opened, so the
-      // turn ends when the last of them was written.
-      if (open !== undefined) lastAt.set(open, Date.parse(at));
+      // turn ends when the last of them was written. A prompt opens a turn of
+      // its own and never ends the one in front of it, whose last frame stays
+      // what it answered with.
+      if (!opens && open !== undefined) lastAt.set(open, Date.parse(at));
       if (!said) continue;
       // Written by the CLI rather than said by anybody: it neither shows as a
       // prompt nor ends the exchange it sits in.

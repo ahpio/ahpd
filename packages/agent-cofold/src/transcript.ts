@@ -631,6 +631,7 @@ export async function writeImportedHistory(
       createdAt: startedAt,
     };
     const answer: ContentPart[] = [];
+    const shown: ContentPart[] = [];
     const results: ToolResultPart[] = [];
     const read = (turn.responseParts ?? []).map((part) => bag(part));
 
@@ -662,19 +663,21 @@ export async function writeImportedHistory(
         /*
          * A notification, a reference and a question have no part of cofold's
          * own; they are written as the text they say, as Claude's writer writes
-         * a part Claude has no frame for.
+         * a part Claude has no frame for. They are not the model's words, so
+         * they go in a message of their own with source `notice`, which the
+         * store keeps and a request leaves out.
          */
         case 'systemNotification': {
           const said = typeof part.content === 'string' ? part.content : str(bag(part.content).markdown);
-          answer.push({ type: 'text', text: said ?? '' });
+          shown.push({ type: 'text', text: said ?? '' });
           break;
         }
         case 'contentRef':
-          answer.push({ type: 'text', text: String(part.uri ?? '') });
+          shown.push({ type: 'text', text: String(part.uri ?? '') });
           break;
         case 'inputRequest': {
           const request = bag(part.request);
-          answer.push({ type: 'text', text: str(request.message) ?? String(request.id ?? '') });
+          shown.push({ type: 'text', text: str(request.message) ?? String(request.id ?? '') });
           break;
         }
         // The ending state carries the error, which the failed run records.
@@ -687,6 +690,9 @@ export async function writeImportedHistory(
     const written: Message[] = [user];
     if (answer.length > 0) {
       written.push({ id: `${turn.id}:answer`, role: 'assistant', source: 'model', parts: answer, createdAt: startedAt });
+    }
+    if (shown.length > 0) {
+      written.push({ id: `${turn.id}:shown`, role: 'assistant', source: 'notice', parts: shown, createdAt: startedAt });
     }
     if (results.length > 0) {
       written.push({ id: `${turn.id}:results`, role: 'tool', source: 'tool', parts: results, createdAt: startedAt });

@@ -139,7 +139,11 @@ it('continues the conversation from the store it wrote', async () => {
     if (request === undefined) throw new Error('the turn asked no model');
     const said = (request.messages as Message[]).map((message) => ({
       role: message.role,
-      text: message.parts.filter((part) => part.type === 'text').map((part) => part.text).join(''),
+      // A tool's answer is a `toolResult` part; a text part is what a person
+      // or the model said.
+      text: message.parts
+        .map((part) => part.type === 'text' ? part.text : part.type === 'toolResult' ? part.content : '')
+        .join(''),
     }));
     expect(said).toContainEqual({ role: 'user', text: 'read a.ts' });
     expect(said).toContainEqual({ role: 'assistant', text: 'Reading it.' });
