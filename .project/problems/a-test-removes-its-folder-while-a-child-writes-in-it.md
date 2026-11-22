@@ -28,6 +28,8 @@ The ACP teardown waits for one line in `requests.jsonl`, but not for the fake ag
 
 The nested-process and disposable teardowns end every process whose environment names their folder before they remove it, with `endHolders` in `tools/holders.ts`. The ACP and service-install teardowns are not changed, and can do the same.
 
+On Windows there is no `/proc`, so `endHolders` found no holder there, and the computer-disposable sightings of 2026-11-21 and 2026-11-22 are all `windows (3/4)`. Since `test/a-fake-docker-is-ended-on-windows`, the fake `docker` keeps a mark under `<tmpdir>/ahpd-test-holders/` while it runs, and `endHolders` ends a process by its mark on every platform.
+
 ## Impact
 
 A full test run fails at random, so a red CI run or gate run needs a second run before it says anything.

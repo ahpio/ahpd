@@ -14,7 +14,8 @@
 
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, renameSync, rmdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 /*
@@ -29,6 +30,19 @@ if (state === undefined) {
   process.stderr.write('DOCKER_FAKE_STATE is not set\n');
   process.exit(2);
 }
+
+/*
+ * This call's mark, which names the state it writes and lives while the call
+ * does: a test's teardown ends the calls still writing in its folder by their
+ * marks, where it has no `/proc` to read their environment from.
+ */
+const mark = join(tmpdir(), 'ahpd-test-holders', String(process.pid));
+try {
+  mkdirSync(dirname(mark), { recursive: true });
+  writeFileSync(mark, state);
+  process.on('exit', () => { try { rmSync(mark, { force: true }); } catch { /* gone already */ } });
+}
+catch { /* a call without a mark is ended by `/proc` alone */ }
 
 /*
  * One call at a time over the state file.

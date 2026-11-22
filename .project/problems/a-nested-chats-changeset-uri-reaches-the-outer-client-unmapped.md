@@ -19,6 +19,8 @@ refs:
 + ]
 ```
 
+It failed again on 2026-11-22 under the lock, on branch `test/a-fake-docker-is-ended-on-windows` over `140ca570b`, with `ahp-chat:/2c62fd10-98b8-4a6c-bbbd-99a24916a6f2/changeset/uncommitted`. That branch does not touch `packages/sdk/src`.
+
 ## Cause
 
 Unknown. The leaked string is an inner chat's changeset URI, of the shape #419 added. A changeset update from the inner host can reach the outer client before, or without, the rename of its chat.
