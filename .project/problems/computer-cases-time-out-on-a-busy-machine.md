@@ -65,6 +65,8 @@ On 2026-11-21, CI's `windows (4/4)` on #429, run 44942705209, timed out `agent-a
 
 On 2026-11-21, CI's `windows (4/4)` on #426, run 44943835612, timed out the same case at 20 s. #426 does not change `packages/agent-acp` or `packages/computer`.
 
+On 2026-11-22, the local computer suite under the lock, on branch `build/agents/e5cc1506`, timed out `computer-refusal.test.ts`: `refuses a named machine on a host with no computers port` at 5000 ms. The branch does not change `packages/computer`, and the same file passed on that branch an hour before.
+
 ## Cause
 
 Each connect starts the fake `docker` and `devcontainer` CLIs as node processes.
