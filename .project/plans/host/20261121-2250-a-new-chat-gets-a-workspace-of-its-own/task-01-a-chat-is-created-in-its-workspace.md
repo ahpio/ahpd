@@ -1,6 +1,6 @@
 ---
 title: A chat is created in its own workspace
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:

@@ -275,6 +275,14 @@ export function chatAction(
   } = ctx;
 
   /*
+   * A chat a client is giving a workspace to cannot start a turn until the
+   * move is done: the turn would run in the folder the chat is leaving.
+   */
+  if (type === 'chat/turnStarted' && ctx.chatWorkspaceMoves.has(channel)) {
+    no('The chat is being given a workspace.');
+    return;
+  }
+  /*
    * A turn's start time and a message's origin the client left out are this
    * host's: every reducer reads them, the protocol requires both, and the
    * server's echo is the one that wins where the two differ.

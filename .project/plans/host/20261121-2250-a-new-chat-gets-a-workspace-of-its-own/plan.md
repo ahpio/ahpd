@@ -68,8 +68,8 @@ vscode/setChatWorkspace {chat, workspace} -> checks -> moveChatWorkspace without
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - A chat is created in its own workspace](task-01-a-chat-is-created-in-its-workspace.md) | todo | - |
-| [02 - A chat that has not started is given a workspace](task-02-a-chat-is-given-a-workspace.md) | todo | 01 |
+| [01 - A chat is created in its own workspace](task-01-a-chat-is-created-in-its-workspace.md) | done | - |
+| [02 - A chat that has not started is given a workspace](task-02-a-chat-is-given-a-workspace.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -77,10 +77,10 @@ vscode/setChatWorkspace {chat, workspace} -> checks -> moveChatWorkspace without
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-chat-is-created-in-its-workspace.md](task-01-a-chat-is-created-in-its-workspace.md).
+- **Done so far:** tasks 01 and 02 are written and committed, and [implemented.md](implemented.md) records them. `chat-workspace.test.ts` (21/21), the sdk suite (5218) and the computer suite (634) passed before the ownership check; the run after it is in progress.
+- **Next action:** the sdk result after the ownership check, which holds the two-user test. The checklist is signed off when it passes.
 - **Open questions:** none.
-- **Watch out for:** `moveChatWorkspace` starts a continuation turn; a chat with no turn must not get one. `Move` has no `baseBranch` field yet.
+- **Watch out for:** `moveChatWorkspace` starts a continuation turn unless `Move.continuation` is `false`. `createChat` also needs `chat:folders` through `admission.ts`, which task 01's file list does not name. When a worktree `prompt` and an `initialMessage` are both sent, the current code keeps the `initialMessage` and drops the prompt. `vscode/setChatWorkspace` takes `{chat, workspace}` only, so "a chat of another session" is read as a chat no session of this host is running. `setChatWorkspace` ignores a worktree `prompt`. Task 02 also touched `context.ts`, `host.ts` and `chatactions.ts`, which its file list does not name. The review added `requireWorkspaceAuthority`, so both paths refuse another person's session, and its test is in `users-gate-sessions.test.ts` rather than `chat-workspace.test.ts`.
 
 ## Final verification checklist
 

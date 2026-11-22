@@ -50,6 +50,22 @@ export interface Move {
    * of, which is the same answer and a refusal rather than an exception.
    */
   sender?: Connection;
+  /** The branch a new worktree is cut from, where the asker named one. */
+  baseBranch?: string;
+  /**
+   * Whether a turn continues the chat once it is in its new place.
+   *
+   * A chat that has not started has no turn to continue, so a move made for
+   * one says so and no turn is started in its name.
+   */
+  continuation?: boolean;
+  /**
+   * Whether the folder's trust is asked of `sender`.
+   *
+   * A folder this host made itself, a chat's scratch folder among them, is
+   * not one a window vouches for, so the move made for one asks nobody.
+   */
+  trust?: boolean;
 }
 
 /**
@@ -1298,9 +1314,11 @@ export function createLifecycle(ctx: HostContext): Lifecycle {
     try {
       /*
        * The window that asked is asked about the folder, before anything is
-       * moved or made, the same question a session's move asks.
+       * moved or made, the same question a session's move asks. A folder this
+       * host made itself is not the window's to vouch for.
        */
-      await requireTrust({ folder: move.directory, sender: move.sender, autoApproved: auto });
+      const vouched = move.trust !== false;
+      if (vouched) await requireTrust({ folder: move.directory, sender: move.sender, autoApproved: auto });
       /*
        * The tree the chat works in from here, cut from the folder it was asked
        * for and kept with the session's trees: a chat's worktree is the
@@ -1308,9 +1326,14 @@ export function createLifecycle(ctx: HostContext): Lifecycle {
        * a person disposes of, which is what removes it.
        */
       if (move.isolation && options.worktrees !== undefined) {
-        const config = { ...(decided.get(uri) ?? {}), isolation: 'worktree' };
-        const made = await cutTree(options.worktrees, idOf(chatUri), config, move.directory, (repository, path) =>
-          requireWorktreeTrust({ folder: move.directory, repository, path, sender: move.sender, autoApproved: auto }));
+        const config = {
+          ...(decided.get(uri) ?? {}),
+          isolation: 'worktree',
+          ...(move.baseBranch === undefined ? {} : { branch: move.baseBranch }),
+        };
+        const made = await cutTree(options.worktrees, idOf(chatUri), config, move.directory, vouched
+          ? (repository, path) => requireWorktreeTrust({ folder: move.directory, repository, path, sender: move.sender, autoApproved: auto })
+          : undefined);
         const id = idOf(uri);
         kept.setAdditionalWorktrees?.(id, [...(kept.additionalWorktrees?.(id) ?? []), made]);
         log(`made ${made.path} on ${made.branch ?? made.base} for ${chatUri}`);
@@ -1336,7 +1359,7 @@ export function createLifecycle(ctx: HostContext): Lifecycle {
        */
       const failure = (error instanceof Error ? error.message : String(error)).replace(/\.+$/, '');
       const chat = byChat.get(chatUri)?.chat;
-      if (chat !== undefined) {
+      if (chat !== undefined && move.continuation !== false) {
         void startTurn(
           chat,
           crypto.randomUUID(),
@@ -1370,7 +1393,7 @@ export function createLifecycle(ctx: HostContext): Lifecycle {
     dispatch(chatUri, { type: 'chat/workingDirectorySet', directory: uriOf(at) });
     dispatch(uri, { type: 'session/chatUpdated', chat: chatUri, changes: { workingDirectories: [uriOf(at)] } });
     const lead = byChat.get(chatUri);
-    if (lead === undefined) return;
+    if (lead === undefined || move.continuation === false) return;
     /*
      * The continuation in VS Code's words and under its label, the chat alone
      * moved.

@@ -88,6 +88,8 @@ export const NEEDS: Record<string, Grant> = {
 
   // chat
   createChat: 'chat:create',
+  // A chat's workspace is its folder, and the folders are what `chat:folders` grants.
+  'vscode/setChatWorkspace': 'chat:folders',
   disposeChat: 'chat:dispose',
   /*
    * `chat:move` rather than the `session:write` the plan named, because
