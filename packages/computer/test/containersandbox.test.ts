@@ -78,7 +78,7 @@ it('writes a Compose service its security options and the tun device', async () 
 });
 
 it('follows the CLI\'s Compose discovery when the definition names no files', async () => {
-  const folder = workspace();
+  const folder = workspace({ dockerComposeFile: [], service: 'app' });
   const configPath = join(folder, '.devcontainer', 'devcontainer.json');
   writeFileSync(join(folder, 'docker-compose.yml'), 'services:\n  app:\n    image: base\n');
   const override = await prepareSandboxOverride({ configPath, service: 'app', dockerComposeFile: [] }, folder, {}, root);

@@ -649,7 +649,8 @@ const recordOf = (found) => ({
   // what says whether the machine may write what is mounted there. The short
   // form spells read-only as a third `:ro` and nothing else is read-only, so a
   // scripted machine that leaves the mode off is one writing where it is bound.
-  Mounts: (found.mounts ?? []).map((one) => {    const [source, target, mode] = mountParts(one);
+  Mounts: (found.mounts ?? []).map((one) => {
+    const [source, target, mode] = mountParts(one);
     // A source this Docker holds as a named volume is a volume mount; anything
     // else is a bind, which is what a folder's workspace is.
     const volume = (held.volumes ?? {})[source] !== undefined;
@@ -1170,6 +1171,18 @@ if (verb === 'exec') {
     keep();
     process.exit(0);
   }
+  /*
+   * The state link script, which answers what a test wants it to have done.
+   * The script itself is a shell program this fixture never runs, and its
+   * progress lines are what the launcher reads. It is answered ahead of the
+   * `command -v` question, which the script asks of `flock`.
+   */
+  if (held.linkOut !== undefined && said.includes('vscode-state:')) {
+    process.stdout.write(held.linkOut);
+    if (held.linkErr !== undefined) process.stderr.write(held.linkErr);
+    keep();
+    process.exit(held.linkCode ?? 0);
+  }
   // Whether the host inside is already in the image. The line is quoted for
   // `/bin/sh -c`, so the question is looked for inside it rather than at its
   // start.
@@ -1209,17 +1222,6 @@ if (verb === 'exec') {
     process.stderr.write(`${held.failErr ?? `${failing} failed`}\n`);
     keep();
     process.exit(held.failCode ?? 1);
-  }
-  /*
-   * The state link script, which answers what a test wants it to have done.
-   * The script itself is a shell program this fixture never runs, and its
-   * progress lines are what the launcher reads.
-   */
-  if (held.linkOut !== undefined && said.includes('vscode-state:')) {
-    process.stdout.write(held.linkOut);
-    if (held.linkErr !== undefined) process.stderr.write(held.linkErr);
-    keep();
-    process.exit(held.linkCode ?? 0);
   }
   // Recorded and answered, never run: the line starts the host program, and
   // the host here is a fake that would serve stdio instead of installing.
