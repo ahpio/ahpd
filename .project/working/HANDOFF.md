@@ -14,8 +14,8 @@ Current progress and pending items only, as of 2026-11-22. *Outside this reposit
   - #439 (`279b4195c`) nested chat changesets, #436 (`d47f32841`) dev container from an image, #442 (`cb3ab56e0`) session import, #443 (`8b08e5a5e`) user state and the container sandbox. The served count is 70.
   - Test fixes: #437, #440, #441, #444 (`0b8c806a8`, changes-refresh closes its hosts) and #445 (`977d480fe`).
   - The computer-disposable `ENOTEMPTY` on Windows is still open: [the problem](../problems/a-test-removes-its-folder-while-a-child-writes-in-it.md) has every sighting. Since #445 a failed removal names each left file's age and the fake `docker`'s last calls. A new problem: [a bring-back case sees another file's scratch folder](../problems/a-bring-back-case-sees-another-files-scratch-folder.md).
-  - The fork's first npm publish is Softov's: [pending/sandbox-runtime-first-release.md](../pending/sandbox-runtime-first-release.md). The CA plan and fork task 03 wait for it.
-  - Softov's dev daemon takes #431 to #445 at its next restart on main. Tell him, and do not restart it.
+  - npm serves `@ahpio/sandbox-runtime@0.0.83-rc.0` under `next`, published by the fork's `release.yml`. Fork task 03 and the CA plan can start. The fork's upstream passes are in its `UPSTREAM.md`.
+  - Softov restarted his dev daemon on main with #431 to #445.
 - **2026-11-21.** 0.15.0 is released: `v0.15.0` is on `3bf557618` (#394), and npm serves the 13 packages under `latest`. `ghcr.io/ahpio/ahpd` has `0.15.0`, `0.15` and `latest`. ahpw `v0.9.0` is on `d968e1f`, with `@ahpd/web` under `latest`. [pending/release.md](../pending/release.md) is closed.
   - Merged on 2026-11-21: #393 (`bcec57901`) from beorn, #395 (`9ad9b0f98`), #396 (`2bb0f809e`) and #398 (`98a2b4cd7`), the image fix.
   - 46 plans went to `built` with the release as their review (`88251f665`).

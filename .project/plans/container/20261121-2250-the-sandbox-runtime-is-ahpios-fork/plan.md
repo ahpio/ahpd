@@ -69,7 +69,7 @@ packages/computer -> @ahpio/sandbox-runtime (exact) -> srt --settings <file> -> 
 | Task | Status | Depends on |
 | --- | --- | --- |
 | [01 - The fork has the gate and the zod range](task-01-the-fork-has-the-gate-and-zod.md) | done | - |
-| [02 - The fork's first release is on npm](task-02-the-forks-first-release.md) | doing | 01 |
+| [02 - The fork's first release is on npm](task-02-the-forks-first-release.md) | done | 01 |
 | [03 - The computer plugin runs on the fork](task-03-the-plugin-runs-on-the-fork.md) | todo | 02 |
 
 ## Risks and tradeoffs
@@ -79,14 +79,14 @@ packages/computer -> @ahpio/sandbox-runtime (exact) -> srt --settings <file> -> 
 
 ## Resume state
 
-- **Done so far:** task 01, 2026-11-22: ahpio/sandbox-runtime PR #1 merged as `5ec7d8a2a`, green on Linux, macOS, Windows and Docker. The network gate holds on all three; on Windows srt-win runs a gate-off session as `srt-sandbox-open`, an account `srt-win install` makes with no WFP filters.
-- **Next action:** Softov's first publish, in [pending/sandbox-runtime-first-release.md](../../../pending/sandbox-runtime-first-release.md); then task 03.
+- **Done so far:** task 01, 2026-11-22: ahpio/sandbox-runtime PR #1 merged as `5ec7d8a2a`, green on Linux, macOS, Windows and Docker. The network gate holds on all three; on Windows srt-win runs a gate-off session as `srt-sandbox-open`, an account `srt-win install` makes with no WFP filters. Task 02, 2026-11-22: npm serves `0.0.83-rc.0` under `next`, with provenance, from `release.yml`; `latest` is a `0.0.0` placeholder.
+- **Next action:** task 03.
 - **Open questions:** none.
 - **Watch out for:** task 01's paths are in the fork's repository, not in ahpd's.
 
 ## Final verification checklist
 
 - [ ] The fork's tests pass, with the gate's tests among them, and its `release.yml` passes on a pull request.
-- [ ] `npm view @ahpio/sandbox-runtime@0.0.83-rc.0` answers, with provenance.
+- [x] `npm view @ahpio/sandbox-runtime@0.0.83-rc.0` answers, with provenance.
 - [ ] A test in ahpd: a chat that allows the whole network reaches a host outside any list, and keeps its filesystem rules.
 - [ ] The computer suite passes, and `pnpm audit` no longer reports the zod advisory.

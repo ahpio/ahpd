@@ -1,6 +1,6 @@
 ---
 title: The fork's first release is on npm
-status: doing
+status: done
 depends: [task-01-the-fork-has-the-gate-and-zod.md]
 layer: "ahpio/sandbox-runtime, npm"
 refs:
@@ -29,3 +29,5 @@ refs:
 - The package page names the trusted publisher.
 
 ## Resume
+
+Done 2026-11-22. Softov published a `0.0.0` placeholder by hand and set the trusted publisher. The GitHub prerelease `v0.0.83-rc.0` on `2a71a1f` ran `release.yml` run 45039413969, which published `0.0.83-rc.0` under `next` with provenance. The pending check file is deleted.
