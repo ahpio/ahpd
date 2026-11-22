@@ -29,6 +29,9 @@ The ACP teardown waits for one line in `requests.jsonl`, but not for the fake ag
 The nested-process and disposable teardowns end every process whose environment names their folder before they remove it, with `endHolders` in `tools/holders.ts`. The ACP and service-install teardowns are not changed, and can do the same.
 
 On Windows there is no `/proc`, so `endHolders` found no holder there, and the computer-disposable sightings of 2026-11-21 and 2026-11-22 are all `windows (3/4)`. Since `test/a-fake-docker-is-ended-on-windows`, the fake `docker` keeps a mark under `<tmpdir>/ahpd-test-holders/` while it runs, and `endHolders` ends a process by its mark on every platform.
+On 2026-11-22 CI's `windows (3/4)` on #439, run 44995032529, failed `takes the machine's own git volume with it, and asks for none where the profile leaves it open` again, with the marks in place. So the writer is not only the fake `docker`.
+Each `git commit` and `git fetch` starts a detached `git maintenance run --auto` in its repository, as `GIT_TRACE=1` shows with git 2.47.3. That process has no mark, and its environment names no test folder, so `endHolders` cannot find it. The computer-disposable cases commit and fetch in a repository inside the folder they remove.
+Since `test/git-runs-no-background-maintenance`, `tools/test-tmpdir.ts` sets `maintenance.auto=false` and `gc.auto=0` for every git a test starts. The file stays open until the Windows cases pass with it.
 
 ## Impact
 
