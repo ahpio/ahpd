@@ -16,8 +16,8 @@ Current progress and pending items only, as of 2026-11-22. *Outside this reposit
   - The computer-disposable `ENOTEMPTY` on Windows is still open: [the problem](../problems/a-test-removes-its-folder-while-a-child-writes-in-it.md) has every sighting. Since #445 a failed removal names each left file's age and the fake `docker`'s last calls. A new problem: [a bring-back case sees another file's scratch folder](../problems/a-bring-back-case-sees-another-files-scratch-folder.md).
   - npm serves `@ahpio/sandbox-runtime@0.0.83-rc.0` under `next`, published by the fork's `release.yml`. The fork's upstream passes are in its `UPSTREAM.md`.
   - #446 (`9bc2c07d4`): the computer plugin runs on the fork, and the tree loads one zod, 4.6.7. The fork plan closes as `built` on Softov's word. The CA plan can start. The `processes` job runs on `ubuntu-24.04`: [the 26.04 problem](../problems/the-sandbox-runtime-cannot-start-on-ubuntu-26-04.md).
-  - #447: a close waits for the part-volume sweep, the likely writer in the disposable `ENOTEMPTY`. Merge on Softov's word.
-  - Softov's dev daemon takes #446 at its next restart on main.
+  - #447 (`72130ccd8`): a close waits for the part-volume sweep, the likely writer in the disposable `ENOTEMPTY`. The problem stays open until CI shows the error has stopped.
+  - Softov's dev daemon takes #446 and #447 at its next restart on main.
   - Softov restarted his dev daemon on main with #431 to #445.
 - **2026-11-21.** 0.15.0 is released: `v0.15.0` is on `3bf557618` (#394), and npm serves the 13 packages under `latest`. `ghcr.io/ahpio/ahpd` has `0.15.0`, `0.15` and `latest`. ahpw `v0.9.0` is on `d968e1f`, with `@ahpd/web` under `latest`. [pending/release.md](../pending/release.md) is closed.
   - Merged on 2026-11-21: #393 (`bcec57901`) from beorn, #395 (`9ad9b0f98`), #396 (`2bb0f809e`) and #398 (`98a2b4cd7`), the image fix.
