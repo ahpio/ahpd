@@ -1584,6 +1584,25 @@ it('sweeps the part volumes of versions the file does not name half a minute aft
   await vi.waitFor(() => { expect(volumes()).toEqual([current]); }, { timeout: 60_000, interval: 50 });
 });
 
+it('waits at its close for a sweep that has started', async () => {
+  const state = join(temp(), 'docker.json');
+  const aged = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+  const current = `ahpd-part-codex-${PARTS.get('codex') ?? ''}`;
+  const volumes = (): string[] => Object.keys((JSON.parse(readFileSync(state, 'utf8')) as { volumes?: Record<string, unknown> }).volumes ?? {});
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  try {
+    await loadParts(state, { parts: ['codex'] }, [CODEXER], {
+      volumes: { 'ahpd-part-codex-0.0.1-aaaaaaaaaaaa': { files: [], created: aged }, [current]: { files: [], created: aged } },
+    });
+    vi.advanceTimersByTime(30_000);
+  }
+  finally {
+    vi.useRealTimers();
+  }
+  await closeAll();
+  expect(volumes()).toEqual([current]);
+});
+
 it('refuses a mount at a part\'s target as any other shared target', async () => {
   const dir = temp();
   const state = join(dir, 'docker.json');
