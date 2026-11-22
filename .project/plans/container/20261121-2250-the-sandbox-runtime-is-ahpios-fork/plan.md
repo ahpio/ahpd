@@ -1,7 +1,7 @@
 ---
 title: The sandbox runtime is ahpio's fork
 domain: container
-status: active
+status: built
 priority: high
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -80,13 +80,13 @@ packages/computer -> @ahpio/sandbox-runtime (exact) -> srt --settings <file> -> 
 ## Resume state
 
 - **Done so far:** task 01, 2026-11-22: ahpio/sandbox-runtime PR #1 merged as `5ec7d8a2a`, green on Linux, macOS, Windows and Docker. The network gate holds on all three; on Windows srt-win runs a gate-off session as `srt-sandbox-open`, an account `srt-win install` makes with no WFP filters. Task 02, 2026-11-22: npm serves `0.0.83-rc.0` under `next`, with provenance, from `release.yml`; `latest` is a `0.0.0` placeholder.
-- **Next action:** Softov's review; the plan closes as `built` on his word. Task 03, 2026-11-22: the computer plugin runs on the fork, as [implemented.md](implemented.md) says.
+- **Next action:** none; built on Softov's word, 2026-11-22. Task 03, 2026-11-22: the computer plugin runs on the fork, as [implemented.md](implemented.md) says.
 - **Open questions:** none.
 - **Watch out for:** task 01's paths are in the fork's repository, not in ahpd's.
 
 ## Final verification checklist
 
-- [ ] The fork's tests pass, with the gate's tests among them, and its `release.yml` passes on a pull request.
+- [x] The fork's tests pass, with the gate's tests among them, and its `release.yml` passes on a pull request.
 - [x] `npm view @ahpio/sandbox-runtime@0.0.83-rc.0` answers, with provenance.
 - [x] A test in ahpd: a chat that allows the whole network reaches a host outside any list, and keeps its filesystem rules.
 - [x] The computer suite passes, and `pnpm audit` no longer reports the zod advisory.
