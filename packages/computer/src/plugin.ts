@@ -1940,14 +1940,15 @@ export const apply: Plugin['apply'] = (host, options) => {
 
   /*
    * Whether a computer can host the sandbox runtime, each kind for itself: this
-   * host by the runtime's own dependency check and VS Code's bubblewrap probe;
+   * host by the runtime's own dependency check, VS Code's bubblewrap probe and a
+   * start of the runtime itself;
    * a container by its real Docker settings, as VS Code checks a dev container
    * before it treats it as able to host the sandbox, and then by the runtime's
    * own start run inside it; a box or a VM by that start alone.
    * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/devContainerAgentHostService.ts#L498-L504
    */
   const sandboxSupport: NonNullable<ComputerPort['sandboxSupport']> = async (id) => {
-    if (id === undefined) return await hostSandboxRefusal();
+    if (id === undefined) return await hostSandboxRefusal(host.configDir);
     const held = await made.inspect(id);
     if (held === undefined) return `There is no computer called ${id}`;
     if (typeof held['HostConfig'] === 'object' && held['HostConfig'] !== null && !isSandboxSupported(JSON.stringify(held))) {

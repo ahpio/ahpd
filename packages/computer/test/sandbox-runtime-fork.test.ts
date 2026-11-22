@@ -29,7 +29,7 @@ beforeAll(async () => {
   server = createServer((_request, response) => response.end('reached'));
   await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
   url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`;
-  refusal = process.platform === 'linux' ? await hostSandboxRefusal() : 'not Linux';
+  refusal = process.platform === 'linux' ? await hostSandboxRefusal(folder) : 'not Linux';
 });
 
 afterAll(async () => {
