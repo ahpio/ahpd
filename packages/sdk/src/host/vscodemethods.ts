@@ -14,7 +14,7 @@ import { need, reason } from './common.js';
 import { ARCHIVE_COMMIT_MESSAGE, symlinkFolders } from './lifecycle.js';
 import {
   isChatScratchFolder, newChatScratchFolder, readChatWorkspaceValue, removeChatScratchFolder,
-  requireChatForWorkspace, requireNonScratchChatFolder,
+  requireChatForWorkspace, requireNonScratchChatFolder, requireWorkspaceAuthority,
 } from './chatworkspace.js';
 import { createSessionMover } from './sessionmethods.js';
 import { requireTrust } from './trust.js';
@@ -585,6 +585,11 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
       if (live === undefined || held === undefined)
         throw new RpcError(INVALID_PARAMS, `${chat} is not a chat of a session this host is running.`);
       const session = live.uri;
+      requireWorkspaceAuthority({
+        owner: ctx.kept.owner(idOf(session)),
+        principal: connection.principal,
+        root: connection.root === true,
+      });
       const state = ctx.stateOf(chat);
       const queued = Array.isArray(state?.queuedMessages) ? state.queuedMessages.length : 0;
       requireChatForWorkspace({

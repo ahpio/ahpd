@@ -4,6 +4,8 @@ import { homedir } from 'node:os';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { INVALID_PARAMS, RpcError } from '../rpc.js';
 import { localPath } from '../resources/fileuri.js';
+import { ownerOfPrincipal } from '../utils/values.js';
+import type { Principal } from '../types/users.js';
 
 /**
  * A workspace a client asks a chat to work in.
@@ -169,4 +171,30 @@ export const requireChatForWorkspace = (chat: ChatForWorkspace): void => {
   if (chat.origin !== 'user') throw new RpcError(INVALID_PARAMS, 'Only a chat a person made can be given a workspace.');
   if (!chat.folderPerChat) throw new RpcError(INVALID_PARAMS, `The agent ${chat.provider} does not support a workspace per chat.`);
   if (chat.started) throw new RpcError(INVALID_PARAMS, 'A chat that has started cannot be given a workspace.');
+};
+
+/** Whose session a chat is, and who asks to give it a workspace. */
+export interface WorkspaceCaller {
+  /** The owner the chat's session is kept under, `user:<id>` or `plugin:<name>`, if it has one. */
+  owner: string | undefined;
+  /** The principal the connection signed in as, or nothing on a host with no people directory. */
+  principal: Principal | undefined;
+  /** Whether the caller is the host's own root connection, which is refused nothing. */
+  root: boolean;
+}
+
+/**
+ * Refuses a chat whose session is another's.
+ *
+ * A workspace move changes where a chat runs, asks the calling window about
+ * the folder's trust and gives up the folder the chat leaves, so it is a
+ * change to the session as well as to the chat, and the same act `mayDispose`
+ * refuses another person: the session's owner may make it, and so may a role
+ * holding the whole of `session:*`.
+ */
+export const requireWorkspaceAuthority = (caller: WorkspaceCaller): void => {
+  if (caller.principal === undefined || caller.root) return;
+  if (caller.owner === ownerOfPrincipal(caller.principal)) return;
+  if (caller.principal.can('session:*')) return;
+  throw new RpcError(-32009, "Only the session's owner can give its chats a workspace.");
 };

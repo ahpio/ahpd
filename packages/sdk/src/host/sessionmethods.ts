@@ -8,7 +8,10 @@ import { bag, ownerFilter } from '../utils/values.js';
 import { configOf } from '../sessions/remotesession.js';
 import { agentRefusal, CLOSING, noProvider } from './common.js';
 import { refusalReason } from './gate.js';
-import { newChatScratchFolder, readCreateChatWorkspaceMeta, removeChatScratchFolder, requireNonScratchChatFolder } from './chatworkspace.js';
+import {
+  newChatScratchFolder, readCreateChatWorkspaceMeta, removeChatScratchFolder, requireNonScratchChatFolder,
+  requireWorkspaceAuthority,
+} from './chatworkspace.js';
 import { mayUseAgent, ownershipOf } from '../agents/usable.js';
 import { chatIdFor, named, ROOT, schemeOf, spaceOf } from './channels.js';
 import { getAgentHostChatId } from '../vscode/chatid.js';
@@ -1529,6 +1532,11 @@ export function createSessionMethods(ctx: HostContext, conn: ConnectionContext):
       if (askedWorkspace === 'invalid') throw new RpcError(INVALID_PARAMS, 'Invalid chat workspace');
       const workspace = askedWorkspace;
       if (workspace !== undefined) {
+        requireWorkspaceAuthority({
+          owner: kept.owner(idOf(uri)),
+          principal: connection.principal,
+          root: connection.root === true,
+        });
         const sourceKind = bag(params.source).kind;
         if (params.workingDirectories !== undefined || sourceKind === 'fork' || sourceKind === 'sideChat')
           throw new RpcError(INVALID_PARAMS, 'A chat workspace cannot be combined with working directories, a fork or a side chat.');
