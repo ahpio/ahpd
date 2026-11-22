@@ -543,6 +543,11 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
           // A new peer chat may be asked for a folder, a worktree or a scratch folder of its own.
           // https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/common/meta/vscode/agentHostCreateChatWorkspaceMeta.ts#L11-L12
           'vscode.createChatWorkspace': true,
+          // A conversation may be imported into a new session while an agent of
+          // this host can write one as its own history.
+          ...([...agents.values()].some((one) => one.importConversation !== undefined)
+            ? { 'vscode.createSessionImport': true }
+            : {}),
           'vscode.getAgentHostSessionStateFile.chat': true,
           // A debug-log collection its window follows may be called off.
           'vscode.debugLogsCancellation': true,

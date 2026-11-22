@@ -18,6 +18,7 @@ import {
   requireChatForWorkspace, requireNonScratchChatFolder, requireWorkspaceAuthority,
 } from './chatworkspace.js';
 import { createSessionMover } from './sessionmethods.js';
+import { stageImportChunk } from './sessionimport.js';
 import { requireTrust } from './trust.js';
 import type { LogFile } from '../sessions/debuglogs.js';
 import type { ContainerConnect, ContainerConnectResult, ContainerSink } from '../types/containers.js';
@@ -138,6 +139,7 @@ export interface VscodeMethods {
   'vscode/setChatWorkspace': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/deleteAutomation': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/acknowledgeAutomationDeletion': (params: Record<string, unknown>) => Promise<unknown>;
+  'vscode/stageCreateSessionImportChunk': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/cancelWorktreeDiskUsage': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/setAgentHostDetachedWorktreeArchived': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/deleteAgentHostDetachedWorktree': (params: Record<string, unknown>) => Promise<unknown>;
@@ -610,6 +612,20 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
     },
     'vscode/listManagedWorktrees': async (params) => await listManagedWorktrees(params),
     'vscode/measureWorktreeDiskUsage': async (params) => await measureWorktreeDiskUsage(params),
+    /*
+     * One chunk of a conversation a client will import when it creates the
+     * session, held on this connection until `createSession` takes it or the
+     * connection closes.
+     * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/protocolServerHandler.ts#L4095-L4150
+     */
+    'vscode/stageCreateSessionImportChunk': async (params) => {
+      const transferId = stringParam(params, 'transferId', 'a transfer id');
+      const chunk = stringParam(params, 'chunk', 'a chunk of the conversation');
+      const staged = stageImportChunk(conn.imports, transferId, chunk);
+      if (staged === 'invalid') throw new RpcError(INVALID_PARAMS, 'Invalid createSession import chunk');
+      if (staged === 'exceeds') throw new RpcError(INVALID_PARAMS, 'Staged createSession import exceeds maximum size');
+      return {};
+    },
     'vscode/moveSession': async (params) => await moveSession(connection, conn.tokensFor, params),
     /*
      * A workspace given to a chat that has not started: a folder, a new

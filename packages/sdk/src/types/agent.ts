@@ -1,6 +1,6 @@
 /** An agent backend, and everything the host asks one for. */
 
-import type { ActionOrigin, Turn } from '@microsoft/agent-host-protocol';
+import type { ActionOrigin, ModelSelection, Turn } from '@microsoft/agent-host-protocol';
 import type { Bag } from './common.js';
 import type { ContentRef, FileEdit } from './changes.js';
 import type { WireTurn } from './wire.js';
@@ -787,6 +787,28 @@ export interface Start {
 }
 
 /**
+ * A conversation a client imported into a session this host is creating.
+ *
+ * The turns are the client's own, in the protocol's shape, and every one has
+ * an id minted for this session. The backend writes them in its own record
+ * under `uri`, so the session that starts is the one that continues them.
+ */
+export interface ImportedConversation {
+  /** The session channel URI the conversation is imported into. */
+  uri: string;
+  /** The directory the session works in, as a path, where it has one. */
+  workingDirectory?: string;
+  /** The values in force: this agent's defaults with the client's on top. */
+  settings: Record<string, unknown>;
+  /** The conversation's turns, each with an id minted for this session. */
+  turns: Turn[];
+  /** The model the conversation was held under, where the client named one. */
+  model?: ModelSelection;
+  /** The title the client gave the session, where it named a nonblank one. */
+  title?: string;
+}
+
+/**
  * A worker chat a backend read back out of its own record.
  *
  * The counterpart of `Start.subagent` for a session that already happened:
@@ -1193,6 +1215,18 @@ export interface Agent<Started extends Session | Promise<Session> = Session | Pr
    * `at` is the session's recorded folder, as `find` is handed it.
    */
   subagents?(id: string, turns?: WireTurn<Turn>[], at?: SessionAt): Promise<RestoredSubagent[] | undefined>;
+
+  /**
+   * Write a conversation this host did not run, before the session it belongs
+   * to starts.
+   *
+   * A client that already has a conversation imports it into a session this
+   * host creates. The backend writes the turns in its own record under
+   * `uri`, and the `create` that follows continues them. An agent with no way
+   * to write its own history leaves this out, and the host then refuses an
+   * import for it.
+   */
+  importConversation?(imported: ImportedConversation): Promise<void> | void;
 
   /**
    * Start one.
