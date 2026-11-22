@@ -121,17 +121,19 @@ const helper = async (
 /**
  * Ask over a connection this process opens, claiming `pid` and the socket this
  * process holds. The host reads the claim as a helper's, as it would a helper's
- * own line; this is how a case says a pid that is not the connection's.
+ * own line, and the answer is read as the helper reads it, so a case can tell
+ * an answer from a refusal. This is how a case says a pid that is not the
+ * connection's.
  */
 const askAs = (env: Record<string, string>, pid: number): Promise<{ code: number; stdout: string }> => new Promise((resolve) => {
   const socket = createConnection(env[SHELL_AUTH_SOCKET] ?? '');
   let heard = '';
   let done = false;
-  const finish = (code: number): void => {
+  const finish = (code: number, stdout: string): void => {
     if (done) return;
     done = true;
     socket.destroy();
-    resolve({ code, stdout: heard });
+    resolve({ code, stdout });
   };
   socket.setEncoding('utf8');
   socket.on('connect', () => {
@@ -142,9 +144,19 @@ const askAs = (env: Record<string, string>, pid: number): Promise<{ code: number
       token: env[SHELL_AUTH_TOKEN], prompt: 'Password:', pid, socket: inode,
     }) + '\n');
   });
-  socket.on('data', (chunk: string) => { heard += chunk; });
-  socket.on('close', () => finish(heard === '' ? 1 : 0));
-  socket.on('error', () => finish(1));
+  socket.on('data', (chunk: string) => {
+    heard += chunk;
+    const newline = heard.indexOf('\n');
+    if (newline < 0) return;
+    let answer: unknown;
+    try { answer = (JSON.parse(heard.slice(0, newline)) as { answer?: unknown }).answer; }
+    catch { answer = undefined; }
+    if (typeof answer === 'string') finish(0, `${answer}\n`);
+    else finish(1, '');
+  });
+  // The host ends a connection it refuses with nothing on it.
+  socket.on('close', () => finish(1, ''));
+  socket.on('error', () => finish(1, ''));
 });
 
 const open = async (
@@ -290,8 +302,9 @@ describe('a command asks the person for a password', () => {
     const { state, sent, env, methods } = await open();
     running(state);
 
-    // This process holds the end it opened; its parent holds no such socket.
-    expect((await askAs(env, process.ppid)).code).not.toBe(0);
+    // This process holds the end it opened; its parent holds no such socket,
+    // so the claim is refused with no answer and no request.
+    expect(await askAs(env, process.ppid)).toEqual({ code: 1, stdout: '' });
     expect(requests(sent)).toEqual([]);
 
     const mine = askAs(env, process.pid);
