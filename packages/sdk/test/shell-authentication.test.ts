@@ -1,15 +1,16 @@
 import { execFile } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readlinkSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { createConnection } from 'node:net';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { promisify } from 'node:util';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createAsking } from '../src/host/asking.js';
-import { createShellAuthentication } from '../src/host/shellauth.js';
+import { createShellAuthentication, realCallerPaths } from '../src/host/shellauth.js';
 import { createVscodeMethods } from '../src/host/vscodemethods.js';
 import { SHELL_AUTH_SOCKET, SHELL_AUTH_TOKEN } from '../src/host/shellauth.js';
 import type { ConnectionContext, HostContext } from '../src/host/context.js';
-import type { ShellAuthentication } from '../src/host/shellauth.js';
+import type { ParentProcess, ShellAuthentication } from '../src/host/shellauth.js';
 import type { Bag } from '../src/types/common.js';
 
 /*
@@ -117,12 +118,51 @@ const helper = async (
   }
 };
 
-const open = async (options: { enabled?: boolean; parent?: string } = {}) => {
+/**
+ * Ask over a connection this process opens, claiming `pid` and the socket this
+ * process holds. The host reads the claim as a helper's, as it would a helper's
+ * own line; this is how a case says a pid that is not the connection's.
+ */
+const askAs = (env: Record<string, string>, pid: number): Promise<{ code: number; stdout: string }> => new Promise((resolve) => {
+  const socket = createConnection(env[SHELL_AUTH_SOCKET] ?? '');
+  let heard = '';
+  let done = false;
+  const finish = (code: number): void => {
+    if (done) return;
+    done = true;
+    socket.destroy();
+    resolve({ code, stdout: heard });
+  };
+  socket.setEncoding('utf8');
+  socket.on('connect', () => {
+    const fd = (socket as unknown as { _handle?: { fd?: number } })._handle?.fd;
+    const target = typeof fd === 'number' ? readlinkSync(`/proc/self/fd/${fd}`) : '';
+    const inode = target.startsWith('socket:[') ? Number(target.slice('socket:['.length, -1)) : 0;
+    socket.write(JSON.stringify({
+      token: env[SHELL_AUTH_TOKEN], prompt: 'Password:', pid, socket: inode,
+    }) + '\n');
+  });
+  socket.on('data', (chunk: string) => { heard += chunk; });
+  socket.on('close', () => finish(heard === '' ? 1 : 0));
+  socket.on('error', () => finish(1));
+});
+
+const open = async (
+  options: { enabled?: boolean; parent?: string; exe?: string; callers?: ReadonlySet<string> } = {},
+) => {
   const folder = mkdtempSync(join(tmpdir(), 'ahpd-shell-auth-test-'));
   const host = made(options.enabled ?? true);
+  const callers = options.callers ?? realCallerPaths();
+  const resolved = options.exe ?? [...callers][0];
+  const parent: ParentProcess = {
+    pid: 1,
+    name: options.parent ?? 'sudo',
+    ...(resolved === undefined ? {} : { exe: resolved }),
+  };
   const auth = createShellAuthentication(host.ctx, {
     folder,
-    parentOf: async () => ({ pid: 1, name: options.parent ?? 'sudo' }),
+    callers,
+    parentOf: async () => parent,
   });
   host.ctx.shellAuth = auth;
   opened.push({ auth, folder });
@@ -244,6 +284,54 @@ describe('a command asks the person for a password', () => {
     running(state);
     expect((await helper(env, 'Password:')).code).not.toBe(0);
     expect(requests(sent)).toEqual([]);
+  });
+
+  it.skipIf(process.platform !== 'linux')('refuses a pid that does not hold the helper\'s end of the connection', async () => {
+    const { state, sent, env, methods } = await open();
+    running(state);
+
+    // This process holds the end it opened; its parent holds no such socket.
+    expect((await askAs(env, process.ppid)).code).not.toBe(0);
+    expect(requests(sent)).toEqual([]);
+
+    const mine = askAs(env, process.pid);
+    await until(() => requests(sent).length === 1);
+    const request = requests(sent)[0] as Bag;
+    expect(await methods['vscode/answerShellAuthentication']({
+      chat: CHAT, requestId: request.id, answer: 'hunter2',
+    })).toEqual({ delivered: true });
+    expect(await mine).toEqual({ code: 0, stdout: 'hunter2\n' });
+  });
+
+  it.skipIf(process.platform !== 'linux')('refuses a parent named git that is not the real git', async () => {
+    const fakeFolder = mkdtempSync(join(tmpdir(), 'ahpd-fake-git-'));
+    const fake = join(fakeFolder, 'git');
+    writeFileSync(fake, '#!/bin/sh\n', { mode: 0o700 });
+    try {
+      const { state, sent, env } = await open({ parent: 'git', exe: realpathSync(fake) });
+      running(state);
+      expect((await helper(env, 'Password:')).code).not.toBe(0);
+      expect(requests(sent)).toEqual([]);
+    }
+    finally {
+      rmSync(fakeFolder, { recursive: true, force: true });
+    }
+  });
+
+  it.skipIf(process.platform !== 'linux')('takes a parent that runs the real program', async () => {
+    const callers = realCallerPaths();
+    const real = [...callers].find((one) => basename(one) === 'git') ?? [...callers][0];
+    expect(real).toBeDefined();
+    if (real === undefined) return;
+    const { state, sent, env, methods } = await open({ parent: 'git', exe: real, callers });
+    running(state);
+    const pending = helper(env, 'Password:');
+    await until(() => requests(sent).length === 1);
+    const request = requests(sent)[0] as Bag;
+    expect(await methods['vscode/answerShellAuthentication']({
+      chat: CHAT, requestId: request.id, answer: 'hunter2',
+    })).toEqual({ delivered: true });
+    expect(await pending).toEqual({ code: 0, stdout: 'hunter2\n' });
   });
 
   it('opens nothing while the setting is off, and closes what it holds when it goes off', async () => {

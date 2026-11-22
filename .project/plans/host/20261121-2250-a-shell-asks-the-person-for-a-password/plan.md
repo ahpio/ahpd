@@ -82,15 +82,15 @@ sudo -A / ssh / git -> SUDO_ASKPASS, SSH_ASKPASS, GIT_ASKPASS -> the helper -> t
 ## Risks and tradeoffs
 
 - A process can pass its environment to a child the person did not expect. The token reaches only its own chat, and a prompt outside a running turn is cancelled.
-- The agent holds the token, so it can run the helper itself and ask in sudo's name. The parent check refuses that, and the shown command lets the person spot what asks.
+- The agent holds the token, so it can run the helper itself and ask in sudo's name. On Linux the check refuses a pid that does not hold the helper's end of the connection, and a parent whose resolved executable is not the sudo, ssh or git found on PATH and in the usual system folders when the host started; the kernel does not let a user read the executable of a setuid process, so for a setuid sudo the parent's name is checked. On macOS and Windows only the parent's name is checked, so there the check stops a careless agent, not a deliberate one. Everywhere the shown command is the guard.
 - The prompt text comes from the program. It is shown escaped, and the kind it infers decides only whether the window masks the field.
 
 ## Resume state
 
-- **Done so far:** tasks 01 and 02, the final checklist. The helper's variables reach a local chat's agent process, the terminal tool's shells, pi's own shell, cofold's shell, Claude's CLI and the ACP server; a person's terminal and anything in a machine get none. `pnpm typecheck`, `pnpm boundary`, the sdk, agent-claude, agent-acp and agent-cofold suites, and the three named test files pass.
-- **Next action:** rerun agent-pi after the mock fix, and the server and computer suites. Fix what fails.
+- **Done so far:** tasks 01 and 02, the final checklist, and the caller check. The helper's variables reach a local chat's agent process, the terminal tool's shells, pi's own shell, cofold's shell, Claude's CLI and the ACP server; a person's terminal and anything in a machine get none. On Linux the host refuses a pid that does not hold the helper's end of the connection and a parent that is not the real sudo, ssh or git; on macOS and Windows it checks the parent's name. `pnpm typecheck` and `pnpm boundary` pass. Before the caller check, the sdk, agent-claude, agent-acp and agent-cofold suites, the server and computer suites, and the three named test files passed; those runs predate it. After it, the shell authentication file and agent-pi await a rerun.
+- **Next action:** rerun the shell authentication file and agent-pi, the latter after the mock fix and the first import's budget. Fix what fails.
 - **Open questions:** none.
-- **Watch out for:** commit 5692ecf25 alone does not build, because the files it imports arrive in the task 02 commit 2e025b363. A Windows test needs the named pipe path, not a socket file, and the helper's parent through the `.cmd` wrapper is untested.
+- **Watch out for:** commit 5692ecf25 alone does not build, because the files it imports arrive in the task 02 commit 2e025b363. A Windows test needs the named pipe path, not a socket file, and the helper's parent through the `.cmd` wrapper is untested. The caller check on macOS and Windows is the parent's name alone, so it stops a careless agent, not a deliberate one; the shown command is the guard.
 
 ## Final verification checklist
 

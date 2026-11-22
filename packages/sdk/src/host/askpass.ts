@@ -14,6 +14,7 @@ import { join } from 'node:path';
 
 /** The Node program the wrappers run. */
 const ASKPASS_PROGRAM = `'use strict';
+const fs = require('node:fs');
 const net = require('node:net');
 const socketPath = process.env.AHPD_SHELL_AUTH_SOCKET;
 const token = process.env.AHPD_SHELL_AUTH_TOKEN;
@@ -28,9 +29,42 @@ const stop = (code) => {
   ended = true;
   process.exit(code);
 };
+const socketInode = () => {
+  try {
+    const fd = connection._handle && connection._handle.fd;
+    if (typeof fd === 'number' && fd >= 0) {
+      const target = fs.readlinkSync('/proc/self/fd/' + fd);
+      if (target.startsWith('socket:[') && target.endsWith(']')) {
+        const inode = Number(target.slice(8, -1));
+        if (Number.isSafeInteger(inode) && inode > 0) return inode;
+      }
+    }
+  }
+  catch {
+    // The connection's own descriptor could not be named; the scan below does.
+  }
+  try {
+    const found = [];
+    for (const name of fs.readdirSync('/proc/self/fd')) {
+      try {
+        const target = fs.readlinkSync('/proc/self/fd/' + name);
+        if (!target.startsWith('socket:[') || !target.endsWith(']')) continue;
+        const inode = Number(target.slice(8, -1));
+        if (Number.isSafeInteger(inode) && inode > 0) found.push(inode);
+      }
+      catch {
+        // The descriptor closed while it was read.
+      }
+    }
+    return found.length === 1 ? found[0] : null;
+  }
+  catch {
+    return null;
+  }
+};
 connection.setEncoding('utf8');
 connection.on('connect', () => {
-  connection.write(JSON.stringify({ token, prompt, pid: process.pid }) + '\\n');
+  connection.write(JSON.stringify({ token, prompt, pid: process.pid, socket: socketInode() }) + '\\n');
 });
 connection.on('data', (chunk) => {
   heard += chunk;

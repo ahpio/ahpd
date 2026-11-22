@@ -1,9 +1,9 @@
 import { execFile } from 'node:child_process';
-import { chmodSync, mkdtempSync, rmSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { accessSync, chmodSync, constants as fsConstants, mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { readFile, readdir, readlink, realpath } from 'node:fs/promises';
 import { createServer, type Server, type Socket } from 'node:net';
 import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { basename, delimiter, join } from 'node:path';
 import { promisify } from 'node:util';
 import { HOST_ASK } from './asking.js';
 import { writeAskpass } from './askpass.js';
@@ -70,22 +70,52 @@ export interface ShellAuthenticationOptions {
   /** The folder the socket and the helper's files go in; a temporary one when absent. */
   folder?: string;
   /** What spawned the helper whose process is `pid`; the process table when absent. */
-  parentOf?: (pid: number) => Promise<{ pid: number; name: string } | undefined>;
+  parentOf?: (pid: number) => Promise<ParentProcess | undefined>;
+  /** The resolved paths of the real sudo, ssh and git; the ones on PATH when absent. */
+  callers?: ReadonlySet<string>;
 }
 
-/** A process and the name it runs under. */
+/** A process, the name it runs under, and on Linux the executable it runs. */
 export interface ParentProcess {
   pid: number;
   name: string;
+  /** The resolved program, read from `/proc/<pid>/exe` on Linux. */
+  exe?: string;
 }
 
 /** The programs whose prompts this host answers. */
 const CALLERS = new Set(['sudo', 'ssh', 'git']);
 
+/** Where the callers are installed when PATH does not name them. */
+const SYSTEM_FOLDERS = ['/usr/bin', '/bin', '/usr/sbin', '/sbin', '/usr/local/bin', '/usr/local/sbin'];
+
 /** The one question a shell authentication request carries. */
 const QUESTION = 'shellAuthentication';
 
 const execFileAsync = promisify(execFile);
+
+/**
+ * The real programs this host answers prompts from, as resolved paths.
+ *
+ * The callers are looked up on PATH and in the usual system folders, and each
+ * is resolved through its symlinks, so a copy under one of their names is not
+ * one of them. The host reads this once, when it starts.
+ */
+export const realCallerPaths = (path: string | undefined = process.env.PATH): ReadonlySet<string> => {
+  const folders = [...(path ?? '').split(delimiter).filter((one) => one !== ''), ...SYSTEM_FOLDERS];
+  const found = new Set<string>();
+  for (const name of CALLERS) {
+    for (const folder of folders) {
+      const at = join(folder, name);
+      try {
+        accessSync(at, fsConstants.X_OK);
+        found.add(realpathSync(at));
+      }
+      catch { /* the caller is not in this folder */ }
+    }
+  }
+  return found;
+};
 
 /** The parent of `pid` on Linux, read from `/proc`. */
 const parentOnLinux = async (pid: number): Promise<ParentProcess | undefined> => {
@@ -96,7 +126,9 @@ const parentOnLinux = async (pid: number): Promise<ParentProcess | undefined> =>
   const ppid = Number(fields[1]);
   if (!Number.isSafeInteger(ppid) || ppid <= 0) return undefined;
   const name = (await readFile(`/proc/${ppid}/comm`, 'utf8')).trim();
-  return name === '' ? undefined : { pid: ppid, name };
+  if (name === '') return undefined;
+  const exe = await readlink(`/proc/${ppid}/exe`).catch(() => undefined);
+  return { pid: ppid, name, ...(exe === undefined ? {} : { exe }) };
 };
 
 /** A process's parent and that parent's name, as `ps` tells them on macOS and the BSDs. */
@@ -127,6 +159,34 @@ const parentOnWindows = async (pid: number): Promise<ParentProcess | undefined> 
 /** What spawned a process, read from the process table of the platform the host runs on. */
 export const parentOfProcess: (pid: number) => Promise<ParentProcess | undefined> =
   process.platform === 'linux' ? parentOnLinux : process.platform === 'win32' ? parentOnWindows : parentOnPs;
+
+/** The socket inodes `pid` holds, from the links in `/proc/<pid>/fd`; nothing when the folder cannot be read. */
+const socketInodesOf = async (pid: number): Promise<Set<number> | undefined> => {
+  let names: string[];
+  try { names = await readdir(`/proc/${pid}/fd`); }
+  catch { return undefined; }
+  const inodes = new Set<number>();
+  for (const name of names) {
+    const target = await readlink(`/proc/${pid}/fd/${name}`).catch(() => undefined);
+    if (target === undefined || !target.startsWith('socket:[') || !target.endsWith(']')) continue;
+    const inode = Number(target.slice('socket:['.length, -1));
+    if (Number.isSafeInteger(inode) && inode > 0) inodes.add(inode);
+  }
+  return inodes;
+};
+
+/** The inodes `/proc/net/unix` lists for connected stream sockets. */
+const connectedUnixInodes = async (): Promise<Set<number>> => {
+  const text = await readFile('/proc/net/unix', 'utf8');
+  const inodes = new Set<number>();
+  for (const line of text.split('\n')) {
+    const fields = line.trim().split(/\s+/);
+    if (fields.length < 7 || fields[4] !== '0001' || fields[5] !== '03') continue;
+    const inode = Number(fields[6]);
+    if (Number.isSafeInteger(inode) && inode > 0) inodes.add(inode);
+  }
+  return inodes;
+};
 
 /** The program a parent's name says it is, as a path or a Windows `.exe` spells it. */
 const programOf = (name: string): string => basename(name).replace(/\.exe$/i, '').toLowerCase();
@@ -199,6 +259,7 @@ export function createShellAuthentication(
   options: ShellAuthenticationOptions = {},
 ): ShellAuthentication {
   const parentOf = options.parentOf ?? parentOfProcess;
+  const callers = options.callers ?? (process.platform === 'linux' ? realCallerPaths() : new Set<string>());
   /** Each chat's token, dropped when its processes are gone. */
   const tokens = new Map<string, string>();
   /** Each prompt in flight, by the request id the chat carries. */
@@ -212,6 +273,7 @@ export function createShellAuthentication(
   /** The updates in the order they were asked for, so on and off do not cross. */
   let changing: Promise<void> = Promise.resolve();
   let closed = false;
+  let warnedUnreadable = false;
 
   const enabled = (): boolean => !closed && ctx.rootConfig.shellAuthentication === true;
 
@@ -233,6 +295,48 @@ export function createShellAuthentication(
   const turnOf = (chat: string): string | undefined => {
     const turn = ctx.stateOf(chat)?.activeTurn as Bag | undefined;
     return typeof turn?.id === 'string' ? turn.id : undefined;
+  };
+
+  /**
+   * Whether `parent` is one of the programs this host answers.
+   *
+   * On Linux the parent's resolved executable must be one of the real callers
+   * read at start, so a program that copied the name `git` is not git. The
+   * kernel does not let a user read the executable of a setuid process, which
+   * is what sudo is while it waits: there the name is all that is checked,
+   * which is still a program the user could not have named without root. The
+   * other platforms have no such link to follow and check the name alone.
+   */
+  const isCaller = async (parent: ParentProcess): Promise<boolean> => {
+    if (!CALLERS.has(programOf(parent.name))) return false;
+    if (process.platform !== 'linux') return true;
+    if (parent.exe === undefined) {
+      if (!warnedUnreadable) {
+        warnedUnreadable = true;
+        ctx.log.warn('shell authentication: a caller\'s executable could not be read, so its name alone was checked');
+      }
+      return true;
+    }
+    try { return callers.has(await realpath(parent.exe)); }
+    catch { return false; }
+  };
+
+  /**
+   * Whether `pid` holds the helper's end of the connection it sent its line on.
+   *
+   * The two ends of a unix socket are different sockets with different inodes,
+   * and the accepted end is this host's. So the inode to find in the claimed
+   * pid is the helper's own, which the helper reads from its `/proc/self/fd`
+   * and sends with the prompt; `/proc/net/unix` must list it as a connected
+   * stream socket.
+   */
+  const holdsConnection = async (pid: number, inode: number): Promise<boolean> => {
+    if (process.platform !== 'linux') return true;
+    if (!Number.isSafeInteger(inode) || inode <= 0) return false;
+    const held = await socketInodesOf(pid).catch(() => undefined);
+    if (held === undefined || !held.has(inode)) return false;
+    const connected = await connectedUnixInodes().catch(() => undefined);
+    return connected !== undefined && connected.has(inode);
   };
 
   /**
@@ -337,8 +441,9 @@ export function createShellAuthentication(
    *
    * Everything a helper can get wrong is a refusal with the connection
    * dropped: a line that does not parse, a token the host never minted or has
-   * dropped, a `pid` that is not one, a parent that is not `sudo`, `ssh` or
-   * `git`, a chat with no turn running, and a person who has autopilot on.
+   * dropped, a `pid` that is not one, a pid that does not hold the helper's
+   * end of the connection, a parent that is not `sudo`, `ssh` or `git`, a chat
+   * with no turn running, and a person who has autopilot on.
    */
   const begin = async (socket: Socket, line: string): Promise<void> => {
     let said: Bag;
@@ -347,11 +452,13 @@ export function createShellAuthentication(
     const token = typeof said.token === 'string' ? said.token : '';
     const prompt = typeof said.prompt === 'string' ? said.prompt : '';
     const pid = typeof said.pid === 'number' && Number.isSafeInteger(said.pid) && said.pid > 0 ? said.pid : 0;
+    const inode = typeof said.socket === 'number' && Number.isSafeInteger(said.socket) && said.socket > 0 ? said.socket : 0;
     if (token === '' || pid === 0) { socket.destroy(); return; }
     const chat = chatOfToken(token);
     if (chat === undefined) { socket.destroy(); return; }
     const parent = await parentOf(pid).catch(() => undefined);
-    if (parent === undefined || !CALLERS.has(programOf(parent.name))) { socket.destroy(); return; }
+    if (parent === undefined || !(await isCaller(parent))) { socket.destroy(); return; }
+    if (!(await holdsConnection(pid, inode))) { socket.destroy(); return; }
     if (closed || socket.destroyed) { socket.destroy(); return; }
     // What the chat held while the parent was read, which is what the prompt
     // is about: a turn that ended or a token that moved is a prompt nobody
