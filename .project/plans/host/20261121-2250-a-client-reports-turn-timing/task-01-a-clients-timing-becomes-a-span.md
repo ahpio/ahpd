@@ -1,6 +1,6 @@
 ---
 title: A client's timing becomes a span
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:

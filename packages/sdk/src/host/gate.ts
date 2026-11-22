@@ -142,6 +142,9 @@ export const NEEDS: Record<string, Grant> = {
   'vscode/collectAgentHostDebugLogs': 'diagnostics:logs',
   'vscode/cancelAgentHostDebugLogs': 'diagnostics:logs',
   'vscode/readAgentHostDebugLogsChunk': 'diagnostics:logs',
+  // A window's timing records become the host's diagnostic spans.
+  'vscode/reportAgentHostFirstResponse': 'diagnostics:logs',
+  'vscode/reportChatUserInteraction': 'diagnostics:logs',
   getNetworkDiagnosticsInfo: 'diagnostics:network',
   // The window asks this beside `getNetworkDiagnosticsInfo`, for the same
   // troubleshooting pane, so it needs the same grant.

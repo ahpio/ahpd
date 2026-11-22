@@ -20,6 +20,10 @@ import {
 import { createSessionMover } from './sessionmethods.js';
 import { stageImportChunk } from './sessionimport.js';
 import { requireTrust } from './trust.js';
+import {
+  AGENT_HOST_FIRST_RESPONSE_SPAN, USER_INTERACTION_SPAN, firstResponseAttributes, firstResponseRecord,
+  userInteractionAttributes, userInteractionRecord,
+} from './timing.js';
 import type { LogFile } from '../sessions/debuglogs.js';
 import type { ContainerConnect, ContainerConnectResult, ContainerSink } from '../types/containers.js';
 import type { ConnectionContext, DetachedWorktree, HostContext } from './context.js';
@@ -152,6 +156,8 @@ export interface VscodeMethods {
   'vscode/collectAgentHostDebugLogs': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/cancelAgentHostDebugLogs': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/readAgentHostDebugLogsChunk': (params: Record<string, unknown>) => Promise<unknown>;
+  'vscode/reportAgentHostFirstResponse': (params: Record<string, unknown>) => Promise<unknown>;
+  'vscode/reportChatUserInteraction': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/devContainers/isDockerAvailable': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/devContainers/connect': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/devContainers/disconnect': (params: Record<string, unknown>) => Promise<unknown>;
@@ -1037,6 +1043,42 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
         throw new RpcError(INVALID_PARAMS, 'position must be a non-negative integer');
       }
       return await logs.read(resource, position);
+    },
+    /*
+     * A window's timing record, exported as a span while `diagnosticTiming` is
+     * on.
+     *
+     * Off, the request is answered with nothing and no record is read. On, an
+     * invalid record is refused in VS Code's words, and one whose provider or
+     * request id is not an identifier is accepted with no span, which is what
+     * the reference host answers an unusable join identifier with.
+     * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/protocolServerHandler.ts#L4319-L4329
+     */
+    'vscode/reportAgentHostFirstResponse': async (params) => {
+      if (ctx.rootConfig.diagnosticTiming !== true) return {};
+      const record = firstResponseRecord(params);
+      if (record === undefined) throw new RpcError(INVALID_PARAMS, 'Invalid first-response diagnostic');
+      const attributes = firstResponseAttributes(record);
+      if (attributes !== undefined) ctx.clientSpan(AGENT_HOST_FIRST_RESPONSE_SPAN, attributes);
+      return {};
+    },
+    /*
+     * A window's user-interaction record, exported as a span while
+     * `diagnosticTiming` is on, and flushed before the window is answered.
+     *
+     * Off, the request is answered with nothing and no record is read. On, a
+     * record the validator accepts but that cannot describe an observation is
+     * refused in the same words as one the validator refuses.
+     * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/protocolServerHandler.ts#L4279-L4294
+     */
+    'vscode/reportChatUserInteraction': async (params) => {
+      if (ctx.rootConfig.diagnosticTiming !== true) return {};
+      const record = userInteractionRecord(params);
+      const attributes = record === undefined ? undefined : userInteractionAttributes(record);
+      if (attributes === undefined) throw new RpcError(INVALID_PARAMS, 'Invalid user interaction timing');
+      ctx.clientSpan(USER_INTERACTION_SPAN, attributes);
+      await ctx.flush();
+      return {};
     },
     /**
      * The four the window asks of its own host about itself.

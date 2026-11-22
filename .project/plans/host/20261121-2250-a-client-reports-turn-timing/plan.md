@@ -60,7 +60,7 @@ vscode/reportChatUserInteraction {record} -> validated -> span with vscode.chat.
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - A client's timing becomes a span](task-01-a-clients-timing-becomes-a-span.md) | todo | - |
+| [01 - A client's timing becomes a span](task-01-a-clients-timing-becomes-a-span.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -68,10 +68,10 @@ vscode/reportChatUserInteraction {record} -> validated -> span with vscode.chat.
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-clients-timing-becomes-a-span.md](task-01-a-clients-timing-becomes-a-span.md).
+- **Done so far:** [task-01-a-clients-timing-becomes-a-span.md](task-01-a-clients-timing-becomes-a-span.md) is implemented. `host/timing.ts` holds both validators and their spans, `host/telemetry.ts` carries a client's span and the flush, `host/vscodemethods.ts` serves both methods, `host/handshake.ts` advertises both flags while `diagnosticTiming` is on, `vscoderootconfig.ts` declares the setting off by default, and `host/gate.ts` asks `diagnostics:logs` for both. Typecheck and boundary pass.
+- **Next action:** run `packages/sdk/test/client-timing.test.ts` with the sdk suite; the owner runs it.
 - **Open questions:** none.
-- **Watch out for:** the user-interaction validator is outside `src/vs/platform/agentHost`; fetch `src/vs/platform/otel/common/chatUserInteraction.ts` at `ddbdd50a9ed1`.
+- **Watch out for:** the user-interaction validator is outside `src/vs/platform/agentHost`; the port is field for field from `src/vs/platform/otel/common/chatUserInteraction.ts` at `ddbdd50a9ed1`.
 
 ## Final verification checklist
 

@@ -551,6 +551,17 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
           'vscode.getAgentHostSessionStateFile.chat': true,
           // A debug-log collection its window follows may be called off.
           'vscode.debugLogsCancellation': true,
+          /*
+           * A window's timing records, while the root setting that takes them
+           * is on. Both flags are the reference host's, offered together, and
+           * a change of the setting reaches a client at its next `initialize`
+           * because `_meta` is read once.
+           * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/common/agentHostExtensionProtocol.ts#L232-L233
+           */
+          ...(ctx.rootConfig.diagnosticTiming === true ? {
+            'vscode.agentHostTiming': true,
+            'vscode.chatUserInteractionTiming': true,
+          } : {}),
           // A run of this host's automations needs no client connected. The
           // reference client offers a host's automations only where it says
           // so, so it goes with the `automations` capability above.
