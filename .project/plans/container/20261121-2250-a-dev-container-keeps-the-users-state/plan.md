@@ -67,7 +67,7 @@ connect / connectEnvironment {..., persistUserState?, sandboxEnabled?}
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - A container keeps the user's state](task-01-a-container-keeps-the-users-state.md) | todo | - |
+| [01 - A container keeps the user's state](task-01-a-container-keeps-the-users-state.md) | done | - |
 | [02 - A container runs the sandbox and says so](task-02-a-container-runs-the-sandbox.md) | todo | 01 |
 
 ## Risks and tradeoffs
@@ -77,8 +77,8 @@ connect / connectEnvironment {..., persistUserState?, sandboxEnabled?}
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-container-keeps-the-users-state.md](task-01-a-container-keeps-the-users-state.md).
+- **Done so far:** 01, the state volume, the links and the four notices, on both connects.
+- **Next action:** [task-02-a-container-runs-the-sandbox.md](task-02-a-container-runs-the-sandbox.md).
 - **Open questions:** none.
 - **Watch out for:** both tasks change `connect`, so task 02 follows task 01.
 

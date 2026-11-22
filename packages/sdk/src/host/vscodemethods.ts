@@ -27,7 +27,7 @@ import {
 } from './timing.js';
 import type { LogFile } from '../sessions/debuglogs.js';
 import type { Bag } from '../types/common.js';
-import { DEV_CONTAINER_ENVIRONMENT_IMAGES, isDevContainerEnvironmentId, type ContainerConnect, type ContainerConnectResult, type ContainerEnvironmentConnect, type ContainerSink } from '../types/containers.js';
+import { DEV_CONTAINER_ENVIRONMENT_IMAGES, isDevContainerEnvironmentId, type ContainerConnect, type ContainerConnectResult, type ContainerEnvironmentConnect, type ContainerSink, type ContainerUserState } from '../types/containers.js';
 import type { Owner } from '../types/usage.js';
 import type { ConnectionContext, DetachedWorktree, HostContext } from './context.js';
 
@@ -429,6 +429,16 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
     typeof params.resume === 'boolean' ? params.resume : undefined;
 
   /**
+   * A boolean option a connect carries, absent unless the client said it.
+   *
+   * `persistUserState` and `sandboxEnabled` weaken or widen what a connect
+   * makes, so a value of any other type is not one and an absent value is not
+   * `true`.
+   */
+  const optionOf = (params: Record<string, unknown>, key: string): boolean | undefined =>
+    typeof params[key] === 'boolean' ? params[key] as boolean : undefined;
+
+  /**
    * The other two strings a `connect` carries, checked with the id: an
    * absolute folder on this host and a name, refused in one sentence, as
    * VS Code's protocol checks a connect.
@@ -444,10 +454,17 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
     const folder = normalizeDevContainerWorkspaceFolder(typeof params.workspaceFolder === 'string' ? params.workspaceFolder : '', process.platform);
     const name = typeof params.name === 'string' ? params.name : '';
     const resume = resumeOf(params);
+    const persistUserState = optionOf(params, 'persistUserState');
     if (!isAbsolute(folder) || folder.includes('\0') || name.trim() === '' || name.includes('\0')) {
       throw new RpcError(INVALID_PARAMS, 'workspaceFolder must be an absolute host path and name must be non-empty');
     }
-    return { connectionId: id, workspaceFolder: folder, name, ...(resume === undefined ? {} : { resume }) };
+    return {
+      connectionId: id,
+      workspaceFolder: folder,
+      name,
+      ...(resume === undefined ? {} : { resume }),
+      ...(persistUserState === undefined ? {} : { persistUserState }),
+    };
   };
 
   /**
@@ -465,6 +482,7 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
     const image = typeof params.image === 'string' ? params.image : '';
     const name = typeof params.name === 'string' ? params.name : '';
     const resume = resumeOf(params);
+    const persistUserState = optionOf(params, 'persistUserState');
     if (
       !isDevContainerEnvironmentId(environmentId)
       || !DEV_CONTAINER_ENVIRONMENT_IMAGES.includes(image)
@@ -473,7 +491,14 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
     ) {
       throw new RpcError(INVALID_PARAMS, 'environmentId must be a valid identifier, image must be supported, and name must be non-empty');
     }
-    return { connectionId: id, environmentId, image, name, ...(resume === undefined ? {} : { resume }) };
+    return {
+      connectionId: id,
+      environmentId,
+      image,
+      name,
+      ...(resume === undefined ? {} : { resume }),
+      ...(persistUserState === undefined ? {} : { persistUserState }),
+    };
   };
 
   /**
@@ -699,6 +724,9 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
     const sink: ContainerSink = {
       message: (data) => {
         connection.peer.notify('vscode/devContainers/relayMessage', { connectionId: one.connectionId, data });
+      },
+      userState: (notice: ContainerUserState) => {
+        connection.peer.notify('vscode/devContainers/userState', { connectionId: one.connectionId, ...notice });
       },
       output: (data) => {
         connection.peer.notify('vscode/devContainers/output', { connectionId: one.connectionId, data });

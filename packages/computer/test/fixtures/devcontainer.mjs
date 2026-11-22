@@ -123,6 +123,17 @@ if (verb === 'read-configuration') {
   process.exit(0);
 }
 
+/*
+ * `run-user-commands`: the lifecycle commands `up` leaves for after the state
+ * folders are linked. It answers the same one-line result `up` does.
+ */
+if (verb === 'run-user-commands') {
+  const made = held.userCommands ?? { outcome: 'success' };
+  process.stdout.write(`${JSON.stringify(made)}\n`);
+  keep();
+  process.exit(held.userCommandsCode ?? (made.outcome === 'success' ? 0 : 1));
+}
+
 if (verb === 'up') {
   /*
    * Whether another `up` runs beside this one, which a test of one folder's

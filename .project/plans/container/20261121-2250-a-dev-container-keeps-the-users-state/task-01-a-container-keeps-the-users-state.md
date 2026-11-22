@@ -1,6 +1,6 @@
 ---
 title: A container keeps the user's state
-status: todo
+status: done
 depends: []
 layer: "sdk, computer"
 refs:
@@ -36,3 +36,5 @@ With `persistUserState`, a container gets a state volume, its state folders are 
 - The sdk and computer vitest suites pass, one at a time.
 
 ## Resume
+
+The state volume, the links and the four notices are in `packages/computer/src/userstate.ts`, `devcontainer.ts` and `environments.ts`. `userstate.test.ts` covers the name, the labels, the mount target, the link script and the parser, the four notices, and a later connect with the setting off that still links.

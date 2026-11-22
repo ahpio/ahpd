@@ -628,7 +628,16 @@ const recordOf = (found) => ({
   // scripted machine that leaves the mode off is one writing where it is bound.
   Mounts: (found.mounts ?? []).map((one) => {
     const [source, target, mode] = mountParts(one);
-    return { Type: 'bind', Source: source, Destination: target, RW: mode !== 'ro' };
+    // A source this Docker holds as a named volume is a volume mount; anything
+    // else is a bind, which is what a folder's workspace is.
+    const volume = (held.volumes ?? {})[source] !== undefined;
+    return {
+      Type: volume ? 'volume' : 'bind',
+      Source: source,
+      ...(volume ? { Name: source } : {}),
+      Destination: target,
+      RW: mode !== 'ro',
+    };
   }),
 });
 
@@ -1178,6 +1187,17 @@ if (verb === 'exec') {
     process.stderr.write(`${held.failErr ?? `${failing} failed`}\n`);
     keep();
     process.exit(held.failCode ?? 1);
+  }
+  /*
+   * The state link script, which answers what a test wants it to have done.
+   * The script itself is a shell program this fixture never runs, and its
+   * progress lines are what the launcher reads.
+   */
+  if (held.linkOut !== undefined && said.includes('vscode-state:')) {
+    process.stdout.write(held.linkOut);
+    if (held.linkErr !== undefined) process.stderr.write(held.linkErr);
+    keep();
+    process.exit(held.linkCode ?? 0);
   }
   // Recorded and answered, never run: the line starts the host program, and
   // the host here is a fake that would serve stdio instead of installing.

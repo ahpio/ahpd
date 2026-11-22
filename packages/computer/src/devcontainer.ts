@@ -5,9 +5,24 @@ import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { ContainerConnect, ContainerConnectResult, ContainerEnvironmentConnect, ContainerPort, ContainerSink, Owner, PluginSpec } from '@ahpd/sdk';
+import type { ContainerConnect, ContainerConnectResult, ContainerEnvironmentConnect, ContainerPort, ContainerSink, ContainerUserState, Owner, PluginSpec } from '@ahpd/sdk';
 import { byName } from './byname.js';
 import { authorizeEnvironmentRemoval, prepareEnvironment, removeEnvironment, type PreparedEnvironment } from './environments.js';
+import {
+  buildLinkCommand,
+  ensureStateVolume,
+  findStateMount,
+  isContainerRunning,
+  linkCounts,
+  parseLinkOutput,
+  stageSucceeded,
+  stateMount,
+  stateMountTarget,
+  stateTargetKind,
+  STATE_USER_SCRIPT,
+  type ContainerMount,
+  type StateLinkProgress,
+} from './userstate.js';
 import { sameHostPath } from './hostpath.js';
 import { userLabelOf } from './gitdir.js';
 import { IMAGE_PATH, MACHINE_PARTS, partsSaid, pathWith } from './parts.js';
@@ -725,6 +740,8 @@ export interface DevContainerConfiguration {
   configPath: string;
   service?: string;
   dockerComposeFile?: string | string[];
+  /** The definition's own fields, as the CLI read them. */
+  configuration: Record<string, unknown>;
 }
 
 /**
@@ -778,6 +795,7 @@ export const readConfiguration = async (
     configPath: fileURLToPath(url),
     ...(service === undefined ? {} : { service }),
     ...(compose === undefined ? {} : { dockerComposeFile: compose as string | string[] }),
+    configuration,
   };
 };
 
@@ -976,6 +994,167 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
       child.once('error', reject);
       child.once('close', (code) => resolve({ code: code ?? -1, stdout, stderr }));
     });
+  };
+
+  /** A caught error's sentence. */
+  const messageOf = (error: unknown): string => error instanceof Error ? error.message : String(error);
+
+  /**
+   * The state volume arguments for a folder's connect.
+   *
+   * A container this connect makes gets a mount for a state volume, made with
+   * the same labels as the container. A container that is already there keeps
+   * its own mounts, because adding one to a Compose container could make it
+   * again. `existing` is whether the caller already found a container, in which
+   * case no listing is needed and that container keeps or loses its folders as
+   * the caller says.
+   */
+  const folderUserState = async (
+    one: ContainerConnect,
+    sink: ContainerSink,
+    existing: boolean | undefined,
+  ): Promise<{ args: string[]; keepExistingFolders: boolean }> => {
+    const labels = [label, `${DEVCONTAINER_FOLDER}=${one.workspaceFolder}`];
+    let target: 'workspaces' | 'volume' | undefined;
+    let reason = 'config';
+    try {
+      const configuration = await readConfiguration((argv) => run([...base, ...argv], sink), one.workspaceFolder);
+      const mountTarget = stateMountTarget(configuration.configuration);
+      target = stateTargetKind(mountTarget);
+      if (existing !== undefined) {
+        sink.userState?.({ stage: 'mount', outcome: 'existingContainer', target });
+        return { args: [], keepExistingFolders: existing };
+      }
+      reason = 'listContainers';
+      const listed = await runCli(docker, [
+        'ps', '-a', '--format', '{{.State}}',
+        ...labels.flatMap((pair) => ['--filter', `label=${pair}`]),
+      ]);
+      if (listed.code !== 0) {
+        throw new Error(`Cannot list Docker containers (exit ${String(listed.code)}): ${listed.stderr.trim()}`);
+      }
+      const states = listed.stdout.split(/\r?\n/).filter((state) => state.trim() !== '');
+      const keepExistingFolders = states.some(isContainerRunning);
+      if (states.length > 0) {
+        sink.userState?.({ stage: 'mount', outcome: 'existingContainer', target });
+        return { args: [], keepExistingFolders };
+      }
+      reason = 'volume';
+      await ensureStateVolume((argv) => runCli(docker, argv), labels);
+      sink.userState?.({ stage: 'mount', outcome: 'added', target });
+      return { args: ['--mount', stateMount(labels, mountTarget)], keepExistingFolders };
+    }
+    catch (error) {
+      sink.userState?.({
+        stage: 'mount',
+        outcome: 'failed',
+        reason,
+        ...(target === undefined ? {} : { target }),
+        errorMessage: messageOf(error),
+      });
+      return { args: [], keepExistingFolders: true };
+    }
+  };
+
+  /**
+   * Link a container's state folders to its state volume, when it has one.
+   *
+   * A container made with the setting on is linked on every later connect, even
+   * with the setting off, because the volume is still there. The user's ids and
+   * home folder are read from the container and the link script runs as root.
+   */
+  const linkUserState = async (
+    sink: ContainerSink,
+    machine: string | undefined,
+    id: string,
+    persistUserState: boolean,
+    keepExistingFolders: boolean,
+  ): Promise<void> => {
+    let reason = 'inspect';
+    let target: 'workspaces' | 'volume' | undefined;
+    let exitCode: number | undefined;
+    let progress: StateLinkProgress | undefined;
+    try {
+      const inspected = await runCli(docker, ['inspect', '--format', '{{json .Mounts}}', id]);
+      if (inspected.code !== 0) {
+        throw new Error(`Cannot inspect the container's mounts (exit ${String(inspected.code)}): ${inspected.stderr.trim()}`);
+      }
+      const mounts: unknown = JSON.parse(inspected.stdout);
+      const mount = findStateMount(Array.isArray(mounts) ? mounts as ContainerMount[] : []);
+      if (mount === undefined) {
+        if (persistUserState) sink.userState?.({ stage: 'link', outcome: 'noMount' });
+        return;
+      }
+      target = stateTargetKind(mount.Destination);
+      reason = 'user';
+      const reached = await reachOfContainer(machine ?? id, id);
+      const uid = await runCli(docker, ['exec', '--user', reached.user, id, 'id', '-u']);
+      exitCode = uid.code;
+      if (uid.code !== 0) {
+        throw new Error(`Cannot read the Dev Container user (exit ${String(uid.code)}): ${uid.stderr.trim()}`);
+      }
+      const gid = await runCli(docker, ['exec', '--user', reached.user, id, 'id', '-g']);
+      exitCode = gid.code;
+      if (gid.code !== 0) {
+        throw new Error(`Cannot read the Dev Container user (exit ${String(gid.code)}): ${gid.stderr.trim()}`);
+      }
+      let home = reached.env.HOME ?? reached.containerEnv.HOME;
+      if (home === undefined || home === '') {
+        const asked = await runCli(docker, ['exec', '--user', reached.user, id, '/bin/sh', '-c', 'printf "%s\\n" "$HOME"']);
+        exitCode = asked.code;
+        home = asked.stdout.trim().split(/\r?\n/)[0];
+        if (asked.code !== 0 || home === undefined || home === '') {
+          throw new Error(`Cannot read the Dev Container user's home folder (exit ${String(asked.code)}): ${asked.stderr.trim()}`);
+        }
+      }
+      reason = 'script';
+      const linked = await runCli(docker, [
+        'exec', '--user', 'root', '-w', '/', id, '/bin/sh', '-c',
+        buildLinkCommand({
+          volumePath: mount.Destination,
+          homeFolder: home,
+          uid: uid.stdout.trim(),
+          gid: gid.stdout.trim(),
+          keepExistingFolders,
+        }),
+      ]);
+      exitCode = linked.code;
+      progress = parseLinkOutput(linked.stdout);
+      if (linked.code !== 0) {
+        throw new Error(`Cannot link user state (exit ${String(linked.code)}): ${linked.stderr.trim() || linked.stdout.trim()}`);
+      }
+      sink.userState?.({
+        stage: 'link',
+        outcome: progress.homeFound ? 'linked' : 'homeNotFound',
+        target,
+        ...linkCounts(progress),
+      });
+    }
+    catch (error) {
+      if (!persistUserState && reason === 'inspect') return;
+      sink.userState?.({
+        stage: 'link',
+        outcome: 'failed',
+        reason,
+        ...(progress?.step === undefined ? {} : { step: progress.step }),
+        ...(exitCode === undefined ? {} : { exitCode }),
+        ...(target === undefined ? {} : { target }),
+        ...linkCounts(progress),
+        errorMessage: messageOf(error),
+      });
+    }
+  };
+
+  /** The CLI's `run-user-commands` for a container, and its notice. */
+  const runUserCommands = async (sink: ContainerSink, id: string): Promise<void> => {
+    const ran = await run([...base, 'run-user-commands', '--log-level', 'debug', '--container-id', id], sink);
+    const succeeded = ran.code === 0 && stageSucceeded(ran.stdout);
+    sink.userState?.(succeeded
+      ? { stage: 'userCommands', outcome: 'succeeded' }
+      : { stage: 'userCommands', outcome: 'failed', reason: ran.code !== 0 ? 'exitCode' : 'result', exitCode: ran.code, errorMessage: ran.stdout.trim() || ran.stderr.trim() });
+    if (!succeeded) {
+      throw new Error(`Dev Container lifecycle commands failed: ${masked(ran.stdout.trim() || ran.stderr.trim())}`);
+    }
   };
 
   /**
@@ -1233,7 +1412,26 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
       const older = adopted !== undefined && (known === undefined || remembered === undefined)
         ? await adopted(one.workspaceFolder).catch(() => undefined)
         : undefined;
-      if (older !== undefined && (known === undefined || known.id === older.id)) {
+      const adopts = older !== undefined && (known === undefined || known.id === older.id);
+      const reachesKnown = !adopts && known !== undefined && remembered !== undefined && known.running;
+      /*
+       * The state volume, before anything is brought up: a new container gets
+       * its mount on the `up` line, and one that is already there keeps what it
+       * has. With the setting off no volume is added, but a container that has
+       * one is still linked after it is up.
+       */
+      const persistUserState = one.persistUserState === true;
+      let keepExistingFolders = true;
+      let userStateMount: { args: string[]; keepExistingFolders: boolean } = { args: [], keepExistingFolders: true };
+      if (persistUserState) {
+        // A container that is already there keeps its mounts. A running one is
+        // given the existing-folder protection; an adopted one only when the
+        // listing said it was running before it was started here.
+        const existing = adopts ? known?.running === true : reachesKnown ? true : undefined;
+        userStateMount = await folderUserState(one, sink, existing);
+        keepExistingFolders = userStateMount.keepExistingFolders;
+      }
+      if (adopts) {
         // Started here, which is what `up` would have done to it and the only
         // thing between a stopped container and the first command in it. A
         // refusal is refused here rather than carried on into an exec: nothing
@@ -1249,7 +1447,7 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
         made = { containerId: older.id, remoteWorkspaceFolder: older.remoteWorkspaceFolder };
         remotes.set(one.workspaceFolder, older.remoteWorkspaceFolder);
       }
-      else if (known !== undefined && remembered !== undefined && known.running) {
+      else if (reachesKnown && known !== undefined && remembered !== undefined) {
         // Already up, and this daemon knows where in there the folder is: the
         // CLI is not asked to bring anything up a second time.
         made = { containerId: known.id, remoteWorkspaceFolder: remembered };
@@ -1264,7 +1462,11 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
          * `a-dev-container-is-reached-by-docker-exec`.
          */
         const up = await run(
-          [...base, 'up', '--log-level', 'debug', '--workspace-folder', one.workspaceFolder, ...idLabels(label, one.workspaceFolder)],
+          [
+            ...base, 'up', '--log-level', 'debug', '--workspace-folder', one.workspaceFolder, ...idLabels(label, one.workspaceFolder),
+            ...userStateMount.args,
+            ...(persistUserState ? ['--skip-post-create'] : []),
+          ],
           sink,
         );
         const fresh = parseUp(up.stdout);
@@ -1272,8 +1474,18 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
         // is refused in VS Code's words with what the CLI said, its result
         // first (devContainerAgentHostService.ts L316-L319 at 6b68d3fe).
         if (up.code !== 0 || fresh === undefined) {
+          if (persistUserState) {
+            sink.userState?.({
+              stage: 'up',
+              outcome: 'failed',
+              reason: up.code !== 0 ? 'exitCode' : 'result',
+              exitCode: up.code,
+              errorMessage: masked(up.stdout.trim() || up.stderr.trim()),
+            });
+          }
           throw new Error(`Dev Container CLI returned an invalid result: ${masked(up.stdout.trim() || up.stderr.trim())}`);
         }
+        if (persistUserState) sink.userState?.({ stage: 'up', outcome: 'succeeded' });
         made = fresh;
         remotes.set(one.workspaceFolder, fresh.remoteWorkspaceFolder);
         // A container just made was not in the listing `known` was read from, so
@@ -1283,6 +1495,14 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
           machine = (await existing(one.workspaceFolder).catch(() => undefined))?.id;
         }
       }
+      // A container that was found rather than brought up still reaches the up
+      // stage successfully, which is what a client waiting on the four notices
+      // reads from it.
+      if (persistUserState && (adopts || reachesKnown)) {
+        sink.userState?.({ stage: 'up', outcome: 'succeeded' });
+      }
+      await linkUserState(sink, machine, made.containerId, persistUserState, keepExistingFolders);
+      if (persistUserState) await runUserCommands(sink, made.containerId);
       return await startHost(one.connectionId, sink, made, machine, one.workspaceFolder);
     },
 
@@ -1318,12 +1538,14 @@ export const devContainer = (options: DevContainerOptions = {}): ContainerPort =
             image: one.image,
             name: one.name,
             ...(one.resume === undefined ? {} : { resume: one.resume }),
+            ...(one.persistUserState === undefined ? {} : { persistUserState: one.persistUserState }),
             ...(one.owner === undefined ? {} : { owner: one.owner }),
           },
           environmentDirectory(one.environmentId),
           {
             docker: (argv) => runCli(docker, argv),
             devcontainer: (argv) => run([...base, ...argv], sink),
+            userState: (notice) => { sink.userState?.(notice); },
           },
         );
       }

@@ -1,7 +1,30 @@
-import { createHash } from 'node:crypto';
 import { chmod, lstat, mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { DEV_CONTAINER_ENVIRONMENT_IMAGES, isDevContainerEnvironmentId, type Owner } from '@ahpd/sdk';
+import { DEV_CONTAINER_ENVIRONMENT_IMAGES, isDevContainerEnvironmentId, type ContainerUserState, type Owner } from '@ahpd/sdk';
+import {
+  buildLinkCommand,
+  devContainerId,
+  ensureStateVolume,
+  findStateMount,
+  isContainerRunning,
+  isStateVolumeFor,
+  linkCounts,
+  parseLinkOutput,
+  stageSucceeded,
+  stateMount,
+  stateMountTarget,
+  stateTargetKind,
+  stateVolumeName,
+  STATE_USER_SCRIPT,
+  type ContainerMount,
+  type StateLinkProgress,
+} from './userstate.js';
+
+/**
+ * The names and labels VS Code gives an environment's state volume, re-exported
+ * here because an environment's volumes are where this module's callers look.
+ */
+export { devContainerId, isStateVolumeFor, stateVolumeName };
 
 /**
  * Dev container environments: a workspace in a Docker volume.
@@ -42,12 +65,6 @@ export const ENVIRONMENT_VOLUME_FOLDER_LABEL = 'vsc.devcontainer.volume.folder';
 /** Where the environment's volume is mounted, so its workspace is a folder under it. */
 export const ENVIRONMENT_VOLUME_TARGET = '/workspaces';
 
-/** The label that names the dev container a state volume belongs to. */
-const STATE_ID_LABEL = 'vscode.dev-container-state.id';
-
-/** How much of the computed dev container id names a state volume. */
-const STATE_VOLUME_ID_LENGTH = 12;
-
 /** One command, as it exited and what it said. */
 export interface EnvironmentCommandResult {
   code: number;
@@ -62,8 +79,10 @@ export type EnvironmentCommand = (argv: string[]) => Promise<EnvironmentCommandR
 export interface EnvironmentCommands {
   /** Docker's own commands: volumes, `ps`, the folder and the ownership of it. */
   docker: EnvironmentCommand;
-  /** The CLI's `up`. */
+  /** The CLI's `up` and `run-user-commands`. */
   devcontainer: EnvironmentCommand;
+  /** What each user state stage is told, when the caller reports them. */
+  userState?: (notice: ContainerUserState) => void;
 }
 
 /** What preparation is asked for, beside the client's connection. */
@@ -74,6 +93,8 @@ export interface EnvironmentSource {
   name?: string;
   /** Whether a container that is stopped may be started again. */
   resume?: boolean;
+  /** Whether the user's state is kept on a state volume. */
+  persistUserState?: boolean;
   /** The principal the connect belongs to, which owns a volume it makes. */
   owner?: Owner;
 }
@@ -122,40 +143,6 @@ export const environmentIdLabels = (volumeName: string): string[] => [
   `${ENVIRONMENT_VOLUME_NAME_LABEL}=${volumeName}`,
   `${ENVIRONMENT_VOLUME_FOLDER_LABEL}=${volumeName}`,
 ];
-
-/**
- * The Dev Container CLI's `${devcontainerId}` for a container's id labels.
- *
- * The CLI hashes the labels as a sorted JSON object and writes the number in
- * base 32; the state volume's name is its last twelve characters. Computed here
- * because a free volume name has to skip one whose state volume exists, and
- * because removal finds a state volume by its name when it carries no other
- * label we can use.
- * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/devContainerState.ts
- */
-export const devContainerId = (idLabels: readonly string[]): string => {
-  const labels: Record<string, string> = {};
-  for (const pair of idLabels) {
-    const at = pair.indexOf('=');
-    if (at !== -1) labels[pair.slice(0, at)] = pair.slice(at + 1);
-  }
-  const hash = createHash('sha256').update(JSON.stringify(labels, Object.keys(labels).sort()), 'utf8').digest('hex');
-  return BigInt(`0x${hash}`).toString(32).padStart(52, '0');
-};
-
-/**
- * The state volume's name for a container's id labels.
- *
- * Our id labels name no folder, so the name is `vscode-state-` and the end of
- * the computed id, with no folder part between them.
- */
-export const stateVolumeName = (idLabels: readonly string[]): string =>
-  `vscode-state-${devContainerId(idLabels).slice(-STATE_VOLUME_ID_LENGTH)}`;
-
-/** Whether a volume's labels say it is the state volume of this dev container. */
-export const isStateVolumeFor = (labels: unknown, idLabels: readonly string[]): boolean =>
-  typeof labels === 'object' && labels !== null
-  && (labels as Record<string, unknown>)[STATE_ID_LABEL] === devContainerId(idLabels);
 
 /**
  * Make a folder owner-only, and refuse one that is not a folder this user owns.
@@ -279,6 +266,84 @@ const createEnvironmentVolume = async (
   throw new Error('No free Docker volume name was found for the Dev Container environment.');
 };
 
+/** A caught error's sentence. */
+const errorMessageOf = (error: unknown): string => error instanceof Error ? error.message : String(error);
+
+/**
+ * Link an environment's state folders to its state volume, when it has one.
+ *
+ * The mount is read off the running container, the user's ids and home folder
+ * are read from the container, and the link script runs as root. A container
+ * made without the state volume is reported as having no mount when the setting
+ * is on, and is left alone when it is off.
+ */
+const linkEnvironmentState = async (
+  containerId: string,
+  remoteUser: string,
+  persistUserState: boolean,
+  keepExistingFolders: boolean,
+  owner: Owner | undefined,
+  commands: EnvironmentCommands,
+): Promise<void> => {
+  let reason = 'inspect';
+  let target: 'workspaces' | 'volume' | undefined;
+  let exitCode: number | undefined;
+  let progress: StateLinkProgress | undefined;
+  try {
+    const inspected = checked(await commands.docker(['inspect', '--format', '{{json .Mounts}}', containerId]), 'docker inspect');
+    const mounts: unknown = JSON.parse(inspected.stdout);
+    const mount = findStateMount(Array.isArray(mounts) ? mounts as ContainerMount[] : []);
+    if (mount === undefined) {
+      if (persistUserState) commands.userState?.({ stage: 'link', outcome: 'noMount' });
+      return;
+    }
+    target = stateTargetKind(mount.Destination);
+    // The state volume names the same maker as the workspace volume, so
+    // another user's connect never links it.
+    reason = 'owner';
+    const made = recordedOwner(await volumeLabels(commands.docker, mount.Name ?? ''));
+    if (made !== undefined && made !== owner) {
+      throw new Error(`Dev Container state volume ${mount.Name ?? ''} was made by another user.`);
+    }
+    reason = 'user';
+    const user = await commands.docker(['exec', '--user', remoteUser, containerId, '/bin/sh', '-c', STATE_USER_SCRIPT]);
+    exitCode = user.code;
+    const [uid, gid, home] = user.stdout.trim().split(/\r?\n/);
+    if (user.code !== 0 || uid === undefined || gid === undefined || home === undefined || uid === '' || gid === '' || home === '') {
+      throw new Error(`Cannot read the Dev Container user (exit ${String(user.code)}): ${user.stderr.trim()}`);
+    }
+    reason = 'script';
+    const linked = await commands.docker([
+      'exec', '--user', 'root', '-w', '/', containerId, '/bin/sh', '-c',
+      buildLinkCommand({ volumePath: mount.Destination, homeFolder: home, uid, gid, keepExistingFolders }),
+    ]);
+    exitCode = linked.code;
+    progress = parseLinkOutput(linked.stdout);
+    if (linked.code !== 0) {
+      throw new Error(`Cannot link user state (exit ${String(linked.code)}): ${linked.stderr.trim() || linked.stdout.trim()}`);
+    }
+    commands.userState?.({
+      stage: 'link',
+      outcome: progress.homeFound ? 'linked' : 'homeNotFound',
+      target,
+      ...linkCounts(progress),
+    });
+  }
+  catch (error) {
+    if (!persistUserState && reason === 'inspect') return;
+    commands.userState?.({
+      stage: 'link',
+      outcome: 'failed',
+      reason,
+      ...(progress?.step === undefined ? {} : { step: progress.step }),
+      ...(exitCode === undefined ? {} : { exitCode }),
+      ...(target === undefined ? {} : { target }),
+      ...linkCounts(progress),
+      errorMessage: errorMessageOf(error),
+    });
+  }
+};
+
 /**
  * Make or find an environment's container, keeping its workspace in its volume.
  *
@@ -286,6 +351,10 @@ const createEnvironmentVolume = async (
  * before the container starts, the container is made from `image` with the
  * volume at `/workspaces`, and the volume and folder are given to the remote
  * user so agent worktrees may be made beside the workspace.
+ *
+ * With `persistUserState`, a second volume is mounted for the folders the
+ * nested host and its agents keep, `up` leaves its lifecycle commands for the
+ * link step, and those commands run once the folders are linked.
  */
 export const prepareEnvironment = async (
   source: EnvironmentSource,
@@ -334,6 +403,44 @@ export const prepareEnvironment = async (
       'mkdir',
     );
   }
+  const persistUserState = source.persistUserState === true;
+  let stateTarget: 'workspaces' | 'volume' | undefined;
+  let keepExistingFolders = true;
+  const mountArgs: string[] = [];
+  /*
+   * The state volume, mounted only into a container this connect makes: adding
+   * a mount to an existing Compose container could make it again. The target
+   * is the fallback because the workspace volume already occupies
+   * `/workspaces`.
+   */
+  if (persistUserState) {
+    let reason = 'config';
+    try {
+      const target = stateMountTarget({ workspaceMount: `type=volume,source=${volumeName},target=${ENVIRONMENT_VOLUME_TARGET}` });
+      stateTarget = stateTargetKind(target);
+      reason = 'listContainers';
+      keepExistingFolders = containerStates.some(isContainerRunning);
+      if (containerStates.length > 0) {
+        commands.userState?.({ stage: 'mount', outcome: 'existingContainer', target: stateTarget });
+      }
+      else {
+        reason = 'volume';
+        const ownerLabels = source.owner === undefined ? [] : [`${ENVIRONMENT_OWNER_LABEL}=${source.owner}`];
+        await ensureStateVolume(commands.docker, idLabels, ownerLabels);
+        commands.userState?.({ stage: 'mount', outcome: 'added', target: stateTarget });
+        mountArgs.push('--mount', stateMount(idLabels, target));
+      }
+    }
+    catch (error) {
+      commands.userState?.({
+        stage: 'mount',
+        outcome: 'failed',
+        reason,
+        ...(stateTarget === undefined ? {} : { target: stateTarget }),
+        errorMessage: errorMessageOf(error),
+      });
+    }
+  }
   const configPath = join(cacheDirectory, 'devcontainer.json');
   await writeFile(configPath, JSON.stringify({
     image: source.image,
@@ -347,18 +454,24 @@ export const prepareEnvironment = async (
     'up', '--log-level', 'debug',
     '--override-config', configPath,
     ...idLabels.flatMap((label) => ['--id-label', label]),
+    ...mountArgs,
+    ...(persistUserState ? ['--skip-post-create'] : []),
   ]);
   const lines = up.stdout.trim().split(/\r?\n/);
   const result = record(lines[lines.length - 1] ?? '');
   const containerId = typeof result?.containerId === 'string' ? result.containerId : '';
   const remoteUser = typeof result?.remoteUser === 'string' ? result.remoteUser : '';
-  if (
-    up.code !== 0
-    || result?.outcome !== 'success'
-    || containerId === ''
-    || remoteUser === ''
-    || result.remoteWorkspaceFolder !== workspace
-  ) {
+  const valid = up.code === 0
+    && result?.outcome === 'success'
+    && containerId !== ''
+    && remoteUser !== ''
+    && result.remoteWorkspaceFolder === workspace;
+  if (persistUserState) {
+    commands.userState?.(valid
+      ? { stage: 'up', outcome: 'succeeded' }
+      : { stage: 'up', outcome: 'failed', reason: up.code !== 0 ? 'exitCode' : 'result', exitCode: up.code, errorMessage: up.stdout.trim() || up.stderr.trim() });
+  }
+  if (!valid) {
     throw new Error('The Dev Container CLI returned an invalid environment container.');
   }
   const ownership = `chown "$(id -u ${quote(remoteUser)}):$(id -g ${quote(remoteUser)})" ${quote(ENVIRONMENT_VOLUME_TARGET)} ${quote(workspace)}`;
@@ -366,6 +479,17 @@ export const prepareEnvironment = async (
     await commands.docker(['exec', '--user', 'root', '-w', '/', containerId, '/bin/sh', '-c', ownership]),
     'chown',
   );
+  await linkEnvironmentState(containerId, remoteUser, persistUserState, keepExistingFolders, source.owner, commands);
+  if (persistUserState) {
+    const ran = await commands.devcontainer(['run-user-commands', '--log-level', 'debug', '--container-id', containerId]);
+    const succeeded = ran.code === 0 && stageSucceeded(ran.stdout);
+    commands.userState?.(succeeded
+      ? { stage: 'userCommands', outcome: 'succeeded' }
+      : { stage: 'userCommands', outcome: 'failed', reason: ran.code !== 0 ? 'exitCode' : 'result', exitCode: ran.code, errorMessage: ran.stdout.trim() || ran.stderr.trim() });
+    if (!succeeded) {
+      throw new Error(`Dev Container lifecycle commands failed: ${ran.stdout.trim() || ran.stderr.trim()}`);
+    }
+  }
   return {
     containerId,
     remoteWorkspaceFolder: workspace,
