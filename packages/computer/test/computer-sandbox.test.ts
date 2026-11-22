@@ -6,7 +6,8 @@ import { afterEach, expect, it } from 'vitest';
 import { echo } from '../../../examples/echo/agent.js';
 import { loadPlugins } from '../../server/src/plugins.js';
 import {
-  hostSandboxPlace, isSandboxSupported, sandboxedCommand, sandboxedServer, sandboxRunArgs, sandboxSecurityOptions, sandboxSettingsOf,
+  BWRAP_PROFILE, hostSandboxPlace, isSandboxSupported, runtimeRefusalOf, sandboxedCommand, sandboxedServer, sandboxRunArgs, sandboxSecurityOptions,
+  sandboxSettingsOf,
 } from '../src/sandbox.js';
 import { closeAll, keeping } from './support/closing.js';
 import type { HostOptions } from '../../sdk/src/types/host.js';
@@ -146,4 +147,18 @@ it('starts a command and an MCP server inside the runtime this plugin depends on
     args: [place.srtPath, '--settings', '/tmp/settings.json', '--', '\'npx\'', '\'-y\'', '\'server\''],
     env: { TMPDIR: place.tempDir, NODE_USE_ENV_PROXY: '1' },
   });
+});
+
+const SECCOMP_FAILED = 'apply-seccomp: write /proc/self/setgroups (nested userns is capability-restricted; caller must provide CAP_SYS_ADMIN): Permission denied';
+
+it('names the AppArmor profile and the commands that lift it when the profile stops the seccomp helper', () => {
+  const said = runtimeRefusalOf(SECCOMP_FAILED, true);
+  expect(said).toContain(BWRAP_PROFILE);
+  expect(said).toContain(`sudo apparmor_parser -R ${BWRAP_PROFILE}`);
+  expect(said).toContain(`sudo ln -s ${BWRAP_PROFILE} /etc/apparmor.d/disable/`);
+});
+
+it('gives the runtime\'s own last lines when the profile is not loaded, or something else failed', () => {
+  expect(runtimeRefusalOf(SECCOMP_FAILED, false)).toBe(`The sandbox cannot run on this host: ${SECCOMP_FAILED}`);
+  expect(runtimeRefusalOf('one\ntwo\nthree\nfour\nfive', true)).toBe('The sandbox cannot run on this host: two\nthree\nfour\nfive');
 });
