@@ -8,6 +8,7 @@ import { bag, ownerFilter } from '../utils/values.js';
 import { configOf } from '../sessions/remotesession.js';
 import { agentRefusal, CLOSING, noProvider } from './common.js';
 import { refusalReason } from './gate.js';
+import { newChatScratchFolder, readCreateChatWorkspaceMeta, removeChatScratchFolder, requireNonScratchChatFolder } from './chatworkspace.js';
 import { mayUseAgent, ownershipOf } from '../agents/usable.js';
 import { chatIdFor, named, ROOT, schemeOf, spaceOf } from './channels.js';
 import { getAgentHostChatId } from '../vscode/chatid.js';
@@ -1519,6 +1520,25 @@ export function createSessionMethods(ctx: HostContext, conn: ConnectionContext):
       if (!held)
         throw new RpcError(AhpErrorCodes.SessionNotFound, `Session not found: ${uri}`);
       /*
+       * A workspace of the chat's own, read before the default chat is
+       * answered and before anything is made. A malformed value is refused
+       * here; one that is well formed is checked against what the session and
+       * the request allow before a chat exists to put in it.
+       */
+      const askedWorkspace = readCreateChatWorkspaceMeta(bag(params._meta));
+      if (askedWorkspace === 'invalid') throw new RpcError(INVALID_PARAMS, 'Invalid chat workspace');
+      const workspace = askedWorkspace;
+      if (workspace !== undefined) {
+        const sourceKind = bag(params.source).kind;
+        if (params.workingDirectories !== undefined || sourceKind === 'fork' || sourceKind === 'sideChat')
+          throw new RpcError(INVALID_PARAMS, 'A chat workspace cannot be combined with working directories, a fork or a side chat.');
+        if (chatUri === held.defaultChat)
+          throw new RpcError(INVALID_PARAMS, 'The default chat cannot get a workspace of its own.');
+        if (held.agent.multipleDirectories !== true)
+          throw new RpcError(INVALID_PARAMS, `The agent ${held.agent.provider} does not support a workspace per chat.`);
+        if (workspace.kind === 'folder') requireNonScratchChatFolder(workspace.folder);
+      }
+      /*
        * The default chat is made with its session, so asking for it again with
        * no first message makes nothing and is answered `null`, as the
        * reference host answers it.
@@ -1544,11 +1564,18 @@ export function createSessionMethods(ctx: HostContext, conn: ConnectionContext):
        * host refuses one before it creates the chat.
        * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentService.ts#L7350-L7352
        */
-      const first_ = (typeof params.initialMessage === 'object' && params.initialMessage !== null
+      let first_ = (typeof params.initialMessage === 'object' && params.initialMessage !== null
         ? params.initialMessage
         : undefined) as Record<string, unknown> | undefined;
       if (first_ !== undefined && bag(first_.origin).kind !== 'user')
         throw new RpcError(INVALID_PARAMS, 'An initial chat message must have user origin.');
+      /*
+       * A worktree's `prompt` is the chat's first turn, and the only one it is
+       * kept for: the branch is named after the chat, so the words a client
+       * wrote to begin the chat are the words the agent gets.
+       */
+      if (first_ === undefined && workspace?.kind === 'folder' && workspace.isolation === 'worktree' && workspace.prompt !== '')
+        first_ = { text: workspace.prompt, origin: { kind: 'user' } };
       /*
        * A chat that is there already. The default chat takes a first message
        * as its own turn; a fork made with one onto a chat that is there, and
@@ -1810,6 +1837,38 @@ export function createSessionMethods(ctx: HostContext, conn: ConnectionContext):
        * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostStateManager.ts#L1733-L1738
        */
       ctx.snapshotDefaultChatTitle(uri);
+      /*
+       * The workspace it was asked for, entered before the chat is said so a
+       * client that hears of it draws it there. A scratch folder is this
+       * host's own and asks no window about trust; a folder and a worktree are
+       * the calling window's to vouch for, which is why it is the move's
+       * sender. There is no turn to continue: the chat has not started, and
+       * the first message, where there is one, is sent after this.
+       */
+      if (workspace !== undefined) {
+        const directory = workspace.kind === 'scratch' ? await newChatScratchFolder() : workspace.folder;
+        try {
+          await ctx.moveChatWorkspace(uri, {
+            chat: chatUri,
+            directory,
+            isolation: workspace.kind === 'folder' && workspace.isolation === 'worktree',
+            sender: connection,
+            continuation: false,
+            trust: workspace.kind !== 'scratch',
+            ...(workspace.kind === 'folder' && workspace.isolation === 'worktree' && workspace.baseBranch !== undefined
+              ? { baseBranch: workspace.baseBranch }
+              : {}),
+          });
+        }
+        catch (error) {
+          if (workspace.kind === 'scratch') await removeChatScratchFolder(directory);
+          await methods.disposeChat({ channel: chatUri });
+          throw error;
+        }
+        // The move started the chat again, and what a first message is sent to
+        // is the chat that is there now.
+        chat = held.chats.get(chatUri) ?? chat;
+      }
       // `summary`, not `chat`: the reducer reads `action.summary.resource`,
       // and a chat named any other way arrives as a TypeError inside it.
       dispatch(uri, { type: 'session/chatAdded', summary: chatSummary(uri, chatUri, chat) });

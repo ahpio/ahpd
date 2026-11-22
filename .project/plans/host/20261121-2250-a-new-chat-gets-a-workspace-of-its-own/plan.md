@@ -68,7 +68,7 @@ vscode/setChatWorkspace {chat, workspace} -> checks -> moveChatWorkspace without
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - A chat is created in its own workspace](task-01-a-chat-is-created-in-its-workspace.md) | todo | - |
+| [01 - A chat is created in its own workspace](task-01-a-chat-is-created-in-its-workspace.md) | done | - |
 | [02 - A chat that has not started is given a workspace](task-02-a-chat-is-given-a-workspace.md) | todo | 01 |
 
 ## Risks and tradeoffs
@@ -77,10 +77,10 @@ vscode/setChatWorkspace {chat, workspace} -> checks -> moveChatWorkspace without
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-chat-is-created-in-its-workspace.md](task-01-a-chat-is-created-in-its-workspace.md).
+- **Done so far:** task 01 is written and committed; its test run is with the build's owner.
+- **Next action:** [task-02-a-chat-is-given-a-workspace.md](task-02-a-chat-is-given-a-workspace.md), once task 01's test result is in.
 - **Open questions:** none.
-- **Watch out for:** `moveChatWorkspace` starts a continuation turn; a chat with no turn must not get one. `Move` has no `baseBranch` field yet.
+- **Watch out for:** `moveChatWorkspace` starts a continuation turn unless `Move.continuation` is `false`. `createChat` also needs `chat:folders` through `admission.ts`, which task 01's file list does not name. When a worktree `prompt` and an `initialMessage` are both sent, the current code keeps the `initialMessage` and drops the prompt.
 
 ## Final verification checklist
 
