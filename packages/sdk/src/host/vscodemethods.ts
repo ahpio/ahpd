@@ -712,6 +712,8 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
       }
       finally { ctx.chatWorkspaceMoves.delete(chat); }
       return {};
+    },
+    /*
      * Deleting an automation, and with `deleteHistory` the sessions its runs
      * made. The history a client remembers itself arrives under
      * `legacySessions`, and is refused unless the same request deletes it.
