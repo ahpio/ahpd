@@ -21,7 +21,7 @@ The computer plugin depends on `@ahpio/sandbox-runtime` at one exact version, an
 
 ## Steps
 
-1. Replace `@vscode/sandbox-runtime` with `@ahpio/sandbox-runtime` at `0.0.83-ahpio.1`.
+1. Replace `@vscode/sandbox-runtime` with `@ahpio/sandbox-runtime` at `0.0.83-rc.0`.
 2. Resolve the CLI and `SandboxManager` under the new name.
 3. Raise the plugin's Node floor to `>=22.12.0`.
 4. Check that settings with `network.enabled: false` reach an unlisted host and keep the filesystem rules.

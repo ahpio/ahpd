@@ -16,23 +16,22 @@ refs:
 
 - `UPDATE: src/sandbox/sandbox-config.ts` - `enabled` in `NetworkConfigSchema`, default true.
 - `UPDATE: src/sandbox/sandbox-manager.ts` - no proxy, no filter and no network restriction when `enabled` is false.
-- `UPDATE: package.json` - the name, the version `0.0.83-ahpio.1`, the repository, and the zod range.
-- `UPDATE: .github/workflows/release.yml` - publish `@ahpio/sandbox-runtime` with `--tag latest`.
+- `UPDATE: package.json` - the name, the version `0.0.83-rc.0`, the repository, and the zod range.
+- `UPDATE: .github/workflows/release.yml` - publish `@ahpio/sandbox-runtime` with `--tag next` for a prerelease.
 - `CREATE: NOTICE` - the two changes, under Apache-2.0.
 - `CREATE: test/sandbox/network-gate.test.ts` - the gate on and off, and the filesystem rules kept, under `bun test`.
 
 ## Steps
 
-1. Ask Softov for his yes, then run `gh repo fork anthropics/sandbox-runtime --org ahpio --clone`.
-2. Branch from the tag `v0.0.83`, and make that branch the fork's default.
-3. Add `enabled` to the network schema, and keep a value of `true` unchanged.
-4. Skip the proxies in `initialize` when `enabled` is false.
-5. Allow every request in `filterNetworkRequest` when `enabled` is false.
-6. Apply no network restriction in `wrapWithSandbox` when `enabled` is false.
-7. Keep every filesystem rule in both cases.
-8. Widen the zod range, and run the suite under zod 3.25 and under zod 4.6.6.
-9. Rename the package, set the version, and write `NOTICE`.
-10. Push the branch, and run `release.yml` on a pull request, without the publish.
+1. Work on a branch of `ahpio` in `/github/sandbox-runtime`, the fork's clone, whose default branch `ahpio` is `v0.0.83`.
+2. Add `enabled` to the network schema, and keep a value of `true` unchanged.
+3. Skip the proxies in `initialize` when `enabled` is false.
+4. Allow every request in `filterNetworkRequest` when `enabled` is false.
+5. Apply no network restriction in `wrapWithSandbox` when `enabled` is false.
+6. Keep every filesystem rule in both cases.
+7. Widen the zod range, and run the suite under zod 3.25 and under zod 4.6.6.
+8. Rename the package, set the version, and write `NOTICE`.
+9. Leave the push and the pull request, which runs `release.yml` without the publish, to the owner of the build.
 
 ## Validation
 

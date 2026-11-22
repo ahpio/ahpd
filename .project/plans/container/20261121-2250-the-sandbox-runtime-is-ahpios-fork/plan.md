@@ -52,7 +52,7 @@ packages/computer -> @ahpio/sandbox-runtime (exact) -> srt --settings <file> -> 
 | I make the fork with `gh repo fork anthropics/sandbox-runtime --org ahpio`, after Softov's yes at build time; Softov does the first npm publish and the trusted publisher | Softov, 2026-11-21, "I fork it on your yes; you do npm (Recommended)" | 01, 02 |
 | `network.enabled: false` starts no proxy, allows every request, and applies no network restriction; every filesystem rule stays | (defaulted: PR #246's behaviour) | 01 |
 | zod is allowed at `^3.25.0 \|\| ^4.6.6`, since the `zod/v3` imports work under both | (defaulted: the brief's check) | 01 |
-| The fork's version is `0.0.83-ahpio.1`, published with `--tag latest` | (defaulted: a prerelease of the upstream tag cannot clash with Anthropic's next version) | 01 |
+| The fork's first release is `0.0.83-rc.0`, under npm's `next` tag | Softov, 2026-11-21, "change ... so we make a first release there? like a rc0", and "0.0.83-rc.0 (Recommended)" | 01, 02 |
 | The fork keeps Apache-2.0, and a `NOTICE` names the two changes | (defaulted: Apache-2.0 section 4) | 01 |
 | The computer plugin pins the fork at one exact version, and its Node floor is `>=22.12.0` | (defaulted: the runtime's `engines`) | 03 |
 | The zod advisory's problem file is deleted with this plan, since its fix is planned | (defaulted: do-spec's rule for a problem) | - |
@@ -79,14 +79,14 @@ packages/computer -> @ahpio/sandbox-runtime (exact) -> srt --settings <file> -> 
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** ask Softov for his yes to make the fork, then [task-01-the-fork-has-the-gate-and-zod.md](task-01-the-fork-has-the-gate-and-zod.md).
+- **Done so far:** the fork `ahpio/sandbox-runtime` exists, on Softov's yes of 2026-11-21. Its default branch `ahpio` is `v0.0.83` (`0bbebed`), cloned to `/github/sandbox-runtime`.
+- **Next action:** [task-01-the-fork-has-the-gate-and-zod.md](task-01-the-fork-has-the-gate-and-zod.md).
 - **Open questions:** none.
 - **Watch out for:** task 01's paths are in the fork's repository, not in ahpd's.
 
 ## Final verification checklist
 
 - [ ] The fork's tests pass, with the gate's tests among them, and its `release.yml` passes on a pull request.
-- [ ] `npm view @ahpio/sandbox-runtime@0.0.83-ahpio.1` answers, with provenance.
+- [ ] `npm view @ahpio/sandbox-runtime@0.0.83-rc.0` answers, with provenance.
 - [ ] A test in ahpd: a chat that allows the whole network reaches a host outside any list, and keeps its filesystem rules.
 - [ ] The computer suite passes, and `pnpm audit` no longer reports the zod advisory.
