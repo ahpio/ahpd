@@ -353,7 +353,9 @@ it('relays a host inside a container made from the environment image', async () 
   expect(where.said).toEqual([]);
 });
 
-it('closes every relay into an environment before removing it, and refuses it afterwards', async () => {
+// POSIX-only: the scripted docker stands in for a Linux container by running
+// the relay with `/bin/sh` on this host.
+it.skipIf(!posix)('closes every relay into an environment before removing it, and refuses it afterwards', async () => {
   const { port, dockerState } = launcher({ hostPresent: true, passthrough: [process.execPath] });
   const where = sink();
   await port.connectEnvironment!(
