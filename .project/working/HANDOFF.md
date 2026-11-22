@@ -17,7 +17,7 @@ Current progress and pending items only, as of 2026-11-22. *Outside this reposit
   - npm serves `@ahpio/sandbox-runtime@0.0.83-rc.0` under `next`, published by the fork's `release.yml`. The fork's upstream passes are in its `UPSTREAM.md`.
   - #446 (`9bc2c07d4`): the computer plugin runs on the fork, and the tree loads one zod, 4.6.7. The fork plan is `built` on Softov's word. The CA plan is revised to VS Code's meaning and parked until a feature turns termination on: [ideas/a-chat-pushes-without-seeing-its-token.md](../ideas/a-chat-pushes-without-seeing-its-token.md). On Ubuntu 26.04 the host check says the AppArmor profile `bwrap-userns-restrict` stops the runtime, and names the commands that unload it; CI unloads it.
   - #447 (`72130ccd8`): a close waits for the part-volume sweep, the likely writer in the disposable `ENOTEMPTY`. The problem stays open until CI shows the error has stopped.
-  - #449 (`300e5eb60`): the ACP machine cases import the computer plugin before their budget; the first case took 9.3 s on Windows, from 15 s to 17 s.
+  - #449 (`300e5eb60`): the ACP machine cases import the computer plugin before their budget. The first case took 9.3 s on Windows, down from 15 s to 17 s.
   - #448 (`d27af6933`): a host the runtime cannot start on says why, and on Ubuntu 26.04 names the AppArmor profile and the commands that unload it. CI's `processes` job is back on `ubuntu-latest`.
   - Softov's dev daemon takes #446, #447 and #448 at its next restart on main.
   - Softov restarted his dev daemon on main with #431 to #445.
