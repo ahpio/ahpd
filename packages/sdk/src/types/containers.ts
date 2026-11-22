@@ -35,6 +35,14 @@ export interface ContainerConnect {
   /** What the client calls this container on screen. */
   name: string;
   /**
+   * Whether a container that is stopped may be started again.
+   *
+   * A source is suspended when it is stopped, and a connect that does not say
+   * `true` is refused in VS Code's words rather than silently starting a
+   * container the client believed was down. Absent is not `true`.
+   */
+  resume?: boolean;
+  /**
    * Whose the container is, when the connection is somebody's.
    *
    * The client does not send it and is never asked: the host fills it from the
@@ -43,6 +51,49 @@ export interface ContainerConnect {
    * Absent on a connection with nobody to name, and the container is then the
    * host's own.
    */
+  owner?: Owner;
+}
+
+/**
+ * The shape of an environment id.
+ *
+ * An environment is named by the client and never reused, and its id labels
+ * the volume its workspace lives in, so it is held to one lowercase spelling.
+ * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/common/devContainerEnvironments.ts
+ */
+export const DEV_CONTAINER_ENVIRONMENT_ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
+
+/** Whether a string is an environment id this host makes a container for. */
+export const isDevContainerEnvironmentId = (id: string): boolean => DEV_CONTAINER_ENVIRONMENT_ID.test(id);
+
+/**
+ * The images an environment may be made from, which is the reference's list.
+ *
+ * A client sends an image because it chose one, and a host that took any image
+ * would pull whatever a window named.
+ * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/common/devContainerEnvironments.ts
+ */
+export const DEV_CONTAINER_ENVIRONMENT_IMAGES: readonly string[] = ['mcr.microsoft.com/devcontainers/base:ubuntu'];
+
+/**
+ * What a client asks for: one connection to an environment made from an image.
+ *
+ * An environment is not a folder's `devcontainer.json`: its workspace is a
+ * Docker volume this host names, so there is no definition on this host to
+ * read and the image is the whole of what the client chooses.
+ */
+export interface ContainerEnvironmentConnect {
+  /** The client's own name for this connection, as in `ContainerConnect`. */
+  connectionId: string;
+  /** The environment's id, which labels its volume and is never reused. */
+  environmentId: string;
+  /** The image to make it from, one of `DEV_CONTAINER_ENVIRONMENT_IMAGES`. */
+  image: string;
+  /** What the client calls this environment on screen. */
+  name: string;
+  /** Whether a container that is stopped may be started again, as `ContainerConnect`'s is. */
+  resume?: boolean;
+  /** Whose the environment is, filled from the connection as `ContainerConnect`'s is. */
   owner?: Owner;
 }
 
@@ -110,6 +161,34 @@ export interface ContainerPort {
    * is left running when it throws.
    */
   connect(options: ContainerConnect, sink: ContainerSink): Promise<ContainerConnectResult>;
+  /**
+   * Make or find an environment's container, and start a host inside it.
+   *
+   * The environment's workspace is a Docker volume this host names and labels,
+   * so the container outlives it and a second connect reaches the same one.
+   * What is answered and what arrives on `sink` are `connect`'s.
+   *
+   * Optional, because a launcher that knows only folders serves no such
+   * method, and a client that asks is refused the way it is for an absent
+   * launcher.
+   */
+  connectEnvironment?(options: ContainerEnvironmentConnect, sink: ContainerSink): Promise<ContainerConnectResult>;
+  /**
+   * Remove an environment: its containers, its volumes and its cached
+   * configuration, and answer whether it acted.
+   *
+   * `vscode/devContainers/removeEnvironment`. Unlike a folder's `remove`, the
+   * workspace is this host's own volume, so it goes with the container and
+   * nothing of the environment is left behind. The owner is the principal the
+   * removing connection belongs to: on a host with users, only the principal
+   * that made an environment may remove it, and another's attempt is refused
+   * with a sentence rather than answered `false`.
+   *
+   * Optional, because a launcher that knows only folders serves no such
+   * method, and a client that asks is refused the way it is for an absent
+   * launcher.
+   */
+  removeEnvironment?(environmentId: string, owner?: Owner): Promise<boolean>;
   /** Write one frame to the host inside this connection's container. */
   send(connectionId: string, data: string): void | Promise<void>;
   /**

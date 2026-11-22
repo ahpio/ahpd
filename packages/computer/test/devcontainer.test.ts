@@ -644,7 +644,8 @@ it('reaches every command by the id the CLI answered with, and asks the CLI only
  * A container the folder already has is reached rather than made again, but
  * only while it is up. A stopped one is nothing to `docker exec`, so `up` runs
  * again, and the id labels are what make the CLI answer the same container
- * instead of a second one beside it.
+ * instead of a second one beside it. Starting it is the client's to ask for:
+ * a connect that does not say `resume` is refused in VS Code's words.
  */
 it('runs up for a stopped container before the first command in it, and keeps its id', async () => {
   wrote({ hostPresent: true, passthrough: [] });
@@ -666,7 +667,9 @@ it('runs up for a stopped container before the first command in it, and keeps it
   const stopped = JSON.parse(readFileSync(dockerState, 'utf8')) as { machines: { name: string; state?: string }[] };
   stopped.machines = [{ ...stopped.machines[0]!, state: 'exited' }];
   writeFileSync(dockerState, JSON.stringify(stopped));
-  await relay.connect({ ...connect, workspaceFolder: folder }, sink());
+  await expect(relay.connect({ ...connect, workspaceFolder: folder }, sink()))
+    .rejects.toThrow("Dev Container for 'Box' is stopped.");
+  await relay.connect({ ...connect, workspaceFolder: folder, resume: true }, sink());
 
   expect(read().calls.filter((one) => one[0] === 'up')).toHaveLength(2);
   expect(ran().machines).toHaveLength(1);

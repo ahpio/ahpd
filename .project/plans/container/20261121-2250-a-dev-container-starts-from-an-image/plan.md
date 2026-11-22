@@ -69,8 +69,8 @@ vscode/devContainers/removeEnvironment {environmentId} -> its relays closed -> t
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - A container starts from an image in a volume](task-01-a-container-starts-from-an-image.md) | todo | - |
-| [02 - An environment is resumed and removed](task-02-resumed-and-removed.md) | todo | 01 |
+| [01 - A container starts from an image in a volume](task-01-a-container-starts-from-an-image.md) | done | - |
+| [02 - An environment is resumed and removed](task-02-resumed-and-removed.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -79,8 +79,8 @@ vscode/devContainers/removeEnvironment {environmentId} -> its relays closed -> t
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-container-starts-from-an-image.md](task-01-a-container-starts-from-an-image.md).
+- **Done so far:** both tasks: an environment's container made from an allowed image in a labelled volume, its host relayed, resume of a stopped one, and its removal with the volumes.
+- **Next action:** none - the plan is implemented; see [implemented.md](implemented.md).
 - **Open questions:** none.
 - **Watch out for:** the tests need Docker; mark them as the other container cases are marked.
 

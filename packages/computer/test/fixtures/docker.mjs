@@ -360,18 +360,34 @@ if (verb === 'tag') {
 if (verb === 'volume') {
   const name = args[args.length - 1];
   held.volumes ??= {};
-  // `volume ls --format {{.Name}}`: every volume's name, one a line.
+  // `volume ls --format {{.Name}}`: every volume's name, one a line, narrowed
+  // by each `--filter label=<key>=<value>` as Docker narrows it.
   if (args[1] === 'ls') {
     keep();
-    process.stdout.write(Object.keys(held.volumes).map((one) => `${one}\n`).join(''));
+    const asked = [];
+    for (let i = 0; i < args.length; i++) {
+      if (args[i] !== '--filter') continue;
+      const said = String(args[i + 1]);
+      if (said.startsWith('label=')) asked.push(said.slice('label='.length));
+    }
+    const labelled = (labels, one) => {
+      const eq = one.indexOf('=');
+      return eq === -1
+        ? Object.keys(labels).includes(one)
+        : labels[one.slice(0, eq)] === one.slice(eq + 1);
+    };
+    process.stdout.write(Object.entries(held.volumes)
+      .filter(([, one]) => asked.every((label) => labelled(one.labels ?? {}, label)))
+      .map(([name]) => `${name}\n`)
+      .join(''));
     process.exit(0);
   }
   // `volume create --label <key>=<value> <name>`: an empty volume with its
-  // labels and the time it was made.
+  // labels and the time it was made. Creating a volume that is already there
+  // succeeds and changes nothing, as Docker's own does.
   if (args[1] === 'create') {
     const labels = Object.fromEntries(args.flatMap((one, at) => (args[at - 1] === '--label' ? [[one.slice(0, one.indexOf('=')), one.slice(one.indexOf('=') + 1)]] : [])));
-    held.volumes[name] ??= { files: [], created: new Date().toISOString() };
-    held.volumes[name].labels = labels;
+    held.volumes[name] ??= { files: [], created: new Date().toISOString(), labels };
     keep();
     process.stdout.write(`${name}\n`);
     process.exit(0);
@@ -392,9 +408,13 @@ if (verb === 'volume') {
     delete held.volumes[name];
   }
   else if (args.includes('--format')) {
-    // `{{json .}}`: the record, with when the volume was made and its labels.
+    // `{{json .}}`: the record, with when the volume was made and its labels;
+    // `{{json .Labels}}`: the labels alone, as a caller that only wants them
+    // asks. Any other format prints the record, as this fixture always has.
     const one = held.volumes[name];
-    process.stdout.write(`${JSON.stringify({ Name: name, Driver: 'local', CreatedAt: one.created ?? new Date().toISOString(), Labels: one.labels ?? null })}\n`);
+    const format = args[args.indexOf('--format') + 1];
+    const record = { Name: name, Driver: 'local', CreatedAt: one.created ?? new Date().toISOString(), Labels: one.labels ?? null };
+    process.stdout.write(`${JSON.stringify(format === '{{json .Labels}}' ? record.Labels : record)}\n`);
   }
   else process.stdout.write(`${JSON.stringify([{ Name: name, Driver: 'local' }])}\n`);
   keep();
@@ -506,6 +526,9 @@ if (verb === 'ps') {
     },
   );
   const format = args.includes('--format') ? args[args.indexOf('--format') + 1] : undefined;
+  // `--quiet` is the ids alone, one a line, which is what a caller removing
+  // containers by label asks for.
+  const quiet = args.includes('--quiet') || args.includes('-q');
   for (const machine of held.machines) {
     /*
      * The same projection `inspect` makes: a machine that is not somebody
@@ -514,6 +537,10 @@ if (verb === 'ps') {
      */
     const labels = machine.bare === true ? { ...(machine.labels ?? {}) } : { 'ahpd.computer': '1', ...(machine.labels ?? {}) };
     if (!asked.every((one) => labelled(labels, one))) continue;
+    if (quiet) {
+      process.stdout.write(`${String(machine.id ?? machine.name)}\n`);
+      continue;
+    }
     const row = {
       // The short id and the name, as `docker ps` prints them. The short form is
       // what makes an id recorded in full matchable against a listing.
@@ -522,8 +549,10 @@ if (verb === 'ps') {
       Image: machine.image,
       // As `docker ps` words it: `Up ...` for a container that is running,
       // `Exited ...` for one that is not, which is what tells a listing's rows
-      // apart. The listing is `ps -a`, so it holds both.
+      // apart. The listing is `ps -a`, so it holds both. `State` is the same
+      // fact as one word, which is what a caller keeping only the state asks.
       Status: (machine.state ?? 'running') === 'running' ? 'Up 1 second' : 'Exited (0) 2 minutes ago',
+      State: machine.state ?? 'running',
       // As a client in a zone of its own prints it: local time, the zone by name.
       CreatedAt: '2026-09-22 02:00:00 +0200 CEST',
     };
@@ -704,7 +733,7 @@ if (verb === 'run' || verb === 'create') {
    * reads it: a machine runs `<image> sleep infinity`, and a probe or a fill
    * helper is `<image> x`.
    */
-  const valued = new Set(['--name', '--label', '-v', '-e', '-w', '--cpus', '--memory', '--mount', '--user', '--add-host']);
+  const valued = new Set(['--name', '--label', '-v', '-e', '-w', '--cpus', '--memory', '--mount', '--user', '--add-host', '--entrypoint']);
   let image;
   let imageAt = -1;
   for (let i = 1; i < args.length; i++) {

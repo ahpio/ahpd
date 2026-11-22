@@ -194,4 +194,5 @@ export type {
 } from './access/commandautoapprover.js';
 
 export type * from './types/index.js';
+export { DEV_CONTAINER_ENVIRONMENT_IMAGES, DEV_CONTAINER_ENVIRONMENT_ID, isDevContainerEnvironmentId } from './types/containers.js';
 export type { PluginView, ViewComponent, ViewHandle, ViewSurface } from './types/plugin.js';

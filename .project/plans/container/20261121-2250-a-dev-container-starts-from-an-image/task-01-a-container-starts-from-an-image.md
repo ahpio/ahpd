@@ -1,6 +1,6 @@
 ---
 title: A container starts from an image in a volume
-status: todo
+status: done
 depends: []
 layer: "sdk, computer"
 refs:

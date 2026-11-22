@@ -133,7 +133,7 @@ export interface HostContext extends ChatRecord, Routing, Relay, Changesets, Fac
    * read is the map itself and never a copy of it, so nothing has to be spilled
    * back when a relay ends.
    */
-  relays: Map<Connection, Map<string, { name: string; folder: string; tail: string[] }>>;
+  relays: Map<Connection, Map<string, { name: string; folder?: string; environment?: string; tail: string[] }>>;
   /**
    * The disk usage scans: those in flight by connection and request id, the
    * two slots every connection shares, and the measures kept by session and
@@ -709,7 +709,7 @@ export interface ConnectionContext {
    * `tail` is the launcher's own last words, kept only so a container that
    * dies can say why in this log.
    */
-  containers: Map<string, { name: string; folder: string; tail: string[] }>;
+  containers: Map<string, { name: string; folder?: string; environment?: string; tail: string[] }>;
   /**
    * The conversation chunks this connection staged for a `createSession` it
    * has not sent yet, and the characters they hold.

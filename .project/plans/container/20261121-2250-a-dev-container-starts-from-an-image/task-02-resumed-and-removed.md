@@ -1,6 +1,6 @@
 ---
 title: An environment is resumed and removed
-status: todo
+status: done
 depends: [task-01-a-container-starts-from-an-image.md]
 layer: "sdk, computer"
 refs:
