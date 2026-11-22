@@ -137,6 +137,7 @@ export interface VscodeMethods {
   'vscode/moveSession': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/setChatWorkspace': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/deleteAutomation': (params: Record<string, unknown>) => Promise<unknown>;
+  'vscode/acknowledgeAutomationDeletion': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/cancelWorktreeDiskUsage': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/setAgentHostDetachedWorktreeArchived': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/deleteAgentHostDetachedWorktree': (params: Record<string, unknown>) => Promise<unknown>;
@@ -731,7 +732,18 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
         if (!isSessionUri(one))
           throw new RpcError(INVALID_PARAMS, `legacySessions must name session URIs: ${one}`);
       }
-      return await ctx.deleteAutomation(automation, deleteHistory, legacySessions);
+      const requestId = optionalStringParam(params, 'requestId', 'a request id');
+      return await ctx.deleteAutomation(automation, deleteHistory, legacySessions, requestId);
+    },
+    /*
+     * Dropping what a deletion answered once the client has it, as VS Code
+     * does after it reads the receipt a retry found.
+     * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/protocolServerHandler.ts#L4033-L4041
+     */
+    'vscode/acknowledgeAutomationDeletion': async (params) => {
+      const requestId = stringParam(params, 'requestId', 'a request id');
+      ctx.acknowledgeAutomationDeletion(requestId);
+      return {};
     },
     'vscode/cancelWorktreeDiskUsage': (params) => {
       ctx.diskUsage.scans.get(connection)?.get(stringParam(params, 'requestId'))?.abort();

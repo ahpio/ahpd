@@ -1,6 +1,6 @@
 ---
 title: A deletion keeps a receipt until acknowledged
-status: todo
+status: done
 depends: [task-01-deleted-with-its-runs.md]
 layer: "sdk"
 refs:
@@ -34,3 +34,5 @@ A deletion with a `requestId` keeps its list of deleted sessions, so a retry ans
 - The sdk vitest suite passes.
 
 ## Resume
+
+Done. `AutomationDeletion` and `AutomationDeletionReceipt` are optional store methods; `memoryAutomations` keeps both maps and hands them to `persist` before each change. `scheduledAutomations` reads them beside the definitions, writes them when non-empty, and restores them at startup. The host keeps one promise per automation, joins a second request to a deletion in progress, refuses one without `deleteHistory`, answers a known `requestId` from its receipt, resumes pending deletions at startup, and drops a receipt on `vscode/acknowledgeAutomationDeletion`.

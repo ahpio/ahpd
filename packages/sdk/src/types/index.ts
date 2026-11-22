@@ -52,7 +52,9 @@ export type {
   PullRequestFeedbackComment, PullRequestJob, PullRequestJobLog, PullRequestJobStep, PullRequestMergeability, PullRequestReview,
   PullRequestReviewThread, PullRequests,
 } from './github.js';
-export type { Automation, AutomationEntry, AutomationRun, AutomationStore, RunEnding, StartSession } from './automations.js';
+export type {
+  Automation, AutomationDeletion, AutomationDeletionReceipt, AutomationEntry, AutomationRun, AutomationStore, RunEnding, StartSession,
+} from './automations.js';
 export type { Grant, IssuerVerify, Me, MintedToken, Named, Principal, Role, TokenRecord, UserFile, UserRecord, Users, Verb } from './users.js';
 export type { ComputerTime, Cost, ModelCall, ModelUse, Owner, Usage, UsageBase, UsageEntry, UsageGroup, UsageKey, UsageTotal } from './usage.js';
 export type {
