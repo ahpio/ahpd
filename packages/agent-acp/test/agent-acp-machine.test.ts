@@ -2,8 +2,8 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { afterEach, expect, it, vi } from 'vitest';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { machinePathOf } from '@ahpd/sdk';
 import type { Engine, AgentView, Bag, MachineNeed, OpenedTerminal, OpenTerminal, Session, SpawnOptions, Vault } from '@ahpd/sdk';
 import { loadPlugins } from '../../server/src/plugins.js';
@@ -30,6 +30,16 @@ import { readParts } from '../../computer/src/parts.js';
 const REPO = join(import.meta.dirname, '../../..');
 const SOURCE = './packages/agent-acp/src/index.ts';
 const COMPUTER = './packages/computer/src/index.ts';
+
+/*
+ * The computer plugin's source, imported once before the cases: its first
+ * import took most of a 20 s case on a Windows runner, which then timed out
+ * although the case's own work took 2.5 s there. The cases import the same
+ * module and so measure only their own work.
+ */
+beforeAll(async () => {
+  await import(pathToFileURL(join(REPO, COMPUTER)).href);
+}, 120_000);
 const DOCKER = fileURLToPath(new URL('../../computer/test/fixtures/docker.mjs', import.meta.url));
 
 /** Everything this file made, so each case leaves nothing behind. */
