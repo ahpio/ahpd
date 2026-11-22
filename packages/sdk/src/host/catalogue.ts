@@ -1842,7 +1842,19 @@ export function createCatalogue(ctx: HostContext): Catalogue {
    */
   const adoptExternalSession = (uri: string): void => {
     if (!externalSessions.delete(uri)) return;
-    kept.setExternal?.(idFor(uri), false);
+    const id = idFor(uri);
+    kept.setExternal?.(id, false);
+    /*
+     * The backend that listed it becomes the session's provider, and the name
+     * this host holds it under is kept, as a turn's send records both: a store
+     * keeps no `external: false`, so without them the next listing would find
+     * the session external again, under a provider-made name.
+     */
+    const agent = owners.get(uri);
+    if (agent !== undefined && kept.provider(id) === undefined) {
+      kept.setProvider(id, agent.provider);
+      if (kept.uri?.(id) === undefined) kept.setUri?.(id, uri);
+    }
     externalReconciliationModifiedAt.delete(uri);
     const exposed = exposedExternalSessions.delete(uri);
     if (sessions.has(uri)) {

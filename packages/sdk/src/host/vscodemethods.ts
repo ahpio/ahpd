@@ -10,6 +10,7 @@ import { DiskUsageCancelled, identityOf, measureDiskUsage } from '../repo/diskus
 import { hostLogPath } from '../sessions/debuglogs.js';
 import { localPath, uriOf } from '../resources/fileuri.js';
 import { URI } from '../vscode/uri.js';
+import { bag, ownerOfPrincipal, str } from '../utils/values.js';
 import { ROOT, spaceOf } from './channels.js';
 import { need, reason } from './common.js';
 import { ARCHIVE_COMMIT_MESSAGE, symlinkFolders } from './lifecycle.js';
@@ -25,6 +26,7 @@ import {
   userInteractionAttributes, userInteractionRecord,
 } from './timing.js';
 import type { LogFile } from '../sessions/debuglogs.js';
+import type { Bag } from '../types/common.js';
 import { DEV_CONTAINER_ENVIRONMENT_IMAGES, isDevContainerEnvironmentId, type ContainerConnect, type ContainerConnectResult, type ContainerEnvironmentConnect, type ContainerSink } from '../types/containers.js';
 import type { Owner } from '../types/usage.js';
 import type { ConnectionContext, DetachedWorktree, HostContext } from './context.js';
@@ -110,6 +112,24 @@ const legacySessionsOf = (params: Record<string, unknown>): string[] => {
 };
 
 /**
+ * The model a backend's restored turns last ran on, as a draft names one.
+ *
+ * A restored turn carries the model on its own message where the backend wrote
+ * one, and otherwise on its usage, which is where a transcript records the
+ * model that answered it. Read from the last turn that says, since a session
+ * whose last turn is a question has no model of its own.
+ */
+const modelOf = (turns: Bag[]): { id: string } | undefined => {
+  for (let at = turns.length - 1; at >= 0; at -= 1) {
+    const turn = bag(turns[at]);
+    const chosen = bag(bag(turn.message).model);
+    const id = str(chosen.id) ?? str(bag(turn.usage).model);
+    if (id !== undefined && id !== '') return { id };
+  }
+  return undefined;
+};
+
+/**
  * A dev container's folder as a path of the platform the host runs on. On
  * Windows a host URI's path, `/c:/work`, names the file it is the path of,
  * and every separator is a backslash, as VS Code's protocol reads one.
@@ -141,6 +161,7 @@ export interface VscodeMethods {
   'vscode/cleanupManagedWorktree': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/measureWorktreeDiskUsage': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/moveSession': (params: Record<string, unknown>) => Promise<unknown>;
+  'vscode/importSession': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/setChatWorkspace': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/deleteAutomation': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/acknowledgeAutomationDeletion': (params: Record<string, unknown>) => Promise<unknown>;
@@ -177,7 +198,7 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
   const { connection } = conn;
   const moveSession = createSessionMover(ctx);
   const {
-    agents, byChat, detached, dirOf, kept, leadOf, log, logs, options, ownerFor, owners,
+    agents, byChat, detached, dirOf, kept, leadOf, log, logs, options, ownerFor, owners, principals,
     sessionFor, sessions, setArtifacts,
   } = ctx;
 
@@ -725,6 +746,42 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
     return { connectionId: one.connectionId, name: one.name, ...result };
   };
 
+  /**
+   * Refuse an import of a session this connection may not own.
+   *
+   * Adopting makes a session this host's own and charges it to the person who
+   * imported it, so the caller is held to the check the gate holds a session's
+   * owner to: the owner, or a role that holds `session:*`. A session nobody
+   * owns yet is the one an import is for, so any caller may claim it. A host
+   * with no users directory, and the root connection, have nobody to name and
+   * are refused nothing.
+   */
+  const mayImport = (session: string): void => {
+    if (connection.principal === undefined || connection.root === true) return;
+    const owner = kept.owner(idOf(session));
+    if (owner === undefined || owner === ownerOfPrincipal(connection.principal)) return;
+    if (connection.principal.can('session:*')) return;
+    throw new RpcError(AhpErrorCodes.PermissionDenied, "Only the session's owner can import it.");
+  };
+
+  /**
+   * Give a chat's draft the model the backend restored, as VS Code's host
+   * offers an imported chat the selection its provider imported: the text and
+   * origin the person already had, and the model the turns last ran on.
+   * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/agentService.ts#L2664-L2716
+   */
+  const offerModel = (id: string, chat: string, model: { id: string }): void => {
+    const draft = {
+      text: '',
+      origin: { kind: 'user' },
+      ...bag(ctx.stateOf(chat)?.draft ?? kept.chatDraft?.(id, chat)),
+      model,
+    };
+    ctx.dispatch(chat, { type: 'chat/draftChanged', draft });
+    byChat.get(chat)?.chat.setDraft(draft);
+    kept.setChatDraft?.(id, chat, draft);
+  };
+
   return {
     /*
      * A tree of the window's own for a creating session whose tree is
@@ -784,6 +841,52 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
       return {};
     },
     'vscode/moveSession': async (params) => await moveSession(connection, conn.tokensFor, params),
+    /*
+     * An external session made this host's own without a turn, as VS Code's
+     * host imports one a window opens to continue: restored, its turns read
+     * again where the host had already loaded it, its draft given the model
+     * the backend restored, and the session adopted. `takeOver` is accepted
+     * because a window sends it; no backend here keeps an in-use record to
+     * take over.
+     * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/protocolServerHandler.ts#L3987-L4001
+     * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/agentService.ts#L2599-L2621
+     */
+    'vscode/importSession': async (params) => {
+      const session = stringParam(params, 'session', 'a URI string');
+      if (params.takeOver !== undefined && typeof params.takeOver !== 'boolean')
+        throw new RpcError(INVALID_PARAMS, 'takeOver must be a boolean');
+      if (!isSessionUri(session)) throw new RpcError(INVALID_PARAMS, 'session must be an Agent Session URI');
+      const id = idOf(session);
+      // A session this host runs is known even where its own record has no
+      // transcript to read, as one the catalogue does not list yet.
+      const live = sessions.has(session) || sessions.has(ctx.nameOf(id));
+      const wasLoaded = ctx.loaded(id);
+      const restored = await ctx.restoreSession(id);
+      if (restored === undefined && !live)
+        throw new RpcError(AhpErrorCodes.SessionNotFound, `Session not found: ${session}`);
+      // The name the session is known by, which a row this restore registered
+      // has just settled.
+      const name = ctx.nameOf(id);
+      // Whether the session is the caller's is asked before its turns are read
+      // again or it is adopted. One nobody knows is already refused above.
+      mayImport(name);
+      const turns = (wasLoaded ? await ctx.reloadSession(id) : undefined) ?? restored ?? [];
+      const model = modelOf(turns);
+      const chat = ctx.defaultChatFor(name);
+      if (model !== undefined) offerModel(id, chat, model);
+      /*
+       * The person whose import adopted it owns it from then on, written
+       * before the adoption is announced so the announcement carries the
+       * owner, and never over an owner the session already has.
+       */
+      const who = ownerFor(connection);
+      if (ctx.isExternal(name) && who !== undefined && kept.owner(id) === undefined) {
+        kept.setOwner(id, who);
+        if (connection.principal !== undefined) principals.set(who, connection.principal);
+      }
+      ctx.adoptExternalSession(name);
+      return { session: name };
+    },
     /*
      * A workspace given to a chat that has not started: a folder, a new
      * worktree of one, or a scratch folder this host makes. The move is the

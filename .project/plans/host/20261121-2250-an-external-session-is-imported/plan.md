@@ -63,7 +63,7 @@ vscode/importSession {session, takeOver?} -> restoreSession -> the chat's turns 
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - An external session is adopted on request](task-01-adopted-on-request.md) | todo | - |
+| [01 - An external session is adopted on request](task-01-adopted-on-request.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -71,14 +71,14 @@ vscode/importSession {session, takeOver?} -> restoreSession -> the chat's turns 
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-adopted-on-request.md](task-01-adopted-on-request.md).
+- **Done so far:** task 01: `vscode/importSession` restores the session, reads a loaded session's turns again, offers the restored model to the draft, adopts the session, and refuses an unknown one. The method is gated by `session:create` and advertised in `_meta`. Typecheck and boundary pass; the sdk suite has not been run here.
+- **Next action:** run `packages/sdk/test/session-import.test.ts` and the sdk vitest suite, then fix what fails.
 - **Open questions:** none.
 - **Watch out for:** a session already adopted answers its URI again; it is not refused.
 
 ## Final verification checklist
 
-- [ ] A test: an external session is adopted with no turn, and no longer shows as external.
-- [ ] A test: a loaded session whose backend has a new turn shows that turn after the import.
-- [ ] A test: an unknown session is refused.
+- [x] A test: an external session is adopted with no turn, and no longer shows as external.
+- [x] A test: a loaded session whose backend has a new turn shows that turn after the import.
+- [x] A test: an unknown session is refused.
 - [ ] The gates pass: typecheck, boundary, and the sdk suite.

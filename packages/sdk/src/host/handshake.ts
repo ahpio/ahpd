@@ -540,6 +540,9 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
           // A single-chat session moves under another, whether or not moving chats is on now.
           // https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/common/agentHostExtensionProtocol.ts#L128-L132
           'vscode.sessionMove': true,
+          // A session a backend lists may be adopted without sending it a turn.
+          // https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/common/meta/vscode/agentHostSessionImportMeta.ts
+          'vscode.importSession': true,
           // A new peer chat may be asked for a folder, a worktree or a scratch folder of its own.
           // https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/common/meta/vscode/agentHostCreateChatWorkspaceMeta.ts#L11-L12
           'vscode.createChatWorkspace': true,
