@@ -88,8 +88,8 @@ vscode/acknowledgeAutomationDeletion {requestId} -> the receipt is dropped
 
 ## Final verification checklist
 
-- [ ] A test: `deleteHistory: true` deletes the run sessions and answers their URIs.
-- [ ] A test: the plain remove action and `deleteHistory: false` keep them.
-- [ ] A test: a repeat with the same `requestId` answers the same list, and an acknowledgement drops it.
-- [ ] A test: an active run, a bad URI and `legacySessions` without `deleteHistory` are refused.
-- [ ] The gates pass: typecheck, boundary, and the sdk suite.
+- [x] A test: `deleteHistory: true` deletes the run sessions and answers their URIs.
+- [x] A test: the plain remove action and `deleteHistory: false` keep them.
+- [x] A test: a repeat with the same `requestId` answers the same list, and an acknowledgement drops it.
+- [x] A test: an active run, a bad URI and `legacySessions` without `deleteHistory` are refused.
+- [x] The gates pass: typecheck, boundary, and the sdk suite.
