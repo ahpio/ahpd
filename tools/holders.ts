@@ -69,3 +69,28 @@ export const endHolders = async (folders: readonly string[], ms = 5_000): Promis
     await new Promise((done) => { setTimeout(done, 50); });
   }
 };
+
+/**
+ * Remove `folder` and all it holds, trying again while Windows still finishes
+ * an earlier delete.
+ *
+ * A removal that still fails names what is left in the folder and the holders
+ * still seen, so a failure on a runner says which file and which process held
+ * it.
+ */
+export const removeFolder = (folder: string): void => {
+  try {
+    rmSync(folder, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  }
+  catch (error) {
+    let left: string[] = [];
+    try { left = readdirSync(folder, { recursive: true }).map(String); }
+    catch { /* the folder is gone after all */ }
+    const shown = left.length > 20 ? [...left.slice(0, 20), `and ${String(left.length - 20)} more`] : left;
+    const seen = holders([folder]);
+    throw new Error(
+      `${error instanceof Error ? error.message : String(error)}. Still in it: ${shown.join(', ') || 'nothing'}. Holders: ${seen.join(', ') || 'none'}.`,
+      { cause: error },
+    );
+  }
+};
