@@ -10,7 +10,7 @@ import { gitChanges } from '../src/sessions/changes.js';
 import { memorySessions } from '../src/sessions/sessions.js';
 import { gitBranches } from '../src/repo/git.js';
 import { gitWorktrees } from '../src/repo/worktrees.js';
-import { createHost } from '../src/host.js';
+import { createHost as makeHost } from '../src/host.js';
 import { fileResources, uriOf } from '../src/resources/resources.js';
 import { shellTerminals } from '../src/machines/terminals.js';
 import { echo } from '../../../examples/echo/agent.js';
@@ -65,7 +65,19 @@ const mintedChat = async (client: { handle(request: unknown): Promise<unknown> }
   ((await client.handle({ method: 'subscribe', params: { channel: URI } })) as { snapshot: { state: { defaultChat: string } } }).snapshot.state.defaultChat;
 
 let made: string[] = [];
+/** The hosts a case made, closed before its folders are removed. */
+let hosts: ReturnType<typeof makeHost>[] = [];
+/** A host this file's teardown closes. */
+const createHost = (...args: Parameters<typeof makeHost>): ReturnType<typeof makeHost> => {
+  const host = makeHost(...args);
+  hosts.push(host);
+  return host;
+};
 afterEach(async () => {
+  // Each host first: one left open still watches the case's repository, and
+  // Windows refuses to remove a folder that is watched (EBUSY).
+  for (const host of hosts) await host.close();
+  hosts = [];
   // Awaited rather than sync: on Windows a folder stays held until what the
   // test opened there is let go, which happens on the event loop a sync
   // retry blocks.
