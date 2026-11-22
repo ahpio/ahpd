@@ -15,7 +15,7 @@ import type { ConfigPropertySchema } from '@microsoft/agent-host-protocol';
  * contributes the literal it resolves to. The two keys whose default comes
  * from `src/vs/platform/chat/common/chatSettings.ts` name that file as a URL.
  *
- * This host acts on eleven of them, each one setting for every connection:
+ * This host acts on twelve of them, each one setting for every connection:
  * `globalAutoApproveEnabled`, `autoApprovePolicyRestricted` and
  * `permissions`, which a tool question is decided by,
  * `terminalAutoApproveEnabled`, `terminalAutoApproveRules` and
@@ -26,7 +26,9 @@ import type { ConfigPropertySchema } from '@microsoft/agent-host-protocol';
  * made by, `enableCustomTerminalTool`, which decides whether a session is
  * offered the host's own shell tools, and `artifactTools`, which decides
  * whether it is offered the artifact tools, and `shellAuthentication`, which
- * decides whether a process is given the helper a prompt comes through. The
+ * decides whether a process is given the helper a prompt comes through, and
+ * `diagnosticTiming`, which decides whether a window's timing records are
+ * taken and exported as spans. The
  * rest are declared so that a client
  * can draw them and so that a push of one is kept and read back rather than
  * refused; what is acted on is in `docs/sdk/AHP.md`.
@@ -49,7 +51,8 @@ import type { ConfigPropertySchema } from '@microsoft/agent-host-protocol';
  * and `artifactTools`, which `host/tooling.ts` asks when it lists a session's
  * tools; and `shellAuthentication`, which `host/shellauth.ts` follows: on, a
  * process gets the helper's variables and the chat's token, and off, nothing
- * is listening.
+ * is listening; and `diagnosticTiming`, which `host/vscodemethods.ts` asks
+ * before it takes a window's timing record.
  *
  * `workspaceTrust` is not here: it is declared beside `defaultShell` in
  * `host/root.ts`.
@@ -279,6 +282,17 @@ export const vscodeRootProperties: Record<string, ConfigPropertySchema> = {
     type: 'boolean',
     title: 'Shell Authentication',
     description: 'Whether commands an agent runs may ask the window for a password or a passphrase.',
+    default: false,
+  },
+  /*
+   * The host's own key: while it is on, the two timing methods take a window's
+   * records and export them as diagnostic spans, and `initialize` advertises
+   * the `_meta` capabilities that offer those methods.
+   */
+  diagnosticTiming: {
+    type: 'boolean',
+    title: 'Diagnostic Timing',
+    description: 'Whether the host accepts timing records from a connected window and exports each as a diagnostic span.',
     default: false,
   },
   // `platformRootSchema`, `agentHostSchema.ts:943`.
