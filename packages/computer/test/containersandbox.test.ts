@@ -1,3 +1,4 @@
+import { posix } from '../../../tools/posix.ts';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
@@ -48,7 +49,7 @@ it('appends the sandbox arguments to a definition, and writes them owner-only', 
   expect(override.environment).toEqual({});
   const written = JSON.parse(readFileSync(join(override.directory, 'devcontainer.json'), 'utf8')) as { runArgs: string[] };
   expect(written.runArgs).toEqual(['--cap-add=SYS_PTRACE', ...sandboxRunArgs]);
-  expect(statSync(join(override.directory, 'devcontainer.json')).mode & 0o777).toBe(0o600);
+  if (posix) expect(statSync(join(override.directory, 'devcontainer.json')).mode & 0o777).toBe(0o600);
 
   await override.remove();
   expect(existsSync(override.directory)).toBe(false);
@@ -73,7 +74,7 @@ it('writes a Compose service its security options and the tun device', async () 
       },
     },
   });
-  expect(statSync(composePath).mode & 0o777).toBe(0o600);
+  if (posix) expect(statSync(composePath).mode & 0o777).toBe(0o600);
   await override.remove();
 });
 
@@ -158,7 +159,9 @@ const launcher = () => {
   return port;
 };
 
-it('runs up with the override, reports the container and removes the override after it', async () => {
+// POSIX-only: the scripted docker stands in for a Linux container by running
+// the host inside with `/bin/sh` on this host.
+it.skipIf(!posix)('runs up with the override, reports the container and removes the override after it', async () => {
   wrote();
   const folder = workspace();
   const where = sink();
@@ -179,7 +182,9 @@ it('runs up with the override, reports the container and removes the override af
   expect(existsSync(dirname(overridePath))).toBe(false);
 });
 
-it('reports a container asked for without the option as unsupported', async () => {
+// POSIX-only: the scripted docker stands in for a Linux container by running
+// the host inside with `/bin/sh` on this host.
+it.skipIf(!posix)('reports a container asked for without the option as unsupported', async () => {
   wrote();
   const folder = workspace();
   const where = sink();
@@ -191,7 +196,9 @@ it('reports a container asked for without the option as unsupported', async () =
   expect(up).not.toContain('--override-config');
 });
 
-it('puts the sandbox options in an environment configuration and reports them', async () => {
+// POSIX-only: the scripted docker stands in for a Linux container by running
+// the host inside with `/bin/sh` on this host.
+it.skipIf(!posix)('puts the sandbox options in an environment configuration and reports them', async () => {
   wrote();
   const where = sink();
   const port = launcher();
