@@ -7,7 +7,7 @@ refs:
   - "[code://packages/computer/src/sandbox.ts#L208-L213](../../../../packages/computer/src/sandbox.ts#L208-L213) - `denyWrite` always written"
   - "[code://pnpm-workspace.yaml](../../../../pnpm-workspace.yaml) - the runtime's zod raised to 4.6.6 or later"
   - "[code://packages/computer/test/sandbox-runtime-fork.test.ts](../../../../packages/computer/test/sandbox-runtime-fork.test.ts) - the gate, run for real on Linux"
-  - "[code://.github/workflows/ci.yml](../../../../.github/workflows/ci.yml) - bubblewrap, socat and ripgrep on the Linux shards"
+  - "[code://.github/workflows/ci.yml](../../../../.github/workflows/ci.yml) - bubblewrap, socat and ripgrep on the processes shards"
 ---
 
 The computer plugin runs on `@ahpio/sandbox-runtime@0.0.83-rc.0`, ahpio's fork of Anthropic's runtime at `v0.0.83`, in place of VS Code's `@vscode/sandbox-runtime@0.0.1`. A chat that allows the whole network now reaches every host, and keeps its filesystem rules. The runtime's zod is 4.6.6 or later, so `pnpm audit` reports no advisory through it.
@@ -20,7 +20,7 @@ The computer plugin runs on `@ahpio/sandbox-runtime@0.0.83-rc.0`, ahpio's fork o
 - [`code://packages/computer/src/sandbox.ts`](../../../../packages/computer/src/sandbox.ts) - the CLI and `SandboxManager` under the new name. The settings always carry `filesystem.denyWrite`, since 0.0.83 refuses a file without it.
 - [`code://pnpm-workspace.yaml`](../../../../pnpm-workspace.yaml) - an override that resolves the runtime's zod to `^4.6.6`. pnpm took zod 3.25.76 from the fork's range, and the advisory covers it.
 - [`code://packages/agent-claude/package.json`](../../../../packages/agent-claude/package.json) - zod `^4.6.6`, so the whole tree loads one zod, 4.6.7. With the runtime's zod at 4.6.7 and agent-claude's at 4.5.4, two copies loaded and the Claude session CLI did not start.
-- [`code://.github/workflows/ci.yml`](../../../../.github/workflows/ci.yml) - the Linux shards install bubblewrap, socat and ripgrep, and allow user namespaces.
+- [`code://.github/workflows/ci.yml`](../../../../.github/workflows/ci.yml) - the `processes` shards, which run the computer tests, install bubblewrap, socat and ripgrep, and allow user namespaces.
 
 ## Verified
 
