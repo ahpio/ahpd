@@ -109,6 +109,10 @@ export const NEEDS: Record<string, Grant> = {
   listAutomationTriggerDefinitions: 'automation:list',
   fetchAutomationRuns: 'automation:list',
   runAutomation: 'automation:run',
+  // A deletion is the catalogue's remove action, and the acknowledgement only
+  // drops the receipt it left.
+  'vscode/deleteAutomation': 'automation:remove',
+  'vscode/acknowledgeAutomationDeletion': 'automation:remove',
 
   // container
   //

@@ -238,6 +238,36 @@ export interface RunEnding {
 }
 
 /**
+ * A deletion still running: the automation it takes away, the sessions it
+ * means to delete, and the requests waiting for its answer.
+ */
+export interface AutomationDeletion {
+  /** The automation the deletion removed. */
+  automation: string;
+  /** The sessions it has yet to delete. */
+  sessions: string[];
+  /** The `requestId` of every request waiting for its answer. */
+  requestIds: string[];
+  /**
+   * Whose deletion it is: the owner of the principal that asked.
+   *
+   * Kept because a restart finishes the deletion with no client behind it, and
+   * each session it deletes is still checked against the person who asked.
+   */
+  requester?: Owner;
+}
+
+/** What a deletion answered, by the request id that asked for it. */
+export interface AutomationDeletionReceipt {
+  /** The request that asked for the deletion. */
+  requestId: string;
+  /** The automation it removed. */
+  automation: string;
+  /** The sessions it deleted. */
+  sessions: string[];
+}
+
+/**
  * Where a host's automations come from.
  *
  * A port, like the filesystem and the shell, and for a reason of its own: an
@@ -311,6 +341,36 @@ export interface AutomationStore {
   update(resource: string, changes: Bag, customizations?: CapturedPlugin[]): AutomationEntry | undefined;
   /** Forget one, and everything it ever did. */
   remove(resource: string): boolean;
+
+  /**
+   * The deletion still running for one automation, while it runs.
+   *
+   * Optional so a store that keeps no receipts still serves the deletion, one
+   * request at a time.
+   */
+  deletionOf?(automation: string): AutomationDeletion | undefined;
+  /** Every deletion still running. */
+  deletions?(): AutomationDeletion[];
+  /**
+   * Record that a deletion started, or add a request to the one running.
+   *
+   * A second request for the same automation joins the sessions and the request
+   * ids already there, so its answer comes when the first one's does. Answers
+   * what the store now holds. `requester` is whose deletion it is, kept from the
+   * request that started it: a second request joins it and does not move it.
+   */
+  beginDeletion?(automation: string, sessions: string[], requestId?: string, requester?: Owner): AutomationDeletion;
+  /**
+   * Record that a deletion ended, with the sessions actually deleted.
+   *
+   * Every request id that joined it is answered with this list until it is
+   * acknowledged.
+   */
+  finishDeletion?(automation: string, sessions: string[]): void;
+  /** What a deletion answered for one request id. */
+  receiptOf?(requestId: string): AutomationDeletionReceipt | undefined;
+  /** Drop a receipt once its client has its answer. Answers whether it was there. */
+  acknowledgeDeletion?(requestId: string): boolean;
 
   /**
    * Start a run.

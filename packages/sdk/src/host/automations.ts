@@ -9,18 +9,19 @@ import { presetById } from '../automations/triggerpresets.js';
 import { localPath } from '../resources/fileuri.js';
 import { createRuleEngine } from '../automations/triggers.js';
 import { wakeMessage } from '../automations/wakemessage.js';
-import { bag } from '../utils/values.js';
+import { bag, ownerOfPrincipal } from '../utils/values.js';
 import { AUTOMATIONS, isAutomationResource } from './channels.js';
 import { CLOSING, need, noProvider } from './common.js';
 import { refusalReason } from './gate.js';
 import type { Bag } from '../types/common.js';
-import type { AutomationEntry, AutomationRun, AutomationRunState, RunEnding, StartSession } from '../types/automations.js';
+import type { AutomationEntry, AutomationRun, AutomationRunState, AutomationStore, RunEnding, StartSession } from '../types/automations.js';
 import type { ConnectorOwner } from '../types/connectors.js';
 import type { PluginStarts, ChatRequest, TriggerTypeDefinition } from '../types/plugin.js';
 import type { RuleMatch } from '../automations/triggers.js';
 import type { WakeFacts } from '../automations/wakemessage.js';
 import type { AutomationWake, SessionEventKind, SessionRule } from '../types/triggers.js';
 import type { Owner } from '../types/usage.js';
+import type { Principal } from '../types/users.js';
 import type { HostContext } from './context.js';
 import type { MessageFrom } from '../types/session.js';
 import { mayTrust } from './trust.js';
@@ -234,6 +235,23 @@ export interface Automations {
   wirePluginStarts(): void;
   /** The clock, wired to the only thing that can act on it. */
   due(event: { automation: string; origin: Bag }): void;
+  /**
+   * Delete an automation, and the sessions its runs made when `deleteHistory`.
+   *
+   * `legacySessions` names sessions a client remembers from before their
+   * automation origin was kept, deleted with the rest. `requestId` names the
+   * request, so a retry is answered from the receipt the deletion left.
+   * `acting` is the person asking, and every session the deletion takes is
+   * checked against them before any of it is deleted. Answered with the URIs of
+   * the sessions actually deleted.
+   */
+  deleteAutomation(
+    automation: string, deleteHistory: boolean, legacySessions: string[], requestId?: string, acting?: Principal | Owner,
+  ): Promise<string[]>;
+  /** Finish the deletions a store's file held when this host started. */
+  resumeAutomationDeletions(): Promise<void>;
+  /** Drop a receipt a client has its answer for. Answers whether it was there. */
+  acknowledgeAutomationDeletion(requestId: string): boolean;
 }
 
 export function createAutomations(ctx: HostContext): Automations {
@@ -252,6 +270,9 @@ export function createAutomations(ctx: HostContext): Automations {
 
   /** The run each manual request made, by its `requestId`, for the daemon's run. */
   const manualRunRequests = new Map<string, { automation: string; run: string }>();
+
+  /** The deletion of each automation that is still running, by automation. */
+  const deleting = new Map<string, Promise<string[]>>();
 
   /**
    * The one wake each automation is holding behind a run that is still going.
@@ -1651,9 +1672,164 @@ export function createAutomations(ctx: HostContext): Automations {
     request(automation, origin, undefined, `${automation} was due`, false);
   };
 
+  /**
+   * The sessions whose kept automation origin names this automation.
+   *
+   * Read off the session store rather than off the automation's run history,
+   * which a restart does not keep.
+   */
+  const runSessionsOf = (automation: string): string[] => kept.sessions()
+    .filter((id) => kept.automationOrigin?.(id)?.automation === automation)
+    .map((id) => ctx.nameOf(id));
+
+  /** The run of this automation that has not ended, where it has one. */
+  const goingRunOf = (store: AutomationStore, entry: AutomationEntry): string | undefined => entry.runs
+    .map((one) => store.runOf(String(bag(one).resource)))
+    .find((one) => one !== undefined && !OVER.has(String(one.lifecycle.status)))?.resource;
+
+  /**
+   * The owner a deletion is kept under: the person who asked, where the store
+   * keeps an owner, and nothing for a host with nobody to name.
+   */
+  const requesterOf = (acting: Principal | Owner | undefined): Owner | undefined =>
+    typeof acting === 'string' ? acting : acting === undefined ? undefined : ownerOfPrincipal(acting);
+
+  /**
+   * Delete one session of a deletion, answering whether it went.
+   *
+   * A deletion a restart resumed names sessions this daemon only lists. A
+   * listing registers one as the backend's, which is what lets it be removed.
+   * `acting` is the person the deletion was asked by, and the removal is
+   * checked against them again.
+   */
+  const deleteSession = async (automation: string, uri: string, acting?: Principal | Owner): Promise<boolean> => {
+    try {
+      if (ctx.sessions.get(uri) === undefined && ctx.owners.get(uri) === undefined) {
+        await ctx.restoreSession(idOf(uri));
+      }
+      await ctx.removeSession(uri, acting);
+      return true;
+    } catch (error) {
+      log.warn(`Deleting ${automation} could not delete ${uri}: ${error instanceof Error ? error.message : String(error)}`);
+      return false;
+    }
+  };
+
+  /**
+   * Delete the sessions a deletion still names, then keep what it answered.
+   *
+   * The sessions are read again after each one, so a request that joined while
+   * this ran has its own sessions deleted too.
+   */
+  const runDeletion = async (automation: string, acting?: Principal | Owner): Promise<string[]> => {
+    const store = options.automations;
+    const deleted: string[] = [];
+    const seen = new Set<string>();
+    for (;;) {
+      const pending = store?.deletionOf?.(automation);
+      const next = pending?.sessions.find((uri) => !seen.has(uri));
+      if (next === undefined) break;
+      seen.add(next);
+      if (await deleteSession(automation, next, acting)) deleted.push(next);
+    }
+    store?.finishDeletion?.(automation, deleted);
+    return deleted;
+  };
+
+  /** The deletion running for one automation, started here if it is not yet. */
+  const beginDeletion = (automation: string, acting?: Principal | Owner): Promise<string[]> => {
+    const running = deleting.get(automation);
+    if (running !== undefined) return running;
+    const started = runDeletion(automation, acting).finally(() => {
+      if (deleting.get(automation) === started) deleting.delete(automation);
+    });
+    deleting.set(automation, started);
+    return started;
+  };
+
+  /**
+   * Delete one automation, and the sessions its runs made when asked.
+   *
+   * The checks are the `automation/removed` action's, so this door cannot
+   * delete what the catalogue's cannot. A chat automation continues one
+   * conversation, so it deletes neither its run sessions nor `legacySessions`.
+   *
+   * A `requestId` makes the answer repeatable: a finished deletion keeps what
+   * it deleted until the client acknowledges it, and one still running takes
+   * the request on and answers it when the deletion ends.
+   */
+  const deleteAutomation = async (
+    automation: string, deleteHistory: boolean, legacySessions: string[], requestId?: string, acting?: Principal | Owner,
+  ): Promise<string[]> => {
+    const store = need(options.automations, 'vscode/deleteAutomation');
+
+    const receipt = requestId === undefined ? undefined : store.receiptOf?.(requestId);
+    if (receipt !== undefined && receipt.automation === automation) return receipt.sessions;
+
+    if (deleting.has(automation) || store.deletionOf?.(automation) !== undefined) {
+      if (!deleteHistory)
+        throw new RpcError(INTERNAL_ERROR, `Automation deletion is already in progress: ${automation}`);
+      store.beginDeletion?.(automation, [], requestId, requesterOf(acting));
+      return await beginDeletion(automation, store.deletionOf?.(automation)?.requester ?? acting);
+    }
+
+    const found = store.get(automation);
+    if (found === undefined) return [];
+    if (!found.operations.includes('remove'))
+      throw new RpcError(INTERNAL_ERROR, `Automation operation 'remove' is not available: ${automation}`);
+    if (goingRunOf(store, found) !== undefined)
+      throw new RpcError(INTERNAL_ERROR, 'Automation has an active or recovering run and cannot be removed');
+    const chat = targetOf(found.definition).kind === 'chat';
+    const sessions = chat ? [] : [...new Set([...runSessionsOf(automation), ...legacySessions])];
+    /*
+     * Every session is checked before the automation goes, so a request that
+     * may take the definition but not one of the sessions is refused whole
+     * rather than leaving the automation removed and half its history gone.
+     */
+    if (deleteHistory) for (const uri of sessions) ctx.mayDispose(acting, uri);
+    store.remove(automation);
+    // The copies its template named, which nothing names any more.
+    const plugins = options.clientPlugins;
+    if (plugins !== undefined) {
+      plugins.collectGarbage((options.automations?.list() ?? [])
+        .flatMap((one) => (one.customizations ?? []).map((copy) => localPath(copy.uri))));
+    }
+    if (!deleteHistory) return [];
+    if (store.beginDeletion === undefined || store.deletionOf === undefined) {
+      const deleted: string[] = [];
+      for (const uri of sessions) if (await deleteSession(automation, uri, acting)) deleted.push(uri);
+      return deleted;
+    }
+    store.beginDeletion(automation, sessions, requestId, requesterOf(acting));
+    return await beginDeletion(automation, acting);
+  };
+
+  /**
+   * Finish the deletions a store's file held when this host started.
+   *
+   * The deleted definitions are already gone; what is left is the sessions,
+   * which a restart only lists. One listing is done first so every session the
+   * file names has a backend that answers for it.
+   */
+  const resumeAutomationDeletions = async (): Promise<void> => {
+    const pending = options.automations?.deletions?.() ?? [];
+    if (pending.length === 0) return;
+    await ctx.refresh().catch(() => []);
+    for (const one of pending) {
+      if (deleting.has(one.automation)) continue;
+      await beginDeletion(one.automation, one.requester).catch((error: unknown) => {
+        log.warn(`Finishing the deletion of ${one.automation} failed: ${error instanceof Error ? error.message : String(error)}`);
+      });
+    }
+  };
+
+  /** Drop a receipt a client has its answer for. */
+  const acknowledgeAutomationDeletion = (requestId: string): boolean =>
+    options.automations?.acknowledgeDeletion?.(requestId) ?? false;
+
   return {
     moveChatAutomations, manualRunRequests, settleRun, cancelRun, gone, stop, changed, beginAutomation, startForAutomation, startForPlugin, startForPluginChat, due,
-    wireTriggerTypes, wirePluginStarts,
+    deleteAutomation, resumeAutomationDeletions, acknowledgeAutomationDeletion, wireTriggerTypes, wirePluginStarts,
   };
 }
 

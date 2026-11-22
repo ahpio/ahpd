@@ -9,7 +9,9 @@ import type { Acting } from '../agents/usable.js';
 import { durationMs } from './triggers.js';
 import { WATCH_PRESETS } from './triggerpresets.js';
 import type { AgentOwner } from '../types/agents.js';
-import type { Automation, AutomationEntry, AutomationRun, AutomationStore, StartSession } from '../types/automations.js';
+import type {
+  Automation, AutomationDeletion, AutomationDeletionReceipt, AutomationEntry, AutomationRun, AutomationStore, StartSession,
+} from '../types/automations.js';
 import type { Bag } from '../types/common.js';
 import { connectorRefusal } from '../connectors/fields.js';
 import type { ConnectorRef } from '../types/connectors.js';
@@ -85,14 +87,29 @@ export interface AutomationsOptions {
    * Write a change down before the store holds it and says it, as VS Code's
    * automation service persists a mutation before it publishes it, its runs
    * beside its catalogue: a create, an update or a met condition hands the
-   * entry it would hold, a removal the resource it takes away, and a run that
+   * entry it would hold, a removal the resource it takes away, a run that
    * begins or moves every run its automation would keep, newest first, as
-   * `runsOf` and `runs`. A throw fails the change and leaves the store as it
-   * was, so nothing is announced that was not written.
+   * `runsOf` and `runs`, and a deletion that starts, ends or is acknowledged
+   * the deletions still running and every receipt, as `deletions` and
+   * `receipts`. A throw fails the change and leaves the store as it was, so
+   * nothing is announced that was not written.
    * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostAutomationService.ts#L346-L350
    * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostAutomationService.ts#L779-L803
    */
-  persist?: (change: { automation: AutomationEntry } | { removed: string } | { runsOf: string; runs: AutomationRun[] }) => void;
+  persist?: (change:
+    | { automation: AutomationEntry }
+    | { removed: string }
+    | { runsOf: string; runs: AutomationRun[] }
+    | { deletions: AutomationDeletion[]; receipts: AutomationDeletionReceipt[] }) => void;
+  /**
+   * The deletions and their receipts a store reading its own file restores.
+   *
+   * A deletion still there is finished when the host starts, and a receipt is
+   * answered to the retry that asks for it. Absent on a store that keeps
+   * neither.
+   */
+  deletions?: AutomationDeletion[];
+  receipts?: AutomationDeletionReceipt[];
 }
 
 /** How many runs a summary list carries before it needs a cursor. */
@@ -549,6 +566,12 @@ export function memoryAutomations(options: AutomationsOptions = {}): AutomationS
   const loaded = new Map<string, number>();
   /** Every run by its own URI, for the channel a client watches it on. */
   const byRun = new Map<string, AutomationRun>();
+  /** Deletions still running, by the automation each removes. */
+  const deletions = new Map<string, AutomationDeletion>(
+    (options.deletions ?? []).map((one) => [one.automation, one]));
+  /** What a deletion answered, by request id, until its client has it. */
+  const receipts = new Map<string, AutomationDeletionReceipt>(
+    (options.receipts ?? []).map((one) => [one.requestId, one]));
   const listeners: ((event: { automation?: string; run?: string; removed?: string }) => void)[] = [];
   const said = (event: { automation?: string; run?: string; removed?: string }): void => {
     for (const listener of listeners) listener(event);
@@ -608,6 +631,14 @@ export function memoryAutomations(options: AutomationsOptions = {}): AutomationS
       ? runs.map((one) => (one.resource === moved.resource ? moved : one))
       : [moved, ...runs];
     options.persist?.({ runsOf: resource, runs: windowed(next) });
+  };
+
+  /** Hand the persist hook the deletions and receipts this store would hold. */
+  const persistDeletions = (
+    nextDeletions: Map<string, AutomationDeletion>,
+    nextReceipts: Map<string, AutomationDeletionReceipt>,
+  ): void => {
+    options.persist?.({ deletions: [...nextDeletions.values()], receipts: [...nextReceipts.values()] });
   };
 
   /** Rebuild the entry a client reads, so `runs` and `operations` are never stale. */
@@ -805,6 +836,47 @@ export function memoryAutomations(options: AutomationsOptions = {}): AutomationS
       history.delete(resource);
       loaded.delete(resource);
       said({ removed: resource });
+      return true;
+    },
+
+    deletionOf: (automation) => deletions.get(automation),
+    deletions: () => [...deletions.values()],
+    beginDeletion: (automation, sessions, requestId, requester) => {
+      const before = deletions.get(automation);
+      const keptRequester = before?.requester ?? requester;
+      const next: AutomationDeletion = {
+        automation,
+        sessions: [...new Set([...(before?.sessions ?? []), ...sessions])],
+        requestIds: [...new Set([...(before?.requestIds ?? []), ...(requestId === undefined ? [] : [requestId])])],
+        ...(keptRequester === undefined ? {} : { requester: keptRequester }),
+      };
+      const nextDeletions = new Map(deletions).set(automation, next);
+      persistDeletions(nextDeletions, receipts);
+      deletions.set(automation, next);
+      return next;
+    },
+    finishDeletion: (automation, sessions) => {
+      const before = deletions.get(automation);
+      if (before === undefined) return;
+      const nextDeletions = new Map(deletions);
+      nextDeletions.delete(automation);
+      const nextReceipts = new Map(receipts);
+      for (const requestId of before.requestIds) {
+        nextReceipts.set(requestId, { requestId, automation, sessions });
+      }
+      persistDeletions(nextDeletions, nextReceipts);
+      deletions.delete(automation);
+      for (const requestId of before.requestIds) {
+        receipts.set(requestId, { requestId, automation, sessions });
+      }
+    },
+    receiptOf: (requestId) => receipts.get(requestId),
+    acknowledgeDeletion: (requestId) => {
+      if (!receipts.has(requestId)) return false;
+      const nextReceipts = new Map(receipts);
+      nextReceipts.delete(requestId);
+      persistDeletions(deletions, nextReceipts);
+      receipts.delete(requestId);
       return true;
     },
 

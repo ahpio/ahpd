@@ -26,6 +26,8 @@ import {
 } from '@ahpd/sdk';
 import type {
   Automation,
+  AutomationDeletion,
+  AutomationDeletionReceipt,
   AutomationEntry,
   AutomationStore,
   AutomationsOptions,
@@ -122,6 +124,16 @@ interface RunState {
     /** The occurrence this was waiting for when it was written. What catch-up reads. */
     nextRunAt?: string;
   }[];
+  /**
+   * The deletions still running when this was written.
+   *
+   * Written beside the definitions and not in them, because the automation is
+   * already gone from them: what is left is the work of deleting its sessions,
+   * which a restart finishes.
+   */
+  deletions?: AutomationDeletion[];
+  /** What each ended deletion answered, by request id, until a client acknowledges it. */
+  deletionReceipts?: AutomationDeletionReceipt[];
 }
 
 /** One row of the state file, as the store reads it back. */
@@ -344,15 +356,6 @@ const textOf = (held: Held): string => automationFile(held.definition, held);
  * wrote down, which is the definition and when it next fires.
  */
 export function scheduledAutomations(options: ScheduledOptions): ScheduledStore {
-  // The plugin types only: a reference is checked in `create`/`update` below,
-  // where a client's save is told apart from a file this store restored.
-  const inner = memoryAutomations(options.store?.pluginTypes === undefined
-    ? {}
-    : { pluginTypes: options.store.pluginTypes });
-  /** The types a reference may be marked on, read at each client save. */
-  const types = (): ReturnType<AutomationStore['triggers']> => [
-    ...inner.triggers({}), ...(options.store?.pluginTypes?.() ?? []),
-  ];
   const dir = options.dir;
   const state = options.state;
   const now = options.now ?? ((): Date => new Date());
@@ -364,6 +367,82 @@ export function scheduledAutomations(options: ScheduledOptions): ScheduledStore 
     return { cancel: () => { clearTimeout(held); } };
   });
   const told = (message: string): void => { options.onProblem?.(message); };
+
+  /**
+   * What the state file holds: the run state of every automation by resource,
+   * and the deletions it was in the middle of.
+   *
+   * No file is a daemon's first start: a store with no run state in it, and
+   * nothing to say. A file that is there and cannot be read, or that holds what
+   * this version does not understand, is the only record of what each
+   * allowance has paid for and what each automation is waiting on. So it is
+   * said, and automations stay unavailable until it is recovered, as VS Code's
+   * do over storage that does not load: nothing runs on state that could not
+   * be read, and nothing is written over the file.
+   * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostAutomationService.ts#L764-L778
+   * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostStorageService.ts#L123-L143
+   */
+  const stateOf = (): {
+    rows: Map<string, StateRow>;
+    deletions: AutomationDeletion[];
+    receipts: AutomationDeletionReceipt[];
+  } | undefined => {
+    const out = new Map<string, StateRow>();
+    const read = readJson(state);
+    if (!read.ok && read.kind === 'missing') return { rows: out, deletions: [], receipts: [] };
+    if (!read.ok) {
+      told(`Could not read ${state}: ${reason(read.error)}. Automation state and execution remain unavailable.`);
+      return undefined;
+    }
+    const held = bag(read.value) as Partial<RunState>;
+    if (held.version !== 1 || !Array.isArray(held.automations)) {
+      told(`${state} is not something this version understands, and was left alone. Automation execution remains unavailable until it is recovered.`);
+      return undefined;
+    }
+    for (const one of held.automations) {
+      if (typeof one?.resource === 'string') out.set(one.resource, one);
+    }
+    return {
+      rows: out,
+      deletions: Array.isArray(held.deletions)
+        ? held.deletions
+          .filter((one) => typeof one?.automation === 'string'
+            && Array.isArray(one.sessions) && Array.isArray(one.requestIds))
+          .map(({ requester, ...rest }) => (typeof requester === 'string' ? { ...rest, requester } : rest))
+        : [],
+      receipts: Array.isArray(held.deletionReceipts)
+        ? held.deletionReceipts.filter((one) => typeof one?.requestId === 'string'
+          && typeof one.automation === 'string' && Array.isArray(one.sessions))
+        : [],
+    };
+  };
+
+  const rows = stateOf();
+  const available = rows !== undefined;
+  /**
+   * The deletions and receipts the file held, kept up to date through the
+   * inner store's persist hook so a save writes what is running now.
+   */
+  const deletionState: { deletions: AutomationDeletion[]; receipts: AutomationDeletionReceipt[] } = rows === undefined
+    ? { deletions: [], receipts: [] }
+    : { deletions: rows.deletions, receipts: rows.receipts };
+  // The plugin types only: a reference is checked in `create`/`update` below,
+  // where a client's save is told apart from a file this store restored.
+  const inner = memoryAutomations({
+    ...(options.store?.pluginTypes === undefined ? {} : { pluginTypes: options.store.pluginTypes }),
+    ...(deletionState.deletions.length === 0 ? {} : { deletions: deletionState.deletions }),
+    ...(deletionState.receipts.length === 0 ? {} : { receipts: deletionState.receipts }),
+    persist: (change) => {
+      if (!('deletions' in change)) return;
+      deletionState.deletions = change.deletions;
+      deletionState.receipts = change.receipts;
+      save();
+    },
+  });
+  /** The types a reference may be marked on, read at each client save. */
+  const types = (): ReturnType<AutomationStore['triggers']> => [
+    ...inner.triggers({}), ...(options.store?.pluginTypes?.() ?? []),
+  ];
 
   /** When each automation next fires, by resource, AHP's `nextRunAt`. Absent means nothing will fire it. */
   const nextRunAt = new Map<string, Date>();
@@ -512,7 +591,12 @@ export function scheduledAutomations(options: ScheduledOptions): ScheduledStore 
    */
   const save = (): void => {
     if (closed) return;
-    const held: RunState = { version: 1, automations: [] };
+    const held: RunState = {
+      version: 1,
+      automations: [],
+      ...(deletionState.deletions.length === 0 ? {} : { deletions: deletionState.deletions }),
+      ...(deletionState.receipts.length === 0 ? {} : { deletionReceipts: deletionState.receipts }),
+    };
     const live = new Set<string>();
     for (const one of inner.list()) {
       const stem = stemOf(one.resource);
@@ -713,39 +797,6 @@ export function scheduledAutomations(options: ScheduledOptions): ScheduledStore 
   };
 
   /**
-   * The run state of every automation, by resource, or nothing while the file
-   * cannot be used.
-   *
-   * No file is a daemon's first start: a store with no run state in it, and
-   * nothing to say. A file that is there and cannot be read, or that holds what
-   * this version does not understand, is the only record of what each
-   * allowance has paid for and what each automation is waiting on. So it is
-   * said, and automations stay unavailable until it is recovered, as VS Code's
-   * do over storage that does not load: nothing runs on state that could not
-   * be read, and nothing is written over the file.
-   * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostAutomationService.ts#L764-L778
-   * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostStorageService.ts#L123-L143
-   */
-  const stateOf = (): Map<string, StateRow> | undefined => {
-    const out = new Map<string, StateRow>();
-    const read = readJson(state);
-    if (!read.ok && read.kind === 'missing') return out;
-    if (!read.ok) {
-      told(`Could not read ${state}: ${reason(read.error)}. Automation state and execution remain unavailable.`);
-      return undefined;
-    }
-    const held = bag(read.value) as Partial<RunState>;
-    if (held.version !== 1 || !Array.isArray(held.automations)) {
-      told(`${state} is not something this version understands, and was left alone. Automation execution remains unavailable until it is recovered.`);
-      return undefined;
-    }
-    for (const one of held.automations) {
-      if (typeof one?.resource === 'string') out.set(one.resource, one);
-    }
-    return out;
-  };
-
-  /**
    * Read what was written: the folder, joined with the run state.
    *
    * A file with no row in the state file is an automation with no run state,
@@ -806,11 +857,9 @@ export function scheduledAutomations(options: ScheduledOptions): ScheduledStore 
     return back;
   };
 
-  const rows = stateOf();
-  const available = rows !== undefined;
   // What was on the clock when this daemon last wrote itself down. Read before
   // `rearm`, which replaces it with what is on the clock now.
-  const wasWaiting = rows === undefined ? [] : load(rows);
+  const wasWaiting = rows === undefined ? [] : load(rows.rows);
   rearm();
 
   /*

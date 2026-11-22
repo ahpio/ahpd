@@ -1,6 +1,6 @@
 ---
 title: An automation is deleted, with its runs on request
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:

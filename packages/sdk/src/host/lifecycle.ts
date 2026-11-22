@@ -117,6 +117,13 @@ export interface RanIn {
 export interface Lifecycle {
   /** A session gone, with everything it held, and the backend's own copy of it. */
   removeSession(uri: string, acting?: Principal | Owner): Promise<void>;
+  /**
+   * Refuse the deletion of a session the acting person may not delete.
+   *
+   * The check `removeSession` makes, on its own, so a caller that deletes
+   * several sessions asks about all of them before it deletes any.
+   */
+  mayDispose(acting: Principal | Owner | undefined, uri: string): void;
   /** End a session whose one chat moved under another: its row goes, and what the chat still uses stays. */
   endMovedSession(uri: string): Promise<void>;
   /**
@@ -2933,7 +2940,7 @@ export function createLifecycle(ctx: HostContext): Lifecycle {
   };
 
   return {
-    removeSession, endMovedSession, respawning, restart, moveSession, moveChatWorkspace, relaunchChat, chatIdOf, disposeProviderChat, ranIn, backendsOwn,
+    removeSession, mayDispose, endMovedSession, respawning, restart, moveSession, moveChatWorkspace, relaunchChat, chatIdOf, disposeProviderChat, ranIn, backendsOwn,
     getProviderForChat, chatConfig, effectiveChatConfigValues, initialChatConfig, keepChatOwnConfigValues, isolated, oweTree,
     requestSessionWorktreeRemoval, worktreeRemovals, worktreeRecorded: recordedTree, restoreSessionWorktree, canAutomaticallyDeleteArchivedSession, createDetachedWorktree,
     beginOrRun, startTurn, commandIn, beginTurn, modelIn, messageFrom, messageOf, messageAttachments, scratchFolder, createProviderSession,

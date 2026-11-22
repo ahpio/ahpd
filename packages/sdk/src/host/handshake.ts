@@ -549,7 +549,19 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
           // A run of this host's automations needs no client connected. The
           // reference client offers a host's automations only where it says
           // so, so it goes with the `automations` capability above.
-          ...(options.automations ? { 'vscode.autonomousAutomations': true } : {}),
+          //
+          /*
+           * A deletion may take the sessions its runs made, the list it
+           * answered is kept for a retry, and a deletion still running is kept
+           * across a restart.
+           * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/common/agentHostExtensionProtocol.ts#L220-L226
+           */
+          ...(options.automations ? {
+            'vscode.autonomousAutomations': true,
+            'vscode.automationHistory': true,
+            'vscode.automationHistoryReceipts': true,
+            'vscode.automationHistoryDeletionState': true,
+          } : {}),
           /*
            * The automations catalogue narrowed to one owner, as an RFC 6570
            * template a client expands before it subscribes, as the protocol

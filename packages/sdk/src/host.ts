@@ -1859,6 +1859,9 @@ export function createHost(options: HostOptions): Host {
   }
 
   options.automations?.onChanged?.(changed);
+  // A deletion the last daemon had started is finished here, once this host has
+  // a catalogue to find its sessions in.
+  void ctx.resumeAutomationDeletions().catch(() => {});
 
   /**
    * Ask one backend what it offers, and tell the root when the answer lands.
