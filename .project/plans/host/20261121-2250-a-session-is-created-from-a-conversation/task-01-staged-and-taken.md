@@ -1,6 +1,6 @@
 ---
 title: A conversation is staged and taken by createSession
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:
