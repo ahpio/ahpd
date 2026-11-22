@@ -12,6 +12,10 @@ import { localPath, uriOf } from '../resources/fileuri.js';
 import { ROOT, spaceOf } from './channels.js';
 import { need, reason } from './common.js';
 import { ARCHIVE_COMMIT_MESSAGE, symlinkFolders } from './lifecycle.js';
+import {
+  isChatScratchFolder, newChatScratchFolder, readChatWorkspaceValue, removeChatScratchFolder,
+  requireChatForWorkspace, requireNonScratchChatFolder,
+} from './chatworkspace.js';
 import { createSessionMover } from './sessionmethods.js';
 import { requireTrust } from './trust.js';
 import type { LogFile } from '../sessions/debuglogs.js';
@@ -91,6 +95,7 @@ export interface VscodeMethods {
   'vscode/cleanupManagedWorktree': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/measureWorktreeDiskUsage': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/moveSession': (params: Record<string, unknown>) => Promise<unknown>;
+  'vscode/setChatWorkspace': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/cancelWorktreeDiskUsage': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/setAgentHostDetachedWorktreeArchived': (params: Record<string, unknown>) => Promise<unknown>;
   'vscode/deleteAgentHostDetachedWorktree': (params: Record<string, unknown>) => Promise<unknown>;
@@ -563,6 +568,104 @@ export function createVscodeMethods(ctx: HostContext, conn: ConnectionContext): 
     'vscode/listManagedWorktrees': async (params) => await listManagedWorktrees(params),
     'vscode/measureWorktreeDiskUsage': async (params) => await measureWorktreeDiskUsage(params),
     'vscode/moveSession': async (params) => await moveSession(connection, conn.tokensFor, params),
+    /*
+     * A workspace given to a chat that has not started: a folder, a new
+     * worktree of one, or a scratch folder this host makes. The move is the
+     * one a chat's own tools make, with the calling window asked about the
+     * folder's trust and no turn behind it, because the chat has none to
+     * continue.
+     * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/agentService.ts#L7263-L7392
+     */
+    'vscode/setChatWorkspace': async (params) => {
+      const chat = stringParam(params, 'chat', 'an AHP chat URI');
+      const workspace = readChatWorkspaceValue(params.workspace);
+      if (workspace === 'invalid') throw new RpcError(INVALID_PARAMS, 'Invalid chat workspace');
+      const live = byChat.get(chat);
+      const held = live === undefined ? undefined : sessions.get(live.uri);
+      if (live === undefined || held === undefined)
+        throw new RpcError(INVALID_PARAMS, `${chat} is not a chat of a session this host is running.`);
+      const session = live.uri;
+      const state = ctx.stateOf(chat);
+      const queued = Array.isArray(state?.queuedMessages) ? state.queuedMessages.length : 0;
+      requireChatForWorkspace({
+        defaultChat: chat === held.defaultChat,
+        origin: String(ctx.madeFrom.get(chat)?.kind ?? 'user'),
+        started: (state?.activeTurn !== undefined && state.activeTurn !== null)
+          || (state?.steeringMessage !== undefined && state.steeringMessage !== null)
+          || queued > 0 || live.chat.allTurns().length > 0,
+        provider: held.agent.provider,
+        folderPerChat: held.agent.multipleDirectories === true,
+      });
+      if (workspace.kind === 'folder') requireNonScratchChatFolder(workspace.folder);
+      if (ctx.chatWorkspaceMoves.has(chat)) throw new RpcError(INVALID_PARAMS, 'The chat is already being given a workspace.');
+      // What the chat works in now, read before the move changes it.
+      const was = live.chat.workingDirectories().map(localPath);
+      const only = was.length === 1 ? was[0] : undefined;
+      if (workspace.kind === 'folder' && workspace.isolation === 'folder'
+        && only !== undefined && resolve(only) === resolve(workspace.folder)) return {};
+      if (workspace.kind === 'scratch' && only !== undefined && isChatScratchFolder(only)) return {};
+      ctx.chatWorkspaceMoves.add(chat);
+      let made: string | undefined;
+      try {
+        let directory: string;
+        if (workspace.kind === 'scratch') {
+          made = await newChatScratchFolder();
+          directory = made;
+        }
+        else directory = workspace.folder;
+        await ctx.moveChatWorkspace(live.uri, {
+          chat,
+          directory,
+          isolation: workspace.kind === 'folder' && workspace.isolation === 'worktree',
+          sender: connection,
+          continuation: false,
+          trust: workspace.kind !== 'scratch',
+          ...(workspace.kind === 'folder' && workspace.isolation === 'worktree' && workspace.baseBranch !== undefined
+            ? { baseBranch: workspace.baseBranch }
+            : {}),
+        });
+        /*
+         * The folders the chat leaves. One another chat of the session still
+         * works in is not the leaving chat's to release, and the session's
+         * primary is never released. A released folder leaves the session's
+         * set, and a scratch folder made for the chat goes from disk.
+         */
+        const after = (byChat.get(chat)?.chat.workingDirectories() ?? []).map(localPath);
+        const at = after.length === 1 ? after[0] : undefined;
+        const primary = held.workingDirectory === undefined ? undefined : resolve(held.workingDirectory);
+        let released = false;
+        for (const folder of was) {
+          const here = resolve(folder);
+          if ((at !== undefined && here === resolve(at)) || (primary !== undefined && here === primary)) continue;
+          const shared = [...held.chats.entries()].some(([other, one]) => other !== chat
+            && one.workingDirectories().some((where) => resolve(localPath(where)) === here));
+          if (shared) continue;
+          if ((held.additional ?? []).some((one) => resolve(one) === here)) {
+            held.additional = (held.additional ?? []).filter((one) => resolve(one) !== here);
+            ctx.dispatch(session, { type: 'session/workingDirectoryRemoved', directory: uriOf(folder) });
+            released = true;
+          }
+          if (isChatScratchFolder(folder)) await removeChatScratchFolder(folder);
+        }
+        if (released) {
+          // The session's backend starts again in its folders at the next turn
+          // boundary, as the folder action itself asks.
+          const due = ctx.relaunches.get(session);
+          ctx.relaunches.set(session, {
+            config: due?.config ?? {},
+            folders: true,
+            credentials: conn.tokensFor(held.agent.provider),
+            tokensFor: conn.tokensFor,
+          });
+        }
+      }
+      catch (error) {
+        if (made !== undefined) await removeChatScratchFolder(made);
+        throw error;
+      }
+      finally { ctx.chatWorkspaceMoves.delete(chat); }
+      return {};
+    },
     'vscode/cancelWorktreeDiskUsage': (params) => {
       ctx.diskUsage.scans.get(connection)?.get(stringParam(params, 'requestId'))?.abort();
       return Promise.resolve({});

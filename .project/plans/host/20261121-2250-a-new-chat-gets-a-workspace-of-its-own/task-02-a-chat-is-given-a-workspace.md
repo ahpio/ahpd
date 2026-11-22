@@ -1,6 +1,6 @@
 ---
 title: A chat that has not started is given a workspace
-status: todo
+status: done
 depends: [task-01-a-chat-is-created-in-its-workspace.md]
 layer: "sdk"
 refs:

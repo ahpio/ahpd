@@ -357,6 +357,8 @@ export function createHost(options: HostOptions): Host {
   /** How a person may use each chat whose maker said, and the tools it alone is offered. */
   const chatInteractivity = new Map<string, 'full' | 'read-only' | 'hidden'>();
   const chatTools = new Map<string, string[]>();
+  /** The chats a client is giving a workspace to, while each move runs. */
+  const chatWorkspaceMoves = new Set<string>();
   /** The title each chat's backend said last, so a move of it is noticed. */
   const described = new Map<string, string>();
 
@@ -1686,7 +1688,7 @@ export function createHost(options: HostOptions): Host {
     ],
     replayable, releaseActiveClientForSession, attachWatch, projectActionForClient, claims, agents, first: options.agents[0], connections, clientsChanged, relays: new Map(), diskUsage: { scans: new Map(), slot: slotted(2), kept: new Map(), queues: new Map() }, holders, sessions, byChat, subagents, owners, names,
     leadOf, wheres, worktrees, worktreeOf, githubFacts, kept, offered, decided, about, terminals,
-    madeFrom, chatInteractivity, chatTools, origins, births, moves, listedMeta, browsable, broadcast, presence, beside, marks, lives, lifeOf, restarting, relaunches: new Map(), chatRelaunches: new Map(), baselineCheckpoints: new Map(), resumedTurns: new Map(), cancelledTurns: new Map(), learned, starting,
+    madeFrom, chatInteractivity, chatTools, chatWorkspaceMoves, origins, births, moves, listedMeta, browsable, broadcast, presence, beside, marks, lives, lifeOf, restarting, relaunches: new Map(), chatRelaunches: new Map(), baselineCheckpoints: new Map(), resumedTurns: new Map(), cancelledTurns: new Map(), learned, starting,
     logs, detached, refuse,
     serverSeq: 0,
     closed: false, shutdown: () => host.close(), refusing: undefined, bareSessions: new Set<string>(), startedWorkspaceless: new Set<string>(), commandTurns: new Set<string>(), described, links,

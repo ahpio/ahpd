@@ -130,3 +130,43 @@ export const requireNonScratchChatFolder = (folder: string): void => {
     throw new RpcError(INVALID_PARAMS, `'${folder}' is a chat's own scratch folder; pick No Workspace for a scratch folder of its own.`);
   throw new RpcError(INVALID_PARAMS, `'${folder}' is inside '${scratch}', a chat's own scratch folder; pick No Workspace for a scratch folder of its own.`);
 };
+
+/**
+ * Whether `folder` is a scratch folder: one directly under the chats root.
+ *
+ * A session's own and a chat's own are both made there, so this answers the
+ * shape alone; the caller decides which of the two it may remove.
+ */
+export const isChatScratchFolder = (folder: string): boolean => {
+  const scratch = scratchFolderOf(folder);
+  return scratch !== undefined && resolve(folder) === resolve(scratch);
+};
+
+/** What this host knows of an existing chat a client asks to give a workspace to, read before the move. */
+export interface ChatForWorkspace {
+  /** Whether it is its session's default chat. */
+  defaultChat: boolean;
+  /** What made it: `user` for a chat a person made, else the source that did. */
+  origin: string;
+  /** Whether it holds a turn, a queued message or a steering message. */
+  started: boolean;
+  /** The provider of the agent it runs on, and whether that agent keeps a folder per chat. */
+  provider: string;
+  folderPerChat: boolean;
+}
+
+/**
+ * Refuses a chat that cannot be given a workspace now.
+ *
+ * A session's default chat has the session's workspace and no other, and a
+ * chat a person did not make - a fork, a side chat, a tool's - is not one a
+ * client may move. A chat whose agent keeps no folder per chat has nowhere of
+ * its own to be given, and one that has started has a turn that would run in
+ * the wrong folder.
+ */
+export const requireChatForWorkspace = (chat: ChatForWorkspace): void => {
+  if (chat.defaultChat) throw new RpcError(INVALID_PARAMS, 'The default chat cannot get a workspace of its own.');
+  if (chat.origin !== 'user') throw new RpcError(INVALID_PARAMS, 'Only a chat a person made can be given a workspace.');
+  if (!chat.folderPerChat) throw new RpcError(INVALID_PARAMS, `The agent ${chat.provider} does not support a workspace per chat.`);
+  if (chat.started) throw new RpcError(INVALID_PARAMS, 'A chat that has started cannot be given a workspace.');
+};
