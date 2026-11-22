@@ -2418,6 +2418,13 @@ export function chatAction(
        * worst for a backend's request that happened to carry the same id. What
        * the person did goes back to the tool waiting on it.
        */
+      /*
+       * A command's authentication prompt is the host's own request, and the
+       * answer to it is the method's, not this action's: a client that
+       * completes it on the chat - with Cancel, or with anything else - ends
+       * the helper without an answer.
+       */
+      if (ctx.shellAuth.completed(requestId)) break;
       if (ctx.asks.settle(requestId, kind ?? (accepted ? 'accept' : 'decline'), {
         ...(request?.answers ?? {}) as Bag, ...sent,
       })) break;

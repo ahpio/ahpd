@@ -79,6 +79,11 @@ export const NEEDS: Record<string, Grant> = {
    */
   'vscode/stopBackgroundWork': 'chat:cancel',
   /*
+   * An answer to a shell's prompt is what `chat/inputCompleted` is, said on
+   * the chat and outside its state, so it asks the same grant.
+   */
+  'vscode/answerShellAuthentication': 'chat:answer',
+  /*
    * Moving a call to the background ends nothing: the work goes on and the
    * turn goes on without the call's real answer, which is what a steering
    * message does to a turn, so it asks what `chat/pendingMessageSet` asks.

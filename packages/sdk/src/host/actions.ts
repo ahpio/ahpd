@@ -475,6 +475,9 @@ export function createActions(ctx: HostContext, conn: ConnectionContext): Action
           for (const key of Object.keys(rootConfig)) delete rootConfig[key];
         }
         into(rootConfig, ours);
+        // The shell authentication setting moved: a socket that was open is
+        // closed, and one that was closed opens, before anything new starts.
+        if (Object.hasOwn(config, 'shellAuthentication') || action.replace === true) void ctx.shellAuth.update();
         // The external sessions mode moved: what it shows is said again, as
         // VS Code reconciles its listing on a change of mode.
         // https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentService.ts#L1560-L1571

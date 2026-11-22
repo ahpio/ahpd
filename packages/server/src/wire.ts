@@ -90,8 +90,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> => typeof va
  * credential or a payload out of the file wherever in the line it sits: an
  * `authorization` string, the data of a `channel/frame` or a `tcp/data`, the
  * `certificates` of a result, the token of an `authenticate` (one already
- * written as a redaction marker is left as it is), and a canvas's source URL,
- * in a `canvas/stateChanged` action and in the state of an `ahp-canvas:`
+ * written as a redaction marker is left as it is), the `answer` of a
+ * `vscode/answerShellAuthentication`, and a canvas's source URL, in a
+ * `canvas/stateChanged` action and in the state of an `ahp-canvas:`
  * resource.
  *
  * VS Code's replacer also writes a URI object back as its string, which an
@@ -112,6 +113,10 @@ const redacted = (_key: string, value: unknown): unknown => {
   if (value.method === 'authenticate' && isRecord(value.params) && value.params.token !== undefined
     && value.params.token !== '<redacted>' && value.params.token !== '[REDACTED]') {
     return { ...value, params: { ...value.params, token: '<redacted>' } };
+  }
+  // A command's answer, which never belongs in a capture.
+  if (value.method === 'vscode/answerShellAuthentication' && isRecord(value.params) && value.params.answer !== undefined) {
+    return { ...value, params: { ...value.params, answer: '<redacted>' } };
   }
   // A canvas's source as AHP 1.1.0's `uri` and as the old `url` the host sends beside it.
   if (value.type === 'canvas/stateChanged' && isRecord(value.canvas) && (value.canvas.uri !== undefined || value.canvas.url !== undefined)) {

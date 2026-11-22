@@ -147,6 +147,16 @@ describe('a capture line that carries a credential', () => {
     expect(readFileSync(at, 'utf8')).not.toContain('sesame');
   });
 
+  it('writes the answer of a shell authentication as VS Code redacts it, and a refusal as it came', () => {
+    const write = writerFor(at);
+    write(said(JSON.stringify({ jsonrpc: '2.0', id: 6, method: 'vscode/answerShellAuthentication', params: { chat: 'ahp-chat:/one', requestId: 'host-ask:one', answer: 'sesame' } })));
+    write(said(JSON.stringify({ jsonrpc: '2.0', id: 7, method: 'vscode/answerShellAuthentication', params: { chat: 'ahp-chat:/one', requestId: 'host-ask:two' } })));
+    const [given, refused] = lines(at);
+    expect(given?.params).toEqual({ chat: 'ahp-chat:/one', requestId: 'host-ask:one', answer: '<redacted>' });
+    expect(refused?.params).toEqual({ chat: 'ahp-chat:/one', requestId: 'host-ask:two' });
+    expect(readFileSync(at, 'utf8')).not.toContain('sesame');
+  });
+
   it('writes an authorization, a channel payload and a list of certificates as VS Code redacts them', () => {
     const write = writerFor(at);
     write(said(JSON.stringify({ jsonrpc: '2.0', id: 3, result: { authorization: 'Negotiate sesame' } })));

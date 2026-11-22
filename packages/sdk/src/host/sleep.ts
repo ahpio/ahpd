@@ -219,6 +219,9 @@ export function createSleep(ctx: HostContext): Sleep {
      * new one. Disposing here would put the transcript out of its reach.
      */
     const row = getOverlaySessionSummaries().find((one) => one.resource === uri);
+    // The tokens its chats' processes held go with them, and a prompt still
+    // waiting ends, while the chats are here to be recognised.
+    ctx.shellAuth.forgetSession(uri);
     const stopping: Promise<void>[] = [];
     for (const [chatUri, chat] of held.chats) {
       stopping.push(Promise.resolve(chat.close('stopping')).catch(() => {}));

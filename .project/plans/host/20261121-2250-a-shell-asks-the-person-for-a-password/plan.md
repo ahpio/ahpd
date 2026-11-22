@@ -76,7 +76,7 @@ sudo -A / ssh / git -> SUDO_ASKPASS, SSH_ASKPASS, GIT_ASKPASS -> the helper -> t
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - The host asks a prompt and takes the answer](task-01-the-host-asks-and-takes-the-answer.md) | todo | - |
+| [01 - The host asks a prompt and takes the answer](task-01-the-host-asks-and-takes-the-answer.md) | done | - |
 | [02 - Every process ahpd starts gets the helper](task-02-every-process-gets-the-helper.md) | todo | 01 |
 
 ## Risks and tradeoffs
@@ -87,8 +87,8 @@ sudo -A / ssh / git -> SUDO_ASKPASS, SSH_ASKPASS, GIT_ASKPASS -> the helper -> t
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-the-host-asks-and-takes-the-answer.md](task-01-the-host-asks-and-takes-the-answer.md).
+- **Done so far:** task 01, the socket, the helper, the request and the method; its test passes.
+- **Next action:** [task-02-every-process-gets-the-helper.md](task-02-every-process-gets-the-helper.md).
 - **Open questions:** none.
 - **Watch out for:** a Windows test needs the named pipe path, not a socket file.
 

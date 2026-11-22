@@ -409,6 +409,9 @@ export function createLifecycle(ctx: HostContext): Lifecycle {
     // And the shells its agent ran commands in, which the closed chats above
     // have already ended: a map left behind names terminals nothing owns.
     ctx.shells.forgetSession(uri);
+    // And the tokens its chats' processes held, and any prompt still waiting
+    // on one: nothing of the session is left to answer it.
+    ctx.shellAuth.forgetSession(uri);
     const closing: Promise<void>[] = [];
     for (const [chatUri, chat] of held.chats) {
       // The sender of the turn this chat still runs, because a closed backend

@@ -89,6 +89,7 @@ import { localPath, uriOf } from './resources/fileuri.js';
 import { createLifecycle } from './host/lifecycle.js';
 import { createTooling } from './host/tooling.js';
 import { createAsking } from './host/asking.js';
+import { createShellAuthentication } from './host/shellauth.js';
 import { createTerminalMethods, createTerminals } from './host/terminals.js';
 import { createShells } from './host/shells.js';
 import { createOutputs } from './host/outputs.js';
@@ -1765,6 +1766,13 @@ export function createHost(options: HostOptions): Host {
   Object.assign(ctx, createMachines(ctx));
   Object.assign(ctx, createSessionConfig(ctx));
   Object.assign(ctx, createRoot(ctx));
+  /*
+   * The socket a command's prompt comes through. Built after the root, which
+   * is where the setting that turns it on lives, and off until that setting
+   * is on: the default has nothing listening.
+   */
+  ctx.shellAuth = createShellAuthentication(ctx);
+  void ctx.shellAuth.update();
   Object.assign(ctx, createCatalogue(ctx));
   ctx.keepAwake = createKeepAwake(options.keepAwake, () => ctx.rootConfig[KEEP_AWAKE_KEY], () => ctx.activeCount() > 0);
   Object.assign(ctx, createSpawn(ctx));
@@ -2272,6 +2280,9 @@ export function createHost(options: HostOptions): Host {
           catch (error) { log.error(`closing ${what} failed: ${reason(error)}`); }
         };
         const going: Promise<void>[] = [];
+        // The helpers first: a prompt waits on a person the closing host will
+        // not ask, and the socket and the files go with it.
+        going.push(step('shell authentication', () => ctx.shellAuth.close()));
         // Stopped rather than disposed: a daemon going down is a host that
         // comes back, and it resumes these sessions from the store. A backend
         // running nested in a machine is told to end its transport alone, so

@@ -15,7 +15,7 @@ import type { ConfigPropertySchema } from '@microsoft/agent-host-protocol';
  * contributes the literal it resolves to. The two keys whose default comes
  * from `src/vs/platform/chat/common/chatSettings.ts` name that file as a URL.
  *
- * This host acts on ten of them, each one setting for every connection:
+ * This host acts on eleven of them, each one setting for every connection:
  * `globalAutoApproveEnabled`, `autoApprovePolicyRestricted` and
  * `permissions`, which a tool question is decided by,
  * `terminalAutoApproveEnabled`, `terminalAutoApproveRules` and
@@ -25,7 +25,9 @@ import type { ConfigPropertySchema } from '@microsoft/agent-host-protocol';
  * reach the store, `chatMoves.enabled`, which a chat's move is offered and
  * made by, `enableCustomTerminalTool`, which decides whether a session is
  * offered the host's own shell tools, and `artifactTools`, which decides
- * whether it is offered the artifact tools. The rest are declared so that a client
+ * whether it is offered the artifact tools, and `shellAuthentication`, which
+ * decides whether a process is given the helper a prompt comes through. The
+ * rest are declared so that a client
  * can draw them and so that a push of one is kept and read back rather than
  * refused; what is acted on is in `docs/sdk/AHP.md`.
  */
@@ -45,7 +47,9 @@ import type { ConfigPropertySchema } from '@microsoft/agent-host-protocol';
  * `host/catalogue.ts` asks before it offers a move and
  * `host/sessionmethods.ts` before it makes one; and `enableCustomTerminalTool`
  * and `artifactTools`, which `host/tooling.ts` asks when it lists a session's
- * tools.
+ * tools; and `shellAuthentication`, which `host/shellauth.ts` follows: on, a
+ * process gets the helper's variables and the chat's token, and off, nothing
+ * is listening.
  *
  * `workspaceTrust` is not here: it is declared beside `defaultShell` in
  * `host/root.ts`.
@@ -263,6 +267,18 @@ export const vscodeRootProperties: Record<string, ConfigPropertySchema> = {
     type: 'boolean',
     title: 'Use Agent Host Terminal Tool',
     description: 'When enabled, Copilot SDK sessions use Agent Host\'s terminal tool override instead of the SDK\'s default terminal behavior. Not supported on Windows, where sessions use the SDK\'s terminal and sandbox runtime.',
+    default: false,
+  },
+  /*
+   * `platformRootSchema`, `agentHostSchema.ts` at `ddbdd50a9ed1`, where a
+   * window mirrors `chat.agentHost.copilot.shellAuthentication.enabled`. The
+   * helper a command asks through exists only while this is on, and the
+   * socket it reaches is closed when it goes off.
+   */
+  shellAuthentication: {
+    type: 'boolean',
+    title: 'Shell Authentication',
+    description: 'Whether commands an agent runs may ask the window for a password or a passphrase.',
     default: false,
   },
   // `platformRootSchema`, `agentHostSchema.ts:943`.
