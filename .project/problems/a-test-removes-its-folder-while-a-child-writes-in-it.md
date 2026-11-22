@@ -31,7 +31,10 @@ The nested-process and disposable teardowns end every process whose environment 
 On Windows there is no `/proc`, so `endHolders` found no holder there, and the computer-disposable sightings of 2026-11-21 and 2026-11-22 are all `windows (3/4)`. Since `test/a-fake-docker-is-ended-on-windows`, the fake `docker` keeps a mark under `<tmpdir>/ahpd-test-holders/` while it runs, and `endHolders` ends a process by its mark on every platform.
 On 2026-11-22 CI's `windows (3/4)` on #439, run 44995032529, failed `takes the machine's own git volume with it, and asks for none where the profile leaves it open` again, with the marks in place. So the writer is not only the fake `docker`.
 Each `git commit` and `git fetch` starts a detached `git maintenance run --auto` in its repository, as `GIT_TRACE=1` shows with git 2.47.3. That process has no mark, and its environment names no test folder, so `endHolders` cannot find it. The computer-disposable cases commit and fetch in a repository inside the folder they remove.
-Since `test/git-runs-no-background-maintenance`, `tools/test-tmpdir.ts` sets `maintenance.auto=false` and `gc.auto=0` for every git a test starts. The file stays open until the Windows cases pass with it.
+Since #440, `tools/test-tmpdir.ts` sets `maintenance.auto=false` and `gc.auto=0` for every git a test starts.
+On 2026-11-22 CI's `windows (3/4)` on #439, run on `5e20b12c6` with #440 in, failed the same case with the same error. So git's background maintenance is not the writer, or not the only one.
+The failed case took 9.4 s, and its removal tries again for 5.5 s. So the folder holds a file for seconds after the teardown starts, and not only for a moment.
+Since `test/a-failed-removal-names-what-is-left`, the disposable teardown removes its folders with `removeFolder` in `tools/holders.ts`. A removal that fails names the files still in the folder and the holders still seen.
 
 ## Impact
 
