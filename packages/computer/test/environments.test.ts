@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { devContainer } from '../src/devcontainer.js';
-import { devContainerId, environmentIdLabels, prepareEnvironment, removeEnvironment, stateVolumeName } from '../src/environments.js';
+import { ENVIRONMENT_OWNER_LABEL, devContainerId, environmentIdLabels, prepareEnvironment, removeEnvironment, stateVolumeName } from '../src/environments.js';
 import { closeAll, keepingPort } from './support/closing.js';
 import type { ContainerConnectResult, ContainerSink } from '../../sdk/src/types/containers.js';
 import type { EnvironmentCommand, EnvironmentCommandResult, EnvironmentCommands } from '../src/environments.js';
@@ -247,15 +247,38 @@ it('keeps a volume under the state name that belongs to another dev container', 
   expect(commands.calls).toContainEqual(['volume', 'rm', 'ubuntu']);
 });
 
-/**
- * The launcher against the scripted CLI and Docker, whose state files a test
- * reads for what was asked and what was left behind.
- */
-function launcher(extra: Record<string, unknown> = {}): { port: ReturnType<typeof devContainer>; state: string; dockerState: string } {
-  const state = join(root, 'cli.json');
-  const dockerState = join(root, 'docker.json');
-  writeFileSync(state, JSON.stringify({ calls: [], commands: [] }));
-  writeFileSync(dockerState, JSON.stringify({ machines: [], calls: [], ...extra }));
+it('writes the principal that made the volume, and refuses another on connect', async () => {
+  const cache = join(root, 'cache', 'env-1');
+  const commands = scripted();
+  await prepareEnvironment({ environmentId: 'env-1', image: IMAGE, owner: 'user:ana' }, cache, commands);
+
+  expect(commands.volumes.ubuntu?.labels).toEqual({
+    'dev.container.volume': 'true',
+    'vscode.agents.environment': 'env-1',
+    [ENVIRONMENT_OWNER_LABEL]: 'user:ana',
+  });
+  await expect(prepareEnvironment({ environmentId: 'env-1', image: IMAGE, owner: 'user:beto' }, cache, commands))
+    .rejects.toThrow("Dev Container environment 'env-1' was made by another user.");
+});
+
+it('lets anyone connect to a volume with no owner, and only the host remove it', async () => {
+  const volume = { labels: { 'dev.container.volume': 'true', 'vscode.agents.environment': 'env-1' }, folders: ['/workspaces/ubuntu'] };
+  const commands = scripted({ volumes: { ubuntu: volume }, states: ['running'] });
+  const prepared = await prepareEnvironment({ environmentId: 'env-1', image: IMAGE, owner: 'user:ana' }, join(root, 'cache', 'env-1'), commands);
+  expect(prepared.volumeName).toBe('ubuntu');
+
+  const removing = scripted({ volumes: { ubuntu: volume }, containers: ['c1'] });
+  await expect(removeEnvironment('env-1', join(root, 'cache', 'env-1'), removing.docker, 'user:ana'))
+    .rejects.toThrow("Dev Container environment 'env-1' has no recorded owner, so only the host's own root connection may remove it.");
+  expect(removing.calls).not.toContainEqual(['rm', '--force', 'c1']);
+
+  const byRoot = scripted({ volumes: { ubuntu: volume }, containers: ['c1'] });
+  await removeEnvironment('env-1', join(root, 'cache', 'env-1'), byRoot.docker, 'root:example.com');
+  expect(byRoot.calls).toContainEqual(['volume', 'rm', 'ubuntu']);
+});
+
+/** A launcher over the state files a test already has, as a daemon started again is. */
+function launcherAt(state: string, dockerState: string): ReturnType<typeof devContainer> {
   const port = devContainer({
     command: process.execPath,
     args: [CLI],
@@ -266,7 +289,19 @@ function launcher(extra: Record<string, unknown> = {}): { port: ReturnType<typeo
     environmentCache: join(root, 'environments'),
   });
   keepingPort(port);
-  return { port, state, dockerState };
+  return port;
+}
+
+/**
+ * The launcher against the scripted CLI and Docker, whose state files a test
+ * reads for what was asked and what was left behind.
+ */
+function launcher(extra: Record<string, unknown> = {}): { port: ReturnType<typeof devContainer>; state: string; dockerState: string } {
+  const state = join(root, 'cli.json');
+  const dockerState = join(root, 'docker.json');
+  writeFileSync(state, JSON.stringify({ calls: [], commands: [] }));
+  writeFileSync(dockerState, JSON.stringify({ machines: [], calls: [], ...extra }));
+  return { port: launcherAt(state, dockerState), state, dockerState };
 }
 
 /** A sink that keeps what the nested host said and the moment the relay ended. */
@@ -354,6 +389,32 @@ it('refuses a removal by another principal, and keeps the environment', async ()
 
   expect(await port.removeEnvironment!('env-1', 'user:ana')).toBe(true);
   expect((JSON.parse(readFileSync(dockerState, 'utf8')) as { volumes: Record<string, unknown> }).volumes.ubuntu).toBeUndefined();
+});
+
+it('reads the owner from the volume, so a launcher started again refuses another user', async () => {
+  const first = launcher({ hostPresent: true, passthrough: [] });
+  await first.port.connectEnvironment!(
+    { connectionId: 'c-1', environmentId: 'env-1', image: IMAGE, name: 'Box', owner: 'user:ana' },
+    sink(),
+  );
+  // The daemon restarted: a new launcher over the same Docker and cache folder.
+  const again = launcherAt(first.state, first.dockerState);
+
+  await expect(again.connectEnvironment!(
+    { connectionId: 'c-2', environmentId: 'env-1', image: IMAGE, name: 'Box', owner: 'user:beto' },
+    sink(),
+  )).rejects.toThrow("Dev Container environment 'env-1' was made by another user.");
+  await expect(again.removeEnvironment!('env-1', 'user:beto')).rejects
+    .toThrow("Dev Container environment 'env-1' was made by another user.");
+  const kept = JSON.parse(readFileSync(first.dockerState, 'utf8')) as { volumes: Record<string, { labels?: Record<string, string> }> };
+  expect(kept.volumes.ubuntu?.labels?.[ENVIRONMENT_OWNER_LABEL]).toBe('user:ana');
+
+  // The maker still reaches it, and may still remove it.
+  await expect(again.connectEnvironment!(
+    { connectionId: 'c-3', environmentId: 'env-1', image: IMAGE, name: 'Box', owner: 'user:ana' },
+    sink(),
+  )).resolves.toBeDefined();
+  expect(await again.removeEnvironment!('env-1', 'user:ana')).toBe(true);
 });
 
 it('keeps an environment connectable when a removal fails', async () => {

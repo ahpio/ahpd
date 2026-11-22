@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { chmod, lstat, mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { DEV_CONTAINER_ENVIRONMENT_IMAGES, isDevContainerEnvironmentId } from '@ahpd/sdk';
+import { DEV_CONTAINER_ENVIRONMENT_IMAGES, isDevContainerEnvironmentId, type Owner } from '@ahpd/sdk';
 
 /**
  * Dev container environments: a workspace in a Docker volume.
@@ -23,6 +23,15 @@ export const ENVIRONMENT_LABEL = 'vscode.agents.environment';
 
 /** The label of a volume that holds a dev container environment's workspace. */
 export const ENVIRONMENT_VOLUME_LABEL = 'dev.container.volume';
+
+/**
+ * The label naming the principal that made the environment.
+ *
+ * Written when the volume is made, by the connect that made it, and read back
+ * from the volume by every later connect and removal: the environment itself
+ * carries whose it is, so a daemon started again answers as it did before.
+ */
+export const ENVIRONMENT_OWNER_LABEL = 'ahpd.environment.owner';
 
 /** The id label naming the volume, given to `up` and to the container it makes. */
 export const ENVIRONMENT_VOLUME_NAME_LABEL = 'vsc.devcontainer.volume.name';
@@ -65,6 +74,8 @@ export interface EnvironmentSource {
   name?: string;
   /** Whether a container that is stopped may be started again. */
   resume?: boolean;
+  /** The principal the connect belongs to, which owns a volume it makes. */
+  owner?: Owner;
 }
 
 /** An environment's prepared container and the volume its workspace is in. */
@@ -175,11 +186,55 @@ const listVolumes = async (docker: EnvironmentCommand, labels: readonly string[]
   return found.stdout.trim().split(/\r?\n/).filter((one) => one !== '');
 };
 
-/** Whether a volume carries the environment's label. */
-const isEnvironmentVolume = async (docker: EnvironmentCommand, volumeName: string, environmentId: string): Promise<boolean> => {
-  const labels = record(checked(await docker(['volume', 'inspect', '--format', '{{json .Labels}}', volumeName]), 'docker volume inspect').stdout.trim());
-  return labels?.[ENVIRONMENT_LABEL] === environmentId;
+/** A volume's labels, as Docker records them, or nothing when it has none. */
+const volumeLabels = async (docker: EnvironmentCommand, volumeName: string): Promise<Record<string, unknown> | undefined> =>
+  record(checked(await docker(['volume', 'inspect', '--format', '{{json .Labels}}', volumeName]), 'docker volume inspect').stdout.trim());
+
+/** The principal a volume's labels name as the environment's maker, if they do. */
+const recordedOwner = (labels: Record<string, unknown> | undefined): Owner | undefined => {
+  const held = labels?.[ENVIRONMENT_OWNER_LABEL];
+  return typeof held === 'string' && held !== '' ? held as Owner : undefined;
 };
+
+/**
+ * Refuse a caller that is not the principal the environment was made by.
+ *
+ * Read from the volume rather than remembered beside this daemon, so a connect
+ * or a removal after a restart is refused exactly as it was before one. A
+ * volume with no owner label names no maker, and this has nothing to compare.
+ */
+const refuseAnotherOwner = (
+  environmentId: string,
+  labels: Record<string, unknown> | undefined,
+  owner: Owner | undefined,
+): void => {
+  const made = recordedOwner(labels);
+  if (made !== undefined && made !== owner) {
+    throw new Error(`Dev Container environment '${environmentId}' was made by another user.`);
+  }
+};
+
+/**
+ * Refuse a removal of an environment whose maker was never recorded.
+ *
+ * The volume was made before the owner label existed, or by the reference
+ * host, so nobody's name is on it: only the host's own root connection may
+ * take it away, or the host itself on a host that names no users.
+ */
+const refuseOwnerlessRemoval = (
+  environmentId: string,
+  labels: Record<string, unknown> | undefined,
+  owner: Owner | undefined,
+): void => {
+  if (recordedOwner(labels) !== undefined) return;
+  if (owner !== undefined && !owner.startsWith('root:')) {
+    throw new Error(`Dev Container environment '${environmentId}' has no recorded owner, so only the host's own root connection may remove it.`);
+  }
+};
+
+/** Whether a volume carries the environment's label. */
+const isEnvironmentVolume = async (docker: EnvironmentCommand, volumeName: string, environmentId: string): Promise<boolean> =>
+  (await volumeLabels(docker, volumeName))?.[ENVIRONMENT_LABEL] === environmentId;
 
 /** The environment's workspace volume, found by its labels rather than its name. */
 const findEnvironmentVolume = async (docker: EnvironmentCommand, environmentId: string): Promise<string | undefined> =>
@@ -188,9 +243,10 @@ const findEnvironmentVolume = async (docker: EnvironmentCommand, environmentId: 
 /**
  * Make the environment's workspace volume under the first free name.
  *
- * `ubuntu`, then `ubuntu-2`, and so on. A name whose state volume exists is not
- * free: another environment made it, and mounting this one's state over there
- * would write into a workspace that is not ours.
+ * `ubuntu`, then `ubuntu-2`, and so on, labelled with the principal the making
+ * connect belongs to. A name whose state volume exists is not free: another
+ * environment made it, and mounting this one's state over there would write
+ * into a workspace that is not ours.
  * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/devContainerEnvironments.ts
  */
 const createEnvironmentVolume = async (
@@ -198,6 +254,7 @@ const createEnvironmentVolume = async (
   environmentId: string,
   image: string,
   existingVolumes: readonly string[],
+  owner?: Owner,
 ): Promise<string> => {
   const base = volumeBaseName(image);
   const taken = new Set(existingVolumes);
@@ -209,6 +266,7 @@ const createEnvironmentVolume = async (
         'volume', 'create',
         '--label', `${ENVIRONMENT_VOLUME_LABEL}=true`,
         '--label', `${ENVIRONMENT_LABEL}=${environmentId}`,
+        ...(owner === undefined ? [] : ['--label', `${ENVIRONMENT_OWNER_LABEL}=${owner}`]),
         volumeName,
       ]),
       'docker volume create',
@@ -240,10 +298,11 @@ export const prepareEnvironment = async (
   if (!DEV_CONTAINER_ENVIRONMENT_IMAGES.includes(source.image)) {
     throw new Error(`Unsupported Dev Container environment image: ${source.image}`);
   }
-  await prepareOwnerOnlyDirectory(cacheDirectory);
   const existingVolumes = await listVolumes(commands.docker);
   const volumeName = await findEnvironmentVolume(commands.docker, source.environmentId)
-    ?? await createEnvironmentVolume(commands.docker, source.environmentId, source.image, existingVolumes);
+    ?? await createEnvironmentVolume(commands.docker, source.environmentId, source.image, existingVolumes, source.owner);
+  refuseAnotherOwner(source.environmentId, await volumeLabels(commands.docker, volumeName), source.owner);
+  await prepareOwnerOnlyDirectory(cacheDirectory);
   const idLabels = environmentIdLabels(volumeName);
   const workspace = `${ENVIRONMENT_VOLUME_TARGET}/${volumeName}`;
   const containerStates = checked(
@@ -322,10 +381,47 @@ const isEnvironmentStateVolume = async (
   idLabels: readonly string[],
   environmentId: string,
 ): Promise<boolean> => {
-  const labels = record(checked(await docker(['volume', 'inspect', '--format', '{{json .Labels}}', volumeName]), 'docker volume inspect').stdout.trim());
+  const labels = await volumeLabels(docker, volumeName);
   // State volumes made before they carried the environment's label have none.
   return isStateVolumeFor(labels, idLabels)
     && (labels?.[ENVIRONMENT_LABEL] === undefined || labels[ENVIRONMENT_LABEL] === environmentId);
+};
+
+/**
+ * The environment's volume, when its owner may be reached by this caller.
+ *
+ * The id is checked here because every road to the volume goes through it,
+ * and the owner label before anything is made or taken away.
+ */
+const environmentVolumeFor = async (
+  environmentId: string,
+  docker: EnvironmentCommand,
+  owner: Owner | undefined,
+): Promise<string | undefined> => {
+  if (!isDevContainerEnvironmentId(environmentId)) {
+    throw new Error(`Invalid Dev Container environment identifier: ${environmentId}`);
+  }
+  const volumeName = await findEnvironmentVolume(docker, environmentId);
+  if (volumeName === undefined) return undefined;
+  const labels = await volumeLabels(docker, volumeName);
+  refuseAnotherOwner(environmentId, labels, owner);
+  refuseOwnerlessRemoval(environmentId, labels, owner);
+  return volumeName;
+};
+
+/**
+ * Refuse a caller that may not take this environment away, before anything is.
+ *
+ * A removal closes the relays into the environment before it takes the
+ * container, so the check answers first: another principal's attempt must
+ * leave the owner's relay running, and the volumes where they are.
+ */
+export const authorizeEnvironmentRemoval = async (
+  environmentId: string,
+  docker: EnvironmentCommand,
+  owner?: Owner,
+): Promise<void> => {
+  await environmentVolumeFor(environmentId, docker, owner);
 };
 
 /**
@@ -334,17 +430,16 @@ const isEnvironmentStateVolume = async (
  * Its containers are found by the id labels of its workspace volume, which no
  * other volume has while that volume exists; its volumes are everything that
  * carries its environment label, and a state volume made before it carried the
- * label is found by its name and identity instead.
+ * label is found by its name and identity instead. The volume's owner label is
+ * what authorises the removal, and it is read before anything is taken away.
  */
 export const removeEnvironment = async (
   environmentId: string,
   cacheDirectory: string,
   docker: EnvironmentCommand,
+  owner?: Owner,
 ): Promise<void> => {
-  if (!isDevContainerEnvironmentId(environmentId)) {
-    throw new Error(`Invalid Dev Container environment identifier: ${environmentId}`);
-  }
-  const volumeName = await findEnvironmentVolume(docker, environmentId);
+  const volumeName = await environmentVolumeFor(environmentId, docker, owner);
   const volumes = new Set(await listVolumes(docker, [`${ENVIRONMENT_LABEL}=${environmentId}`]));
   if (volumeName !== undefined) {
     const idLabels = environmentIdLabels(volumeName);
