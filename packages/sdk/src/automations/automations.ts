@@ -87,10 +87,12 @@ export interface AutomationsOptions {
    * Write a change down before the store holds it and says it, as VS Code's
    * automation service persists a mutation before it publishes it, its runs
    * beside its catalogue: a create, an update or a met condition hands the
-   * entry it would hold, a removal the resource it takes away, and a run that
+   * entry it would hold, a removal the resource it takes away, a run that
    * begins or moves every run its automation would keep, newest first, as
-   * `runsOf` and `runs`. A throw fails the change and leaves the store as it
-   * was, so nothing is announced that was not written.
+   * `runsOf` and `runs`, and a deletion that starts, ends or is acknowledged
+   * the deletions still running and every receipt, as `deletions` and
+   * `receipts`. A throw fails the change and leaves the store as it was, so
+   * nothing is announced that was not written.
    * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostAutomationService.ts#L346-L350
    * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostAutomationService.ts#L779-L803
    */
