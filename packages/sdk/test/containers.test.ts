@@ -188,6 +188,8 @@ it('answers the reference shape, and carries frames both ways', async () => {
     name: 'Box',
     address: 'devcontainer:abc123',
     remoteWorkspaceFolder: '/workspaces/Box',
+    // Read from the running container on every connect, as VS Code's host does.
+    sandboxSupported: false,
   });
   // What the CLI printed on the way is already on the wire.
   expect(peer.seen).toContainEqual({
