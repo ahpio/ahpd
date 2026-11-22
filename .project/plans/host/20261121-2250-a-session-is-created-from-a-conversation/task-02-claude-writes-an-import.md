@@ -1,6 +1,6 @@
 ---
 title: Claude writes an imported conversation
-status: todo
+status: done
 depends: [task-01-staged-and-taken.md]
 layer: "agent-claude"
 refs:

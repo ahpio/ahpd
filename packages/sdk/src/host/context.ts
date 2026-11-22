@@ -13,6 +13,7 @@ import type { Principal } from '../types/users.js';
 import type { StoredWorktree } from '../types/sessions.js';
 import type { DebugLogs } from '../sessions/debuglogs.js';
 import type { CallLinks } from '../automations/calllinks.js';
+import type { StagedImports } from './sessionimport.js';
 import type { ToolResultResources } from '../resources/toolresults.js';
 import type { Claiming, Claimed, Held, HeldState, Learned, LiveSubagent, Origin } from './state.js';
 import type { Admission } from './admission.js';
@@ -709,6 +710,11 @@ export interface ConnectionContext {
    * dies can say why in this log.
    */
   containers: Map<string, { name: string; folder: string; tail: string[] }>;
+  /**
+   * The conversation chunks this connection staged for a `createSession` it
+   * has not sent yet, and the characters they hold.
+   */
+  imports: StagedImports;
 }
 
 /** See `HostContext.diskUsage`. */

@@ -102,6 +102,7 @@ import { createSessionLifecycle } from './host/sessionlifecycle.js';
 import { createWakes } from './host/wakes.js';
 import { createAgentMerge } from './host/agentmerge.js';
 import { createQueueDrain } from './host/queuedrain.js';
+import { dropImports, noStagedImports } from './host/sessionimport.js';
 import { createTelemetry } from './host/telemetry.js';
 import { createAuth } from './host/auth.js';
 import { createAdmission } from './host/admission.js';
@@ -2434,7 +2435,9 @@ export function createHost(options: HostOptions): Host {
       if (principal !== undefined) principals.set(ownerOfPrincipal(principal), principal);
       connections.add(connection);
 
-      const conn = { connection, alive: true, containers: new Map(), subscriptions: new Map() } as ConnectionContext;
+      const conn = {
+        connection, alive: true, containers: new Map(), subscriptions: new Map(), imports: noStagedImports(),
+      } as ConnectionContext;
       // Held beside `connections`, and for the same span: `stop` and `remove`
       // ask across every live connection's relays, and a map there is the one
       // this connection's own methods write.
@@ -2669,6 +2672,9 @@ export function createHost(options: HostOptions): Host {
           // drops takes its relays with it rather than leaving a host running
           // in a container for nobody.
           conn.alive = false;
+          // A conversation staged for a session this connection never asked
+          // for goes with it.
+          dropImports(conn.imports);
           if (options.containers !== undefined) {
             for (const id of [...conn.containers.keys()]) {
               conn.containers.delete(id);

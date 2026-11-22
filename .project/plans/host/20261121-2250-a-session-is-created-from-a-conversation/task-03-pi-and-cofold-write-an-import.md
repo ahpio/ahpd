@@ -1,6 +1,6 @@
 ---
 title: Pi and cofold write an imported conversation
-status: todo
+status: done
 depends: [task-01-staged-and-taken.md]
 layer: "agent-pi, agent-cofold"
 refs:

@@ -13,6 +13,7 @@ import {
   requireWorkspaceAuthority,
 } from './chatworkspace.js';
 import { mayUseAgent, ownershipOf } from '../agents/usable.js';
+import { freshTurnIds, readCreateSessionImportMeta, takeImport } from './sessionimport.js';
 import { chatIdFor, named, ROOT, schemeOf, spaceOf } from './channels.js';
 import { getAgentHostChatId } from '../vscode/chatid.js';
 import { chatUriFormatOf, isShapedChatUri } from '../vscode/chatminting.js';
@@ -511,7 +512,7 @@ export function createSessionMethods(ctx: HostContext, conn: ConnectionContext):
     charged, getProviderForChat, chatConfig, chatIdOf, chatShown,
     chatSummary, chatsReordered, claimable, claims, dir, dispatch, dropChat, flushDeltas,
     forWhom, forgetSendersIn, formOrdered, hold,
-    isolating, keepChat, recordSessionProvider, kept, leadOf, log, madeFrom, meantBy, messageAttachments, messageFrom, modelIn,
+    isolating, isolated, keepChat, recordSessionProvider, kept, leadOf, log, madeFrom, meantBy, messageAttachments, messageFrom, modelIn,
     isStructurallyMovable, sessionMoveRefusal, chatMoveRefusal, hasActiveTurn, updateChatMovability, createProviderSession, openedBy, options, orderChats, oweTree,
     ownerFor, owners, restoreSession, placedIn, presence, replayable, removeSession, retool, scoping, scratchFolder, seeded,
     projectActionForClient, sessionAdded, sessionChannel, markSessionProvisional, sessionFor, sessionSchema, sessionVisible, sessions, resolveCreatedSessionConfig,
@@ -1306,6 +1307,20 @@ export function createSessionMethods(ctx: HostContext, conn: ConnectionContext):
         }))
           throw new RpcError(-32002, noProvider(provider));
         /*
+         * The conversation the client staged, or sent inline, for the session
+         * it is making. Read before anything is claimed: a staged transfer is
+         * taken once, and a request refused below does not put it back.
+         */
+        const imported = readCreateSessionImportMeta(bag(params._meta), (transferId) => takeImport(conn.imports, transferId));
+        if (imported === 'invalid')
+          throw new RpcError(INVALID_PARAMS, 'Invalid createSession importConversation metadata');
+        // A session made from a conversation is not also a copy of another.
+        if (imported !== undefined && bag(params.source).kind === 'fork')
+          throw new RpcError(INVALID_PARAMS, 'An imported conversation cannot be combined with a fork.');
+        const agent = agents.get(provider);
+        if (imported !== undefined && agent?.importConversation === undefined)
+          throw new RpcError(INVALID_PARAMS, `The agent ${provider} cannot import a conversation.`);
+        /*
          * The creator's entry names the creator. The protocol says its
          * `clientId` MUST match the one this connection gave at `initialize`,
          * and VS Code's host refuses a request whose entry names another client
@@ -1400,14 +1415,6 @@ export function createSessionMethods(ctx: HostContext, conn: ConnectionContext):
           // The folder an agent trusted, kept before the backend starts, as a
           // plugin's trusted start keeps it, so a restart trusts it again.
           if (placed?.trusted === true) kept.setTrustedFolder?.(idOf(uri), where);
-          /*
-           * A worktree session runs in the folder the client picked until its
-           * first send, which makes the tree and starts the session again in
-           * it, as VS Code's host resolves a session's worktree on the first
-           * send: a tree git cannot make fails that send.
-           * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentSideEffects.ts#L2195-L2201
-           */
-          const running = where;
           await resolveCreatedSessionConfig(uri, where, config, connection.principal);
           /*
            * Checked before the machine is made, so a refused session makes
@@ -1416,6 +1423,19 @@ export function createSessionMethods(ctx: HostContext, conn: ConnectionContext):
            */
           const refused = await admitted(connection.principal, charged.get(uri)?.scope, config, provider, uri, ownerFor(connection));
           if (refused !== undefined) throw new RpcError(-32009, refused);
+          /*
+           * A worktree session runs in the folder the client picked until its
+           * first send, which makes the tree and starts the session again in
+           * it, as VS Code's host resolves a session's worktree on the first
+           * send: a tree git cannot make fails that send. A session made from
+           * a conversation has no first send to wait for - its turns were
+           * already held somewhere - so its tree is cut now and the session
+           * starts in it.
+           * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/node/agentService.ts#L6505-L6515
+           */
+          const running = imported === undefined
+            ? where
+            : await isolated(uri, { ...config, ...(ctx.decided.get(uri) ?? {}) }, where);
           // A `disposable:<profile>` setting is a machine made for this
           // session, with this harness's needs and this folder, before the
           // backend is started with it.
@@ -1456,8 +1476,25 @@ export function createSessionMethods(ctx: HostContext, conn: ConnectionContext):
           // Whose this is: this connection's person, kept beside the session
           // so a scope change before the first turn is resolved against who
           // owns the work rather than against whoever sent it.
+          const retainedTitle = imported?.title?.trim() ? imported.title : undefined;
           try {
-            await createProviderSession(uri, provider, config, running, undefined, conn.tokensFor(provider), peers, undefined,
+            /*
+             * The conversation written as this session's own history before
+             * the backend starts, so the start continues it rather than
+             * opening an empty one. A title the client gave is the session's;
+             * one it did not is not made here.
+             */
+            if (imported !== undefined && agent !== undefined && agent.importConversation !== undefined) {
+              await agent.importConversation({
+                uri,
+                ...(running === undefined ? {} : { workingDirectory: running }),
+                settings: { ...agent.defaults(), ...ctx.contributedDefaults(), ...config },
+                turns: freshTurnIds(imported.turns),
+                ...(imported.model === undefined ? {} : { model: imported.model }),
+                ...(retainedTitle === undefined ? {} : { title: retainedTitle }),
+              });
+            }
+            await createProviderSession(uri, provider, config, running, undefined, conn.tokensFor(provider), peers, retainedTitle,
               { ...forWhom(ownerFor(connection), connection.principal), sender: connection },
               // Whether it loads the person's settings, where its agent said.
               placed?.userSettings === undefined ? undefined : { userSettings: placed.userSettings }, progress);
@@ -1470,8 +1507,10 @@ export function createSessionMethods(ctx: HostContext, conn: ConnectionContext):
             if (here?.size === 0) presence.delete(idOf(uri));
             throw error;
           }
-          // The tree its first send makes, owed as the start again that send runs.
-          oweTree(uri, conn.tokensFor(provider), conn.tokensFor);
+          // The tree its first send makes, owed as the start again that send
+          // runs - unless the session was made from a conversation, whose tree
+          // was cut before it started.
+          if (imported === undefined) oweTree(uri, conn.tokensFor(provider), conn.tokensFor);
           if (activeClient !== undefined) {
             dispatch(uri, { type: 'session/activeClientSet', activeClient });
             retool(uri);

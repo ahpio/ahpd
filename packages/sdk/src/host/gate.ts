@@ -50,6 +50,9 @@ export const NEEDS: Record<string, Grant> = {
   resolveSessionConfig: 'session:state',
   sessionConfigCompletions: 'session:state',
   createSession: 'session:create',
+  // A conversation staged for a session that is not made yet is part of making
+  // it, so it asks what the session itself asks.
+  'vscode/stageCreateSessionImportChunk': 'session:create',
   disposeSession: 'session:dispose',
   /*
    * The reference client's own methods, which were served and classified

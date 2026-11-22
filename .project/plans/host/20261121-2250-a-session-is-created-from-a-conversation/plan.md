@@ -72,9 +72,9 @@ createSession _meta['vscode.importConversation'] {transferId} or {turns, model?,
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - A conversation is staged and taken by createSession](task-01-staged-and-taken.md) | todo | - |
-| [02 - Claude writes an imported conversation](task-02-claude-writes-an-import.md) | todo | 01 |
-| [03 - Pi and cofold write an imported conversation](task-03-pi-and-cofold-write-an-import.md) | todo | 01 |
+| [01 - A conversation is staged and taken by createSession](task-01-staged-and-taken.md) | done | - |
+| [02 - Claude writes an imported conversation](task-02-claude-writes-an-import.md) | done | 01 |
+| [03 - Pi and cofold write an imported conversation](task-03-pi-and-cofold-write-an-import.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -83,8 +83,8 @@ createSession _meta['vscode.importConversation'] {transferId} or {turns, model?,
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-staged-and-taken.md](task-01-staged-and-taken.md).
+- **Done so far:** task 01: the method, the staged state, the reader, `Agent.importConversation`, the capability and `createSession`'s import. Task 02: the Claude writer, the read-back, and the resume. Task 03: the pi and cofold writers, each read back through its own reader, and the resume from the written session. `implemented.md` is written, and `pnpm typecheck` and `pnpm boundary` pass.
+- **Next action:** run the sdk, agent-claude, agent-pi and agent-cofold suites, one at a time, and sign off the final verification checklist when they pass. The five new files are untracked and must be added by the owner before the branch compiles.
 - **Open questions:** none.
 - **Watch out for:** a chunk is cut at a UTF-16 surrogate pair boundary by VS Code; join chunks as strings, never as bytes.
 
