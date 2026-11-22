@@ -438,9 +438,16 @@ export function createOpening(ctx: SessionContext): Opening {
         ...(moved !== undefined
           ? { args: moved.args }
           : options.args === undefined ? {} : { args: options.args }),
-        ...(moved?.env !== undefined
-          ? { env: moved.env }
-          : moved === undefined && options.env !== undefined ? { env: options.env } : {}),
+        /*
+         * On this host the agent's own variables go over the preset's, so the
+         * commands it runs reach the shell authentication helper. In a machine
+         * only the machine's are used: the helper's socket is this host's.
+         */
+        ...(moved !== undefined
+          ? (moved.env === undefined ? {} : { env: moved.env })
+          : (options.env === undefined && start.env === undefined
+            ? {}
+            : { env: { ...(options.env ?? {}), ...(start.env ?? {}) } })),
         ...(moved?.cwd !== undefined ? { cwd: moved.cwd } : moved === undefined ? { cwd } : {}),
         handlers: {
           update: ctx.sessionUpdate,

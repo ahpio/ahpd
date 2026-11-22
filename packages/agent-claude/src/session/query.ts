@@ -271,7 +271,12 @@ export function createQuery(ctx: SessionContext): Query {
   const signedIn = (base: Bag): Bag => {
     const login = ctx.login;
     if (login === undefined) return { ...base, ...ctx.options.env };
-    const out: Bag = { ...base, CLAUDE_CODE_OAUTH_TOKEN: login.token };
+    /*
+     * The session's own variables stay under a login: they are what the CLI's
+     * process and the commands it runs need, and the login only replaces the
+     * variables it signs in with.
+     */
+    const out: Bag = { ...base, ...ctx.options.env, CLAUDE_CODE_OAUTH_TOKEN: login.token };
     for (const name of BEFORE_TOKEN) delete out[name];
     // The scopes are the login's own, never a value the base environment held.
     delete out['CLAUDE_CODE_OAUTH_SCOPES'];
