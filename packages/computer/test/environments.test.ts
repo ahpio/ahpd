@@ -9,6 +9,7 @@ import { closeAll, keepingPort } from './support/closing.js';
 import type { ContainerConnectResult, ContainerSink } from '../../sdk/src/types/containers.js';
 import type { EnvironmentCommand, EnvironmentCommandResult, EnvironmentCommands } from '../src/environments.js';
 import { PROCESS_CASE_MS, WAIT_MS } from '../../../tools/wait.ts';
+import { posix } from '../../../tools/posix.ts';
 
 // Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
 vi.setConfig({ testTimeout: PROCESS_CASE_MS });
@@ -135,7 +136,8 @@ it('makes the first free volume, a folder in it, and a configuration for the ima
     workspaceMount: 'type=volume,source=ubuntu,target=/workspaces',
     updateRemoteUserUID: false,
   });
-  expect(statSync(join(cache, 'devcontainer.json')).mode & 0o777).toBe(0o600);
+  // `0600` is a POSIX file mode. Windows keeps only a read-only flag.
+  if (posix) expect(statSync(join(cache, 'devcontainer.json')).mode & 0o777).toBe(0o600);
   // The folder is made in the volume before the container starts.
   expect(commands.runs[0]).toEqual(expect.arrayContaining([
     'run', '--rm', '--entrypoint', 'mkdir', IMAGE, '-p', '/workspaces/ubuntu',
@@ -345,7 +347,8 @@ it('relays a host inside a container made from the environment image', async () 
   const up = cliHeld.calls.find((one) => one[0] === 'up') ?? [];
   expect(up).not.toContain('--workspace-folder');
   expect(up).toEqual(expect.arrayContaining(['--id-label', 'vsc.devcontainer.volume.name=ubuntu']));
-  expect(statSync(join(root, 'environments', 'env-1', 'devcontainer.json')).mode & 0o777).toBe(0o600);
+  // `0600` is a POSIX file mode. Windows keeps only a read-only flag.
+  if (posix) expect(statSync(join(root, 'environments', 'env-1', 'devcontainer.json')).mode & 0o777).toBe(0o600);
   // The host inside was started, which is what the relay carries.
   expect(where.said).toEqual([]);
 });
