@@ -2,7 +2,7 @@
 title: A shell asks the person for a password - implemented
 date: 2026-11-21
 refs:
-  - git://ac636ab57
+  - git://77209b7b1
   - "[code://packages/sdk/src/host/shellauth.ts](../../../../packages/sdk/src/host/shellauth.ts)"
   - "[code://packages/sdk/src/host/askpass.ts](../../../../packages/sdk/src/host/askpass.ts)"
 ---
@@ -25,7 +25,8 @@ A command an agent runs - `sudo -A`, `ssh`, `git` - can now ask the person for a
 
 - `pnpm typecheck` passes.
 - `pnpm boundary` passes, with no undeclared dependency in any package.
-- No required vitest run happened: the locked command is denied in the session that wrote this. An earlier bare run of `shell-authentication-env.test.ts` passed 5/5, and an accidental start of the full suite was stopped; neither used the lock, and both predate the last edits, so neither is counted. The suites to run are the two files above and the sdk, agent-claude, agent-acp, agent-pi and agent-cofold suites.
+- The build owner's runs under the lock: `shell-authentication.test.ts` 8/8, `shell-authentication-env.test.ts` 5/5, `wire-writer.test.ts` 16/16, the sdk suite 5210, agent-claude 710, agent-acp 381 and agent-cofold 327 all pass.
+- agent-pi failed 8 tests in two files because the mocks of `@earendil-works/pi-coding-agent` did not export the two shell tool definitions; the mocks are fixed in 77209b7b1, and the suite awaits a rerun. The server and computer suites were still running when this was written.
 
 ## Departures from the plan
 
@@ -40,6 +41,6 @@ A command an agent runs - `sudo -A`, `ssh`, `git` - can now ask the person for a
 
 ## Left for later
 
-- The suites above, and the four test items in the plan's final checklist, stay unchecked until they pass.
+- The agent-pi, server and computer reruns; the plan's final checklist stays unchecked until they pass.
 - The files tasks 01 and 02 created are untracked, because `git add` is denied in that session, and so they are in neither commit: `packages/sdk/src/host/askpass.ts`, `packages/sdk/src/host/shellauth.ts`, `packages/sdk/test/shell-authentication.test.ts`, `packages/sdk/test/shell-authentication-env.test.ts` and this file. They need staging and an amend.
 - No Windows run: the named pipe path and the parent read through the `.cmd` wrapper are untested.
