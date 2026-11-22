@@ -1,7 +1,7 @@
 ---
 title: The sandbox runtime is ahpio's fork
 domain: container
-status: planned
+status: active
 priority: high
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -68,8 +68,8 @@ packages/computer -> @ahpio/sandbox-runtime (exact) -> srt --settings <file> -> 
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - The fork has the gate and the zod range](task-01-the-fork-has-the-gate-and-zod.md) | todo | - |
-| [02 - The fork's first release is on npm](task-02-the-forks-first-release.md) | todo | 01 |
+| [01 - The fork has the gate and the zod range](task-01-the-fork-has-the-gate-and-zod.md) | done | - |
+| [02 - The fork's first release is on npm](task-02-the-forks-first-release.md) | doing | 01 |
 | [03 - The computer plugin runs on the fork](task-03-the-plugin-runs-on-the-fork.md) | todo | 02 |
 
 ## Risks and tradeoffs
@@ -79,8 +79,8 @@ packages/computer -> @ahpio/sandbox-runtime (exact) -> srt --settings <file> -> 
 
 ## Resume state
 
-- **Done so far:** the fork `ahpio/sandbox-runtime` exists, on Softov's yes of 2026-11-21. Its default branch `ahpio` is `v0.0.83` (`0bbebed`), cloned to `/github/sandbox-runtime`.
-- **Next action:** [task-01-the-fork-has-the-gate-and-zod.md](task-01-the-fork-has-the-gate-and-zod.md).
+- **Done so far:** task 01, 2026-11-22: ahpio/sandbox-runtime PR #1 merged as `5ec7d8a2a`, green on Linux, macOS, Windows and Docker. The network gate holds on all three; on Windows srt-win runs a gate-off session as `srt-sandbox-open`, an account `srt-win install` makes with no WFP filters.
+- **Next action:** Softov's first publish, in [pending/sandbox-runtime-first-release.md](../../../pending/sandbox-runtime-first-release.md); then task 03.
 - **Open questions:** none.
 - **Watch out for:** task 01's paths are in the fork's repository, not in ahpd's.
 

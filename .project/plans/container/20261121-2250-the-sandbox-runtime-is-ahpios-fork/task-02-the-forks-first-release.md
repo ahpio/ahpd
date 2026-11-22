@@ -1,6 +1,6 @@
 ---
 title: The fork's first release is on npm
-status: todo
+status: doing
 depends: [task-01-the-fork-has-the-gate-and-zod.md]
 layer: "ahpio/sandbox-runtime, npm"
 refs:
