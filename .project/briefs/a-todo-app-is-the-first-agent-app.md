@@ -92,6 +92,7 @@ New. A thing is one list on the host, and a kind is one type of record in it. So
 - Any plugin may add a kind to a thing, as two plugins add devtunnel and cloudflare to the tunnels, and computers take their runtimes.
 - The first declaration loaded gives the thing's title and description. A declaration that differs is a warning on its plugin's row.
 - The thing lives while a plugin declares it or holds a kind of it. A plugin that unloads takes its kinds, and the thing keeps the others.
+- The grants are the thing's, as the tunnels' are: `<name>:get` to read, `<name>:put` to create, change and run an operation, and `<name>:delete` to remove. An operation may name its own grant, as `KindOperation.grant` does today. A record operation's scope is the thing's name (defaulted).
 - The channel and the row scheme are the thing's, not a plugin's: `x-ahpd-<plural>://` lists the rows, and `<name>://<id>` is one row. Softov, 2026-11-23: "x-ahpd-<plural>://, <name>://<id>". This is the form of `x-ahpd-users://` and `user://<id>`, and of `x-ahpd-tunnels://`.
 - A declaration may name the plural. Without one, the host adds an `s` to the name (defaulted). [a-crm-is-the-second-example-kind.md](a-crm-is-the-second-example-kind.md) checks this against a thing with many kinds.
 
@@ -413,7 +414,6 @@ A first order, for the plans:
 ## Open points
 
 - How a view is shown, which Softov thinks over himself. Softov, 2026-11-23: "a ui its like a view that can be show. just that". A view says where it opens by default, such as `main` or the explorer. This covers the input components and the schema of each UI kind.
-- The grants of a plugin's kind, such as `todo:put` and `todo:delete`, and the scope name a record operation takes, such as `todo`.
 - How VS Code opens a row's URI, which it cannot resolve today.
 - Whether a kind's row is an artifact integration, or integrations stay for what a session produced.
 - Where a page opens with a session as its context: a plugin page, or a canvas in a chat.
