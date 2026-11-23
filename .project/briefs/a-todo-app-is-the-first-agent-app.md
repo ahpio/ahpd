@@ -272,7 +272,13 @@ The host serves the row's scheme for every kind, with `read` and `watch`, as the
 - The host checks the reader's grant on the row before it answers, as it does for the list.
 - An agent records the reference in its session with `add_artifact_or_reference`, type `resource`, and this `uri`.
 
-VS Code shows the reference, and draws no buttons for it until ahpd serves artifact integrations. Then the kind becomes an integration that matches its row scheme's URIs. An operation with `offered` is a state-dependent action, and the rest are general actions, as VS Code's proposal names them. Softov turns `chat.artifactIntegrations.enabled` on in VS Code to test that UI.
+What VS Code does with a recorded `resource`, seen on 2026-11-23 with `artifactTools` and `chat.artifactIntegrations.enabled` on:
+
+- It lists the entry as a row in the Artifacts or References pill, by `isArtifact`, with its `label`, a link icon and Copy URI.
+- It never reads the row. A click hands the URI to VS Code's opener, which answers "Unable to resolve resource todo://t-buy-milk", because nothing in VS Code serves the scheme.
+- ahpw draws the reference from the row, as the list items of this section say. VS Code draws only the label.
+
+An artifact integration gives a recorded entry live state and actions. VS Code draws what the integration sends: an icon, a label, sections, and state-dependent and general actions. It is made for what a session produced and follows, such as a pull request it opened. Whether a kind's row is one is open.
 
 ### The tools
 
@@ -354,7 +360,7 @@ A first order, for the plans:
 4. A view knows its reader.
 5. A plugin's tools turn off while it runs.
 6. The app runs on the stdio runtime.
-7. Later, a kind is an artifact integration, so VS Code draws a reference's buttons.
+7. Later, artifact integrations, and whether a kind's row is one, as *A reference in a chat* says.
 8. Later, tunnels move to the row shape of *The row*.
 
 ## Open points
@@ -362,6 +368,8 @@ A first order, for the plans:
 - Whether a kind's operations become tools by themselves, or the app writes its tools.
 - The channel's name for a plugin's kind, such as `x-ahpd-todo://` or `x-<plugin>-todo://`.
 - The grants of a plugin's kind, such as `todo:put` and `todo:delete`, and the scope name a record operation takes, such as `todo`.
+- How VS Code opens a row's URI, which it cannot resolve today.
+- Whether a kind's row is an artifact integration, or integrations stay for what a session produced.
 - The row scheme's name for a plugin's kind, such as `todo://`. Two plugins cannot serve one scheme.
 - Which input components a view gets first.
 - Where a page opens with a session as its context: a plugin page, or a canvas in a chat.
