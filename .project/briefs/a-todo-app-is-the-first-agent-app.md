@@ -86,7 +86,13 @@ With the kind, the host keeps the record, its kind and its owner, as *The row* s
 
 ### The thing and its kind
 
-New. A plugin registers a thing, which is one list, and the kinds of record in it. Softov, 2026-11-23: "A thing and its kinds". Another plugin may add a kind to a thing, as two plugins add devtunnel and cloudflare to the tunnels. The channel and the row scheme are named for the thing. [a-crm-is-the-second-example-kind.md](a-crm-is-the-second-example-kind.md) checks this against a thing with many kinds.
+New. A thing is one list on the host, and a kind is one type of record in it. Softov, 2026-11-23: "A thing and its kinds".
+
+- No plugin owns a thing. Any plugin may declare it, and a declaration with the same name joins the thing. Softov, 2026-11-23: "Any plugin declares it, same name joins".
+- Any plugin may add a kind to a thing, as two plugins add devtunnel and cloudflare to the tunnels, and computers take their runtimes.
+- The first declaration loaded gives the thing's title and description. A declaration that differs is a warning on its plugin's row.
+- The thing lives while a plugin declares it or holds a kind of it. A plugin that unloads takes its kinds, and the thing keeps the others.
+- The channel and the row scheme are the thing's, not a plugin's. [a-crm-is-the-second-example-kind.md](a-crm-is-the-second-example-kind.md) checks this against a thing with many kinds.
 
 The todo app registers the thing `todo`, and one kind in it, also named `todo`:
 

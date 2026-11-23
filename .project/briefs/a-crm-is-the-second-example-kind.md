@@ -40,7 +40,7 @@ Each thing gets its channel and its row scheme, as the todo brief's *The thing a
 
 ### Kinds from more than one plugin
 
-The CRM registers the kinds it knows. A mail plugin adds the kind `email` to `interaction`, and a phone plugin adds `call`. Each kind has its own schema and operations, and a client draws each from the thing's entry in `ahpd.channels`.
+The CRM registers the kinds it knows. A mail plugin adds the kind `email` to `interaction`, and a phone plugin adds `call`. No plugin owns `interaction`. The mail plugin declares it too, and its declaration joins the CRM's, as the todo brief's *The thing and its kind* says. Each kind has its own schema and operations, and a client draws each from the thing's entry in `ahpd.channels`.
 
 ```js
 // in @local/crm
@@ -49,6 +49,7 @@ host.registerKind({ thing: 'ticket', name: 'incident', title: 'Incident', schema
 host.registerKind({ thing: 'interaction', name: 'note', title: 'Note', schema: noteSchema });
 
 // in @local/mail
+host.registerThing({ name: 'interaction', title: 'Interactions', description: 'One contact with a client: an email, a call or a note.' });
 host.registerKind({ thing: 'interaction', name: 'email', title: 'Email', schema: emailSchema,
   operations: [{ id: 'send', label: 'Send', icon: 'send', offered: (email) => email.state === 'draft' }] });
 ```
@@ -102,7 +103,7 @@ A session that works on a ticket records `ticket://t-1042` with `add_artifact_or
 
 | Host part | Fits the CRM | What is missing |
 | --- | --- | --- |
-| A thing and its kinds | Yes. Kinds from two plugins in one thing is the case it is for | Which plugin may add a kind to another plugin's thing |
+| A thing and its kinds | Yes. Kinds from two plugins in one thing is the case it is for | Nothing: no plugin owns a thing, and a declaration with the same name joins it |
 | The thing's entry in `ahpd.channels` | Yes | A kind names its plugin, so a client can say where it came from |
 | The row: `id`, `kind`, `owner`, `record`, `operations`, `operation` | Yes | `owner` is a team here, not a person |
 | The row scheme and a watch | Yes | Nothing |
@@ -115,7 +116,6 @@ A session that works on a ticket records `ticket://t-1042` with `add_artifact_or
 
 ## Open points
 
-- Which plugin may add a kind to another plugin's thing.
 - How the snapshot pages, filters and sorts a large thing.
 - How a schema marks a field that names a row of another thing.
 - How a kind changes a row by itself, outside an operation.
