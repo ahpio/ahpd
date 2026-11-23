@@ -188,8 +188,8 @@ importers:
   packages/computer:
     dependencies:
       '@ahpio/sandbox-runtime':
-        specifier: 0.0.83-rc.0
-        version: 0.0.83-rc.0
+        specifier: 0.0.83
+        version: 0.0.83
       jsonc-parser:
         specifier: 3.3.1
         version: 3.3.1
@@ -350,8 +350,8 @@ packages:
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
 
-  '@ahpio/sandbox-runtime@0.0.83-rc.0':
-    resolution: {integrity: sha512-Xnkdj5MWE0gR6jcGMW/Yl6Oj6ZwLIv3x6FGgrwEurSvk9Ob4oqlG/IiCFjqlxdMuelLJe9UhJ0AxXzuiATCeKw==}
+  '@ahpio/sandbox-runtime@0.0.83':
+    resolution: {integrity: sha512-bLuMFy+58cvEHVjxi6juJs5M1jrwXMt9sS9c8q8kVPmVvTaTw3qc7qtLK3zYAUVclFmMkmBrW0NRqh7uFIH5sg==}
     engines: {node: '>=22.12.0'}
     hasBin: true
     peerDependencies:
@@ -2729,7 +2729,7 @@ snapshots:
     dependencies:
       zod: 4.6.7
 
-  '@ahpio/sandbox-runtime@0.0.83-rc.0':
+  '@ahpio/sandbox-runtime@0.0.83':
     dependencies:
       '@pondwader/socks5-server': 1.0.10
       commander: 12.1.0
