@@ -84,12 +84,21 @@ export async function apply(host) {
 
 With the kind, the host keeps the record, its kind and its owner, as *The row* says.
 
-### The kind
+### The thing and its kind
 
-New. The app registers `todo` as a kind, with the shape of `TunnelKind`. The kind declares its `schema` once. The host keeps the list, serves create, update and remove with that schema as their form, and lists the records on a channel. A client draws the forms with no code for todos.
+New. A plugin registers a thing, which is one list, and the kinds of record in it. Softov, 2026-11-23: "A thing and its kinds". Another plugin may add a kind to a thing, as two plugins add devtunnel and cloudflare to the tunnels. The channel and the row scheme are named for the thing. [a-crm-is-the-second-example-kind.md](a-crm-is-the-second-example-kind.md) checks this against a thing with many kinds.
+
+The todo app registers the thing `todo`, and one kind in it, also named `todo`:
+
+```js
+host.registerThing({ name: 'todo', title: 'Todos', description: 'A shared todo list.' });
+```
+
+The kind has the shape of `TunnelKind`. The kind declares its `schema` once. The host keeps the list, serves create, update and remove with that schema as their form, and lists the records on a channel. A client draws the forms with no code for todos.
 
 ```js
 host.registerKind({
+  thing: 'todo',
   name: 'todo',
   title: 'Todo',
   description: 'One thing to do.',
@@ -372,7 +381,7 @@ Each row is one of Softov's three parts. "Kind" is the generic registration that
 
 | Part | Missing | Without it |
 | --- | --- | --- |
-| Render | A way to register a kind other than a tunnel: `registerKind`, a channel per kind, and an open `OperationScope` | Each new thing needs new host code |
+| Render | A way to register a thing and its kinds: `registerThing`, `registerKind`, a channel per thing, and an open `OperationScope` | Each new thing needs new host code |
 | Render | A kind's schema and operations in its channel's entry of `ahpd.channels` | A client learns the operations only by subscribing to the list |
 | Render | One row shape, with the kind's data apart from the host's facts | A field of a record can clash with one of the host's |
 | Render | Input components in a view, such as a text field and a check box | A person types only in the kind's form |
@@ -386,7 +395,7 @@ Each row is one of Softov's three parts. "Kind" is the generic registration that
 A first order, for the plans:
 
 1. Write the app with what works today: records, four tools, and a page that only reads. It proves the storage and the tools, and it is the example an agent copies.
-2. A plugin registers a kind, with its channel, its operations and its entry in `ahpd.channels`. Rows take the shape of *The row*, and a row's URI reads alone. The todo list moves from the page to the kind.
+2. A plugin registers a thing and its kinds, with the thing's channel, its operations and its entry in `ahpd.channels`. Rows take the shape of *The row*, and a row's URI reads alone. The todo list moves from the page to the kind.
 3. A view's Button reads `{ path }` in its `context`, and a view gets input components.
 4. A view knows its reader.
 5. A plugin's tools turn off while it runs.
@@ -397,9 +406,9 @@ A first order, for the plans:
 ## Open points
 
 - How a view is shown, which Softov thinks over himself. Softov, 2026-11-23: "a ui its like a view that can be show. just that". A view says where it opens by default, such as `main` or the explorer. This covers the input components and the schema of each UI kind.
-- The channel's name for a plugin's kind, such as `x-ahpd-todo://` or `x-<plugin>-todo://`.
+- The channel's name for a plugin's thing, such as `x-ahpd-todo://` or `x-<plugin>-todo://`.
 - The grants of a plugin's kind, such as `todo:put` and `todo:delete`, and the scope name a record operation takes, such as `todo`.
 - How VS Code opens a row's URI, which it cannot resolve today.
 - Whether a kind's row is an artifact integration, or integrations stay for what a session produced.
-- The row scheme's name for a plugin's kind, such as `todo://`. Two plugins cannot serve one scheme.
+- The row scheme's name for a plugin's thing, such as `todo://`. Two plugins cannot serve one scheme.
 - Where a page opens with a session as its context: a plugin page, or a canvas in a chat.
