@@ -24,12 +24,12 @@ None of them blocks the tag: each is a fault in one path, with a workaround or a
 | 5 | `a-claude-session-from-vs-code-has-no-owner.md`, planned in [host/20261117-0842](../plans/host/20261117-0842-an-adopted-session-keeps-its-owner/plan.md) | major | The owner's command check never applies to VS Code sessions, so approved commands ask |
 | 6 | `an-admins-pushed-terminal-rule-applies-to-every-session.md`, planned in [host/20261117-1047](../plans/host/20261117-1047-approval-settings-are-kept-per-person/plan.md) | major | One admin's `rm` rule runs `rm` unasked in another person's session. A safety gap on a shared host |
 | 7 | [a-system-tunnel-that-fails-at-start-is-not-retried.md](../plans/plugin/20261118-1106-a-failed-system-tunnel-is-retried/plan.md) | major | Remote access stays down after a start-time 401 until a disable and enable |
-| 8 | [a-sessions-changes-are-kept-under-two-keys.md](../problems/a-sessions-changes-are-kept-under-two-keys.md) | major | The Changes view misses files a shell wrote, and a folder with no git shows no counts |
-| 9 | [a-worktree-made-after-start-offers-no-changeset.md](../problems/a-worktree-made-after-start-offers-no-changeset.md) | major | A new worktree shows counts on its row and nothing in Changes |
+| 8 | [a-sessions-changes-are-kept-under-two-keys.md](../plans/host/20261123-0945-a-sessions-changes-have-one-key/plan.md) | major | The Changes view misses files a shell wrote, and a folder with no git shows no counts |
+| 9 | [a-worktree-made-after-start-offers-no-changeset.md](../plans/host/20261123-0945-a-sessions-changes-have-one-key/plan.md) | major | A new worktree shows counts on its row and nothing in Changes |
 | 10 | [a-client-cannot-update-a-scoped-plugin-that-failed-to-load.md](../plans/daemon/20261118-1105-a-plugin-that-failed-to-load-updates/plan.md) | major | An old plugin that fails to load cannot be updated from a client, only from the terminal |
 | 11 | [a-webhook-automation-skips-the-wake-cap.md](../plans/host/20261118-1104-a-webhook-wake-counts-against-the-cap/plan.md), now planned | major | A webhook sender can wake an automation past its cap and overlap mode. Not reproduced |
 | 12 | a-bot-chat-is-not-a-subagent-of-its-back-session.md, now [this plan](../plans/bots/20261113-0817-a-bot-talk-is-one-session-with-back-chats/plan.md) | major | Each bot turn path needs its own fix; the shape is the cause |
-| 13 | [a-bot-file-edited-by-hand-to-a-new-owner-takes-it-after-a-restart.md](../problems/a-bot-file-edited-by-hand-to-a-new-owner-takes-it-after-a-restart.md) | major | A hand edit moves a bot's owner at a restart with no log line |
+| 13 | [a-bot-file-edited-by-hand-to-a-new-owner-takes-it-after-a-restart.md](../plans/bots/20261123-0945-a-bot-owner-edited-by-hand-is-logged/plan.md) | major | A hand edit moves a bot's owner at a restart with no log line |
 
 ## Major, on machines, nodes and containers
 
@@ -40,7 +40,7 @@ These hurt a user of machines and nodes, a smaller group than the ones above.
 | 14 | [a-disposed-session-not-held-leaves-its-machine.md](../plans/container/20261118-1108-a-disposed-session-leaves-its-machine/plan.md), now planned | major |
 | 15 | [a-removed-node-keeps-serving-its-running-sessions.md](../plans/container/20261118-1107-a-removed-node-is-cut-off-at-once/plan.md), now planned | major |
 | 16 | [node-rm-at-the-terminal-does-not-drop-a-joined-node.md](../plans/container/20261118-1107-a-removed-node-is-cut-off-at-once/plan.md), now planned | major |
-| 17 | [a-dev-container-stop-misses-a-session-placed-by-computer-uri.md](../problems/a-dev-container-stop-misses-a-session-placed-by-computer-uri.md) | major |
+| 17 | [a-dev-container-stop-misses-a-session-placed-by-computer-uri.md](../plans/container/20261123-0945-a-busy-dev-container-is-not-stopped/plan.md) | major |
 
 ## Minor, a person sees it
 

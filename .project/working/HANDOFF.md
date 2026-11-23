@@ -21,6 +21,7 @@ Current progress and pending items only, as of 2026-11-22. *Outside this reposit
   - #448 (`d27af6933`): a host the runtime cannot start on says why, and on Ubuntu 26.04 names the AppArmor profile and the commands that unload it. CI's `processes` job is back on `ubuntu-latest`.
   - Softov's dev daemon takes #446, #447 and #448 at its next restart on main.
   - Briefs under review with Softov: [plugins-are-a-sessions-extensions.md](../briefs/plugins-are-a-sessions-extensions.md), an agent builds an app that lasts, and [a-todo-app-is-the-first-agent-app.md](../briefs/a-todo-app-is-the-first-agent-app.md), the first app with what it misses. [a-crm-is-the-second-example-kind.md](../briefs/a-crm-is-the-second-example-kind.md) checks the host parts against a CRM, and its open points are answered. Plan 2 waits for his word to plan it.
+  - The six problems that waited for 0.16 were answered on 2026-11-23. Four plans `20261123-0945` fix five of them: bots/each-bot-chat-keeps-its-own-log, host/a-sessions-changes-have-one-key, container/a-busy-dev-container-is-not-stopped and bots/a-bot-owner-edited-by-hand-is-logged. The lost Claude turn stays open.
   - Softov restarted his dev daemon on main with #431 to #445.
 - **2026-11-21.** 0.15.0 is released: `v0.15.0` is on `3bf557618` (#394), and npm serves the 13 packages under `latest`. `ghcr.io/ahpio/ahpd` has `0.15.0`, `0.15` and `latest`. ahpw `v0.9.0` is on `d968e1f`, with `@ahpd/web` under `latest`. [pending/release.md](../pending/release.md) is closed.
   - Merged on 2026-11-21: #393 (`bcec57901`) from beorn, #395 (`9ad9b0f98`), #396 (`2bb0f809e`) and #398 (`98a2b4cd7`), the image fix.
@@ -191,7 +192,7 @@ Each plan here has every task `implemented`, and closes as `built` on Softov's w
 ## Next
 
 - The bot talk is merged: #321, then #322 for a host with no users. What was fixed and why is in the plans' Resume states and implemented records.
-  - Found on main: [the chats of a bot talk share one log](../problems/the-chats-of-a-bot-talk-share-one-log.md).
+  - Found on main: [the chats of a bot talk share one log](../plans/bots/20261123-0945-each-bot-chat-keeps-its-own-log/plan.md).
   - A Back chat is titled `@main/<bot>/<person>`, with `main` fixed for now (Softov, 2026-11-13). The host name in `root:<host>` is `os.hostname()`, and nothing sets it yet; see [briefs/the-root-owner-has-a-fixed-host-name.md](../briefs/the-root-owner-has-a-fixed-host-name.md).
   - Gumbo and ember in Softov's `~/.config/ahpd/bots` name `provider: claude`, at his request.
 - #323, the operations in the client's language, is merged on 2026-11-13, as `271c212d9`, after #324 fixed three dev container cases that fail at random. The plans close on Softov's word.
