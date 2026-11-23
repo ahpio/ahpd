@@ -47,12 +47,12 @@ Softov wants an agent in a session to build an app, such as a todo page with its
 - The app runs on the stdio runtime from 0.17, with the plugin shape of today. The registrations that are calls today become messages. Softov, 2026-11-22.
 - All apps are kept in one folder beside the plugins, and each records its owner: a user, a team or the host. Softov, 2026-11-22, "One folder, owner recorded (Recommended)".
 - Root may always change or remove an app, and so may the user who created it. Softov, 2026-11-22.
+- The gate stays this simple for now, and team grants get a later brief. Softov, 2026-11-22: "gate simple now, team grants in a later brief".
 - A plugin's tools can be turned off for the host while the plugin keeps running. Softov, 2026-11-22: "to leave the plugin running and to disable only the tools."
 - VS Code's `mode` maps onto these switches. `disabled` is the plugin off, and `load_only` is the plugin running with its tools off. `load_and_augment` is the plugin with its tools on. Read from the type's names and comment, not from Copilot's code.
 
 ## Open points
 
 - Which tools a session gets, per session. Softov, 2026-11-22: it waits for another brief and an idea of his, which change how a session's tools are controlled.
-- How a team member gets to change a team's app. Softov, 2026-11-22, asked: a simple gate now, and a later brief on team grants.
 - Not asked yet: the schema of each UI kind, and the storage functions' shape and scope.
 - Not checked: how Copilot acts on `load_only` against `load_and_augment`.

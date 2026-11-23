@@ -102,24 +102,73 @@ host.registerKind({
 });
 ```
 
+### The channel
+
+New for a kind other than a tunnel, with the shape that `x-ahpd-tunnels` serves today. A client subscribes to the kind's channel:
+
+```json
+{ "jsonrpc": "2.0", "id": 6, "method": "subscribe", "params": { "channel": "x-ahpd-todo://" } }
+```
+
+The snapshot's state holds the records and the operations. Each record lists the ids of the operations it offers now. The host makes `todo/create`, `todo/update` and `todo/remove` from the kind, with the kind's `schema` as their `input`. It lists the kind's own operations after them, each id led by the kind's name.
+
+```json
+{
+  "records": [
+    { "id": "t-buy-milk", "record": { "kind": "todo", "title": "Buy milk", "done": false, "owner": "user:ana",
+      "createdAt": "2026-11-22T14:00:00Z", "operations": ["todo/update", "todo/remove", "todo/complete"] } },
+    { "id": "t-call-bob", "record": { "kind": "todo", "title": "Call Bob", "done": true, "owner": "user:ana",
+      "createdAt": "2026-11-22T13:10:00Z", "operations": ["todo/update", "todo/remove", "todo/reopen"] } }
+  ],
+  "operations": [
+    { "id": "todo/create", "kind": "todo", "label": "Todo", "description": "One thing to do.", "scopes": ["list"],
+      "grant": "todo:put", "status": "idle",
+      "input": { "type": "object", "required": ["title"], "properties": {
+        "title": { "type": "string", "title": "Title", "maxLength": 500 },
+        "done": { "type": "boolean", "title": "Done", "default": false } } } },
+    { "id": "todo/update", "kind": "todo", "label": "Edit", "scopes": ["todo"], "grant": "todo:put", "status": "idle",
+      "input": { "type": "object", "required": ["title"], "properties": {
+        "title": { "type": "string", "title": "Title", "maxLength": 500 },
+        "done": { "type": "boolean", "title": "Done", "default": false } } } },
+    { "id": "todo/remove", "kind": "todo", "label": "Remove", "confirmation": "Remove this todo?",
+      "scopes": ["todo"], "grant": "todo:delete", "status": "idle" },
+    { "id": "todo/complete", "kind": "todo", "label": "Done", "icon": "check", "scopes": ["todo"], "grant": "todo:put", "status": "idle" },
+    { "id": "todo/reopen", "kind": "todo", "label": "Not done", "icon": "undo", "scopes": ["todo"], "grant": "todo:put", "status": "idle" },
+    { "id": "todo/clear", "kind": "todo", "label": "Clear completed", "confirmation": "Remove every done todo?",
+      "scopes": ["list"], "grant": "todo:put", "status": "idle" }
+  ]
+}
+```
+
+A client draws this with no code for todos:
+
+- A list operation, such as `todo/create` and `todo/clear`, is a button on the list. A record operation is a button on each row that names it in `operations`.
+- An operation with `input` opens a form drawn from the schema: a text field for `title` and a check box for `done`.
+- An operation with `confirmation` asks it before it runs.
+- `status` is `running` while a call runs, and `error` with its message when the call failed. Each subscriber gets the change as `x-ahpd-todo/operations`.
+- The grants are `todo:put` and `todo:delete` in this example. Which grants a kind of a plugin gets is an open point.
+
 A person adds a todo from a client:
 
 ```json
 { "jsonrpc": "2.0", "id": 7, "method": "x-ahpd/invokeOperation",
-  "params": { "channel": "x-ahpd-todo://", "operationId": "create", "input": { "title": "Buy milk" } } }
+  "params": { "channel": "x-ahpd-todo://", "operationId": "todo/create", "input": { "title": "Buy milk" } } }
 ```
 
 and marks it done:
 
 ```json
 { "jsonrpc": "2.0", "id": 8, "method": "x-ahpd/invokeOperation",
-  "params": { "channel": "x-ahpd-todo://", "operationId": "complete", "target": { "id": "t-buy-milk" } } }
+  "params": { "channel": "x-ahpd-todo://", "operationId": "todo/complete", "target": { "id": "t-buy-milk" } } }
 ```
 
 Every reader of the channel then gets:
 
 ```json
-{ "method": "x-ahpd-todo/changed", "params": { "id": "t-buy-milk", "record": { "title": "Buy milk", "done": true, "owner": "user:ana" } } }
+{ "jsonrpc": "2.0", "method": "action", "params": { "channel": "x-ahpd-todo://", "serverSeq": 42,
+  "action": { "type": "x-ahpd-todo/changed", "id": "t-buy-milk",
+    "record": { "kind": "todo", "title": "Buy milk", "done": true, "owner": "user:ana",
+      "createdAt": "2026-11-22T14:00:00Z", "operations": ["todo/update", "todo/remove", "todo/reopen"] } } } }
 ```
 
 ### The tools
@@ -206,5 +255,6 @@ A first order, for the plans:
 - Whether a kind's operations become tools by themselves, or the app writes its tools.
 - Whether a todo's owner is a field the host keeps for every kind, or a field the app writes.
 - The channel's name for a plugin's kind, such as `x-ahpd-todo://` or `x-<plugin>-todo://`.
+- The grants of a plugin's kind, such as `todo:put` and `todo:delete`, and the scope name a record operation takes, such as `todo`.
 - Which input components a view gets first.
 - Where a page opens with a session as its context: a plugin page, or a canvas in a chat.
