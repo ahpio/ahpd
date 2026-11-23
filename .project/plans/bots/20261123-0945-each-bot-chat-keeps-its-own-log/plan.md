@@ -1,7 +1,7 @@
 ---
 title: Each chat of a bot session keeps its own log
 domain: bots
-status: planned
+status: active
 priority: medium
 created: 2026-11-23
 revalidated: 2026-11-23
@@ -61,7 +61,7 @@ host starts a chat (Start.chatId) -> bot-chat agent open -> chat(start, bot, id,
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a chat names its log by its chat id](task-01-a-chat-names-its-log-by-chat-id.md) | todo | - |
+| [01 - a chat names its log by its chat id](task-01-a-chat-names-its-log-by-chat-id.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -70,8 +70,8 @@ host starts a chat (Start.chatId) -> bot-chat agent open -> chat(start, bot, id,
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-chat-names-its-log-by-chat-id.md](task-01-a-chat-names-its-log-by-chat-id.md).
+- **Done so far:** task 01, on 2026-11-23. [implemented.md](implemented.md) holds the checks.
+- **Next action:** Softov's review of the PR; the plan is `built` on his word.
 - **Open questions:** none.
 - **Watch out for:** `start.resume` is the default chat's backend id after a restart; a chat with a `chatId` must use the `chatId`, not `resume`.
 

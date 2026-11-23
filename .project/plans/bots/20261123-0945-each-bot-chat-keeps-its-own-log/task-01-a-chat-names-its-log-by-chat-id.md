@@ -1,6 +1,6 @@
 ---
 title: A chat names its log by its chat id
-status: todo
+status: done
 depends: []
 layer: "bot"
 refs:
@@ -35,3 +35,4 @@ A chat with a `chatId` reads and writes `logs/chats/<session id>/<chatId>.jsonl`
 
 ## Resume
 
+Done on 2026-11-23. `transcript` also reads the chats' folders, because the host reads a chat back by its `chatId`. `plugin.ts` needed no change: a bot's delete removes its whole folder.

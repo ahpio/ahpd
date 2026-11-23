@@ -1051,6 +1051,37 @@ it('opens no turn again in a chat of the talk other than its default chat, which
   expect(heard).toEqual([]);
 });
 
+it('keeps each chat of a talk other than its default chat in a log of its own, and reads each back alone after a restart', async () => {
+  const { host, configDir, records } = made({}, ['session:trust'], { heard: (_message, handle) => { handle.complete(); } });
+  const client = await anyone(host);
+  await talkTo(client);
+  await said(client, 't1', 'hello');
+
+  // Two more chats of the same talk, as a webhook with `threadSessions` off
+  // makes one Front chat for each thread.
+  const fresh = await backend(configDir, records, (_message, handle) => { handle.complete(); });
+  for (const [chatId, text] of [['thread-a', 'from a'], ['thread-b', 'from b']] as const) {
+    const session = await fresh.create({
+      uri: HELD, chatUri: `ahp-chat:/${chatId}`, settings: { bot: 'backer' }, resume: 'one', chatId,
+      schema: () => ({}), emit: () => {}, clientToolTimeoutMs: 0,
+    } as Start);
+    await session.sendMessage(`${chatId}-1`, text);
+  }
+
+  // The default chat's log holds its own turn alone, and the session list
+  // still finds the talk once.
+  expect(lines(configDir, 'one').map((one) => one['id'])).toEqual(['t1', 't1']);
+  const restarted = await backend(configDir, records);
+  expect((await restarted.list?.())?.map((one) => one.id)).toEqual(['one']);
+
+  // Each chat reads back its own turn, and none of the others'.
+  expect((await restarted.transcript?.('one'))?.map((turn) => turn.message.text)).toEqual(['hello']);
+  expect((await restarted.transcript?.('thread-a'))?.map((turn) => turn.message.text)).toEqual(['from a']);
+  expect((await restarted.transcript?.('thread-b'))?.map((turn) => turn.message.text)).toEqual(['from b']);
+  const kept = readFileSync(join(configDir, BOTS_DIR, 'backer', 'logs', 'chats', 'one', 'thread-a.jsonl'), 'utf8');
+  expect(kept).toContain('from a');
+});
+
 it('keeps a talk under the owner the host recorded where the start has no reader, and keeps none for a plugin\'s session', async () => {
   const { host, configDir, records } = made({}, ['session:trust']);
   const client = await anyone(host);
