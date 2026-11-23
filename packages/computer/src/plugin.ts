@@ -1351,6 +1351,15 @@ export const apply: Plugin['apply'] = (host, options) => {
    * when one leaves, and this is the book that keeps score.
    */
   const disposables = new Map<string, Disposable>();
+  /**
+   * The sessions running in each machine, whatever made it.
+   *
+   * The host says each session that enters a machine and each that leaves.
+   * A folder's dev container stop or remove reads it, so a machine a session
+   * runs in is never taken from under it: a session that named the machine by
+   * `computer://<id>` counts here as one that named the folder does.
+   */
+  const occupants = new Map<string, Set<string>>();
 
   /*
    * Whether the daemon has been told to stop.
@@ -2340,6 +2349,9 @@ export const apply: Plugin['apply'] = (host, options) => {
      * arm that machine's delay under the session running in it.
      */
     enter: async (id, session) => {
+      const inside = occupants.get(id) ?? new Set<string>();
+      inside.add(session);
+      occupants.set(id, inside);
       await listing;
       const held = disposables.get(id);
       if (held === undefined) return;
@@ -2350,6 +2362,8 @@ export const apply: Plugin['apply'] = (host, options) => {
       }
     },
     leave: async (id, session) => {
+      const inside = occupants.get(id);
+      if (inside?.delete(session) === true && inside.size === 0) occupants.delete(id);
       await listing;
       const held = disposables.get(id);
       /*
@@ -2508,6 +2522,8 @@ export const apply: Plugin['apply'] = (host, options) => {
         return await folders.queue(at, async () => {
           const found = await machineFor(at);
           if (found === undefined) return true;
+          // A session runs in it: "it is still in use", in the port's words.
+          if ((occupants.get(found.id)?.size ?? 0) > 0) return false;
           await made.stop(found.id);
           return true;
         });
@@ -2517,6 +2533,7 @@ export const apply: Plugin['apply'] = (host, options) => {
         return await folders.queue(at, async () => {
           const found = await machineFor(at);
           if (found === undefined) return true;
+          if ((occupants.get(found.id)?.size ?? 0) > 0) return false;
           await made.remove(found.id);
           return true;
         });

@@ -2144,6 +2144,36 @@ it('stops the container a folder is, ending the window\'s relay first', async ()
   await answered(dockerState, dockerHeld(dockerState).calls.length);
 });
 
+it('keeps a folder\'s container while a session that named it by computer:// runs in it, and stops it once the session leaves', async () => {
+  const dir = temp();
+  const devState = join(dir, 'dev.json');
+  const dockerState = join(dir, 'docker.json');
+  const configDir = join(dir, 'config');
+  const folder = workspace(dir);
+  mkdirSync(configDir);
+  const { options: loaded } = await load(optionsOf(devState, dockerState), [agentWith()], configDir);
+  await providerOf(loaded).write('computer://box', {
+    data: JSON.stringify({ devcontainer: { folder } }),
+    encoding: 'utf-8',
+  });
+  const state = (): unknown => dockerHeld(dockerState).machines[0]?.state;
+  const running = state();
+
+  // A session placed on the machine by its URI, not by its folder: the host
+  // says it entered, and the folder's stop and remove leave the machine be.
+  await loaded.computers?.enter?.('box', 'ahp-session:/placed');
+  expect(await loaded.containers?.stop?.(folder)).toBe(false);
+  expect(await loaded.containers?.remove?.(folder)).toBe(false);
+  expect(dockerHeld(dockerState).machines).toHaveLength(1);
+  expect(state()).toBe(running);
+
+  // Gone, and the stop is the stop it always was.
+  await loaded.computers?.leave?.('box', 'ahp-session:/placed');
+  expect(await loaded.containers?.stop?.(folder)).toBe(true);
+  expect(state()).toBe('exited');
+  await answered(dockerState, dockerHeld(dockerState).calls.length);
+});
+
 it('removes the container a folder is, and the record beside the configuration with it', async () => {
   const dir = temp();
   const devState = join(dir, 'dev.json');
@@ -2206,7 +2236,14 @@ it('leaves the folder\'s container alone while a session of this host is running
   // the session has gone.
   await session.client.handle({ method: 'disposeSession', params: { channel: 'ahp-session:/one' } });
   await until(() => !existsSync(`${dockerState}.lock`));
-  expect(await view.client.handle({ method: 'vscode/devContainers/stop', params: { workspaceFolder: folder } })).toBe(true);
+  // The host says the session left once its work is brought back, a moment
+  // after the dispose answers; until then the machine is still in use.
+  let stopped = false;
+  for (let tries = 0; tries < 200 && !stopped; tries++) {
+    stopped = await view.client.handle({ method: 'vscode/devContainers/stop', params: { workspaceFolder: folder } }) === true;
+    if (!stopped) await new Promise((r) => { setTimeout(r, 5); });
+  }
+  expect(stopped).toBe(true);
   expect(dockerHeld(dockerState).machines[0]?.state).toBe('exited');
   await answered(dockerState, dockerHeld(dockerState).calls.length);
 });
