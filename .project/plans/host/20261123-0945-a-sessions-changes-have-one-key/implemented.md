@@ -17,14 +17,15 @@ The changes of a session are found under one name. The "This Session" changeset 
 ## Verified
 
 - `changes-refresh.test.ts`: three new cases, a shell-written file in "This Session", counts with no git, and Uncommitted Changes before a turn ends. Each fails without the change.
-- `chat-changesets.test.ts` and `users-gate-sessions.test.ts` now hand the port the id, as the host does.
-- The sdk suite and the computer suite pass. `pnpm typecheck` passes.
+- `chat-changesets.test.ts`, `users-gate-sessions.test.ts` and `agent-acp-turn.test.ts` now hand the source the id, as the host does.
+- The whole repository's tests pass. `pnpm typecheck` passes.
 
 ## Departures from the plan
 
 - The plan named `observe` and `state`. `propose`, `settle`, `complete`, `operations`, `review`, `chatSummary` and the source's `invoke` read the same tracker, so they take the id too.
 - A changeset operation that a plugin contributed is still handed the session's URI, as before. Only the changes source moved to the id.
-- Two tests stood in for the host with the URI. They now pass the id.
+- Three tests stood in for the host with the URI: two in the sdk and one in `agent-acp-turn.test.ts`. They now pass the id.
+- `nested-process.test.ts` counted the outer chat's own changeset URI as a second chat. The outer chat now offers its changesets as the backend starts, so the check counts a URI under the outer chat as that chat.
 - The backend start reads the folder without `bringBackOf`, which task 02 copied from the turn's end. At the start the session has done no work, and the bring-back cost a read of the machine that `computer-disposable.test.ts` counts.
 
 ## Left for later
