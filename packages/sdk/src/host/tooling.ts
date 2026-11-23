@@ -1237,6 +1237,10 @@ export function createTooling(ctx: HostContext): Tooling {
     catch (error) { return asked.map((one) => ({ ...one, error: reason(error) })); }
   };
 
+  /** What a client decided about a plugin and its servers, as one string. */
+  const decidedBy = (announced: Bag): string =>
+    JSON.stringify([announced.enablement ?? null, announced.childEnablement ?? null]);
+
   /**
    * What a session's clients contribute, as one string.
    *
@@ -1245,8 +1249,33 @@ export function createTooling(ctx: HostContext): Tooling {
    * the echo that prompted the next announcement.
    */
   const signatureOf = (rows: Map<string, HeldPlugin[]>): string => [...rows]
-    .map(([clientId, list]) => `${clientId}:${list.map((one) => `${str(one.announced.uri) ?? ''}#${str(one.announced.nonce) ?? ''}`).join(',')}`)
+    .map(([clientId, list]) => `${clientId}:${list.map((one) => `${str(one.announced.uri) ?? ''}#${str(one.announced.nonce) ?? ''}#${decidedBy(one.announced)}`).join(',')}`)
     .join('|');
+
+  /**
+   * A copy's servers with the client's decisions laid on them again.
+   *
+   * The session's own entry on a server stays: it is what a toggle here
+   * wrote, and the client's announcement is not the session's to undo. A
+   * session entry the client announced last time is the client's, and goes
+   * with its old announcement.
+   */
+  const rechild = (one: HeldPlugin, previous: Bag): Bag[] | undefined => {
+    if (one.children === undefined) return undefined;
+    const named = bag(one.announced.childEnablement);
+    const said = bag(previous.childEnablement);
+    return one.children.map((part) => {
+      if (part.type !== 'mcpServer') return part;
+      const name = str(part.name) ?? '';
+      const theirs = JSON.stringify(enablementOf(said[name]).filter((entry) => str(entry.kind) === 'session'));
+      const own = enablementOf(part.enablement).filter((entry) => str(entry.kind) === 'session');
+      const fromClient = enablementOf(named[name]);
+      if (JSON.stringify(own) === theirs) own.length = 0;
+      const decisions = byScope(own.length === 0 ? fromClient : [...own, ...fromClient.filter((entry) => str(entry.kind) !== 'session')]);
+      const rest = Object.fromEntries(Object.entries(part).filter(([key]) => key !== 'enablement'));
+      return decisions.length === 0 ? rest : { ...rest, enablement: decisions };
+    });
+  };
 
   /**
    * Copy what a session's clients announced, and say what happened.
@@ -1263,6 +1292,9 @@ export function createTooling(ctx: HostContext): Tooling {
   const reconcile = async (uri: string): Promise<void> => {
     const at = idOf(uri);
     const before = plugins.get(at) ?? new Map<string, HeldPlugin[]>();
+    // Signed first: a kept plugin is the same object in both maps, and it takes
+    // the new announcement below.
+    const signed = signatureOf(before);
     const asked = new Map<string, Bag[]>();
     for (const client of activeClientsOf(uri)) {
       const clientId = str(client.clientId) ?? '';
@@ -1270,18 +1302,37 @@ export function createTooling(ctx: HostContext): Tooling {
     }
     const fresh = new Map<string, HeldPlugin[]>();
     const added = new Map<string, HeldPlugin[]>();
+    const decided: [string, HeldPlugin][] = [];
     for (const [clientId, list] of asked) {
       const was = before.get(clientId) ?? [];
-      // Matched by URI and nonce, so a plugin announced again unchanged is the
-      // copy this host already has rather than a second one beside it.
-      const now = list.map((one) => was.find((old) => samePlugin(old.announced, one)) ?? { announced: one, load: { kind: 'loading' } });
+      const now = list.map((one): HeldPlugin => {
+        // Matched by URI and nonce, so a plugin announced again unchanged is the
+        // copy this host already has rather than a second one beside it. The
+        // announcement is taken whole, as the reference host takes a client's
+        // customizations, so a decision that moved is the one that stands.
+        // https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentSideEffects.ts#L565
+        const kept = was.find((old) => samePlugin(old.announced, one));
+        if (kept !== undefined) {
+          const previous = kept.announced;
+          if (decidedBy(previous) !== decidedBy(one)) decided.push([clientId, kept]);
+          kept.announced = one;
+          const children = rechild(kept, previous);
+          if (children !== undefined) kept.children = children;
+          return kept;
+        }
+        // A new revision of a plugin the session already holds keeps the
+        // session's own decision, which is about the plugin and not one copy.
+        // https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentSideEffects.ts#L2120-L2124
+        const prior = was.find((old) => (str(old.announced.uri) ?? '') === (str(one.uri) ?? ''));
+        return { announced: one, load: { kind: 'loading' }, ...(prior?.decision === undefined ? {} : { decision: prior.decision }) };
+      });
       const made = now.filter((one) => !was.includes(one));
       if (made.length > 0) added.set(clientId, made);
       fresh.set(clientId, now);
     }
     // Nothing moved. Said again is not changed, and this host holds the list a
     // client already has.
-    if (signatureOf(fresh) === signatureOf(before)) return;
+    if (signatureOf(fresh) === signed) return;
     if (fresh.size === 0) plugins.delete(at);
     else plugins.set(at, fresh);
     dispatch(uri, { type: 'session/customizationsChanged', customizations: reportedBy(uri) });
@@ -1290,6 +1341,9 @@ export function createTooling(ctx: HostContext): Tooling {
     const settle = (clientId: string, one: HeldPlugin): void => {
       dispatch(uri, { type: 'session/customizationUpdated', customization: entryOf(uri, clientId, one) });
     };
+    // A kept plugin whose decisions moved, said on its own as a copy that
+    // settled is: its copy is the one this host already has.
+    for (const [clientId, one] of decided) settle(clientId, one);
     const port = options.clientPlugins;
     for (const [clientId, list] of added) {
       if (port === undefined) {

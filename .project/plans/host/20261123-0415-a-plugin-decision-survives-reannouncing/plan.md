@@ -1,7 +1,7 @@
 ---
 title: A client plugin's decisions survive the client's next announcement
 domain: host
-status: planned
+status: built
 priority: high
 created: 2026-11-23
 revalidated: 2026-11-23
@@ -80,8 +80,8 @@ client: session/activeClientSet {customizations} -> actions.ts held presence -> 
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - A same nonce takes the new decisions](task-01-a-same-nonce-takes-the-new-decisions.md) | todo | - |
-| [02 - A new nonce keeps the session's decision](task-02-a-new-nonce-keeps-the-sessions-decision.md) | todo | 01 |
+| [01 - A same nonce takes the new decisions](task-01-a-same-nonce-takes-the-new-decisions.md) | done | - |
+| [02 - A new nonce keeps the session's decision](task-02-a-new-nonce-keeps-the-sessions-decision.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -91,14 +91,14 @@ client: session/activeClientSet {customizations} -> actions.ts held presence -> 
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-same-nonce-takes-the-new-decisions.md](task-01-a-same-nonce-takes-the-new-decisions.md).
+- **Done so far:** tasks 01 and 02, as [implemented.md](implemented.md) says.
+- **Next action:** none.
 - **Open questions:** none.
 - **Watch out for:** `samePlugin` serves two purposes today: it keeps a copy and it says nothing moved. Task 01 separates the two, and the copy still follows the `nonce` only.
 
 ## Final verification checklist
 
-- [ ] A test: a new global decision with the same `nonce` is in the session's list and in a snapshot.
-- [ ] A test: a new `nonce` keeps the session entry of a plugin that was turned off for the session.
-- [ ] The case at line 345 passes: an unchanged announcement says nothing.
-- [ ] `packages/sdk/test/client-plugins-session.test.ts` passes.
+- [x] A test: a new global decision with the same `nonce` is in the session's list and in a snapshot.
+- [x] A test: a new `nonce` keeps the session entry of a plugin that was turned off for the session.
+- [x] The case at line 345 passes: an unchanged announcement says nothing.
+- [x] `packages/sdk/test/client-plugins-session.test.ts` passes.
