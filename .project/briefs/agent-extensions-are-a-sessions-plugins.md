@@ -41,7 +41,8 @@ Softov wants VS Code's `vscode/listAgentExtensions` and `vscode/setAgentExtensio
 - `source` says where the plugin came from: the user's, the project's, or another plugin's.
 - `status` comes from the plugin's live state in the session, as the plugin brief defines it.
 - `setAgentExtensionEnabled` sets the session's or chat's own decision in `enablement.ts`.
+- `mode` says how the host loads plugins, as [plugins-are-a-sessions-extensions.md](plugins-are-a-sessions-extensions.md) maps it. `disabled` is the plugin off, and `load_only` is the plugin running with its tools off. `load_and_augment` is the plugin with its tools on.
 
 ## Open points
 
-- `mode`'s meaning for ahpd. To be asked once the plugin brief settles how a session loads plugins.
+- Not checked: how Copilot acts on `load_only` against `load_and_augment`, from which the mapping in *The change* was read.
