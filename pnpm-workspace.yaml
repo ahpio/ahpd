@@ -50,4 +50,4 @@ minimumReleaseAgeExclude:
   - '@earendil-works/pi-mcp@1.5.2'
   - '@earendil-works/pi-telemetry@1.5.2'
   - '@earendil-works/pi-tui@1.5.2'
-  - '@ahpio/sandbox-runtime@0.0.83-rc.0'
+  - '@ahpio/sandbox-runtime@0.0.83'
