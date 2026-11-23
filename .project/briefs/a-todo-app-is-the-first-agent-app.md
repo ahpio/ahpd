@@ -157,7 +157,7 @@ A row keeps the kind's data apart from what the host knows. Softov, 2026-11-22: 
 | `record` | The fields of the kind's schema, and only those. The update form edits this object | The kind |
 | `operations` | The operation ids the row offers now, from each operation's `offered` | The host |
 
-Tunnel rows hold the kind and the host's facts inside the record today. They move to this shape when the kind registration is built, so the host has one row shape.
+Tunnel rows hold the kind and the host's facts inside the record today. They move to this shape later, in a change of their own after the todo app. Softov, 2026-11-22: "tunnels move too, but after in a future".
 
 ### The channel
 
@@ -290,11 +290,12 @@ Each row is one of Softov's three parts. "Kind" is the generic registration that
 A first order, for the plans:
 
 1. Write the app with what works today: records, four tools, and a page that only reads. It proves the storage and the tools, and it is the example an agent copies.
-2. A plugin registers a kind, with its channel, its operations and its entry in `ahpd.channels`. Rows take the shape of *The row*, tunnels too. The todo list moves from the page to the kind.
+2. A plugin registers a kind, with its channel, its operations and its entry in `ahpd.channels`. Rows take the shape of *The row*. The todo list moves from the page to the kind.
 3. A view's Button reads `{ path }` in its `context`, and a view gets input components.
 4. A view knows its reader.
 5. A plugin's tools turn off while it runs.
 6. The app runs on the stdio runtime.
+7. Later, tunnels move to the row shape of *The row*.
 
 ## Open points
 
