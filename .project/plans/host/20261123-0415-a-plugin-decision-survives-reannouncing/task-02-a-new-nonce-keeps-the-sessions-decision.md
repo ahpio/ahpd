@@ -1,6 +1,6 @@
 ---
 title: A new nonce keeps the session's decision
-status: todo
+status: done
 depends:
   - task-01-a-same-nonce-takes-the-new-decisions.md
 layer: "sdk"

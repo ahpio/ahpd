@@ -1,6 +1,6 @@
 ---
 title: A same nonce takes the new decisions
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:
