@@ -280,6 +280,17 @@ What VS Code does with a recorded `resource`, seen on 2026-11-23 with `artifactT
 
 An artifact integration gives a recorded entry live state and actions. VS Code draws what the integration sends: an icon, a label, sections, and state-dependent and general actions. It is made for what a session produced and follows, such as a pull request it opened. Whether a kind's row is one is open.
 
+A kind and an artifact integration do two jobs:
+
+| | A kind | An artifact integration |
+| --- | --- | --- |
+| What it is | The host's list of records, with create, read, update and remove | A live view of one thing a session points at |
+| Scope | The whole host, every session | One recorded entry in one session |
+| Makes things | Yes, `todo/create` | No, it follows what a session recorded |
+| Automation | None | Yes, per session, with consent |
+
+They work together. A kind holds the todos. A session can record a todo it works on. An integration then shows that todo's state on the session's pill, and offers Done. It can also offer automation, such as "mark it done when the pull request merges".
+
 ### The tools
 
 Works today, with `registerTool`. An agent in any session reads and changes the same list.
