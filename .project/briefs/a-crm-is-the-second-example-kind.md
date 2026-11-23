@@ -36,7 +36,7 @@ host.registerThing({ name: 'ticket', title: 'Tickets', description: 'One request
 host.registerThing({ name: 'interaction', title: 'Interactions', description: 'One contact with a client: an email, a call or a note.' });
 ```
 
-Each thing gets its channel and its row scheme, as the todo brief's *The thing and its kind* says. `x-ahpd-ticket://` lists the tickets, and `ticket://t-1042` is one ticket.
+Each thing gets its channel and its row scheme, as the todo brief's *The thing and its kind* says. `x-ahpd-tickets://` lists the tickets, and `ticket://t-1042` is one ticket.
 
 ### Kinds from more than one plugin
 
@@ -57,7 +57,7 @@ host.registerKind({ thing: 'interaction', name: 'email', title: 'Email', schema:
 The thing's entry then lists kinds from two plugins:
 
 ```json
-{ "scheme": "x-ahpd-interaction", "title": "Interactions", "grant": "interaction:get",
+{ "scheme": "x-ahpd-interactions", "title": "Interactions", "grant": "interaction:get",
   "kinds": {
     "note": { "title": "Note", "plugin": "@local/crm", "schema": { "...": "the note's schema" }, "operations": [ "..." ] },
     "email": { "title": "Email", "plugin": "@local/mail", "schema": { "...": "the email's schema" },
@@ -82,7 +82,7 @@ A person or an agent sends a draft email:
 
 ```json
 { "jsonrpc": "2.0", "id": 21, "method": "x-ahpd/invokeOperation",
-  "params": { "channel": "x-ahpd-interaction://", "operationId": "email/send", "target": { "id": "i-88" } } }
+  "params": { "channel": "x-ahpd-interactions://", "operationId": "email/send", "target": { "id": "i-88" } } }
 ```
 
 The row shows `"operation": { "id": "email/send", "status": "running" }` until the mail server answers. Later the mail plugin learns that the email bounced, and changes the row by itself. Every reader of the channel, and every watch on `interaction://i-88`, hears it.

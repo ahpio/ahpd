@@ -92,12 +92,13 @@ New. A thing is one list on the host, and a kind is one type of record in it. So
 - Any plugin may add a kind to a thing, as two plugins add devtunnel and cloudflare to the tunnels, and computers take their runtimes.
 - The first declaration loaded gives the thing's title and description. A declaration that differs is a warning on its plugin's row.
 - The thing lives while a plugin declares it or holds a kind of it. A plugin that unloads takes its kinds, and the thing keeps the others.
-- The channel and the row scheme are the thing's, not a plugin's. [a-crm-is-the-second-example-kind.md](a-crm-is-the-second-example-kind.md) checks this against a thing with many kinds.
+- The channel and the row scheme are the thing's, not a plugin's: `x-ahpd-<plural>://` lists the rows, and `<name>://<id>` is one row. Softov, 2026-11-23: "x-ahpd-<plural>://, <name>://<id>". This is the form of `x-ahpd-users://` and `user://<id>`, and of `x-ahpd-tunnels://`.
+- A declaration may name the plural. Without one, the host adds an `s` to the name (defaulted). [a-crm-is-the-second-example-kind.md](a-crm-is-the-second-example-kind.md) checks this against a thing with many kinds.
 
 The todo app registers the thing `todo`, and one kind in it, also named `todo`:
 
 ```js
-host.registerThing({ name: 'todo', title: 'Todos', description: 'A shared todo list.' });
+host.registerThing({ name: 'todo', plural: 'todos', title: 'Todos', description: 'A shared todo list.' });
 ```
 
 The kind has the shape of `TunnelKind`. The kind declares its `schema` once. The host keeps the list, serves create, update and remove with that schema as their form, and lists the records on a channel. A client draws the forms with no code for todos.
@@ -139,7 +140,7 @@ The handshake lists each channel in `ahpd.channels`. Each entry gets `kinds`, on
 
 ```json
 "ahpd.channels": [
-  { "scheme": "x-ahpd-todo", "title": "Todos", "grant": "todo:read",
+  { "scheme": "x-ahpd-todos", "title": "Todos", "grant": "todo:read",
     "kinds": {
       "todo": {
         "title": "Todo",
@@ -191,7 +192,7 @@ Tunnel rows hold the kind and the host's facts inside the record today. They mov
 A page that shows the whole list subscribes to the kind's channel:
 
 ```json
-{ "jsonrpc": "2.0", "id": 6, "method": "subscribe", "params": { "channel": "x-ahpd-todo://" } }
+{ "jsonrpc": "2.0", "id": 6, "method": "subscribe", "params": { "channel": "x-ahpd-todos://" } }
 ```
 
 The snapshot's state holds the rows, and the status of each operation that a call runs now. The declarations stay in `ahpd.channels`.
@@ -217,27 +218,27 @@ A client draws this with no code for todos:
 - A list operation, such as `todo/create` and `todo/clear`, is a button on the list. A record operation is a button on each row that names it in `operations`.
 - An operation with `input` opens a form drawn from the schema: a text field for `title` and a check box for `done`.
 - An operation with `confirmation` asks it before it runs.
-- `status` is `running` while a call runs, and `error` with its message when the call failed. Each subscriber gets the change as `x-ahpd-todo/operations`.
+- `status` is `running` while a call runs, and `error` with its message when the call failed. Each subscriber gets the change as `x-ahpd-todos/operations`.
 
 A person adds a todo from a client:
 
 ```json
 { "jsonrpc": "2.0", "id": 7, "method": "x-ahpd/invokeOperation",
-  "params": { "channel": "x-ahpd-todo://", "operationId": "todo/create", "input": { "title": "Buy milk" } } }
+  "params": { "channel": "x-ahpd-todos://", "operationId": "todo/create", "input": { "title": "Buy milk" } } }
 ```
 
 and marks it done:
 
 ```json
 { "jsonrpc": "2.0", "id": 8, "method": "x-ahpd/invokeOperation",
-  "params": { "channel": "x-ahpd-todo://", "operationId": "todo/complete", "target": { "id": "t-buy-milk" } } }
+  "params": { "channel": "x-ahpd-todos://", "operationId": "todo/complete", "target": { "id": "t-buy-milk" } } }
 ```
 
 Every reader of the channel then gets:
 
 ```json
-{ "jsonrpc": "2.0", "method": "action", "params": { "channel": "x-ahpd-todo://", "serverSeq": 42,
-  "action": { "type": "x-ahpd-todo/changed", "id": "t-buy-milk", "kind": "todo", "owner": "user:ana",
+{ "jsonrpc": "2.0", "method": "action", "params": { "channel": "x-ahpd-todos://", "serverSeq": 42,
+  "action": { "type": "x-ahpd-todos/changed", "id": "t-buy-milk", "kind": "todo", "owner": "user:ana",
     "record": { "title": "Buy milk", "done": true },
     "operations": ["todo/update", "todo/remove", "todo/reopen"] } } }
 ```
@@ -412,9 +413,7 @@ A first order, for the plans:
 ## Open points
 
 - How a view is shown, which Softov thinks over himself. Softov, 2026-11-23: "a ui its like a view that can be show. just that". A view says where it opens by default, such as `main` or the explorer. This covers the input components and the schema of each UI kind.
-- The channel's name for a plugin's thing, such as `x-ahpd-todo://` or `x-<plugin>-todo://`.
 - The grants of a plugin's kind, such as `todo:put` and `todo:delete`, and the scope name a record operation takes, such as `todo`.
 - How VS Code opens a row's URI, which it cannot resolve today.
 - Whether a kind's row is an artifact integration, or integrations stay for what a session produced.
-- The row scheme's name for a plugin's thing, such as `todo://`. Two plugins cannot serve one scheme.
 - Where a page opens with a session as its context: a plugin page, or a canvas in a chat.
