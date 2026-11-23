@@ -17,3 +17,4 @@ Cause unknown; the 20:26 compaction is a guess. Softov could not reproduce it.
 ## Fix
 
 Softov chose on 2026-11-18 that this waits for 0.16, and does not block 0.15.0.
+Softov, 2026-11-23: "Wait again, open". The file stays open for the next sighting, and does not block 0.16.0.

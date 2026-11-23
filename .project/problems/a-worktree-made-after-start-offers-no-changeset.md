@@ -42,3 +42,4 @@ Make a file edit in the session, or restart the daemon.
 - Related: [a-sessions-changes-are-kept-under-two-keys.md](a-sessions-changes-are-kept-under-two-keys.md), where a file a shell command wrote is missing from the `session` scope.
 
 Softov chose on 2026-11-18 that this waits for 0.16, and does not block 0.15.0.
+Softov, 2026-11-23: "Both: on a new folder and each turn's end". The host reads the folder when it makes a worktree, when a session opens in a new folder, and at the end of each turn. Fix in 0.16.

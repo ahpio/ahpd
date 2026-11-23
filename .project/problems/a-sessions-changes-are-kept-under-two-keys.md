@@ -53,3 +53,4 @@ none.
 - Or make `sessionFiles` take both keys, and read the checkpoints under the id and the tracker under the URI.
 
 Softov chose on 2026-11-18 that this waits for 0.16, and does not block 0.15.0.
+Softov, 2026-11-23: "Key everything by the id". `observe` and `state` move to `idOf(uri)`, as the checkpoints are, and nothing stored changes. Fix in 0.16.

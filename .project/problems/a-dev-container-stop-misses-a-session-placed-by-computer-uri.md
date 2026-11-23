@@ -36,3 +36,4 @@ None. Place a session on a dev container by its `devcontainer://<folder>` source
 - Or let the computer plugin's `stop` and `remove` answer `false` while a session runs in the machine, from its own view of the machine.
 
 Softov chose on 2026-11-18 that this waits for 0.16, and does not block 0.15.0.
+Softov, 2026-11-23: "The computer plugin refuses". The plugin's `stop` and `remove` answer `false` while a session runs in the machine, which guards every client. Fix in 0.16.

@@ -41,3 +41,4 @@ none.
 - Set `updatedAt` from the file's change time when a hand edit is taken.
 
 Softov chose on 2026-11-18 that this waits for 0.16, and does not block 0.15.0.
+Softov, 2026-11-23: "The file, with a log line". The file is the truth after a restart, because whoever writes the configuration folder controls the daemon. The change is logged, and `updatedAt` takes the file's change time. Fix in 0.16.
