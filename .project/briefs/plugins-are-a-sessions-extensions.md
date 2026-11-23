@@ -1,52 +1,57 @@
 ---
-title: Plugins are a session's extensions
+title: An agent builds an app that lasts
 created: 2026-11-21
 refs:
-  - git://8a5a86a5c - main when the facts were checked
-  - "[briefs/plugin-runtimes-external.md](plugin-runtimes-external.md) - a plugin that runs outside the daemon's process, which this brief builds on"
+  - git://22491eb0d - main when the facts were checked
+  - "[briefs/plugin-runtimes-external.md](plugin-runtimes-external.md) - a plugin that runs outside the daemon's process, which the app runs on"
+  - "[briefs/a-plugin-asks-for-its-grants.md](a-plugin-asks-for-its-grants.md) - a plugin's own grants, written by hand today"
   - "[briefs/an-agent-makes-a-canvas.md](an-agent-makes-a-canvas.md) - canvases an agent makes"
   - "[briefs/a-person-acts-from-a-plugin-page.md](a-person-acts-from-a-plugin-page.md) - a plugin's page and its actions"
-  - "[briefs/agent-extensions-are-a-sessions-plugins.md](agent-extensions-are-a-sessions-plugins.md) - the VS Code methods that list these plugins"
+  - "[briefs/agent-extensions-are-a-sessions-plugins.md](agent-extensions-are-a-sessions-plugins.md) - the VS Code methods that list ahpd plugins"
+  - "[research/vscode-extensions-plugins-and-customizations.md](../research/vscode-extensions-plugins-and-customizations.md) - an ahpd plugin, an agent plugin and an agent extension, told apart"
+  - "[code://packages/server/src/pluginschannel.ts#L232-L235](../../packages/server/src/pluginschannel.ts#L232-L235) - the grants that guard each plugin command"
+  - "[code://packages/server/src/pluginschannel.ts#L614](../../packages/server/src/pluginschannel.ts#L614) - a plugin's folder, `<plugin root>/plugins/<id>/`"
+  - "[code://packages/server/src/plugins.ts#L2173](../../packages/server/src/plugins.ts#L2173) - `enabled: false`, the top-level switch"
+  - "[code://packages/sdk/src/plugins/enablement.ts](../../packages/sdk/src/plugins/enablement.ts) - on and off by global, folder and session scope"
   - "[code://packages/sdk/src/plugins/views.ts](../../packages/sdk/src/plugins/views.ts) - plugin views as schema data models"
-  - "[code://packages/sdk/src/plugins/enablement.ts](../../packages/sdk/src/plugins/enablement.ts) - on and off by scope"
   - "[code://packages/sdk/src/types/plugin.ts#L1319](../../packages/sdk/src/types/plugin.ts#L1319) - `registerTool`"
   - file:///github/ahpd/.scratch/dsh-todo-app - the dsh plugin Softov pointed at, a todo page in dsh's sidebar
-  - git://github.com/microsoft/vscode@ddbdd50a9ed1 - `node/copilot/copilotExtensionTools.ts`, `extensions_reload`; `common/agent.ts#L368-L396`, an extension's source and status
+  - git://github.com/microsoft/vscode@ddbdd50a9ed1 - `common/agent.ts#L368`, `AgentExtensionMode`; `node/copilot/copilotExtensionTools.ts`, `extensions_reload`
 ---
 
-# Plugins are a session's extensions
+# An agent builds an app that lasts
 
-Softov wants an ahpd plugin to work as VS Code's agent extensions do, and as dsh's plugins do. An agent can write one with a skill, and the plugin lasts beyond the session that made it. It can run as a stdio process instead of inside the daemon. It contributes UI as a schema, with no React or HTML: a view, a shortcut, an explorer, an activity item. Each client decides how to draw it. A plugin can also register a resource, such as a channel, and store its data through functions the host gives it. In his words: "I think for this one we need a separated brief since it can affect things."
+Softov wants an agent in a session to build an app, such as a todo page with its own data, as an ahpd plugin. The app stays after the session ends, and other sessions use it and change it. In his words: "a app made in one session must survive like forever or be changed by others sessions." In 0.17 the app runs on the stdio runtime, with the same plugin shape as today: "just the communication need to be solved."
 
 ## What others do
 
-- **dsh** loads a plugin as a package with a host half and a client half. In `dsh-todo-app`, the host half is `export function apply() {}`. The client half registers a sidebar row and a main panel through `ctx.slots.inject` and `ctx.slots.register`, written in React, with its data in the browser's storage. Softov does not want the client injection for now.
-- **VS Code** runs Copilot's agent extensions per session, from the user's folder, the project or a plugin. They add tools and canvases, and the agent reloads them with `extensions_reload` after it writes one.
+- **dsh** loads a plugin as a package with a host half and a client half. In `dsh-todo-app`, the host half is `export function apply() {}`. The client half registers a sidebar row and a main panel in React, with its data in the browser's storage. Softov does not want the client injection for now.
+- **VS Code** lets Copilot's agent write an agent extension and load it with `extensions_reload`. Its extension list has a `mode` per provider: `disabled`, `load_only` or `load_and_augment`.
 
 ## What ahpd has today
 
-- A plugin runs inside the daemon's process. Running one outside it is [plugin-runtimes-external.md](plugin-runtimes-external.md).
-- A plugin registers host tools with `registerTool`.
-- A plugin shows views as schema data models, with `showView`, `setViewData` and `clearView` ([`code://packages/sdk/src/plugins/views.ts`](../../packages/sdk/src/plugins/views.ts)).
-- A plugin is on or off by global, folder and session scope. It is not loaded for one session only.
-- No skill teaches an agent to write a plugin, and no tool reloads one.
-
-## Who writes
-
-- `packages/sdk/src/plugins/` and `packages/sdk/src/types/plugin.ts`: no open plan or branch changes them now. The three briefs in the refs touch the same ground and are to be read together with this one.
+- A plugin runs in the daemon's process, loaded with `import()`. It can do what the daemon's OS user can do: its grants limit only the calls on its connection.
+- A plugin talks to the host over a connection, an in-memory pair served as `plugin:<name>`. Its registrations, such as tools, agents and channels, are calls into the host, not frames. A nested host already speaks AHP over stdio.
+- A plugin lives in `<plugin root>/plugins/<id>/`, under the configuration folder or `AHPD_PLUGIN_ROOT`. ahpd has no per-user or per-team folders.
+- The plugins channel guards each command with a grant: `plugin:list` to read, `plugin:enable` and `plugin:disable` to switch, and `plugin:install` to install or remove. No group holds `plugin:install`.
+- A plugin has no creator or owner.
+- `enabled: false` on a plugin's entry turns it off for the host. A decision by global, folder or session scope can switch it off, but a plugin is never loaded for one session only.
+- A plugin shows views as schema data models, and registers host tools with `registerTool`.
+- No tool loads a plugin an agent wrote, and no skill teaches an agent to write one.
 
 ## The change
 
-- A plugin an agent makes in one session lasts after that session ends, and other sessions can change it. Softov, 2026-11-21: "a app made in one session must survive like forever or be changed by others sessions."
-- A plugin can run as a stdio process, when its runtime allows it.
-- A plugin contributes UI as a schema: views, shortcuts, an explorer, activity items. A client draws each kind its own way.
-- A plugin can register a resource, such as a channel, and keep its data through host storage functions.
-- A skill teaches an agent to write a plugin, and the agent can reload one it wrote.
-- A client lists and toggles a session's plugins through VS Code's agent extension methods.
+- An agent writes an app as an ahpd plugin, and loads it with a tool such as `plugin_load` or `plugin_import`. Softov, 2026-11-22.
+- The app runs on the stdio runtime from 0.17, with the plugin shape of today. The registrations that are calls today become messages. Softov, 2026-11-22.
+- All apps are kept in one folder beside the plugins, and each records its owner: a user, a team or the host. Softov, 2026-11-22, "One folder, owner recorded (Recommended)".
+- Root may always change or remove an app, and so may the user who created it. Softov, 2026-11-22.
+- A plugin's tools can be turned off for the host while the plugin keeps running. Softov, 2026-11-22: "to leave the plugin running and to disable only the tools."
+- VS Code's `mode` maps onto these switches. `disabled` is the plugin off, and `load_only` is the plugin running with its tools off. `load_and_augment` is the plugin with its tools on. Read from the type's names and comment, not from Copilot's code.
 
 ## Open points
 
-- Not asked yet: the stdio protocol, the schema of each UI kind, and the storage functions' shape and scope.
-- Not asked yet: where a plugin an agent made is kept, who may change it, and how it is removed.
-- Softov said on 2026-11-21 that this brief is not yet what he wants for plugins. He reviews it later.
-- Each is to be asked before this brief is final.
+- Which tools a session gets, per session. Softov, 2026-11-22: it waits for another brief and an idea of his, which change how a session's tools are controlled.
+- Whether a team member changes a team's app with a grant of the team, or with `plugin:*` grants.
+- An agent-written app in the daemon's process can run any code as the daemon's OS user. Whether `plugin_load` waits for the stdio runtime, or loads in-process before 0.17.
+- Not asked yet: the schema of each UI kind, and the storage functions' shape and scope.
+- Not checked: how Copilot acts on `load_only` against `load_and_augment`.
