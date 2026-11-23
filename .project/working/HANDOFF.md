@@ -20,6 +20,7 @@ Current progress and pending items only, as of 2026-11-22. *Outside this reposit
   - #449 (`300e5eb60`): the ACP machine cases import the computer plugin before their budget. The first case took 9.3 s on Windows, down from 15 s to 17 s.
   - #448 (`d27af6933`): a host the runtime cannot start on says why, and on Ubuntu 26.04 names the AppArmor profile and the commands that unload it. CI's `processes` job is back on `ubuntu-latest`.
   - Softov's dev daemon takes #446, #447 and #448 at its next restart on main.
+  - Briefs under review with Softov: [plugins-are-a-sessions-extensions.md](../briefs/plugins-are-a-sessions-extensions.md), an agent builds an app that lasts, and [a-todo-app-is-the-first-agent-app.md](../briefs/a-todo-app-is-the-first-agent-app.md), the first app with what it misses. The steps and plans come from the todo brief once he refines it.
   - Softov restarted his dev daemon on main with #431 to #445.
 - **2026-11-21.** 0.15.0 is released: `v0.15.0` is on `3bf557618` (#394), and npm serves the 13 packages under `latest`. `ghcr.io/ahpio/ahpd` has `0.15.0`, `0.15` and `latest`. ahpw `v0.9.0` is on `d968e1f`, with `@ahpd/web` under `latest`. [pending/release.md](../pending/release.md) is closed.
   - Merged on 2026-11-21: #393 (`bcec57901`) from beorn, #395 (`9ad9b0f98`), #396 (`2bb0f809e`) and #398 (`98a2b4cd7`), the image fix.
