@@ -21,6 +21,10 @@ refs:
   - "[briefs/artifact-integrations.md](artifact-integrations.md) - VS Code's artifact integrations, which give a reference its actions later"
   - git://github.com/microsoft/agent-host-protocol@1ef06429 - `types/channels-chat/state.ts#L970`, `MessageResourceAttachment`; `#L1089`, `ResourceResponsePart`; `types/common/commands.ts#L729`, `resourceRead`
   - git://github.com/microsoft/vscode@1564f100807a - `src/vs/platform/agentHost/ARTIFACT_INTEGRATIONS_PROPOSAL.md` §5.4, state-dependent and general actions
+  - "[code://packages/sdk/src/host/resourcemethods.ts#L65-L74](../../packages/sdk/src/host/resourcemethods.ts#L65-L74) - `resourceRead` and `createResourceWatch` find a resource provider by the URI's scheme"
+  - "[code://packages/sdk/src/host.ts#L1380-L1410](../../packages/sdk/src/host.ts#L1380-L1410) - a watch starts the provider's `watch`, and sends `resourceWatch/changed`"
+  - "[code://packages/sdk/src/access/people.ts#L1-L12](../../packages/sdk/src/access/people.ts#L1-L12) - `user://<id>`, a record's scheme beside its `x-ahpd-users://` channel"
+  - "[code://packages/bot/src/provider.ts#L159](../../packages/bot/src/provider.ts#L159) - the bot provider's `watch`, a plugin provider that has one"
   - file:///github/ahpd/.scratch/dsh-todo-app - dsh's todo app: React in the client, data in the browser
 ---
 
@@ -150,8 +154,11 @@ A row keeps the kind's data apart from what the host knows. Softov, 2026-11-22: 
 ```json
 { "id": "t-buy-milk", "kind": "todo", "owner": "user:ana",
   "record": { "title": "Buy milk", "done": false },
-  "operations": ["todo/update", "todo/remove", "todo/complete"] }
+  "operations": ["todo/update", "todo/remove", "todo/complete"],
+  "operation": { "id": "todo/complete", "status": "running" } }
 ```
+
+`operation` is how a reader of one row sees a call that another person started. The caller does not need it: `x-ahpd/invokeOperation` answers when the operation ends. A kind whose operations take minutes, such as a deploy, needs it most. Softov, 2026-11-22: "status on the row plus a watch".
 
 | Field | Holds | Kept by |
 | --- | --- | --- |
@@ -160,6 +167,7 @@ A row keeps the kind's data apart from what the host knows. Softov, 2026-11-22: 
 | `owner` | Who made the row: `user:<id>`, a team or the host | The host, for every kind |
 | `record` | The fields of the kind's schema, and only those. The update form edits this object | The kind |
 | `operations` | The operation ids the row offers now, from each operation's `offered` | The host |
+| `operation` | The operation running on the row now, or the last one that ran: `{ id, status, error? }`, held in memory | The host |
 
 Tunnel rows hold the kind and the host's facts inside the record today. They move to this shape later, in a change of their own after the todo app. Softov, 2026-11-22: "tunnels move too, but after in a future".
 
@@ -221,18 +229,20 @@ Every reader of the channel then gets:
 
 ### A reference in a chat
 
-A chat points at one todo by the row's URI, the channel's URI with the row's id: `x-ahpd-todo://t-buy-milk`. Softov, 2026-11-22: "plain row URI now, artifact integration later".
+A chat points at one row by the row's URI. Softov, 2026-11-22: "plain row URI now, artifact integration later".
+
+The URI is a resource scheme beside the channel, as the users directory serves `user://<id>` beside `x-ahpd-users://`. For the todo kind that is `todo://t-buy-milk`. A channel URI cannot be the row's URI: `resourceRead` and `createResourceWatch` go to a resource provider by its scheme, and a channel is not one.
 
 The reference is AHP's own. A message carries it as a `resource` attachment, and an answer as a `contentRef` part, each a `ContentRef` with the `uri`:
 
 ```json
-{ "type": "resource", "uri": "x-ahpd-todo://t-buy-milk", "contentType": "application/json" }
+{ "type": "resource", "uri": "todo://t-buy-milk", "contentType": "application/json" }
 ```
 
 A client reads the one row with `resourceRead`, with no subscribe to the list:
 
 ```json
-{ "jsonrpc": "2.0", "id": 9, "method": "resourceRead", "params": { "uri": "x-ahpd-todo://t-buy-milk" } }
+{ "jsonrpc": "2.0", "id": 9, "method": "resourceRead", "params": { "uri": "todo://t-buy-milk" } }
 ```
 
 The answer is the row of *The row*, as JSON:
@@ -242,12 +252,27 @@ The answer is the row of *The row*, as JSON:
   "data": "{\"id\":\"t-buy-milk\",\"kind\":\"todo\",\"owner\":\"user:ana\",\"record\":{\"title\":\"Buy milk\",\"done\":false},\"operations\":[\"todo/update\",\"todo/remove\",\"todo/complete\"]}" } }
 ```
 
+A reader who keeps the reference on screen watches the row, with AHP's `createResourceWatch`, and subscribes to the channel it answers:
+
+```json
+{ "jsonrpc": "2.0", "id": 10, "method": "createResourceWatch", "params": { "uri": "todo://t-buy-milk" } }
+```
+
+Each change to the row, its record or its running operation, arrives as `resourceWatch/changed` on that watch, and the reader reads the row again:
+
+```json
+{ "jsonrpc": "2.0", "method": "action", "params": { "channel": "<the watch's channel>", "serverSeq": 3,
+  "action": { "type": "resourceWatch/changed", "changes": { "items": [ { "uri": "todo://t-buy-milk", "type": "updated" } ] } } } }
+```
+
+The host serves the row's scheme for every kind, with `read` and `watch`, as the bot plugin's provider serves `bot://`. A provider with no `watch` cannot be watched today: `createResourceWatch` refuses it.
+
 - The client finds the kind `todo` in `ahpd.channels`, and draws a button for each id in `operations`, with the kind's label and form.
 - A click sends `x-ahpd/invokeOperation` with the channel and `target: { id }`, as *The channel* shows.
 - The host checks the reader's grant on the row before it answers, as it does for the list.
 - An agent records the reference in its session with `add_artifact_or_reference`, type `resource`, and this `uri`.
 
-VS Code shows the reference, and draws no buttons for it until ahpd serves artifact integrations. Then the kind becomes an integration that matches its channel's URIs. An operation with `offered` is a state-dependent action, and the rest are general actions, as VS Code's proposal names them. Softov turns `chat.artifactIntegrations.enabled` on in VS Code to test that UI.
+VS Code shows the reference, and draws no buttons for it until ahpd serves artifact integrations. Then the kind becomes an integration that matches its row scheme's URIs. An operation with `offered` is a state-dependent action, and the rest are general actions, as VS Code's proposal names them. Softov turns `chat.artifactIntegrations.enabled` on in VS Code to test that UI.
 
 ### The tools
 
@@ -337,6 +362,6 @@ A first order, for the plans:
 - Whether a kind's operations become tools by themselves, or the app writes its tools.
 - The channel's name for a plugin's kind, such as `x-ahpd-todo://` or `x-<plugin>-todo://`.
 - The grants of a plugin's kind, such as `todo:put` and `todo:delete`, and the scope name a record operation takes, such as `todo`.
-- Where a row's running operation shows to a reader of that row alone.
+- The row scheme's name for a plugin's kind, such as `todo://`. Two plugins cannot serve one scheme.
 - Which input components a view gets first.
 - Where a page opens with a session as its context: a plugin page, or a canvas in a chat.
