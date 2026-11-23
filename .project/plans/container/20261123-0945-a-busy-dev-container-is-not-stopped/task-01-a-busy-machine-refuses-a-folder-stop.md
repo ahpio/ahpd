@@ -1,6 +1,6 @@
 ---
 title: A busy machine refuses a folder stop
-status: todo
+status: done
 depends: []
 layer: "computer"
 refs:
@@ -35,3 +35,4 @@ The plugin knows the sessions in each of its machines. The folder's `stop` and `
 
 ## Resume
 
+Done on 2026-11-23, as written.
