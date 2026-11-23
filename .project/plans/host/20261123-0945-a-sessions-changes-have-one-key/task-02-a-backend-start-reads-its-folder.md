@@ -1,6 +1,6 @@
 ---
 title: A backend start reads its folder
-status: todo
+status: done
 depends: [task-01-the-changes-port-takes-the-id.md]
 layer: "sdk host"
 refs:
@@ -32,3 +32,4 @@ When a session's backend starts, the host reads the session's folder after the b
 
 ## Resume
 
+Done on 2026-11-23. The start reads the folder without `bringBackOf`: the session has done no work yet, and the bring-back added a machine read.

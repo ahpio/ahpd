@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { gitChanges } from '../src/sessions/changes.js';
+import { idOf } from '../src/sessions/catalog.js';
 import { createHost } from '../src/host.js';
 import { echo } from '../../../examples/echo/agent.js';
 import { gitSync } from '../../../tools/git.ts';
@@ -58,10 +59,11 @@ const serving = async () => {
   /** A turn of the session that changed `docs/a.md`, as the backend's edit would be seen. */
   const turned = async (turn: string): Promise<void> => {
     const file = join(dir, 'docs', 'a.md');
-    changes.observe?.(dir, session, turn, file, 'before');
+    // By the session's id, as the host hands every call of the port.
+    changes.observe?.(dir, idOf(session), turn, file, 'before');
     await settle();
     writeFileSync(file, `in ${turn}\n`);
-    changes.observe?.(dir, session, turn, file, 'after');
+    changes.observe?.(dir, idOf(session), turn, file, 'after');
     await settle();
   };
   /** A turn of the echo backend on the default chat, ended: a session's row moves at each turn. */

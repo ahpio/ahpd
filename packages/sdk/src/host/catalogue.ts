@@ -1131,7 +1131,7 @@ export function createCatalogue(ctx: HostContext): Catalogue {
             const state = ctx.stateOf(chat);
             const active = state?.activeTurn;
             const turns = [...(Array.isArray(state?.turns) ? state.turns as Bag[] : []), ...(typeof active === 'object' && active !== null ? [active as Bag] : [])];
-            own = source?.chatSummary?.(uri, turns.map((turn) => String(turn.id ?? '')));
+            own = source?.chatSummary?.(idOf(uri), turns.map((turn) => String(turn.id ?? '')));
           }
           if (own !== undefined && sessions.has(uri)) setChatChangesSummary(uri, chat, own);
         }

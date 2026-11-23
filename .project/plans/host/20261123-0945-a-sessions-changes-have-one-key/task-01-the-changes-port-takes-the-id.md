@@ -1,6 +1,6 @@
 ---
 title: The changes port takes the session id
-status: todo
+status: done
 depends: []
 layer: "sdk host"
 refs:
@@ -38,3 +38,4 @@ Every call of the changes port passes `idOf(uri)` as `session`, and the port's t
 
 ## Resume
 
+Done on 2026-11-23. `propose`, `settle`, `complete`, `operations`, `review`, `chatSummary` and the source's `invoke` also take the id, because they read the same tracker. Two tests that stood in for the host now pass the id.

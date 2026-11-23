@@ -381,6 +381,11 @@ export const BASELINE_TURN = '0';
  * installed, against a directory that may not be a repository. A host given
  * none advertises no changesets, which is a true answer rather than an empty
  * screen.
+ *
+ * Every `session` the host hands a source is the session's id, `idOf` of its
+ * channel URI, and never the URI itself. The checkpoint refs are named by it,
+ * and a source that keeps what a session's tools wrote keys it the same way,
+ * so the two halves of a session's changes are found under one name.
  */
 export interface ChangesetSource {
   /**
