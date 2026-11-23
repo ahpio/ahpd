@@ -291,6 +291,24 @@ A kind and an artifact integration do two jobs:
 
 They work together. A kind holds the todos. A session can record a todo it works on. An integration then shows that todo's state on the session's pill, and offers Done. It can also offer automation, such as "mark it done when the pull request merges".
 
+An agent then acts on a todo in two ways:
+
+| Way | Reaches | Needs | Gives |
+| --- | --- | --- | --- |
+| The app's tools, such as `todo_update` | Any todo, from any session | Nothing more | The change |
+| The integration's tools, `get_artifact_status` and `run_artifact_action` | One todo the session recorded | `add_artifact_or_reference` with the row's URI, and an integration that claims the URI's scheme | The todo's state and actions on the session's pill, and automation |
+
+The flow of the second way:
+
+1. The agent calls `todo_add`, and gets the id, so the URI is `todo://t-buy-milk`.
+2. The agent records the URI with `add_artifact_or_reference`, type `resource`.
+3. An integration that claims `todo://` matches the entry. VS Code matches by URI, and the entry's type is "a hint, not proof".
+4. `get_artifact_status` answers the todo's state, and its actions from the operations the row offers now.
+5. `run_artifact_action` runs one of them, such as `todo/complete`, through the kind, as `x-ahpd/invokeOperation` does.
+6. A person sees the same actions as buttons on the pill in VS Code.
+
+`run_artifact_action` runs only `code` actions, and a kind's operations are code. A `prompt` action is refused there, because the agent does that work in its own chat.
+
 ### The tools
 
 Works today, with `registerTool`. An agent in any session reads and changes the same list.
