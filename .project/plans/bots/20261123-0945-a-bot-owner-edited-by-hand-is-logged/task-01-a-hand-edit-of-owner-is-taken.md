@@ -1,6 +1,6 @@
 ---
 title: A hand edit of owner is taken
-status: todo
+status: done
 depends: []
 layer: "bot"
 refs:
@@ -33,3 +33,4 @@ The store takes an owner change from the bot's file, logs it once through `onPro
 
 ## Resume
 
+Done on 2026-11-23. The workspace check runs first, so a file that changes both fields is refused.
