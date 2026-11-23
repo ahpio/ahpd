@@ -17,6 +17,10 @@ refs:
   - "[code://packages/sdk/src/types/plugin.ts#L551-L575](../../packages/sdk/src/types/plugin.ts#L551-L575) - `PluginMethod`, which gets the caller and its owner"
   - "[code://packages/sdk/src/types/host.ts#L1422-L1582](../../packages/sdk/src/types/host.ts#L1422-L1582) - `HostTool`, with `isEnabledForSession` and `optIn`"
   - "[code://packages/sdk/src/plugins/enablement.ts](../../packages/sdk/src/plugins/enablement.ts) - on and off per scope, for plugins and MCP servers, not for tools"
+  - "[code://packages/sdk/src/tools/artifacts.ts](../../packages/sdk/src/tools/artifacts.ts) - `add_artifact_or_reference`, a session's artifacts by URI"
+  - "[briefs/artifact-integrations.md](artifact-integrations.md) - VS Code's artifact integrations, which give a reference its actions later"
+  - git://github.com/microsoft/agent-host-protocol@1ef06429 - `types/channels-chat/state.ts#L970`, `MessageResourceAttachment`; `#L1089`, `ResourceResponsePart`; `types/common/commands.ts#L729`, `resourceRead`
+  - git://github.com/microsoft/vscode@1564f100807a - `src/vs/platform/agentHost/ARTIFACT_INTEGRATIONS_PROPOSAL.md` §5.4, state-dependent and general actions
   - file:///github/ahpd/.scratch/dsh-todo-app - dsh's todo app: React in the client, data in the browser
 ---
 
@@ -215,6 +219,36 @@ Every reader of the channel then gets:
     "operations": ["todo/update", "todo/remove", "todo/reopen"] } } }
 ```
 
+### A reference in a chat
+
+A chat points at one todo by the row's URI, the channel's URI with the row's id: `x-ahpd-todo://t-buy-milk`. Softov, 2026-11-22: "plain row URI now, artifact integration later".
+
+The reference is AHP's own. A message carries it as a `resource` attachment, and an answer as a `contentRef` part, each a `ContentRef` with the `uri`:
+
+```json
+{ "type": "resource", "uri": "x-ahpd-todo://t-buy-milk", "contentType": "application/json" }
+```
+
+A client reads the one row with `resourceRead`, with no subscribe to the list:
+
+```json
+{ "jsonrpc": "2.0", "id": 9, "method": "resourceRead", "params": { "uri": "x-ahpd-todo://t-buy-milk" } }
+```
+
+The answer is the row of *The row*, as JSON:
+
+```json
+{ "jsonrpc": "2.0", "id": 9, "result": { "encoding": "utf-8", "contentType": "application/json",
+  "data": "{\"id\":\"t-buy-milk\",\"kind\":\"todo\",\"owner\":\"user:ana\",\"record\":{\"title\":\"Buy milk\",\"done\":false},\"operations\":[\"todo/update\",\"todo/remove\",\"todo/complete\"]}" } }
+```
+
+- The client finds the kind `todo` in `ahpd.channels`, and draws a button for each id in `operations`, with the kind's label and form.
+- A click sends `x-ahpd/invokeOperation` with the channel and `target: { id }`, as *The channel* shows.
+- The host checks the reader's grant on the row before it answers, as it does for the list.
+- An agent records the reference in its session with `add_artifact_or_reference`, type `resource`, and this `uri`.
+
+VS Code shows the reference, and draws no buttons for it until ahpd serves artifact integrations. Then the kind becomes an integration that matches its channel's URIs. An operation with `offered` is a state-dependent action, and the rest are general actions, as VS Code's proposal names them. Softov turns `chat.artifactIntegrations.enabled` on in VS Code to test that UI.
+
 ### The tools
 
 Works today, with `registerTool`. An agent in any session reads and changes the same list.
@@ -290,19 +324,19 @@ Each row is one of Softov's three parts. "Kind" is the generic registration that
 A first order, for the plans:
 
 1. Write the app with what works today: records, four tools, and a page that only reads. It proves the storage and the tools, and it is the example an agent copies.
-2. A plugin registers a kind, with its channel, its operations and its entry in `ahpd.channels`. Rows take the shape of *The row*. The todo list moves from the page to the kind.
+2. A plugin registers a kind, with its channel, its operations and its entry in `ahpd.channels`. Rows take the shape of *The row*, and a row's URI reads alone. The todo list moves from the page to the kind.
 3. A view's Button reads `{ path }` in its `context`, and a view gets input components.
 4. A view knows its reader.
 5. A plugin's tools turn off while it runs.
 6. The app runs on the stdio runtime.
-7. Later, tunnels move to the row shape of *The row*.
+7. Later, a kind is an artifact integration, so VS Code draws a reference's buttons.
+8. Later, tunnels move to the row shape of *The row*.
 
 ## Open points
 
 - Whether a kind's operations become tools by themselves, or the app writes its tools.
 - The channel's name for a plugin's kind, such as `x-ahpd-todo://` or `x-<plugin>-todo://`.
 - The grants of a plugin's kind, such as `todo:put` and `todo:delete`, and the scope name a record operation takes, such as `todo`.
-- A row's own URI, such as `todo:t-buy-milk`, that a client reads alone for a reference in a chat. Its answer is the row. Suggested, not answered.
 - Where a row's running operation shows to a reader of that row alone.
 - Which input components a view gets first.
 - Where a page opens with a session as its context: a plugin page, or a canvas in a chat.
