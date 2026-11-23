@@ -1,7 +1,7 @@
 ---
 title: A session's changes have one key, and a new folder is read at once
 domain: host
-status: planned
+status: active
 priority: medium
 created: 2026-11-23
 revalidated: 2026-11-23
@@ -73,8 +73,8 @@ client: changeset channel -> changesetAt (owner = URI) -> changes.state(dir, URI
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - the changes port takes the session id](task-01-the-changes-port-takes-the-id.md) | todo | - |
-| [02 - a backend start reads its folder](task-02-a-backend-start-reads-its-folder.md) | todo | 01 |
+| [01 - the changes port takes the session id](task-01-the-changes-port-takes-the-id.md) | done | - |
+| [02 - a backend start reads its folder](task-02-a-backend-start-reads-its-folder.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -83,8 +83,8 @@ client: changeset channel -> changesetAt (owner = URI) -> changes.state(dir, URI
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-the-changes-port-takes-the-id.md](task-01-the-changes-port-takes-the-id.md).
+- **Done so far:** tasks 01 and 02, on 2026-11-23. [implemented.md](implemented.md) holds the checks.
+- **Next action:** Softov's review of the PR; the plan is `built` on his word.
 - **Open questions:** none.
 - **Watch out for:** `changesetAt`'s `owner` is used elsewhere as a URI, for the status and the operation context. Convert at the port call, not in `changesetAt`.
 

@@ -163,7 +163,8 @@ it('needs session:changes as well as file:write to run an operation on a session
   const both = await withRole(made, 'b');
   expect(await call(both.client, 'invokeChangesetOperation', { channel, operationId: 'commit' }))
     .toMatchObject({ result: { message: 'did commit' } });
-  expect(invoked).toEqual(['ahp-session:/one']);
+  // The source is handed the session's id, as every call of the port names it.
+  expect(invoked).toEqual(['one']);
 });
 
 it('asks a session\'s grants for a row a backend keeps on disk, and for a name that is no session here', async () => {

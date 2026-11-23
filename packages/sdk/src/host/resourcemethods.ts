@@ -1,7 +1,7 @@
 import { AhpErrorCodes } from '@microsoft/agent-host-protocol';
 import { INTERNAL_ERROR, INVALID_PARAMS, RpcError } from '../rpc.js';
 import { notServed } from '../resources/resources.js';
-import { Status } from '../sessions/catalog.js';
+import { Status, idOf } from '../sessions/catalog.js';
 import { need, served } from './common.js';
 import { buildResourceWatchChannelUri, schemeOf } from './channels.js';
 import { AGENT_CLIENT_SCHEME } from './clienturi.js';
@@ -389,13 +389,15 @@ const CONFLICT = -32011;
            * VS Code invokes the handler registered for an operation's id.
            * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostChangesetOperationService.ts#L424
            */
-          const own = (source.operations?.(at.dir, at.owner, at.scope, context) ?? []).some((one) => one.id === operationId);
+          const own = (source.operations?.(at.dir, idOf(at.owner), at.scope, context) ?? []).some((one) => one.id === operationId);
           const handler = own ? undefined : (options.changesetOperations ?? [])
             .find((one) => (one.operations(at.dir, at.owner, at.scope, context) ?? []).some((offer) => offer.id === operationId))
             ?.handlers[operationId];
           const result = handler !== undefined
             ? await handler(request)
-            : await need(source.invoke, 'invokeChangesetOperation').call(source, request);
+            // The source keys a session's changes by its id; a contribution
+            // is handed the session's URI, as it always was.
+            : await need(source.invoke, 'invokeChangesetOperation').call(source, { ...request, session: idOf(at.owner) });
           ctx.operationStatusSaid(channel, { type: 'changeset/operationStatusChanged', operationId, status: 'idle' });
           // Before the refresh, so GitHub's later answer is what survives.
           if (result.pullRequest !== undefined) recordPullRequest(at.owner, at.dir, result.pullRequest);

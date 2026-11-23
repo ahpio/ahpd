@@ -1974,7 +1974,7 @@ export function createSpawn(ctx: HostContext): Spawn {
       onFileEdit: (turnId, path, phase, text) => {
         const dir = dirOf(uri);
         if (dir === undefined) return;
-        return options.changes?.observe?.(dir, uri, turnId, path, phase, text);
+        return options.changes?.observe?.(dir, idOf(uri), turnId, path, phase, text);
       },
       /*
        * A file a person is being asked about, on its way to the same source.
@@ -1992,16 +1992,16 @@ export function createSpawn(ctx: HostContext): Spawn {
       onEditProposed: (toolCallId, path, apply) => {
         const dir = dirOf(uri);
         if (dir === undefined) return undefined;
-        return options.changes?.propose?.(dir, uri, toolCallId, path, apply);
+        return options.changes?.propose?.(dir, idOf(uri), toolCallId, path, apply);
       },
       onEditSettled: (toolCallId) => {
-        options.changes?.settle?.(uri, toolCallId);
+        options.changes?.settle?.(idOf(uri), toolCallId);
       },
       /*
        * An edit a call made, both sides of which the agent said: held by the
        * same source, which mints the URIs a client reads them from.
        */
-      onEditCompleted: (toolCallId, path, before, after) => options.changes?.complete?.(uri, toolCallId, path, before, after),
+      onEditCompleted: (toolCallId, path, before, after) => options.changes?.complete?.(idOf(uri), toolCallId, path, before, after),
       /*
        * Content a tool result or a part of the agent's message carries inline,
        * kept in the session's folder and answered by the reference a part
@@ -2169,6 +2169,16 @@ export function createSpawn(ctx: HostContext): Spawn {
         .finally(() => { if (ctx.baselineCheckpoints.get(uri) === written) ctx.baselineCheckpoints.delete(uri); });
       ctx.baselineCheckpoints.set(uri, written);
       void written.then(() => refreshSessionChangesSummary(uri));
+      /*
+       * And the folder itself, read once the baseline is down, as a turn's end
+       * reads it after its checkpoint. A worktree the host made after the
+       * daemon started, or any folder no session had worked in, is otherwise
+       * read first when a turn ends: a session that only runs commands in a
+       * long turn would offer no Uncommitted Changes until then. Nothing is
+       * brought back from a machine first: the session has not worked yet.
+       */
+      const folder = held.workingDirectory;
+      void written.then(() => { refreshFacts(folder); });
     }
     /*
      * The name it had before, when it is being created again.

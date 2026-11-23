@@ -117,7 +117,7 @@ export function createChangesets(ctx: HostContext): Changesets {
    * that vanished when anything changed.
    */
   const catalogueOf = (uri: string, dir: string): Bag[] =>
-    (options.changes?.scopes(dir, uri, cutOf(uri)) ?? []).map((scope) => ({
+    (options.changes?.scopes(dir, idOf(uri), cutOf(uri)) ?? []).map((scope) => ({
       label: scope.label,
       uriTemplate: `${uri}/changeset/${scope.id}`,
       changeKind: scope.changeKind,
@@ -485,7 +485,7 @@ export function createChangesets(ctx: HostContext): Changesets {
      * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentHostChangesetOperationService.ts#L178-L185
      */
     const offered = [
-      ...(options.changes?.operations?.(at.dir, at.owner, at.scope, context) ?? []),
+      ...(options.changes?.operations?.(at.dir, idOf(at.owner), at.scope, context) ?? []),
       ...(options.changesetOperations ?? []).flatMap((one) => one.operations(at.dir, at.owner, at.scope, context) ?? []),
     ].filter((operation, at_, all) => all.findIndex((other) => other.id === operation.id) === at_);
     return offered.map((operation) => ({
@@ -659,7 +659,7 @@ export function createChangesets(ctx: HostContext): Changesets {
         }
         let settled = false;
         try {
-          const state = await options.changes?.state(at.dir, at.owner, at.scope, at.base);
+          const state = await options.changes?.state(at.dir, idOf(at.owner), at.scope, at.base);
           if (state) {
             const operations = operationsOf(channel);
             told(channel, state, operations);

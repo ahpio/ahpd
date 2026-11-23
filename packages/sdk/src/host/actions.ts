@@ -677,14 +677,14 @@ export function createActions(ctx: HostContext, conn: ConnectionContext): Action
       }
       return (async () => {
         const holding = shown.get(channel)?.files
-          ?? (await options.changes?.state(at.dir, at.owner, at.scope, at.base))?.files;
+          ?? (await options.changes?.state(at.dir, idOf(at.owner), at.scope, at.base))?.files;
         if (holding === undefined) {
           no(`No changeset at ${channel}`);
           return;
         }
         const held = new Set(holding.map((file) => file.id));
         const named = new Set(files.filter((file) => held.has(file)));
-        const moved = review(at.dir, at.owner, at.scope, [...named], on);
+        const moved = review(at.dir, idOf(at.owner), at.scope, [...named], on);
         if (typeof moved === 'string') {
           no(moved);
           return;
