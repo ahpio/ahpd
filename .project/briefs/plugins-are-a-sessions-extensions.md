@@ -7,6 +7,7 @@ refs:
   - "[briefs/a-plugin-asks-for-its-grants.md](a-plugin-asks-for-its-grants.md) - a plugin's own grants, written by hand today"
   - "[briefs/an-agent-makes-a-canvas.md](an-agent-makes-a-canvas.md) - canvases an agent makes"
   - "[briefs/a-person-acts-from-a-plugin-page.md](a-person-acts-from-a-plugin-page.md) - a plugin's page and its actions"
+  - "[briefs/a-todo-app-is-the-first-agent-app.md](a-todo-app-is-the-first-agent-app.md) - the first app, written as the app, with what it misses"
   - "[briefs/agent-extensions-are-a-sessions-plugins.md](agent-extensions-are-a-sessions-plugins.md) - the VS Code methods that list ahpd plugins"
   - "[research/vscode-extensions-plugins-and-customizations.md](../research/vscode-extensions-plugins-and-customizations.md) - an ahpd plugin, an agent plugin and an agent extension, told apart"
   - "[code://packages/server/src/pluginschannel.ts#L232-L235](../../packages/server/src/pluginschannel.ts#L232-L235) - the grants that guard each plugin command"
@@ -41,7 +42,8 @@ Softov wants an agent in a session to build an app, such as a todo page with its
 
 ## The change
 
-- An agent writes an app as an ahpd plugin, and loads it with a tool such as `plugin_load` or `plugin_import`. Softov, 2026-11-22.
+- An agent writes an app as an ahpd plugin. A tool such as `plugin_load` or `plugin_import` loads it later. Softov, 2026-11-22: "plugin_load can wait for now", because an agent can already write a plugin and a person with the grant adds it.
+- The first app is a todo app, because it has create, read, update, delete and storage. The app needs a way to render, its UI context, and a way to take actions. All of it can go in 0.17. Softov, 2026-11-22. [a-todo-app-is-the-first-agent-app.md](a-todo-app-is-the-first-agent-app.md) writes the app and lists what is missing.
 - The app runs on the stdio runtime from 0.17, with the plugin shape of today. The registrations that are calls today become messages. Softov, 2026-11-22.
 - All apps are kept in one folder beside the plugins, and each records its owner: a user, a team or the host. Softov, 2026-11-22, "One folder, owner recorded (Recommended)".
 - Root may always change or remove an app, and so may the user who created it. Softov, 2026-11-22.
@@ -51,7 +53,6 @@ Softov wants an agent in a session to build an app, such as a todo page with its
 ## Open points
 
 - Which tools a session gets, per session. Softov, 2026-11-22: it waits for another brief and an idea of his, which change how a session's tools are controlled.
-- Whether a team member changes a team's app with a grant of the team, or with `plugin:*` grants.
-- An agent-written app in the daemon's process can run any code as the daemon's OS user. Whether `plugin_load` waits for the stdio runtime, or loads in-process before 0.17.
+- How a team member gets to change a team's app. Softov, 2026-11-22, asked: a simple gate now, and a later brief on team grants.
 - Not asked yet: the schema of each UI kind, and the storage functions' shape and scope.
 - Not checked: how Copilot acts on `load_only` against `load_and_augment`.
