@@ -3,6 +3,7 @@ title: VS Code's extensions, plugins and customizations, and what ahpd serves of
 date: 2026-11-22
 refs:
   - git://github.com/microsoft/vscode@ddbdd50a9ed1 - the VS Code source read for this note
+  - git://github.com/microsoft/vscode@1564f100807a - `src/vs/platform/agentHost/ARTIFACT_INTEGRATIONS_PROPOSAL.md`; `node/shared/artifactIntegrationServerTools.ts`, the four tools; `node/artifactIntegrations/githubPullRequestArtifactIntegration.ts`, the pull request integration
   - git://102bf32b2 - ahpd main when this note was written
   - "[code://packages/sdk/src/plugins/enablement.ts](../../packages/sdk/src/plugins/enablement.ts) - ahpd's on/off decisions per scope"
   - "[code://packages/sdk/src/host/actions.ts#L976-L1030](../../packages/sdk/src/host/actions.ts#L976-L1030) - `session/activeClientSet`, where a client's tools and plugins arrive"
@@ -86,10 +87,73 @@ ahpd serves neither method. The brief [agent-extensions-are-a-sessions-plugins.m
 
 ## Artifact integrations
 
-A session records artifacts, such as a pull request it opened. An artifact integration adds live state to one, plus actions and automation. The built-in one is GitHub pull requests: checks, review threads, Fix CI, Address Reviews, Resolve Conflicts, Mark Ready and Merge. An automatic repair or merge needs consent.
+A session records artifacts and references, such as a pull request it opened, with `add_artifact_or_reference`. VS Code lists each one as a row in the Artifacts or References pill, with its label and a link. A recorded entry is only a note: "this session points at this". It has no live state and no actions.
 
-- VS Code turns them on with the setting `chat.artifactIntegrations.enabled`: on by default in Insiders, off in Stable.
-- Agents use them through four tools: `get_artifact_status`, `run_artifact_action`, `set_artifact_automation` and `disable_artifact_automation`.
-- A window can offer its own integrations through `vscode/clientArtifactIntegrations/register`.
+An artifact integration is code that matches recorded entries by URI and follows the real thing behind them. VS Code's words: integrations "enrich resources that have already been recorded; they do not produce the artifacts, own their records, or supply their UI."
 
-ahpd mirrors the root setting `artifactIntegrations`, and nothing reads it yet. Its own Agent Merge does part of the same job on a pull request. The brief [artifact-integrations.md](../briefs/artifact-integrations.md) holds the answers so far. Agent Merge does not run while integrations are on. The GitHub integration is new code built to VS Code's model.
+What an integration does:
+
+1. It matches a recorded entry by URI, such as "this link is a GitHub pull request".
+2. It watches the real thing, such as the pull request's checks, review threads and merge state.
+3. It sends VS Code an icon, a label, sections and actions. VS Code draws them; the integration draws nothing.
+4. It runs actions. A `code` action changes the real thing, such as Merge. A `prompt` action sends the agent a prompt in the chat, such as Fix CI. One executor records every run, so nothing runs twice.
+5. It offers automation that a person or an agent turns on, such as "merge when green". Automation starts off, needs consent, and has a limit of attempts.
+
+Where integrations come from:
+
+- The host. The GitHub pull request integration is the only one built in.
+- A VS Code extension, with `chat.registerArtifactIntegrationProvider`.
+- A client that offers its own to the host, with `vscode/clientArtifactIntegrations/register`.
+
+The setting `chat.artifactIntegrations.enabled` turns them on: on by default in Insiders, off in Stable. While it is on, Agent Merge is off. Recording entries is a separate setting, `chat.artifactTools.enabled`, which ahpd mirrors as the root key `artifactTools`.
+
+### The agent's four tools
+
+| Tool | What it does |
+| --- | --- |
+| `get_artifact_status` | Reads, and never changes anything. With no artifact, it lists the recorded entries that have an integration. With one, it answers each integration's summary and details, its actions and whether each is enabled for this chat, its automation options and their values, and the recent runs. `detailsId` reads up to 100 items of one list, such as each check. The agent calls it first, for the ids. |
+| `run_artifact_action` | Runs one `code` action. For a pull request: `markReady` and `merge` on the whole pull request, `rerunCheck` on one failed check, and `resolveThread` on one review thread. A `prompt` action, such as `fixCI`, `addressReviews` or `resolveConflicts`, is refused: the agent does that work in its own chat. An action whose outcome is not known is not run again. |
+| `set_artifact_automation` | Sets the options an integration declares, each by its id and a value. The automation stays for that artifact in that session, acts after the turn without asking again, and posts a notice in the chat. |
+| `disable_artifact_automation` | Turns automation off. With no `optionIds` it turns off every option that is on, and with no `integrationId` every integration of the artifact. Runs in progress finish. It posts a notice, and it is always available, so an automated turn can stop automation but never widen it. |
+
+The pull request integration's automation options:
+
+| Option | Kind | Values | Attempts |
+| --- | --- | --- | --- |
+| `fixCI` | on or off | Fix CI automatically | 3 |
+| `addressReviews` | on or off | Address reviews automatically | 3 |
+| `resolveConflicts` | on or off | Update the branch automatically | 3 |
+| `markReady` | on or off | Mark ready automatically | 1 |
+| `merge` | choice | `never`, `always`, or `ifUnchanged`, which merges only when no repair changed anything | 1 |
+
+### Two ways a pull request shows
+
+| Way | Where it comes from | What a person sees |
+| --- | --- | --- |
+| The session's pull request | VS Code finds the pull request of the session's branch, `findPullRequestByHeadBranch` | The pull request pill, with its state and actions |
+| A recorded pull request | An agent records it with `add_artifact_or_reference` | A row in the Artifacts or References pill |
+
+With the GitHub integration served, a recorded pull request decorates the pull request pill in place. It does not show a second time. ahpd serves no integration, so a recorded pull request stays a row.
+
+### What else an integration can follow
+
+The framework knows nothing of any one thing. It suits anything that a session makes or must follow, that lives outside the chat, and whose state changes by itself.
+
+VS Code's own examples, in the proposal's section 9:
+
+- An experiment. Its state is not started, running or completed, and its scorecard version. Start and stop are `code` actions, and analyze is a `prompt` action. Its automation is `analysis: off / everyMonday`, on a schedule the integration keeps.
+- A deployment. A second integration attaches to the same pull request URL, and adds its own state and actions without changing the GitHub integration's.
+
+Other things of the same shape, which VS Code does not name:
+
+- a CI run;
+- an issue;
+- a release;
+- a preview deployment;
+- a computer that ahpd started for the session.
+
+### What ahpd serves
+
+- Recording entries works while `artifactTools` is on. Tested on 2026-11-23: a `pullRequest`, an `issue`, a `commit`, a `website`, a `file` and a `resource` each showed as a row.
+- A `resource` row is a label. A click on `todo://t-buy-milk` answered "Unable to resolve resource todo://t-buy-milk".
+- ahpd serves no integration, none of the four tools, and none of the five `vscode/*artifactIntegrations*` methods. The brief [artifact-integrations.md](../briefs/artifact-integrations.md) holds the answers so far. Agent Merge does not run while integrations are on, and the GitHub integration is new code built to VS Code's model.
