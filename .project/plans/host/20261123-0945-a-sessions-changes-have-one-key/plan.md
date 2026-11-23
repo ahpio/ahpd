@@ -1,7 +1,7 @@
 ---
 title: A session's changes have one key, and a new folder is read at once
 domain: host
-status: active
+status: built
 priority: medium
 created: 2026-11-23
 revalidated: 2026-11-23
@@ -84,7 +84,7 @@ client: changeset channel -> changesetAt (owner = URI) -> changes.state(dir, URI
 ## Resume state
 
 - **Done so far:** tasks 01 and 02, on 2026-11-23. [implemented.md](implemented.md) holds the checks.
-- **Next action:** Softov's review of the PR; the plan is `built` on his word.
+- **Next action:** none. `built` on Softov's word, 2026-11-23.
 - **Open questions:** none.
 - **Watch out for:** `changesetAt`'s `owner` is used elsewhere as a URI, for the status and the operation context. Convert at the port call, not in `changesetAt`.
 

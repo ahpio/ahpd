@@ -1,7 +1,7 @@
 ---
 title: A dev container a session runs in is not stopped
 domain: container
-status: active
+status: built
 priority: medium
 created: 2026-11-23
 revalidated: 2026-11-23
@@ -72,7 +72,7 @@ session enters machine -> host inMachine -> ComputerPort.enter(id, session) -> p
 ## Resume state
 
 - **Done so far:** task 01, on 2026-11-23. [implemented.md](implemented.md) holds the checks.
-- **Next action:** Softov's review of the PR; the plan is `built` on his word.
+- **Next action:** none. `built` on Softov's word, 2026-11-23.
 - **Open questions:**
   1. Does `x-ahpd/computers/stop` refuse a busy machine too? - proposed: no. A person who names the machine asks for it by name, and this plan guards the folder's methods.
 - **Watch out for:** the disposable delay arms when the count reaches zero; keep it for disposables only.

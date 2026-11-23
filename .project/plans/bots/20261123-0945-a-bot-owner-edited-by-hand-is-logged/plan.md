@@ -1,7 +1,7 @@
 ---
 title: A bot owner edited by hand is taken and logged
 domain: bots
-status: active
+status: built
 priority: medium
 created: 2026-11-23
 revalidated: 2026-11-23
@@ -72,7 +72,7 @@ restart -> load reads the file -> the file's owner
 ## Resume state
 
 - **Done so far:** task 01, on 2026-11-23. [implemented.md](implemented.md) holds the checks.
-- **Next action:** Softov's review of the PR; the plan is `built` on his word.
+- **Next action:** none. `built` on Softov's word, 2026-11-23.
 - **Open questions:** none.
 - **Watch out for:** the store writes the record back when `updatedAt` changes; that write must not be heard as a second hand edit.
 
