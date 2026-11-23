@@ -1,7 +1,7 @@
 ---
 title: A dev container starts from an image
 domain: container
-status: planned
+status: built
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -80,7 +80,7 @@ vscode/devContainers/removeEnvironment {environmentId} -> its relays closed -> t
 ## Resume state
 
 - **Done so far:** both tasks: an environment's container made from an allowed image in a labelled volume, its host relayed, resume of a stopped one, and its removal with the volumes.
-- **Next action:** none - the plan is implemented; see [implemented.md](implemented.md).
+- **Next action:** none. Merged as #436, and `built` on Softov's word, 2026-11-23.
 - **Open questions:** none.
 - **Watch out for:** the tests need Docker; mark them as the other container cases are marked.
 

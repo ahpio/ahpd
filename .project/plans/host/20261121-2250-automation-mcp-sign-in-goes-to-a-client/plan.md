@@ -1,7 +1,7 @@
 ---
 title: An automation's MCP sign-in goes to a client
 domain: host
-status: planned
+status: built
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -74,7 +74,7 @@ a run's session -> session/customizationsChanged with an MCP server authRequired
 ## Resume state
 
 - **Done so far:** [task-01](task-01-a-runs-sign-in-is-asked.md) - a run's session is watched for `authRequired` servers, and the automation owner's connections are asked in turn. See [implemented.md](implemented.md).
-- **Next action:** nothing; every task is done.
+- **Next action:** none. Merged as #435, and `built` on Softov's word, 2026-11-23.
 - **Open questions:** none.
 - **Watch out for:** a chat automation's run reuses a session a person may have open. The host asks about it all the same, as VS Code's does. A server a connector owns is read as one of a plugin's children, which is the only owner this protocol draws; it is skipped.
 

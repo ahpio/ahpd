@@ -1,7 +1,7 @@
 ---
 title: A shell asks the person for a password
 domain: host
-status: planned
+status: built
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -88,7 +88,7 @@ sudo -A / ssh / git -> SUDO_ASKPASS, SSH_ASKPASS, GIT_ASKPASS -> the helper -> t
 ## Resume state
 
 - **Done so far:** tasks 01 and 02, the final checklist, and the caller check. The helper's variables reach a local chat's agent process, the terminal tool's shells, pi's own shell, cofold's shell, Claude's CLI and the ACP server; a person's terminal and anything in a machine get none. On Linux the host refuses a pid that does not hold the helper's end of the connection and a parent that is not the real sudo, ssh or git; on macOS and Windows it checks the parent's name. `pnpm typecheck` and `pnpm boundary` pass. Before the caller check, the sdk, agent-claude, agent-acp and agent-cofold suites, the server and computer suites, and the three named test files passed; those runs predate it. After it, the shell authentication file and agent-pi await a rerun.
-- **Next action:** rerun the shell authentication file and agent-pi, the latter after the mock fix and the first import's budget. Fix what fails.
+- **Next action:** none. Merged as #433, and `built` on Softov's word, 2026-11-23.
 - **Open questions:** none.
 - **Watch out for:** commit 5692ecf25 alone does not build, because the files it imports arrive in the task 02 commit 2e025b363. A Windows test needs the named pipe path, not a socket file, and the helper's parent through the `.cmd` wrapper is untested. The caller check on macOS and Windows is the parent's name alone, so it stops a careless agent, not a deliberate one; the shown command is the guard.
 

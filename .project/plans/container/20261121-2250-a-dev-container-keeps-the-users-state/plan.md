@@ -1,7 +1,7 @@
 ---
 title: A dev container keeps the user's state
 domain: container
-status: planned
+status: built
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -78,7 +78,7 @@ connect / connectEnvironment {..., persistUserState?, sandboxEnabled?}
 ## Resume state
 
 - **Done so far:** 01, the state volume, the links and the four notices, on both connects; 02, the sandbox override on `up`, the inspect and `sandboxSupported`, on both connects.
-- **Next action:** none, both tasks are done.
+- **Next action:** none. Merged as #443, and `built` on Softov's word, 2026-11-23.
 - **Open questions:** none.
 - **Watch out for:** the suites have not been run here; run the sdk and computer suites one at a time under the lock.
 

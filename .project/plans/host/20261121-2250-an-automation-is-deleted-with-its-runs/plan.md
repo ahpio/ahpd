@@ -1,7 +1,7 @@
 ---
 title: An automation is deleted with its runs
 domain: host
-status: planned
+status: built
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -82,7 +82,7 @@ vscode/acknowledgeAutomationDeletion {requestId} -> the receipt is dropped
 ## Resume state
 
 - **Done so far:** tasks 01 and 02. `vscode/deleteAutomation` checks the URI, refuses `legacySessions` without `deleteHistory`, an automation with a going run, and an automation its store will not remove; it collects the sessions whose kept automation origin names it plus `legacySessions` (none for a chat automation), removes the definition, deletes the sessions when asked, and answers their URIs. A deletion keeps its sessions and request ids in the store, answers a repeat by `requestId` from its receipt until `vscode/acknowledgeAutomationDeletion`, absorbs a second request, refuses one without `deleteHistory`, and finishes a deletion the server's file held across a restart. The three `vscode.automationHistory*` flags are advertised, both methods need `automation:remove`, and the served count is 62.
-- **Next action:** none. The owner reviews and closes the plan.
+- **Next action:** none. Merged as #432, and `built` on Softov's word, 2026-11-23.
 - **Open questions:** none.
 - **Watch out for:** ahpw sends the plain remove action; it must keep the run sessions.
 

@@ -1,7 +1,7 @@
 ---
 title: A single-chat session moves under another
 domain: host
-status: active
+status: built
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -76,7 +76,7 @@ vscode/moveSession {session, destination, after} -> refusals -> movedTo(the sess
 ## Resume state
 
 - **Done so far:** tasks 01 and 02, 2026-11-21; see [implemented.md](implemented.md).
-- **Next action:** Softov's review of the PR.
+- **Next action:** none. Merged as #429, and `built` on Softov's word, 2026-11-23.
 - **Open questions:** none.
 - **Watch out for:** a client that names no chat gets the session's default chat. After the move, the chat is a peer chat of the destination, never its default.
 

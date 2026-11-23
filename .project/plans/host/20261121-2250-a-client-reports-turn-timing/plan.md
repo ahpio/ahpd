@@ -1,7 +1,7 @@
 ---
 title: A client reports turn timing
 domain: host
-status: planned
+status: built
 priority: low
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -69,7 +69,7 @@ vscode/reportChatUserInteraction {record} -> validated -> span with vscode.chat.
 ## Resume state
 
 - **Done so far:** [task-01-a-clients-timing-becomes-a-span.md](task-01-a-clients-timing-becomes-a-span.md) is implemented. `host/timing.ts` holds both validators and their spans, `host/telemetry.ts` carries a client's span and the flush, `host/vscodemethods.ts` serves both methods, `host/handshake.ts` advertises both flags while `diagnosticTiming` is on, `vscoderootconfig.ts` declares the setting off by default, and `host/gate.ts` asks `diagnostics:logs` for both. Typecheck and boundary pass.
-- **Next action:** run `packages/sdk/test/client-timing.test.ts` with the sdk suite; the owner runs it.
+- **Next action:** none. Merged as #438, and `built` on Softov's word, 2026-11-23.
 - **Open questions:** none.
 - **Watch out for:** the user-interaction validator is outside `src/vs/platform/agentHost`; the port is field for field from `src/vs/platform/otel/common/chatUserInteraction.ts` at `ddbdd50a9ed1`.
 

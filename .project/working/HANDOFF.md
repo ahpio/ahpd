@@ -9,7 +9,7 @@ Current progress and pending items only, as of 2026-11-22. *Outside this reposit
 
 ## Main
 
-- **2026-11-22.** All nine `20261121-2250` builds that could be built are merged. Each plan closes as `built` on Softov's word.
+- **2026-11-22.** All nine `20261121-2250` builds that could be built are merged, and are `built` on Softov's word of 2026-11-23.
   - #431 (`ec0876a52`) chat workspace, #432 (`7661f184a`) automation deletion, #433 (`b7623c608`) shell authentication, #434 (`a27918599`) session from a conversation, #435 (`3f1db3491`) MCP sign-in, #438 (`4d64a4b40`) turn timing.
   - #439 (`279b4195c`) nested chat changesets, #436 (`d47f32841`) dev container from an image, #442 (`cb3ab56e0`) session import, #443 (`8b08e5a5e`) user state and the container sandbox. The served count is 70.
   - Test fixes: #437, #440, #441, #444 (`0b8c806a8`, changes-refresh closes its hosts) and #445 (`977d480fe`).
@@ -31,7 +31,7 @@ Current progress and pending items only, as of 2026-11-22. *Outside this reposit
     - host/117 (#397), host/20261121-0524 (#399), host/20261121-0554 (#400) and host/20261121-0555 (#401);
     - both host/20261121-0821 plans (#404, #406), and claude/20261121-1054 (#409);
     - host/20261121-1218 (#418), host/20261121-1553 (#419) and plugin/20261121-1708 (#422).
-  - #428 (`19b9b1a3d`) merged [host/20261121-1907-a-client-measures-a-worktrees-disk-usage](../plans/host/20261121-1907-a-client-measures-a-worktrees-disk-usage/plan.md), and #429 (`567d641b6`) merged [host/20261121-1907-a-single-chat-session-moves-under-another](../plans/host/20261121-1907-a-single-chat-session-moves-under-another/plan.md). Both close as `built` on Softov's word.
+  - #428 (`19b9b1a3d`) merged [host/20261121-1907-a-client-measures-a-worktrees-disk-usage](../plans/host/20261121-1907-a-client-measures-a-worktrees-disk-usage/plan.md), and #429 (`567d641b6`) merged [host/20261121-1907-a-single-chat-session-moves-under-another](../plans/host/20261121-1907-a-single-chat-session-moves-under-another/plan.md). Both are `built` on Softov's word of 2026-11-23.
   - #429's check-windows was red twice on cases it does not touch. The causes are problem files, and one rerun of the failed jobs passed on Softov's yes.
   - Also merged: #402 (`2360a50aa`), Create PR on a fork, and #420 (`2f61bd9df`), the budgets of three random cases.
   - In ahpw: #109 (`c440209`) reads a canvas's `uri`, and #112 (`4da31ba`) adds the one-time trigger and the target to the automation form.

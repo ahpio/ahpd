@@ -1,7 +1,7 @@
 ---
 title: A session is created from a conversation
 domain: host
-status: planned
+status: built
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -84,7 +84,7 @@ createSession _meta['vscode.importConversation'] {transferId} or {turns, model?,
 ## Resume state
 
 - **Done so far:** task 01: the method, the staged state, the reader, `Agent.importConversation`, the capability and `createSession`'s import. Task 02: the Claude writer, the read-back, and the resume. Task 03: the pi and cofold writers, each read back through its own reader, and the resume from the written session. `implemented.md` is written, and `pnpm typecheck` and `pnpm boundary` pass.
-- **Next action:** run the sdk, agent-claude, agent-pi and agent-cofold suites, one at a time, and sign off the final verification checklist when they pass. The five new files are untracked and must be added by the owner before the branch compiles.
+- **Next action:** none. Merged as #434, and `built` on Softov's word, 2026-11-23.
 - **Open questions:** none.
 - **Watch out for:** a chunk is cut at a UTF-16 surrogate pair boundary by VS Code; join chunks as strings, never as bytes.
 

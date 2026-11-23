@@ -1,7 +1,7 @@
 ---
 title: A client measures a worktree's disk usage
 domain: host
-status: active
+status: built
 priority: medium
 created: 2026-11-21
 revalidated: 2026-11-21
@@ -70,7 +70,7 @@ vscode/cancelWorktreeDiskUsage {requestId} -> that scan stops
 ## Resume state
 
 - **Done so far:** tasks 01 and 02, 2026-11-21; see [implemented.md](implemented.md).
-- **Next action:** Softov's review of the PR.
+- **Next action:** none. Merged as #428, and `built` on Softov's word, 2026-11-23.
 - **Open questions:** none.
 - **Watch out for:** Windows reports `blocks` too; a negative value fails the scan, as VS Code's does.
 
