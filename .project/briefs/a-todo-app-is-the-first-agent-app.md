@@ -313,6 +313,8 @@ The flow of the second way:
 
 Works today, with `registerTool`. An agent in any session reads and changes the same list.
 
+A kind's operations become tools when the app opts in. An app that opts out writes its own tools, as this section does. Softov, 2026-11-23: "it could be optin by the app", and "configurable is the better option".
+
 ```js
 host.registerTool({
   definition: {
@@ -376,7 +378,7 @@ Each row is one of Softov's three parts. "Kind" is the generic registration that
 | Render | Input components in a view, such as a text field and a check box | A person types only in the kind's form |
 | UI context | A view that knows its reader: per person, and per session where the page opens in one | Every reader sees one list |
 | Actions | A Button `context` that reads `{ path }` inside a repeated row | One Button per row cannot name its row |
-| Actions | Tools that a kind's operations give, so the app does not write them twice | The app writes four tools by hand |
+| Actions | Tools that a kind's operations give when the app opts in | The app writes four tools by hand |
 | Tools | "Tools only" off for the host, from the plugins brief | A person turns the whole app off to stop its tools |
 
 ## Steps
@@ -394,11 +396,10 @@ A first order, for the plans:
 
 ## Open points
 
-- Whether a kind's operations become tools by themselves, or the app writes its tools.
+- How a view is shown, which Softov thinks over himself. Softov, 2026-11-23: "a ui its like a view that can be show. just that". A view says where it opens by default, such as `main` or the explorer. This covers the input components and the schema of each UI kind.
 - The channel's name for a plugin's kind, such as `x-ahpd-todo://` or `x-<plugin>-todo://`.
 - The grants of a plugin's kind, such as `todo:put` and `todo:delete`, and the scope name a record operation takes, such as `todo`.
 - How VS Code opens a row's URI, which it cannot resolve today.
 - Whether a kind's row is an artifact integration, or integrations stay for what a session produced.
 - The row scheme's name for a plugin's kind, such as `todo://`. Two plugins cannot serve one scheme.
-- Which input components a view gets first.
 - Where a page opens with a session as its context: a plugin page, or a canvas in a chat.
