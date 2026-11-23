@@ -59,22 +59,26 @@ Works today.
 
 ### The record
 
-Works today, with `host.records`. The app writes `owner` itself, from the method's or the tool's caller.
+A todo's own data is the fields of the kind's schema, and nothing else:
 
 ```json
-{ "id": "t-buy-milk", "title": "Buy milk", "done": false, "owner": "user:ana", "createdAt": "2026-11-22T14:00:00Z" }
+{ "title": "Buy milk", "done": false }
 ```
+
+In step 1, before the kind exists, the app keeps it with `host.records` and writes the owner itself, from the tool's caller:
 
 ```js
 export async function apply(host) {
   const todos = host.records('todos', { format: 'json' });
-  // ...
+  // { id: 't-buy-milk', title: 'Buy milk', done: false, owner: 'user:ana' }
 }
 ```
 
+With the kind, the host keeps the record, its kind and its owner, as *The row* says.
+
 ### The kind
 
-New. The app registers `todo` as a kind, with the shape of `TunnelKind`. The host keeps the list, serves create, update and remove, and lists the records on a channel. A client draws the form from `schema`, with no code for todos.
+New. The app registers `todo` as a kind, with the shape of `TunnelKind`. The kind declares its `schema` once. The host keeps the list, serves create, update and remove with that schema as their form, and lists the records on a channel. A client draws the forms with no code for todos.
 
 ```js
 host.registerKind({
@@ -90,52 +94,93 @@ host.registerKind({
     },
   },
   operations: [
-    { id: 'complete', label: 'Done', icon: 'check', offered: (t) => !t.done },
-    { id: 'reopen', label: 'Not done', icon: 'undo', offered: (t) => t.done },
+    { id: 'complete', label: 'Done', icon: 'check', offered: (todo) => !todo.done },
+    { id: 'reopen', label: 'Not done', icon: 'undo', offered: (todo) => todo.done },
     { id: 'clear', label: 'Clear completed', scopes: ['list'], confirmation: 'Remove every done todo?' },
   ],
-  async invoke(name, todo, report) {
-    if (name === 'complete') return report({ settings: { ...todo.settings, done: true } });
-    if (name === 'reopen') return report({ settings: { ...todo.settings, done: false } });
+  async invoke(name, row, report) {
+    if (name === 'complete') return report({ record: { ...row.record, done: true } });
+    if (name === 'reopen') return report({ record: { ...row.record, done: false } });
     // clear: remove each done todo
   },
 });
 ```
 
+### How a client finds the kind
+
+The handshake lists each channel in `ahpd.channels`. Each entry gets `kinds`, one entry per kind the channel holds, keyed by the kind's name. Softov, 2026-11-22: "inside the channel as kinds: {}".
+
+- A channel can hold more than one kind, as `x-ahpd-tunnels://` holds devtunnel and cloudflare from two plugins. So a kind is never listed apart from its channel.
+- Each kind lists every operation in full: the ones the host makes, `<kind>/create`, `<kind>/update` and `<kind>/remove`, and the kind's own, `<kind>/<id>`. A client needs no rule for which operations every kind has.
+- The entry changes when a plugin loads or unloads, through the root state, as `ahpd.channels` does today.
+
+```json
+"ahpd.channels": [
+  { "scheme": "x-ahpd-todo", "title": "Todos", "grant": "todo:read",
+    "kinds": {
+      "todo": {
+        "title": "Todo",
+        "description": "One thing to do.",
+        "schema": { "type": "object", "required": ["title"], "properties": {
+          "title": { "type": "string", "title": "Title", "maxLength": 500 },
+          "done": { "type": "boolean", "title": "Done", "default": false } } },
+        "operations": [
+          { "id": "todo/create", "label": "Todo", "scopes": ["list"], "grant": "todo:put", "input": "the kind's schema" },
+          { "id": "todo/update", "label": "Edit", "scopes": ["todo"], "grant": "todo:put", "input": "the kind's schema" },
+          { "id": "todo/remove", "label": "Remove", "confirmation": "Remove this todo?", "scopes": ["todo"], "grant": "todo:delete" },
+          { "id": "todo/complete", "label": "Done", "icon": "check", "scopes": ["todo"], "grant": "todo:put" },
+          { "id": "todo/reopen", "label": "Not done", "icon": "undo", "scopes": ["todo"], "grant": "todo:put" },
+          { "id": "todo/clear", "label": "Clear completed", "confirmation": "Remove every done todo?", "scopes": ["list"], "grant": "todo:put" }
+        ]
+      }
+    } }
+]
+```
+
+`"input": "the kind's schema"` stands for the schema itself, which the host copies into the operation. The grants `todo:read`, `todo:put` and `todo:delete`, and the scope `todo`, are examples: *Open points* has them.
+
+### The row
+
+A row keeps the kind's data apart from what the host knows. Softov, 2026-11-22: "separate shape".
+
+```json
+{ "id": "t-buy-milk", "kind": "todo", "owner": "user:ana",
+  "record": { "title": "Buy milk", "done": false },
+  "operations": ["todo/update", "todo/remove", "todo/complete"] }
+```
+
+| Field | Holds | Kept by |
+| --- | --- | --- |
+| `id` | The row's slug | The host |
+| `kind` | The kind whose `schema` the record follows, an entry of `ahpd.channels` | The host |
+| `owner` | Who made the row: `user:<id>`, a team or the host | The host, for every kind |
+| `record` | The fields of the kind's schema, and only those. The update form edits this object | The kind |
+| `operations` | The operation ids the row offers now, from each operation's `offered` | The host |
+
+Tunnel rows hold the kind and the host's facts inside the record today. They move to this shape when the kind registration is built, so the host has one row shape.
+
 ### The channel
 
-New for a kind other than a tunnel, with the shape that `x-ahpd-tunnels` serves today. A client subscribes to the kind's channel:
+A page that shows the whole list subscribes to the kind's channel:
 
 ```json
 { "jsonrpc": "2.0", "id": 6, "method": "subscribe", "params": { "channel": "x-ahpd-todo://" } }
 ```
 
-The snapshot's state holds the records and the operations. Each record lists the ids of the operations it offers now. The host makes `todo/create`, `todo/update` and `todo/remove` from the kind, with the kind's `schema` as their `input`. It lists the kind's own operations after them, each id led by the kind's name.
+The snapshot's state holds the rows, and the status of each operation that a call runs now. The declarations stay in `ahpd.channels`.
 
 ```json
 {
   "records": [
-    { "id": "t-buy-milk", "record": { "kind": "todo", "title": "Buy milk", "done": false, "owner": "user:ana",
-      "createdAt": "2026-11-22T14:00:00Z", "operations": ["todo/update", "todo/remove", "todo/complete"] } },
-    { "id": "t-call-bob", "record": { "kind": "todo", "title": "Call Bob", "done": true, "owner": "user:ana",
-      "createdAt": "2026-11-22T13:10:00Z", "operations": ["todo/update", "todo/remove", "todo/reopen"] } }
+    { "id": "t-buy-milk", "kind": "todo", "owner": "user:ana",
+      "record": { "title": "Buy milk", "done": false },
+      "operations": ["todo/update", "todo/remove", "todo/complete"] },
+    { "id": "t-call-bob", "kind": "todo", "owner": "user:ana",
+      "record": { "title": "Call Bob", "done": true },
+      "operations": ["todo/update", "todo/remove", "todo/reopen"] }
   ],
   "operations": [
-    { "id": "todo/create", "kind": "todo", "label": "Todo", "description": "One thing to do.", "scopes": ["list"],
-      "grant": "todo:put", "status": "idle",
-      "input": { "type": "object", "required": ["title"], "properties": {
-        "title": { "type": "string", "title": "Title", "maxLength": 500 },
-        "done": { "type": "boolean", "title": "Done", "default": false } } } },
-    { "id": "todo/update", "kind": "todo", "label": "Edit", "scopes": ["todo"], "grant": "todo:put", "status": "idle",
-      "input": { "type": "object", "required": ["title"], "properties": {
-        "title": { "type": "string", "title": "Title", "maxLength": 500 },
-        "done": { "type": "boolean", "title": "Done", "default": false } } } },
-    { "id": "todo/remove", "kind": "todo", "label": "Remove", "confirmation": "Remove this todo?",
-      "scopes": ["todo"], "grant": "todo:delete", "status": "idle" },
-    { "id": "todo/complete", "kind": "todo", "label": "Done", "icon": "check", "scopes": ["todo"], "grant": "todo:put", "status": "idle" },
-    { "id": "todo/reopen", "kind": "todo", "label": "Not done", "icon": "undo", "scopes": ["todo"], "grant": "todo:put", "status": "idle" },
-    { "id": "todo/clear", "kind": "todo", "label": "Clear completed", "confirmation": "Remove every done todo?",
-      "scopes": ["list"], "grant": "todo:put", "status": "idle" }
+    { "id": "todo/clear", "status": "idle" }
   ]
 }
 ```
@@ -146,7 +191,6 @@ A client draws this with no code for todos:
 - An operation with `input` opens a form drawn from the schema: a text field for `title` and a check box for `done`.
 - An operation with `confirmation` asks it before it runs.
 - `status` is `running` while a call runs, and `error` with its message when the call failed. Each subscriber gets the change as `x-ahpd-todo/operations`.
-- The grants are `todo:put` and `todo:delete` in this example. Which grants a kind of a plugin gets is an open point.
 
 A person adds a todo from a client:
 
@@ -166,9 +210,9 @@ Every reader of the channel then gets:
 
 ```json
 { "jsonrpc": "2.0", "method": "action", "params": { "channel": "x-ahpd-todo://", "serverSeq": 42,
-  "action": { "type": "x-ahpd-todo/changed", "id": "t-buy-milk",
-    "record": { "kind": "todo", "title": "Buy milk", "done": true, "owner": "user:ana",
-      "createdAt": "2026-11-22T14:00:00Z", "operations": ["todo/update", "todo/remove", "todo/reopen"] } } } }
+  "action": { "type": "x-ahpd-todo/changed", "id": "t-buy-milk", "kind": "todo", "owner": "user:ana",
+    "record": { "title": "Buy milk", "done": true },
+    "operations": ["todo/update", "todo/remove", "todo/reopen"] } } }
 ```
 
 ### The tools
@@ -233,6 +277,8 @@ Each row is one of Softov's three parts. "Kind" is the generic registration that
 | Part | Missing | Without it |
 | --- | --- | --- |
 | Render | A way to register a kind other than a tunnel: `registerKind`, a channel per kind, and an open `OperationScope` | Each new thing needs new host code |
+| Render | A kind's schema and operations in its channel's entry of `ahpd.channels` | A client learns the operations only by subscribing to the list |
+| Render | One row shape, with the kind's data apart from the host's facts | A field of a record can clash with one of the host's |
 | Render | Input components in a view, such as a text field and a check box | A person types only in the kind's form |
 | UI context | A view that knows its reader: per person, and per session where the page opens in one | Every reader sees one list |
 | Actions | A Button `context` that reads `{ path }` inside a repeated row | One Button per row cannot name its row |
@@ -244,7 +290,7 @@ Each row is one of Softov's three parts. "Kind" is the generic registration that
 A first order, for the plans:
 
 1. Write the app with what works today: records, four tools, and a page that only reads. It proves the storage and the tools, and it is the example an agent copies.
-2. A plugin registers a kind, with its channel and its operations. The todo list moves from the page to the kind.
+2. A plugin registers a kind, with its channel, its operations and its entry in `ahpd.channels`. Rows take the shape of *The row*, tunnels too. The todo list moves from the page to the kind.
 3. A view's Button reads `{ path }` in its `context`, and a view gets input components.
 4. A view knows its reader.
 5. A plugin's tools turn off while it runs.
@@ -253,8 +299,9 @@ A first order, for the plans:
 ## Open points
 
 - Whether a kind's operations become tools by themselves, or the app writes its tools.
-- Whether a todo's owner is a field the host keeps for every kind, or a field the app writes.
 - The channel's name for a plugin's kind, such as `x-ahpd-todo://` or `x-<plugin>-todo://`.
 - The grants of a plugin's kind, such as `todo:put` and `todo:delete`, and the scope name a record operation takes, such as `todo`.
+- A row's own URI, such as `todo:t-buy-milk`, that a client reads alone for a reference in a chat. Its answer is the row. Suggested, not answered.
+- Where a row's running operation shows to a reader of that row alone.
 - Which input components a view gets first.
 - Where a page opens with a session as its context: a plugin page, or a canvas in a chat.
