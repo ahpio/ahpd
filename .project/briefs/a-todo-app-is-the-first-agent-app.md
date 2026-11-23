@@ -403,7 +403,7 @@ Each row is one of Softov's three parts. "Kind" is the generic registration that
 A first order, for the plans:
 
 1. Write the app with what works today: records, four tools, and a page that only reads. It proves the storage and the tools, and it is the example an agent copies.
-2. A plugin registers a thing and its kinds, with the thing's channel, its operations and its entry in `ahpd.channels`. Rows take the shape of *The row*, and a row's URI reads alone. The todo list moves from the page to the kind.
+2. A plugin registers a thing and its kinds, with the thing's channel, its operations and its entry in `ahpd.channels`. Rows take the shape of *The row*, and a row's URI reads alone. The todo list moves from the page to the kind. Add the four parts of the CRM brief's *Answers*.
 3. A view's Button reads `{ path }` in its `context`, and a view gets input components.
 4. A view knows its reader.
 5. A plugin's tools turn off while it runs.

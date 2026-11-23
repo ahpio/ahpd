@@ -109,14 +109,64 @@ A session that works on a ticket records `ticket://t-1042` with `add_artifact_or
 | The row scheme and a watch | Yes | Nothing |
 | Operation status on the row | Yes, and the CRM needs it more than the todo app | Nothing |
 | Opt-in tools | Yes | Nothing |
-| The channel's snapshot | No. It sends every row, and a records channel reads every id | Pages, a filter and a sort, such as the open tickets of one team |
-| A field that names another row | No | A schema mark for "a row of thing X", and its choices through `x-ahpd/completions`, as a connector field has them |
-| A row the kind changes by itself | Partly. A tunnel kind reports its state | A kind's call to change a row's record outside an operation |
-| Who reads a row | Partly. A records channel has `mayRead` | A rule a kind declares, such as "the team in `owner` and the grant holders" |
+| The channel's snapshot | No. It sends every row, and a records channel reads every id | A query on the channel URI, as *Answers* says |
+| A field that names another row | No | The mark `x-ahpd-row`, as *Answers* says |
+| A row the kind changes by itself | Partly. A tunnel kind reports its state | The `rows` handle of `registerKind`, as *Answers* says |
+| Who reads a row | Partly. A records channel has `mayRead` | The owner by default, and a kind's own `mayRead`, as *Answers* says |
 
-## Open points
+## Answers
 
-- How the snapshot pages, filters and sorts a large thing.
-- How a schema marks a field that names a row of another thing.
-- How a kind changes a row by itself, outside an operation.
-- How a kind says who reads a row.
+Softov, 2026-11-23, chose each of these.
+
+### A large thing: a query on the channel URI
+
+"Query on the channel URI". A client subscribes to part of a thing with a query, as `?owner=me` works on the computers and users channels today:
+
+```json
+{ "jsonrpc": "2.0", "id": 30, "method": "subscribe",
+  "params": { "channel": "x-ahpd-tickets://?state=open&owner=team:support&sort=due&limit=50" } }
+```
+
+- Each query is its own subscription, with its own live changes.
+- `after=<id>` asks for the next page.
+- A kind declares the fields a query may filter and sort by. A query on any other field is refused.
+- A row that leaves the query, such as a ticket that is closed, arrives as `removed` for that subscription.
+- A channel URI with no query lists the whole thing, as today.
+
+### A field that names a row: a mark like the connector's
+
+"A mark like the connector's". The mark copies `x-ahpd-connector`:
+
+```json
+"client": { "type": "string", "title": "Client", "x-ahpd-row": "client" }
+```
+
+- The value is the row's URI, such as `client://acme`.
+- On a save the host checks that the row exists, and that the writer may read it.
+- A client draws a picker. Its choices come from `x-ahpd/completions`, as a connector field's do.
+- A field whose row was removed keeps the URI, and a client shows it as missing.
+
+### A kind's own change: a handle from `registerKind`
+
+"A handle from registerKind". `registerKind` answers `rows`, which changes that kind's rows only:
+
+```js
+const emails = host.registerKind({ thing: 'interaction', name: 'email', /* ... */ });
+
+mail.on('bounce', async (id) => {
+  await emails.rows.update(id, { ...(await emails.rows.get(id)).record, state: 'bounced' });
+});
+```
+
+- `rows` has `get(id)`, `update(id, record)` and `remove(id)`.
+- The host checks the record against the kind's schema, and keeps the row's `id`, `kind` and `owner`.
+- The change takes the same path as an operation's: the channel's subscribers and every watch on the row hear it.
+- The change records the kind as its author, since no person made it.
+
+### Who reads a row: the owner by default, the kind may change it
+
+"Owner by default, kind may change it".
+
+- By default a row is read by its owner, a person or the members of a team, and by the holders of `<name>:get`.
+- A kind may give its own `mayRead(row, reader)`, which replaces the default for its rows.
+- One answer serves the channel, `resourceRead` and the watch, through the records channel's `mayRead`.
