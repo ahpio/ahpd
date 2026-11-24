@@ -199,7 +199,7 @@ Each plan here has every task `implemented`, and closes as `built` on Softov's w
   - Gumbo and ember in Softov's `~/.config/ahpd/bots` name `provider: claude`, at his request.
 - #323, the operations in the client's language, is merged on 2026-11-13, as `271c212d9`, after #324 fixed three dev container cases that fail at random. The plans close on Softov's word.
 - A review of the CI failures on main, on 2026-11-13, gave #325 to #328. What is left of the cases that fail at random is in *Tests*. The other open problems need Softov's choice, or change more of the daemon than a fix of a test.
-- AHP 1.1.0 is on npm since 2026-11-13, and goes in 0.16 (Softov, 2026-11-13). 0.15.0 stays on AHP 1.0.0. The first 0.16 work is a new read of host/117 against 1.1.0, as [pending/release.md](../pending/release.md#not-in-this-release) says.
+- ahpd speaks AHP 1.1.0 on main: [host/117](../plans/host/117-ahpd-speaks-ahp-1-1-0/plan.md) was read again on 2026-11-21 and is `built`. The other 1.1.0 additions wait in [briefs/the-rest-of-ahp-1-1-0.md](../briefs/the-rest-of-ahp-1-1-0.md), each a plan of its own on Softov's word.
 - ahpc's `cli/20261112-0821-create-session-waits-on-progress`, in the ahpc repository, can be built. A create that makes no machine sends no progress, so ahpc keeps its timeout for it.
 - [host/20261112-0821-an-unused-new-session-is-removed](../plans/host/20261112-0821-an-unused-new-session-is-removed/plan.md) stays `draft`. Softov chose deletion as VS Code does. Its Resume state holds the research and two questions before task 01 is rewritten.
 - The brief [the-terminal-tool-runs-on-windows-when-set.md](../briefs/the-terminal-tool-runs-on-windows-when-set.md) waits for Softov's word. Its open points are where the setting lives and its name.
