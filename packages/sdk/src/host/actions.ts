@@ -1,3 +1,4 @@
+import { MULTIPLE_CHAT_PROVIDERS } from '../vscoderootconfig.js';
 import { APPROVAL_KEYS, filePersonRules } from '../access/personrules.js';
 import { oneTimeProblem, oneTimeRunOf } from '../automations/onetime.js';
 import { targetProblem } from '../automations/targets.js';
@@ -502,8 +503,9 @@ export function createActions(ctx: HostContext, conn: ConnectionContext): Action
         // after each push a client makes.
         // https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentService.ts#L13661-L13662
         ctx.persistRootConfig();
-        // Moving chats turned on or off moves every chat's offer of a move.
-        if (Object.hasOwn(config, 'chatMoves.enabled')) {
+        // Moving chats, or chats with their own agents, turned on or off moves
+        // every chat's offer of a move.
+        if (Object.hasOwn(config, 'chatMoves.enabled') || Object.hasOwn(config, MULTIPLE_CHAT_PROVIDERS)) {
           for (const chat of byChat.keys()) ctx.updateChatMovability(chat);
           // And each session's `vscode.movable`, which reads the same setting.
           for (const uri of ctx.sessions.keys()) ctx.changesetsAndMetaChanged(uri);

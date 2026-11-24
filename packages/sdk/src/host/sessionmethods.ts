@@ -1,3 +1,6 @@
+import { isDeepStrictEqual } from 'node:util';
+import { filterChatConfigValues } from './chatconfig.js';
+import type { ConfigSchema } from './chatconfig.js';
 import { INTERNAL_ERROR, INVALID_PARAMS, RpcError, optionalStringParam } from '../rpc.js';
 import { idOf, Status, uriFor } from '../sessions/catalog.js';
 import { computerId, computerSource } from '../machines/computers.js';
@@ -165,7 +168,7 @@ export function createChatMover(ctx: HostContext): (
        * one of its chats is the same person's work under the same settings.
        */
       kept.setOwner(idOf(into), kept.owner(idOf(found.uri)));
-      kept.setConfig(idOf(into), { ...held.config });
+      kept.setConfig(idOf(into), { ...(held.backends.get(chatUri)?.config ?? held.config) });
     }
     /*
      * Out of the source, in the store and here: the chat's own record - its
@@ -187,7 +190,19 @@ export function createChatMover(ctx: HostContext): (
      * its own, and the chat goes on as it was.
      * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/AGENTS.md#L376
      */
-    const ownValues = held.backends.has(chatUri) ? {} : ctx.effectiveChatConfigValues(found.uri, held, chatUri);
+    const foreign = held.backends.get(chatUri);
+    const serving = foreign?.agent ?? held.agent;
+    /*
+     * Whether it keeps an agent other than its new session's, and the config it
+     * runs on there: what it ran on here, less the keys no backend owns. One
+     * that comes to a session of its own agent runs on that session's, with
+     * what it ran on for the properties a chat may set as its own.
+     */
+    const apart = to !== undefined && sessions.get(to)?.agent !== serving;
+    const running = foreign?.config ?? ctx.backendsOwn(ctx.chatConfig(found.uri, held, chatUri));
+    const ownValues = apart ? {} : foreign === undefined
+      ? ctx.effectiveChatConfigValues(found.uri, held, chatUri)
+      : filterChatConfigValues(ctx.sessionSchema(serving) as ConfigSchema, foreign.config);
     kept.moveChat(idOf(found.uri), idOf(into), chatUri, turns);
     // And the outputs its terminals kept and its local turns, which are the
     // chat's own.
@@ -196,15 +211,16 @@ export function createChatMover(ctx: HostContext): (
     ctx.moveChatAutomations(found.uri, into, chatUri);
     const road = byChat.get(chatUri);
     held.chats.delete(chatUri);
+    held.backends.delete(chatUri);
     byChat.drop(chatUri);
     claims.set(chatUri, { kind: 'chat', of: into });
     if (to === undefined) {
       const now = options.now?.() ?? new Date();
       const made: Held = {
-        agent: held.agent,
+        agent: serving,
         chats: new Map<string, Session>(),
         defaultChat: chatUri,
-        config: { ...held.config },
+        config: { ...(foreign?.config ?? held.config) },
         backends: new Map(),
         workingDirectory: held.workingDirectory,
         additional: folders,
@@ -221,15 +237,17 @@ export function createChatMover(ctx: HostContext): (
     }
     const there = sessions.get(into) as Held;
     there.chats.set(chatUri, found.chat);
+    if (apart) there.backends.set(chatUri, { agent: serving, config: running });
     if (road !== undefined) byChat.set(chatUri, { ...road, uri: into });
     // Written down as the destination's, which a restart starts it again in,
     // the default chat of a session made for it.
-    keepChat(into, chatUri, chatIdOf(into, chatUri, own), there.defaultChat === chatUri);
+    keepChat(into, chatUri, chatIdOf(into, chatUri, own), there.defaultChat === chatUri,
+      apart ? serving.provider : null, apart ? running : undefined);
     ctx.keepChatOwnConfigValues(into, chatUri, ownValues);
     // The peers it works beside, which are the chat's own from here on.
     if (folders !== undefined) beside.set(chatUri, folders);
     ctx.chatRelaunches.set(chatUri, {
-      credentials: tokensFor(held.agent.provider),
+      credentials: tokensFor(serving.provider),
       directory: ctx.chatRelaunches.get(chatUri)?.directory ?? held.workingDirectory,
     });
     /*
@@ -237,7 +255,7 @@ export function createChatMover(ctx: HostContext): (
      * chat's state, changesets, canvases and in-progress turn: a canvas's
      * resource names the chat, and the chat keeps its URI.
      */
-    if (to === undefined) recordSessionProvider(into, held.agent, found.chat);
+    if (to === undefined) recordSessionProvider(into, serving, found.chat);
     /*
      * And every worker chat the moved chat carries, which the protocol says
      * goes with it: a worker is a conversation inside a call of this chat, and
@@ -297,6 +315,26 @@ export function createChatMover(ctx: HostContext): (
     if (to !== undefined) ctx.snapshotDefaultChatTitle(into);
     dispatch(found.uri, { type: 'session/chatRemoved', chat: chatUri });
     for (const one of carried) dispatch(found.uri, { type: 'session/chatRemoved', chat: one });
+    /*
+     * And each chat that moved says where it went, to whoever holds it open:
+     * its new session, with its agent and its schema where they are not that
+     * session's. Said before it is listed there, since its row is read off the
+     * state this moves. A chat nobody opened has nobody to tell.
+     * https://github.com/microsoft/vscode/blob/7e993177c9d9/src/vs/platform/agentHost/node/agentHostStateManager.ts#L2147-L2169
+     */
+    if (ctx.stateOf(chatUri) !== undefined) {
+      const { schema, values } = ctx.chatConfigState(into, chatUri, there.backends.get(chatUri));
+      const held = (ctx.stateOf(chatUri)?.config as { values?: unknown } | undefined)?.values;
+      dispatch(chatUri, {
+        type: 'chat/moved',
+        session: into,
+        ...(apart ? { provider: serving.provider } : {}),
+        ...(schema === undefined ? {} : { schema }),
+      });
+      // What it has for itself where it is now, which the action does not say.
+      if (!isDeepStrictEqual(held, values)) dispatch(chatUri, { type: 'chat/configChanged', config: values, replace: true });
+    }
+    for (const one of carried) if (ctx.stateOf(one) !== undefined) dispatch(one, { type: 'chat/moved', session: into });
     if (to === undefined) {
       sessionAdded(into);
       activeSessionsChanged();
@@ -363,27 +401,23 @@ export function createChatMover(ctx: HostContext): (
      */
     if (ctx.rootConfig['chatMoves.enabled'] !== true) throw refused('disabled', 'Moving chats is not enabled.');
     /*
-     * A chat of another backend stays where it is.
-     *
-     * A move starts the chat again in the session it lands in, on that
-     * session's backend - which for a chat of another backend is a harness
-     * that has never seen its transcript. Refused by saying whose the chat
-     * is, before anything has been touched - and said here rather than only
-     * by `movable`, which answers the client's move control with no room for
-     * a reason.
+     * A chat of another backend moves with that backend, where chats with
+     * their own agents are on. Where they are not, it stays: a move would
+     * start it again on a harness that has never seen its transcript. Said
+     * here rather than only by `movable`, which answers the client's move
+     * control with no room for a reason.
      */
     const serving = getProviderForChat(held, chatUri);
-    if (serving !== held.agent) {
+    const across = multipleChatProvidersOn(ctx.rootConfig);
+    if (serving !== held.agent && !across) {
       throw refused('differentProvider', 'Chats can only move between sessions of the same agent.'
         + ' Turn on chats with their own agents to move it to a session of another agent.');
     }
     /*
-     * A chat whose agent is off or paused stays where it is. The session it
-     * moves into is of that same agent, which the check below requires, so one
-     * answer covers both ends.
+     * A chat whose agent is off or paused stays where it is.
      * https://github.com/microsoft/vscode/blob/1564f100807a/src/vs/platform/agentHost/node/agentService.ts#L9736-L9738
      */
-    const unavailable = agentRefusal(options.disabledAgents?.(), options.pausedAgents?.(), held.agent.provider);
+    const unavailable = agentRefusal(options.disabledAgents?.(), options.pausedAgents?.(), serving.provider);
     if (unavailable !== undefined) {
       throw refused('agentUnavailable', unavailable);
     }
@@ -476,18 +510,19 @@ export function createChatMover(ctx: HostContext): (
       return { session: found.uri };
     }
     /*
-     * Somewhere else, then: another session this host is running, of the same
-     * agent and on the same machine.
+     * Somewhere else, then: another session this host is running, on the same
+     * machine, and of the same agent unless chats with their own agents are
+     * on.
      *
-     * The same agent because a conversation belongs to the harness that wrote
-     * it, in that harness's own format and on that harness's own disk, and
-     * the same machine because the chat's folders are paths on the machine
-     * its backend ran on. Both are refused with a sentence that names the
-     * difference, and refused before anything has been touched.
+     * The same machine because the chat's folders are paths on the machine
+     * its backend ran on. The agent because a conversation belongs to the
+     * harness that wrote it: a chat that joins a session of another keeps its
+     * own. Each is refused with a sentence that names the difference, and
+     * refused before anything has been touched.
      */
     const dest = sessions.get(to);
     if (dest === undefined) throw refused('destinationNotFound', `Session ${to} is not available.`);
-    if (held.agent.provider !== dest.agent.provider) {
+    if (serving !== dest.agent && !across) {
       throw refused('differentProvider', 'Chats can only move between sessions of the same agent.'
         + ' Turn on chats with their own agents to move it to a session of another agent.');
     }
@@ -498,6 +533,21 @@ export function createChatMover(ctx: HostContext): (
     if (mine !== theirs) {
       throw refused('unsupported', `a move between computers is not supported yet: ${chatUri} runs on`
         + ` ${mine ?? 'this host'} and ${to} on ${theirs ?? 'this host'}`);
+    }
+    /*
+     * An agent the destination is not of is asked of its policies and its
+     * machine, as one a chat is made on there is. The answer takes time, so
+     * what the move rests on is looked at again behind it.
+     */
+    if (serving !== dest.agent) {
+      const owner = kept.owner(idOf(to));
+      const refusal = await ctx.admitted(connection?.principal ?? (owner === undefined ? undefined : ctx.principalFor(owner)),
+        ctx.charged.get(to)?.scope, dest.config, serving.provider, to, owner);
+      if (refusal !== undefined) throw new RpcError(-32009, refusal);
+      if (byChat.get(chatUri)?.uri !== found.uri || sessions.get(found.uri) !== held)
+        throw refused('notMovable', `Chat ${chatUri} can't be moved.`);
+      if (sessions.get(to) !== dest) throw refused('destinationNotFound', `Session ${to} is not available.`);
+      if (!isStructurallyMovable(chatUri, asSession) || hasActiveTurn(chatUri)) throw refused('notMovable', `Chat ${chatUri} can't be moved.`);
     }
     refuseState(to);
     if (anchor !== undefined && anchor !== END && !dest.chats.has(anchor))

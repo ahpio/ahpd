@@ -1,7 +1,7 @@
 ---
 title: A moved chat says where it went
 domain: host
-status: planned
+status: active
 priority: high
 created: 2026-11-24
 revalidated: 2026-11-24
@@ -57,9 +57,9 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a move says chat moved](task-01-a-move-says-chat-moved.md) | todo | - |
-| [02 - a chat moves across agents](task-02-a-chat-moves-across-agents.md) | todo | 01 |
-| [03 - the documents say it](task-03-the-documents-say-it.md) | todo | 02 |
+| [01 - a move says chat moved](task-01-a-move-says-chat-moved.md) | done | - |
+| [02 - a chat moves across agents](task-02-a-chat-moves-across-agents.md) | done | 01 |
+| [03 - the documents say it](task-03-the-documents-say-it.md) | done | 02 |
 
 ## Risks and tradeoffs
 
@@ -67,8 +67,8 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-move-says-chat-moved.md](task-01-a-move-says-chat-moved.md).
+- **Done so far:** tasks 01 to 03, on 2026-11-24.
+- **Next action:** Softov's review, then `status: built`.
 - **Open questions:** none.
 - **Watch out for:** a chat whose state no client opened has no subscriber; skip it, as VS Code does.
 

@@ -1,6 +1,6 @@
 ---
 title: The documents say it
-status: todo
+status: done
 depends: [02]
 layer: "docs"
 refs:
@@ -29,3 +29,5 @@ The protocol page says that `chat/moved` is sent and that a chat moves across ag
 - `pnpm docs:build` passes.
 
 ## Resume
+
+Done on 2026-11-24. Two rows of `docs/sdk/AHP.md`, and the box of Pass 8.

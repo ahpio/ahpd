@@ -35,6 +35,8 @@ export interface Snapshots {
    * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/AGENTS.md#L213
    */
   resolveChatState(session: string, chatUri: string): Bag;
+  /** A chat's own config: its values, and its schema where its agent is not its session's. */
+  chatConfigState(session: string, chatUri: string, foreign: { agent: Agent; config: Record<string, unknown> } | undefined): ChatConfigState;
   /**
    * A running session's held state, opened from `sessionSeed` the first time
    * anything reads it, or nothing for a session this host is not running.
@@ -889,5 +891,5 @@ export function createSnapshots(ctx: HostContext): Snapshots {
     };
   };
 
-  return { value, snapshotOf, sessionSeed, resolveChatState, sessionStateOf };
+  return { value, snapshotOf, sessionSeed, resolveChatState, chatConfigState, sessionStateOf };
 }

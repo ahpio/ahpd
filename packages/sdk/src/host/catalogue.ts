@@ -1,3 +1,4 @@
+import { multipleChatProvidersOn } from '../vscoderootconfig.js';
 import { ROOT, chatUriFor } from './channels.js';
 import { accountKey } from './root.js';
 import { SESSION_META_EXTERNAL_KEY, Status, idFor, idOf, normalizeTitle, uriFor } from '../sessions/catalog.js';
@@ -304,16 +305,15 @@ export function createCatalogue(ctx: HostContext): Catalogue {
    *
    * A move here starts the chat's backend again with `resume` set to the id
    * the backend kept the conversation under, so that backend must be able to
-   * take it back by that id. A chat of another backend than the session's is
-   * never one: a move starts it again on the destination's backend, which is a
-   * harness that has never seen its transcript.
+   * take it back by that id. A chat of another backend than the session's
+   * moves with that backend, which takes chats with their own agents being on.
    */
   const isStructurallyMovable = (uri: string, asSession = false): boolean => {
     if (ctx.rootConfig['chatMoves.enabled'] !== true) return false;
     const held = sessions.get(sessionHolding(uri) ?? '');
     const chat = held === undefined ? undefined : held.chats.get(uri);
     if (held === undefined || chat === undefined) return false;
-    if (held.backends.has(uri)) return false;
+    if (held.backends.has(uri) && !multipleChatProvidersOn(ctx.rootConfig)) return false;
     if ((held.defaultChat === uri) !== asSession) return false;
     const own = chat.agentId();
     if (own === undefined || own === '') return false;

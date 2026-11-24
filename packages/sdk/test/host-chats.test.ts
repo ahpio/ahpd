@@ -2291,7 +2291,7 @@ describe('more than one chat in a session', () => {
       await client.handle(hello(['0.9.0'], { initialSubscriptions: ['ahp-root://'] }));
       await client.handle({
         method: 'dispatchAction',
-        params: { channel: 'ahp-root://', action: { type: 'root/configChanged', config: { 'chatMoves.enabled': true } } },
+        params: { channel: 'ahp-root://', action: { type: 'root/configChanged', config: { 'chatMoves.enabled': true, 'multipleChatProviders.enabled': false } } },
       });
       await client.handle({ method: 'createSession', params: { channel: LIVE, provider: 'echo' } });
       await client.handle({ method: 'createChat', params: { channel: LIVE, chat: PEER } });
@@ -2935,8 +2935,12 @@ describe('a chat of another backend', () => {
     expect(toldTwo).toEqual([]);
   });
 
-  it('refuses to move a chat of another backend, and does not offer it as movable', async () => {
+  it('refuses to move a chat of another backend, and does not offer it as movable, while chats with their own agents are off', async () => {
     const { second } = await opening(backend('one', []), backend('two', []));
+    await second.client.handle({
+      method: 'dispatchAction',
+      params: { channel: 'ahp-root://', action: { type: 'root/configChanged', config: { 'multipleChatProviders.enabled': false } } },
+    });
     await send(second.client, PEER, 't3', 'third');
     // A chat of the session's own, which says what a movable chat reads like:
     // the answer this chat does not get is a real one, not one never given.
