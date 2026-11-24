@@ -9,4 +9,5 @@ refs:
 Claude Agent SDK 0.3.325 stopped approving a sandboxed Bash command without a prompt by default.
 ahpd keeps the old behaviour for now: its `sandbox: on` also sends `autoAllowBashIfSandboxed: true` (Softov, 2026-11-14).
 In 0.16, check whether ahpd should take the SDK's default, so a sandboxed command goes through the permission flow like any other.
+Softov chose on 2026-11-24 for 0.16: "A setting, default as the SDK". It is off by default, so a sandboxed command asks unless the record turns it on, and the release notes say so.
 A session under `dontAsk` would then have such a command denied, which the check must cover.
