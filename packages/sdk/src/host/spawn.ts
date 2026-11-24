@@ -1763,6 +1763,8 @@ export function createSpawn(ctx: HostContext): Spawn {
           // read are let go of beside the sender.
           forgetSender(turn);
           forgetKeys(turn);
+          // An edit that never said it ended ends with its turn.
+          for (const path of options.changes?.editsEnded?.(idOf(uri), turn) ?? []) ctx.editingMoved(path);
         }
         // A nested session's record follows the title and the last turn.
         if (action.type === 'session/titleChanged' && typeof action.title === 'string') moveNested(idOf(uri), { title: action.title });
@@ -1974,7 +1976,11 @@ export function createSpawn(ctx: HostContext): Spawn {
       onFileEdit: (turnId, path, phase, text) => {
         const dir = dirOf(uri);
         if (dir === undefined) return;
-        return options.changes?.observe?.(dir, idOf(uri), turnId, path, phase, text);
+        const read = Promise.resolve(options.changes?.observe?.(dir, idOf(uri), turnId, path, phase, text));
+        // Marked as it begins; as it ends, once the folder has been read again.
+        if (phase === 'before') ctx.editingMoved(path);
+        else void read.then(() => refreshWatched(dir)).then(() => { ctx.editingMoved(path); }, () => {});
+        return read;
       },
       /*
        * A file a person is being asked about, on its way to the same source.

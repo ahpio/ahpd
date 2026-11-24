@@ -39,6 +39,9 @@ const CHANGE_WORDS_MOST = 2 * 60_000;
 /** The four places the words can come from, as the schema declares them. */
 const MODES = new Set<string>(['session-title', 'forced', 'model', 'agent']);
 
+/** The protocol's `ChangesetFileStatus.Editing`. */
+const EDITING = 1;
+
 /** What a session's changesets offer the rest of the host. */
 export interface Changesets {
   dirOf(uri: string): string | undefined;
@@ -48,6 +51,8 @@ export interface Changesets {
   operationsOf(channel: string): Bag[];
   operationsMoved(uri: string): void;
   contentMoved(uri: string): Promise<void>;
+  /** Say whether an agent is editing a file, on each changeset shown that holds it. */
+  editingMoved(path: string): void;
   changesetsOf(uri: string): Bag;
   /** A chat's own changesets, as its state carries them: `{ changesets }`, or nothing. */
   chatChangesetsOf(session: string, chat: string): Bag;
@@ -709,6 +714,25 @@ export function createChangesets(ctx: HostContext): Changesets {
   };
 
   /**
+   * A file's `Editing` mark, on each changeset shown that holds the file.
+   *
+   * The row is said again with the one bit moved and the rest as it was, so
+   * a client holds back its operations on a file as an agent begins to write.
+   * https://github.com/microsoft/vscode/blob/7e993177c9d9/src/vs/platform/agentHost/node/agentHostChangesetService.ts#L632-L660
+   */
+  const editingMoved = (path: string): void => {
+    const id = uriOf(path);
+    const now = options.changes?.editing?.(path) === true;
+    for (const [channel, was] of [...shown]) {
+      const row = was.files.find((file) => file.id === id);
+      if (row === undefined || (((row.status ?? 0) & EDITING) !== 0) === now) continue;
+      const file = { ...row, status: now ? (row.status ?? 0) | EDITING : (row.status ?? 0) & ~EDITING };
+      shown.set(channel, { ...was, files: was.files.map((one) => (one.id === id ? file : one)) });
+      dispatch(channel, { type: 'changeset/fileSet', file });
+    }
+  };
+
+  /**
    * The changesets this session can be asked about, as URIs a client
    * subscribes to.
    *
@@ -789,7 +813,7 @@ export function createChangesets(ctx: HostContext): Changesets {
   };
 
   return {
-    dirOf, catalogueOf, changesetAt, changesetOf, operationsOf, operationsMoved, contentMoved,
+    dirOf, catalogueOf, changesetAt, changesetOf, operationsOf, operationsMoved, contentMoved, editingMoved,
     changesetsOf, chatChangesetsOf, chatChangesetsMoved, relaysChangesets, relayedChannel, operationContext, opKey, operationLanes, inFlightOperations, shown, operationStatusSaid,
   };
 }

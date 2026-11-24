@@ -1,6 +1,6 @@
 ---
 title: An operation checks the nonce
-status: todo
+status: done
 depends: []
 layer: "sdk sessions"
 refs:
@@ -31,3 +31,5 @@ Each changeset row has a `nonce`, a hash of its two sides. An operation whose ta
 - Run the sdk suite under the lock, with `TMPDIR` set.
 
 ## Resume
+
+Done on 2026-11-24. The check is in `invokeChangesetOperation`, before the operation runs, so a contributed operation is checked too. The cases are in `changes-editing.test.ts`.

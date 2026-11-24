@@ -351,6 +351,7 @@ const CONFLICT = -32011;
           ...(typeof raw.range === 'object' && raw.range !== null
             ? { range: raw.range as { startLine: number; endLine: number } }
             : {}),
+          ...(typeof raw.nonce === 'string' ? { nonce: raw.nonce } : {}),
         }
         : undefined;
       // No target is the changeset itself, which is how the protocol says
@@ -391,6 +392,22 @@ const CONFLICT = -32011;
         const brought = await bringBackOf(at.owner);
         if (brought?.waiting !== undefined) {
           throw new RpcError(CONFLICT, `the work of ${at.owner} waits in ${brought.waiting}: nothing acts on ${at.dir} until it is on the branch`);
+        }
+
+        /*
+         * And the row the client showed, where it named one by its nonce: the
+         * folder is read again, and an operation on changes nobody saw is
+         * refused, with the changes as they are now said first. A row or a
+         * target with no nonce is not checked.
+         * https://github.com/microsoft/agent-host-protocol/blob/v1.1.0/types/channels-changeset/commands.ts#L32-L41
+         */
+        if (target?.nonce !== undefined) {
+          await source.refresh?.(at.dir).catch(() => false);
+          const row = (await source.state(at.dir, idOf(at.owner), at.scope, at.base))?.files.find((one) => one.id === target.resource);
+          if (row === undefined || (row.nonce !== undefined && row.nonce !== target.nonce)) {
+            await contentMoved(at.owner);
+            throw new RpcError(CONFLICT, `The changes to ${target.resource.slice(target.resource.lastIndexOf('/') + 1)} changed since they were shown.`);
+          }
         }
 
         ctx.operationStatusSaid(channel, { type: 'changeset/operationStatusChanged', operationId, status: 'running' });

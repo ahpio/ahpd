@@ -1,6 +1,6 @@
 ---
 title: A file being edited is marked
-status: todo
+status: done
 depends: []
 layer: "sdk sessions"
 refs:
@@ -33,3 +33,5 @@ A changeset row has `status: 1`, which is `Editing`, while an agent edits its fi
 - Run the sdk suite under the lock, with `TMPDIR` set.
 
 ## Resume
+
+Done on 2026-11-24. The source answers `editing(path)` and `editsEnded(session, turnId)`. The host says the mark through `editingMoved`. The cases are in `changes-editing.test.ts`.

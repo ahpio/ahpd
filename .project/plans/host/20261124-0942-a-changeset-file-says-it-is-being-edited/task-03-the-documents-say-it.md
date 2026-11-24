@@ -1,6 +1,6 @@
 ---
 title: The documents say it
-status: todo
+status: done
 depends: [01, 02]
 layer: "docs"
 refs:
@@ -28,3 +28,5 @@ The protocol page says what `Editing` and the nonce mean in ahpd, and UPSTREAM.m
 - `pnpm docs:build` passes.
 
 ## Resume
+
+Done on 2026-11-24. Two rows of `docs/sdk/AHP.md`, and the box of Pass 8.
