@@ -1,6 +1,6 @@
 ---
 title: The option decides
-status: todo
+status: done
 depends: []
 layer: agent-claude
 refs:
@@ -36,3 +36,5 @@ refs:
 - With `dontAsk` and the option off, the CLI denies it.
 
 ## Resume
+
+Done 2026-11-24. See [implemented.md](implemented.md).

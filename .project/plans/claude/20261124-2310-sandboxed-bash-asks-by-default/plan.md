@@ -1,7 +1,7 @@
 ---
 title: A sandboxed Bash command asks by default
 domain: claude
-status: planned
+status: active
 priority: medium
 created: 2026-11-24
 revalidated: 2026-11-24
@@ -52,7 +52,7 @@ record option -> declared values -> toQuery -> query settings -> the CLI's permi
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - the option decides](task-01-the-option-decides.md) | todo | - |
+| [01 - the option decides](task-01-the-option-decides.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -61,12 +61,12 @@ record option -> declared values -> toQuery -> query settings -> the CLI's permi
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-the-option-decides.md](task-01-the-option-decides.md).
+- **Done so far:** task 01, 2026-11-24.
+- **Next action:** the review.
 - **Open questions:** none.
 - **Watch out for:** two options that both answer `settings` replace each other in `through`.
 
 ## Final verification checklist
 
-- [ ] The whole suite passes.
-- [ ] With the real CLI and the sandbox on, a Bash command asks; with the option on it does not.
+- [x] The whole suite passes.
+- [x] With the real CLI and the sandbox on, a Bash command asks; with the option on it does not.

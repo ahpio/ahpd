@@ -109,7 +109,7 @@ Current progress and pending items only, as of 2026-11-24. *Outside this reposit
 - #345 renames the model proxy to the model gateway. Softov's `config-dev.json` and `config.json` say `modelGateway`, and the `developer` role says `gateway:*`, since 2026-11-15. Each file has a copy beside it ending in `.bak-gateway-20261115-200146`. The daemon on the old code reads no model table from them if it reloads, so it is restarted on main.
 - #329 lets a bot talk run with no grants on the bot plugin's entry.
 - #331 updates a Claude session's context figure during a turn and after a compaction.
-- #333 moves Claude to SDK 0.3.325 and pi to 1.5.2. A Claude session with `sandbox: on` still runs sandboxed Bash without a prompt. [ideas/sandboxed-bash-asks-as-the-sdk-default.md](../ideas/sandboxed-bash-asks-as-the-sdk-default.md) checks that default in 0.16.
+- #333 moves Claude to SDK 0.3.325 and pi to 1.5.2. A Claude session with `sandbox: on` still runs sandboxed Bash without a prompt. claude/20261124-2310-sandboxed-bash-asks-by-default checks that default in 0.16.
 - #337 settles an automation run when the host ends its session's first turn, such as on a model the agent does not offer.
 - #338 reads a Claude session's turns before each compaction after a restart, and draws each compaction notice.
 - #339 reads the plugin lists, and ahpw (from ahpw #86) shows them in the Plugins sidebar.

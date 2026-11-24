@@ -89,7 +89,7 @@ it('lists its options and a record\'s fields by purpose', async () => {
     'models', 'modelSources', 'keepCliModels',
     'outputStyle', 'thinking',
     'hostTools', 'hostTasks', 'enableTasks',
-    'env', 'logins', 'extraArgs', 'sandbox',
+    'env', 'logins', 'extraArgs', 'sandbox', 'autoAllowBashIfSandboxed',
     'computerConfigDir',
     'cliStart', 'stopEnds', 'dontAsk', 'portFailures', 'subagentsFrom',
     'taskOutputFirstWaitMs', 'taskOutputLongestWaitMs', 'taskOutputQuietReads', 'subagentTitleMax', 'subagentStartTimeoutMs',
