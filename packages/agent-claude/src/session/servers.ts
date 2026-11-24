@@ -16,6 +16,10 @@ import { sdkVersion } from '@ahpd/sdk';
 import type { Published } from './customizations.js';
 import type { Disk, DiskKind } from './disk.js';
 
+/** How long a connecting server is given before its status is read again, doubled each time up to the most. */
+const CONNECTING_MS = 250;
+const CONNECTING_MOST_MS = 5_000;
+
 /** The servers the CLI reports, less this session's own in-process two. */
 const reportedServers = (answer: unknown): unknown[] => (Array.isArray(answer) ? answer : [])
   .filter((raw) => !isHostInjectedMcpServerName(str(bag(raw).name) ?? ''));
@@ -240,7 +244,9 @@ export function createServers(ctx: SessionContext): Servers {
   const refreshMcp = async (): Promise<void> => {
     const to = ctx.query;
     if (to === undefined) return;
-    const found = await to.mcpServerStatus().then(reportedServers).catch(() => [] as unknown[]);
+    const found = await to.mcpServerStatus().then(reportedServers).catch(() => undefined);
+    // A CLI that does not answer, or was put away meanwhile, says nothing of its servers.
+    if (found === undefined || ctx.disposed || ctx.query !== to) return;
     reported.mcp = found;
     await discover(found);
     const disk = diskNow();
@@ -328,6 +334,30 @@ export function createServers(ctx: SessionContext): Servers {
       ctx.emit('session', { type: 'session/customizationRemoved', id: str(entry.id) as string });
     }
     void refreshSkills(found);
+    askAgainWhileConnecting(found);
+  };
+
+  /** The next read of a connecting server's status, and how long it waits. */
+  let nextRead: ReturnType<typeof setTimeout> | undefined;
+  let nextReadIn = CONNECTING_MS;
+
+  /**
+   * Read the status again while a server is connecting. The CLI answers the
+   * handshake before its servers have connected, and says nothing when they
+   * have, so a status read once is `pending` for as long as the session runs.
+   */
+  const askAgainWhileConnecting = (found: unknown[]): void => {
+    clearTimeout(nextRead);
+    nextRead = undefined;
+    const to = ctx.query;
+    if (ctx.disposed || to === undefined) return;
+    if (!found.some((raw) => str(bag(raw).status) === 'pending')) {
+      nextReadIn = CONNECTING_MS;
+      return;
+    }
+    nextRead = setTimeout(() => { if (!ctx.disposed && ctx.query === to) void refreshMcp(); }, nextReadIn);
+    nextRead.unref?.();
+    nextReadIn = Math.min(nextReadIn * 2, CONNECTING_MOST_MS);
   };
 
   /**
@@ -589,6 +619,7 @@ export function createServers(ctx: SessionContext): Servers {
     laid(plugins);
     ctx.options.onHandshake?.();
     void refreshSkills(mcp);
+    askAgainWhileConnecting(mcp);
   };
 
   /**
@@ -834,6 +865,7 @@ export function createServers(ctx: SessionContext): Servers {
     unwatch: () => {
       unwatch?.();
       unwatch = undefined;
+      clearTimeout(nextRead);
       skills.close();
     },
     skills,
