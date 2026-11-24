@@ -2142,6 +2142,8 @@ export interface Credential {
   scopes: string[];
   /** The one MCP server the client aimed it at: its session and its customization id. */
   target?: { session: string; customizationId: string };
+  /** The client's own hint of the account the token is for, kept as it sent it; nothing here reads it yet. */
+  accountId?: string;
 }
 
 /** One connected client and what it is watching. */

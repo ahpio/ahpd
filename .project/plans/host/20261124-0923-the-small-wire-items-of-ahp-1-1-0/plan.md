@@ -1,7 +1,7 @@
 ---
 title: The small wire items of AHP 1.1.0
 domain: host
-status: planned
+status: active
 priority: high
 created: 2026-11-24
 revalidated: 2026-11-24
@@ -55,6 +55,7 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 | Plan every item of the brief in one pass | Softov, 2026-11-24, chose "All of them, in one pass" | - |
 | Six plans by feature; this is the one for the small wire items | Softov, 2026-11-24, chose "Six plans by feature" | - |
 | `resourceRead` serves the range, ahead of VS Code | Softov, 2026-11-24, chose "Serve the range" | 02 |
+| `createChat` keeps refusing a first message that is not a person's | `(defaulted: VS Code main still refuses it; 1.1.0 lifted the rule for two actions only)` | 03 |
 | A scheme a plugin serves may ignore the range and answer the whole resource | `(defaulted: 1.1.0 lets a receiver that does not honor ranges answer whole)` | 02 |
 | `pathStyle` is the daemon's own platform, as VS Code's `localProcessPathStyle` | `(defaulted: the one answer VS Code gives)` | 01 |
 | A telemetry channel keeps answering no snapshot; no `EmptyState` is sent | `(defaulted: VS Code's host sends none, and 1.1.0 allows either)` | 05 |
@@ -73,11 +74,11 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - the handshake says its path style and account](task-01-the-handshake-says-its-path-style.md) | todo | - |
-| [02 - a read serves a byte range](task-02-a-read-serves-a-byte-range.md) | todo | - |
-| [03 - a message may have any origin](task-03-a-message-may-have-any-origin.md) | todo | - |
-| [04 - a tool result keeps its MCP meta](task-04-a-tool-result-keeps-its-mcp-meta.md) | todo | - |
-| [05 - the documents say what is served](task-05-the-documents-say-what-is-served.md) | todo | 01, 02, 03, 04 |
+| [01 - the handshake says its path style and account](task-01-the-handshake-says-its-path-style.md) | done | - |
+| [02 - a read serves a byte range](task-02-a-read-serves-a-byte-range.md) | done | - |
+| [03 - a message may have any origin](task-03-a-message-may-have-any-origin.md) | dropped | - |
+| [04 - a tool result keeps its MCP meta](task-04-a-tool-result-keeps-its-mcp-meta.md) | done | - |
+| [05 - the documents say what is served](task-05-the-documents-say-what-is-served.md) | done | 01, 02, 03, 04 |
 
 ## Risks and tradeoffs
 
@@ -86,8 +87,8 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-the-handshake-says-its-path-style.md](task-01-the-handshake-says-its-path-style.md).
+- **Done so far:** tasks 01, 02, 04 and 05, and task 03 dropped, on 2026-11-24.
+- **Next action:** Softov's review, then `status: built`.
 - **Open questions:** none.
 - **Watch out for:** the changeset source answers `resourceRead` before the scheme does; a range on a `before` side is ignored, which 1.1.0 allows.
 

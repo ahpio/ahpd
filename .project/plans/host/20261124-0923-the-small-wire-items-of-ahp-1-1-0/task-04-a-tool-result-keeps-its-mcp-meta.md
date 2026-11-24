@@ -1,6 +1,6 @@
 ---
 title: A tool result keeps its MCP meta
-status: todo
+status: done
 depends: []
 layer: "sdk host"
 refs:
@@ -30,3 +30,5 @@ A client's `chat/toolCallComplete` with `resultMetadata` keeps it in the call's 
 - Run the sdk suite under the lock, with `TMPDIR` set.
 
 ## Resume
+
+Done on 2026-11-24. No source changed: the call's state keeps `resultMetadata` through the confirmation. The case is in `host-tools.test.ts`. A restart loses it, which `deferred.md` holds.

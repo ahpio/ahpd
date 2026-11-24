@@ -444,6 +444,13 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
         serverInfo: { name: 'ahpd', version: options.diagnostics?.version ?? '0.0.1' },
         snapshots,
         defaultDirectory: uriOf(dir),
+        /*
+         * The path style of the process this host runs in, as VS Code's host
+         * says it at every start: a client joins and splits this host's paths
+         * by it.
+         * https://github.com/microsoft/vscode/blob/7e993177c9d9/src/vs/platform/agentHost/common/agentHostPathStyle.ts#L13
+         */
+        environment: { pathStyle: process.platform === 'win32' ? 'windows' : 'posix' },
         // What the client should ask about rather than send. A slash is a
         // skill or a prompt the host contributed; an at-sign and a hash are
         // both a file, which is how VS Code's own host answers the two.
@@ -873,6 +880,14 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
        */
       const target = params.target === undefined ? undefined : targetOf(params.target);
       /*
+       * The client's account hint, which AHP 1.1.0 added: refused when it is
+       * there and empty, in VS Code's words, and kept with the token.
+       * https://github.com/microsoft/vscode/blob/7e993177c9d9/src/vs/platform/agentHost/node/agentHostAuthenticationService.ts#L184-L185
+       */
+      if (params.accountId !== undefined && (typeof params.accountId !== 'string' || params.accountId.length === 0))
+        throw new RpcError(INVALID_PARAMS, 'accountId must be a nonempty string');
+      const accountId = params.accountId as string | undefined;
+      /*
        * A backend's own resource, or one of its MCP servers'.
        *
        * The second kind is advertised on a server's `authRequired` state
@@ -1038,6 +1053,7 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
         resource,
         scopes,
         ...(target === undefined ? {} : { target }),
+        ...(accountId === undefined ? {} : { accountId }),
         ...(expiresIn !== undefined ? { expiresAt: Date.now() + expiresIn * 1000 } : {}),
       });
       void fire({ type: 'authenticated', client: connection.clientId || 'anonymous', resource });

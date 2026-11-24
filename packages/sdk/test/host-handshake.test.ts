@@ -66,6 +66,11 @@ const cursorOf = (p: ReturnType<typeof peer>, ...fromSeqs: number[]): number =>
   Math.max(0, ...actions(p).map((one) => one.serverSeq), ...fromSeqs);
 
 describe('the handshake', () => {
+  it('says the path style of the platform it runs on, as AHP 1.1.0 lets it', async () => {
+    const result = await open().handle(hello(['1.1.0'])) as { environment?: { pathStyle?: string } };
+    expect(result.environment).toEqual({ pathStyle: process.platform === 'win32' ? 'windows' : 'posix' });
+  });
+
   it('answers the highest version offered that it speaks, in whatever order they came', async () => {
     for (const offered of [['1.0.0'], ['0.9.0'], ['0.9.0', '1.0.0'], ['1.0.0', '0.9.0']]) {
       const result = await open().handle(hello(offered)) as { protocolVersion: string };

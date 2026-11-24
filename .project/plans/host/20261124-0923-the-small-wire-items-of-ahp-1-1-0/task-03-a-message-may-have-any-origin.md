@@ -1,6 +1,6 @@
 ---
 title: A message may have any origin
-status: todo
+status: dropped
 depends: []
 layer: "sdk host"
 refs:
@@ -29,3 +29,5 @@ refs:
 - Run the sdk suite under the lock, with `TMPDIR` set.
 
 ## Resume
+
+Dropped on 2026-11-24. AHP 1.1.0 removed the person-only rule for `chat/turnStarted` and `chat/pendingMessageSet`, and ahpd checks neither: it only fills a missing origin. VS Code main still refuses a `createChat` first message that is not a person's (`agentService.ts` at `7e993177c9d9`, L7759-L7761), so ahpd keeps that check.
