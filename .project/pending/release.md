@@ -69,7 +69,6 @@ A pushed `v*` tag runs [release.yml](../../.github/workflows/release.yml) and st
 
 - Six major problems wait for 0.16, by Softov's choice for 0.15.0, and each says so in its *Fix*. `globalAutoApproveEnabled` keeps VS Code's meaning: [global-auto-approve-keeps-vs-codes-meaning.md](../decisions/global-auto-approve-keeps-vs-codes-meaning.md).
 - **AHP 1.1.0.** 0.15.0 speaks AHP 1.0.0, as rc.2 does, and AHP 1.1.0 goes in 0.16 (Softov, 2026-11-13). `@microsoft/agent-host-protocol@1.1.0` is on npm since 2026-11-13. Plan host/117 covers four of its changes and was read against the protocol on 2026-10-22, so 0.16 starts with a new read of it.
-- **The canvas `url`.** AHP 1.1.0 renames the experimental `CanvasState.url` to `uri`, and ahpd's canvases still send `url`. It goes in 0.16 with AHP 1.1.0 (Softov, 2026-11-13).
 - **The ahpd part as the release's own build.** [briefs/the-ahpd-part-is-the-releases-own-build.md](../briefs/the-ahpd-part-is-the-releases-own-build.md) goes in 0.16 (Softov, 2026-11-13).
 - MayCXC's `host/124-an-agents-shell-is-a-terminal-the-person-sees` is not merged. Main has its features from the four host/20261103-1620 plans.
 - `plans.mjs` lists the `active` and `draft` plans. None is needed for the release.
