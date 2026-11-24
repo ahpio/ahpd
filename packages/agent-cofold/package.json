@@ -66,7 +66,7 @@
     "@ahpd/sdk": "workspace:*"
   },
   "dependencies": {
-    "@cofold/agents": "^0.4.0",
+    "@cofold/agents": "^0.4.1",
     "@cofold/commands": "^0.3.0",
     "@cofold/config": "^0.3.1",
     "@cofold/model-openai-compat": "^0.3.0",

@@ -24,7 +24,7 @@ overrides:
 
 minimumReleaseAgeExclude:
   - '@microsoft/agent-host-protocol@1.0.0 || 1.1.0'
-  - '@cofold/agents@0.4.0'
+  - '@cofold/agents@0.4.0 || 0.4.1'
   - '@cofold/commands@0.2.2 || 0.3.0'
   - '@cofold/mcp-client@0.2.0'
   - '@cofold/model-openai-compat@0.2.1 || 0.3.0'

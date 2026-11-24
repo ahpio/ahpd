@@ -123,7 +123,7 @@ importers:
         version: 0.3.325(@anthropic-ai/sdk@0.129.0(zod@4.6.7))(@modelcontextprotocol/sdk@1.30.0(zod@4.6.7))(zod@4.6.7)
       '@cofold/mcp-client':
         specifier: ^0.2.0
-        version: 0.2.0(@cofold/agents@0.4.0)
+        version: 0.2.0(@cofold/agents@0.4.1)
       zod:
         specifier: ^4.6.6
         version: 4.6.7
@@ -141,8 +141,8 @@ importers:
   packages/agent-cofold:
     dependencies:
       '@cofold/agents':
-        specifier: ^0.4.0
-        version: 0.4.0
+        specifier: ^0.4.1
+        version: 0.4.1
       '@cofold/commands':
         specifier: ^0.3.0
         version: 0.3.0
@@ -151,13 +151,13 @@ importers:
         version: 0.3.1
       '@cofold/model-openai-compat':
         specifier: ^0.3.0
-        version: 0.3.0(@cofold/agents@0.4.0)
+        version: 0.3.0(@cofold/agents@0.4.1)
       '@cofold/store-file':
         specifier: ^0.2.2
-        version: 0.2.2(@cofold/agents@0.4.0)
+        version: 0.2.2(@cofold/agents@0.4.1)
       '@cofold/tools':
         specifier: ^0.4.2
-        version: 0.4.2(@cofold/agents@0.4.0)
+        version: 0.4.2(@cofold/agents@0.4.1)
     devDependencies:
       '@ahpd/sdk':
         specifier: workspace:*
@@ -267,8 +267,8 @@ importers:
         specifier: workspace:*
         version: link:../sdk
       '@cofold/agents':
-        specifier: ^0.4.0
-        version: 0.4.0
+        specifier: ^0.4.1
+        version: 0.4.1
 
   packages/tunnel-devtunnel:
     dependencies:
@@ -601,8 +601,8 @@ packages:
     resolution: {integrity: sha512-Vj1jF3cPfxg7OAfoI7QnVKLoILlm2JF9pnVHrX8qx7AHMiYWT+NDAA7jChlNgRS4WTLc/fD1lXLmPixluj+3Gg==}
     engines: {node: '>=6.9.0'}
 
-  '@cofold/agents@0.4.0':
-    resolution: {integrity: sha512-TtjZlw09kyWwkPloBW0qCuFVU8VbkCmUUmsUGZZqsh4AQ+ahW/U6rjxZ0Xl0ZDxWctATs9aver0zZ7R4IjzLKw==}
+  '@cofold/agents@0.4.1':
+    resolution: {integrity: sha512-dMlso4yZR/1N+yJvEfeTxCfHWaCj99cllHEcl22s8NEyAF2q4KUMcgGs5TgXsstkv0PV1a9KMaexig9mZ8v+Ag==}
     engines: {node: '>=22'}
 
   '@cofold/commands@0.3.0':
@@ -3100,7 +3100,7 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
-  '@cofold/agents@0.4.0':
+  '@cofold/agents@0.4.1':
     dependencies:
       '@cofold/sdk': 0.2.0
 
@@ -3112,13 +3112,13 @@ snapshots:
     dependencies:
       '@cofold/commands': 0.3.0
 
-  '@cofold/mcp-client@0.2.0(@cofold/agents@0.4.0)':
+  '@cofold/mcp-client@0.2.0(@cofold/agents@0.4.1)':
     dependencies:
-      '@cofold/agents': 0.4.0
+      '@cofold/agents': 0.4.1
 
-  '@cofold/model-openai-compat@0.3.0(@cofold/agents@0.4.0)':
+  '@cofold/model-openai-compat@0.3.0(@cofold/agents@0.4.1)':
     dependencies:
-      '@cofold/agents': 0.4.0
+      '@cofold/agents': 0.4.1
 
   '@cofold/remote@0.5.0':
     dependencies:
@@ -3126,17 +3126,17 @@ snapshots:
 
   '@cofold/sdk@0.2.0': {}
 
-  '@cofold/store-file@0.2.2(@cofold/agents@0.4.0)':
+  '@cofold/store-file@0.2.2(@cofold/agents@0.4.1)':
     dependencies:
-      '@cofold/agents': 0.4.0
+      '@cofold/agents': 0.4.1
 
   '@cofold/terminal@0.5.1':
     dependencies:
       '@cofold/commands': 0.3.0
 
-  '@cofold/tools@0.4.2(@cofold/agents@0.4.0)':
+  '@cofold/tools@0.4.2(@cofold/agents@0.4.1)':
     dependencies:
-      '@cofold/agents': 0.4.0
+      '@cofold/agents': 0.4.1
 
   '@cofold/yaml@0.3.0': {}
 
