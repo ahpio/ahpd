@@ -42,9 +42,19 @@ This brief is the step after it, for 0.16: the release builds the ahpd part from
 - The parts job builds the ahpd part from the tarballs that the tag packs, as the `AHPD_PART_AHPD_ROOT` path does.
 - The release writes the part's tag beside its digest, in `@ahpd/computer`, so an installed host asks for that tag and pulls it by digest.
 - The part's version is the host's own version. `versions.json` no longer pins it.
-- The install on an ssh box gets the same packages from a source other than npm.
+- The install on an ssh box gets the same packages from npm, by the lock of the release, or from the host over ssh.
 
-## Open points
+## Answers
 
-- Where the box install gets the release's packages: the part image, the release's assets on GitHub, or another place.
-- Whether `pnpm pack` gives the same bytes in the parts job and in the release job, so the part holds what npm serves.
+| What | Source |
+| --- | --- |
+| A box installs from npm, from a lock that the release run writes for its own version and ships in `@ahpd/computer` | Softov, 2026-11-24, "both" |
+| When the download of the box fails, the host downloads and caches the files, and copies them to the box over ssh | Softov, 2026-11-24, "both" |
+| The copy over ssh is a plan of its own, after the first | (defaulted: two features) |
+
+A box reuses an install it has, and falls back to the newest older one, as today. The copy covers a box that has none and no internet.
+
+## To check before the plan
+
+- npm serves the bytes of the tarball that the release run staged. A dry run and one rc show it.
+- The packages are approved one by one. A box install fails until the last one is, as it does today.
