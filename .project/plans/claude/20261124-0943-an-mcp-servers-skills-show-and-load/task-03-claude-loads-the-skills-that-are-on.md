@@ -1,6 +1,6 @@
 ---
 title: Claude loads the skills that are on
-status: todo
+status: done
 depends: [02]
 layer: "agent-claude"
 refs:
@@ -31,3 +31,5 @@ The files of each skill that is on are in a local plugin folder of the session, 
 - Run the agent-claude suite under the lock, with `TMPDIR` set.
 
 ## Resume
+
+Done on 2026-11-24. The `SKILL.md` in the folder is the host's own, and the server's is `files/INSTRUCTIONS.md`. The CLI runs the `!` lines and the `hooks` of a `SKILL.md`, so the server's own would run commands. Each file is checked against its digest and size.

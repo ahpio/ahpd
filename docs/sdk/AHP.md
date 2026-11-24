@@ -472,6 +472,12 @@ included, is refused "Server-only action: <type>" before anything reads it, and
 [VS Code's host's](https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/protocolServerHandler.ts#L2811-L2815)
 words.
 
+## Skills an MCP server serves
+
+A Claude session lists the skills each of its MCP servers serves, under the server's customization, as AHP 1.1.0's `children` ([SEP-2640](https://modelcontextprotocol.io/seps/2640-skills-extension)). The Claude CLI reports none, so the host asks each server the CLI has connected, on a connection of its own that closes once the server has answered. A server that speaks stdio or Streamable HTTP is asked; one that needs a sign-in the host does not hold, one in a plugin and one of a session in a machine are not, and have no `children`.
+
+`session/customizationToggled` with a skill's id turns it off or on for the session, until the daemon restarts. The CLI loads the skills that are on from a folder of the session's, as `mcp-skills:<name>`. Its `SKILL.md` is the host's own and points at the server's, which is kept as a plain file: the CLI runs commands and hooks that a `SKILL.md` names as it loads one, and a server's text runs nothing here. A skill whose files are not as the server listed them is left out, with a line in the log.
+
 ## Behaviour worth knowing
 
 What these things are, rather than how they behave on the wire: a session is [SESSIONS.md](SESSIONS.md), a chat is [CHATS.md](CHATS.md), a terminal is [TERMINALS.md](TERMINALS.md), a tool is [TOOLS.md](TOOLS.md), a resource is [RESOURCES.md](RESOURCES.md), what it cost is [USAGE.md](USAGE.md), and an automation is [AUTOMATIONS.md](AUTOMATIONS.md).

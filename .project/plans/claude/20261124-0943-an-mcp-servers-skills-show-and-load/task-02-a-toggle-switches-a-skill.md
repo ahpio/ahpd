@@ -1,6 +1,6 @@
 ---
 title: A toggle switches a skill
-status: todo
+status: done
 depends: [01]
 layer: "agent-claude"
 refs:
@@ -31,3 +31,5 @@ refs:
 - Run the sdk suite, then the agent-claude suite, under the lock, with `TMPDIR` set.
 
 ## Resume
+
+Done on 2026-11-24. No sdk source changed: a child with no enablement key already reaches the backend by its id. The choice is the session's, and goes with the daemon's process, as VS Code's host keeps it.

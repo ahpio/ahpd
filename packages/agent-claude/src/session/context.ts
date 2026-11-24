@@ -431,6 +431,8 @@ export interface SessionContext extends Omit<Config, 'methods'>, Omit<ClientTool
   gone: string | undefined;
   /** What this session has been told the CLI can do, by customization. */
   customizations: Bag[];
+  /** The environment the running CLI was started with, once one was. */
+  cliEnv?: NodeJS.ProcessEnv;
   /** The models the CLI offered, as this session offers them, each with the thinking control it supports. */
   models: OfferedModel[];
   /*
