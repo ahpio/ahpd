@@ -12,7 +12,7 @@ A Claude session lists the skills each of its MCP servers serves, under the serv
 
 - `agent-claude-mcp-skills.test.ts`: ten cases. `agent-claude-mcp-skills-session.test.ts`: three cases.
 - The agent-claude suite: 726 cases.
-- The whole suite on the local cofold: 613 files, 10534 cases. It ran before the rebase on #458 to #460.
+- The whole suite on cofold from npm: 616 files, 10559 cases.
 - The Claude CLI of SDK 0.3.325, with no turn. A skill added to the folder is listed after a reload, and one removed is not.
 
 ## Departures from the plan
