@@ -92,6 +92,18 @@ it('lists the skill under its server alone, loads it, and switches it by its id'
   expect(existsSync(folder() as string)).toBe(false);
 });
 
+it('lists the skill of a server that was still connecting at the handshake, with no turn asked', async () => {
+  sdk.status = 'pending';
+  const { session, said, desk } = await opened();
+  expect((desk()?.state as Bag).kind).toBe('starting');
+  expect(desk()).not.toHaveProperty('children');
+  sdk.status = 'connected';
+  await vi.waitFor(() => { expect(desk()?.children).toHaveLength(1); }, { timeout: 5_000 });
+  expect((desk()?.state as Bag).kind).toBe('ready');
+  expect(said.some((one) => one.type === 'session/mcpServerStateChanged')).toBe(true);
+  await session.close();
+});
+
 it('asks no server the CLI has not connected', async () => {
   sdk.status = 'needs-auth';
   const { session, desk } = await opened();
