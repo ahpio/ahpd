@@ -228,7 +228,7 @@ const call = async (client: Client, method: string, params: Bag) => client.handl
 );
 
 const write = (client: Client, uri: string, body: unknown, extra: Bag = {}) =>
-  call(client, 'resourceWrite', { uri, data: JSON.stringify(body), ...extra });
+  call(client, 'x-ahpd/bots/put', { id: uri.slice('bot://'.length), record: body, ...extra });
 
 /** The result of an answer the test expects to be one, or the refusal it named. */
 const got = (answer: Awaited<ReturnType<typeof call>>): Bag => {
@@ -268,6 +268,19 @@ it('makes a bot from a name alone', async () => {
   expect(BOT_COLORS).toContain(bot['color']);
   expect(Date.parse(String(bot['createdAt']))).not.toBeNaN();
   expect(bot['updatedAt']).toBe(bot['createdAt']);
+});
+
+it('refuses a write and a delete of a bot by its address, whoever asks', async () => {
+  const { host } = made({ soft: ['bot:*'] });
+  const soft = await as(host, 'soft');
+  got(await write(soft, 'bot://motion', { name: 'Motion' }));
+  for (const client of [soft, await door(host)]) {
+    expect(await call(client, 'resourceWrite', { uri: 'bot://motion', data: JSON.stringify({ name: 'Other' }) }))
+      .toMatchObject({ code: -32008, message: 'Change a bot with x-ahpd/bots/put' });
+    expect(await call(client, 'resourceDelete', { uri: 'bot://motion' }))
+      .toMatchObject({ code: -32008, message: 'Remove a bot with x-ahpd/bots/remove' });
+  }
+  expect(await record(soft, 'bot://motion')).toMatchObject({ name: 'Motion' });
 });
 
 it('refuses a second bot on a slug that is taken', async () => {
@@ -672,7 +685,7 @@ it('leaves a tombstone where a bot was deleted', async () => {
   const soft = await as(host, 'soft');
 
   await write(soft, 'bot://motion', { name: 'Motion' }, { createOnly: true });
-  expect(await call(soft, 'resourceDelete', { uri: 'bot://motion' })).toEqual({ result: {} });
+  expect(await call(soft, 'x-ahpd/bots/remove', { id: 'motion' })).toEqual({ result: {} });
 
   // Gone from the listing, gone to a read, and never made again: the slug is
   // what a client had the address of, so a different bot under it would be a
@@ -980,7 +993,7 @@ it('refuses an edit and a delete to a bot whose writer it is not', async () => {
   const ana = await as(host, 'ana');
   expect(await write(ana, 'bot://motion', { name: 'Ana was here' }))
     .toMatchObject({ code: -32009, message: expect.stringContaining('motion') });
-  expect(await call(ana, 'resourceDelete', { uri: 'bot://motion' }))
+  expect(await call(ana, 'x-ahpd/bots/remove', { id: 'motion' }))
     .toMatchObject({ code: -32009, message: expect.stringContaining('motion') });
 
   // And every operation on this scheme is not the grant that is every grant: a
@@ -988,7 +1001,7 @@ it('refuses an edit and a delete to a bot whose writer it is not', async () => {
   const rob = await as(host, 'rob');
   expect(await write(rob, 'bot://motion', { name: 'Rob was here' }))
     .toMatchObject({ code: -32009, message: expect.stringContaining('motion') });
-  expect(await call(rob, 'resourceDelete', { uri: 'bot://motion' }))
+  expect(await call(rob, 'x-ahpd/bots/remove', { id: 'motion' }))
     .toMatchObject({ code: -32009, message: expect.stringContaining('motion') });
 
   // Both of them left it exactly as it was.
@@ -1002,7 +1015,7 @@ it('lets the owner edit and delete their own bot', async () => {
 
   expect(await write(soft, 'bot://motion', { name: 'Moved' })).toEqual({ result: {} });
   expect((await record(soft, 'bot://motion'))['name']).toBe('Moved');
-  expect(await call(soft, 'resourceDelete', { uri: 'bot://motion' })).toEqual({ result: {} });
+  expect(await call(soft, 'x-ahpd/bots/remove', { id: 'motion' })).toEqual({ result: {} });
   expect(await listing(soft, 'bot://')).toEqual([]);
 });
 
@@ -1014,7 +1027,7 @@ it('lets a member of the team a bot belongs to change it', async () => {
   const ana = await as(host, 'ana');
   expect(await write(ana, 'bot://motion', { name: 'Moved' })).toEqual({ result: {} });
   expect((await record(ana, 'bot://motion'))['name']).toBe('Moved');
-  expect(await call(ana, 'resourceDelete', { uri: 'bot://motion' })).toEqual({ result: {} });
+  expect(await call(ana, 'x-ahpd/bots/remove', { id: 'motion' })).toEqual({ result: {} });
 });
 
 it('lets an admin change a bot that is not theirs', async () => {
@@ -1025,7 +1038,7 @@ it('lets an admin change a bot that is not theirs', async () => {
   const ana = await as(host, 'ana');
   expect(await write(ana, 'bot://motion', { name: 'Moved' })).toEqual({ result: {} });
   expect((await record(ana, 'bot://motion'))['name']).toBe('Moved');
-  expect(await call(ana, 'resourceDelete', { uri: 'bot://motion' })).toEqual({ result: {} });
+  expect(await call(ana, 'x-ahpd/bots/remove', { id: 'motion' })).toEqual({ result: {} });
 });
 
 it('lets the host change any bot', async () => {
@@ -1037,7 +1050,7 @@ it('lets the host change any bot', async () => {
   // membership of anything could be asked.
   const root = await door(host);
   expect(await write(root, 'bot://motion', { name: 'Moved' })).toEqual({ result: {} });
-  expect(await call(root, 'resourceDelete', { uri: 'bot://motion' })).toEqual({ result: {} });
+  expect(await call(root, 'x-ahpd/bots/remove', { id: 'motion' })).toEqual({ result: {} });
 });
 
 it('lets a host with no users directory change any bot', async () => {
@@ -1053,7 +1066,7 @@ it('lets a host with no users directory change any bot', async () => {
   await write(anyone, 'bot://motion', { name: 'Motion' }, { createOnly: true });
   expect(String((await record(anyone, 'bot://motion'))['owner'])).toMatch(/^root:/);
   expect(await write(anyone, 'bot://motion', { name: 'Moved' })).toEqual({ result: {} });
-  expect(await call(anyone, 'resourceDelete', { uri: 'bot://motion' })).toEqual({ result: {} });
+  expect(await call(anyone, 'x-ahpd/bots/remove', { id: 'motion' })).toEqual({ result: {} });
 });
 
 it('lets the host make a bot for a team it holds no membership of', async () => {
@@ -1247,7 +1260,7 @@ it('tells a watch on bot:// about a bot its owner makes, edits and deletes', asy
 
   await write(soft.client, 'bot://motion', { name: 'Motion' }, { createOnly: true });
   await write(soft.client, 'bot://motion', { name: 'Motion two' });
-  expect(await call(soft.client, 'resourceDelete', { uri: 'bot://motion' })).toEqual({ result: {} });
+  expect(await call(soft.client, 'x-ahpd/bots/remove', { id: 'motion' })).toEqual({ result: {} });
 
   expect(soft.heard(channel)).toEqual(['added bot://motion', 'updated bot://motion', 'deleted bot://motion']);
 });
@@ -1764,7 +1777,7 @@ it('deletes a bot by removing bots/<slug>/, and keeps its work folder', async ()
   const work = join(bots, 'motion', 'AGENTS.md');
   expect(existsSync(work)).toBe(true);
 
-  expect(await call(soft, 'resourceDelete', { uri: 'bot://motion' })).toEqual({ result: {} });
+  expect(await call(soft, 'x-ahpd/bots/remove', { id: 'motion' })).toEqual({ result: {} });
 
   expect(existsSync(folder)).toBe(false);
   // The folder a bot works in is the operator's, not data of the daemon's.

@@ -270,14 +270,14 @@ The channel is in `_meta['ahpd.channels']` on `initialize` and on the root state
 
 ## Commands
 
-A bot is made, edited and deleted with two commands, as every records list is. Each runs the same write or delete as the resource call, with the same refusals, and the catalogue hears both.
+A bot is made, edited and deleted with two commands, as every records list is. They are the only way to change one.
 
 | Command | Params | Grant |
 | --- | --- | --- |
 | `x-ahpd/bots/put` | `{ id, record, createOnly?, ifMatch? }` | `bot:put` |
 | `x-ahpd/bots/remove` | `{ id }` | `bot:delete` |
 
-`record` is the body a `resourceWrite` to `bot://<id>` takes. `ifMatch` is the `updatedAt` the client last read. Both answer `{}`. The commands are in `_meta['ahpd.methods']`. `resourceWrite` and `resourceDelete` on `bot://` keep working in 0.15.
+`record` holds the fields of the bot, as [the example](#an-example) shows. `ifMatch` is the `updatedAt` the client last read. Both answer `{}`. The commands are in `_meta['ahpd.methods']`. `resourceWrite` and `resourceDelete` on `bot://` are refused since 0.16.
 
 ## An example
 

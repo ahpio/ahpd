@@ -1,7 +1,7 @@
 ---
 title: Bots and push devices change by commands only
 domain: plugin
-status: planned
+status: active
 priority: medium
 created: 2026-11-24
 revalidated: 2026-11-24
@@ -45,20 +45,20 @@ client resourceWrite bot:// -> storeFor -> no write -> refused
 | What | Source | Task |
 | --- | --- | --- |
 | The older writes and deletes go in 0.16, and reads stay | Softov, 2026-11-24, chose "Remove writes and deletes" | 01 |
-| The refusal is the host's own for a scheme with no write | `(defaulted: one refusal for every read-only scheme)` | 01 |
+| The refusal has the host's code for a scheme with no write, and names the command | `(defaulted: ahpw reads the advertised put)` | 01 |
 | The clients keep their fallback for an older host | `(defaulted: they read the command list, and a host before 0.15 has no commands)` | - |
 
 ## Proposed architecture
 
-- **Layer responsibilities** - bot and push plugins: register the provider without `write` and `delete`, and give the whole one to the commands.
+- **Layer responsibilities** - bot and push plugins: register the provider with a `write` and a `delete` that refuse, and give the whole one to the commands.
 - **Source-of-truth files** - [`code://packages/bot/src/plugin.ts`](../../../../packages/bot/src/plugin.ts), [`code://packages/push/src/plugin.ts`](../../../../packages/push/src/plugin.ts)
 
 ## Tasks
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - the two schemes are read only](task-01-the-two-schemes-are-read-only.md) | todo | - |
-| [02 - the documents say it](task-02-the-documents-say-it.md) | todo | 01 |
+| [01 - the two schemes are read only](task-01-the-two-schemes-are-read-only.md) | done | - |
+| [02 - the documents say it](task-02-the-documents-say-it.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -66,8 +66,8 @@ client resourceWrite bot:// -> storeFor -> no write -> refused
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-the-two-schemes-are-read-only.md](task-01-the-two-schemes-are-read-only.md).
+- **Done so far:** both tasks, 2026-11-24.
+- **Next action:** the review.
 - **Open questions:** none.
 - **Watch out for:** the commands call `provider.write`, so the methods stay on the provider.
 
