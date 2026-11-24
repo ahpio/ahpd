@@ -414,7 +414,6 @@ export function createTurn(ctx: SessionContext): Turn {
         turnId,
         parts: turn.responseParts as Bag[],
         calls: new Map(),
-        opening: [],
         reach: {
           within: inside,
           changed: (path, before) => {

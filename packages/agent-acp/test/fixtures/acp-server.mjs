@@ -943,6 +943,12 @@ const promptScript = async (id, params) => {
       // round trip.
       await ask('fs/read_text_file', { sessionId: session, path: `${cwd}/note.txt` }).catch(() => undefined);
     }
+    for (const [, toolCallId] of [...text.matchAll(/mper=(\S+)/g)]) {
+      // The permission for a call already reported `in_progress`; one refused is not made.
+      const answer = await ask('session/request_permission', { sessionId: session, toolCall: { toolCallId }, options: PERMISSION });
+      const chosen = answer?.outcome?.outcome === 'selected' ? String(answer.outcome.optionId) : 'cancelled';
+      if (!chosen.startsWith('yes-')) requests.length = 0;
+    }
     for (const [, tool, args, meta] of requests) {
       /*
        * One request at a time, awaited before the next is made.

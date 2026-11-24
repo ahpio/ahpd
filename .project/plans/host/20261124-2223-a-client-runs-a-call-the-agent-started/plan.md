@@ -1,7 +1,7 @@
 ---
 title: A client runs a call only when the agent started it
 domain: host
-status: planned
+status: active
 priority: high
 created: 2026-11-24
 revalidated: 2026-11-24
@@ -66,20 +66,21 @@ The order of the two was read from the code.
 | ahpd differs from VS Code's order | (defaulted: VS Code's order has the same race, and the only other way is to keep the bug) | 01 |
 | The `chat/toolCallReady` waits with the entry, so the call stays `streaming` | (defaulted: the host derives the entry from `running`) | 01, 02 |
 | A call a person allows is running from the confirmation, as today | (defaulted: the permission is settled then) | 01, 02 |
+| A call that ends with no handler is left as it is | (defaulted: [VS Code](https://github.com/microsoft/vscode/blob/7f668a4988e528b6fe5f13fd8e9890affeae678c/src/vs/platform/agentHost/node/agentSideEffects.ts#L1792-L1796) leaves one; a ready there offers a refused call to its client) | 01, 02 |
 | Pi and Cofold do not change | [code://packages/agent-pi/src/session.ts#L655-L706](../../../../packages/agent-pi/src/session.ts#L655-L706) | - |
 
 ## Proposed architecture
 
 - **Event flow** - reported: `chat/toolCallStart`, the call stays `streaming`. Asked: the question, then the confirmation makes it running. Not asked: the handler makes it running with `chat/toolCallReady`, and the entry goes up.
-- **State flow** - a call that ends with no handler is readied just before its completion, so the reducer takes the result. A call a rule refuses is one. No entry is raised for it.
+- **State flow** - a call that ends with no handler is never readied, because the host would offer it. It stays `streaming` until its turn ends, as VS Code leaves one.
 - **Layer responsibilities** - each agent: when its call runs. sdk: no change.
 
 ## Tasks
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - claude-opens-a-call-at-its-handler](task-01-claude-opens-a-call-at-its-handler.md) | todo | - |
-| [02 - acp-opens-a-call-at-its-request](task-02-acp-opens-a-call-at-its-request.md) | todo | - |
+| [01 - claude-opens-a-call-at-its-handler](task-01-claude-opens-a-call-at-its-handler.md) | done | - |
+| [02 - acp-opens-a-call-at-its-request](task-02-acp-opens-a-call-at-its-request.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -90,8 +91,8 @@ The order of the two was read from the code.
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-claude-opens-a-call-at-its-handler.md](task-01-claude-opens-a-call-at-its-handler.md).
+- **Done so far:** both tasks, 2026-11-24.
+- **Next action:** Softov's review, and the check with a real Claude session.
 - **Open questions:** none.
 - **Watch out for:** delaying only the entry fixes nothing, because the host raises it from `running`.
 
