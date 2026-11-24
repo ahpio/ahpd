@@ -1,6 +1,6 @@
 ---
 title: Each agent sends the timing
-status: todo
+status: done
 depends: [01]
 layer: "agents"
 refs:
@@ -39,3 +39,5 @@ In a running turn of each of the four agents, a reasoning part opens with `start
 - Run each agent suite under the lock, one at a time, with `TMPDIR` set.
 
 ## Resume
+
+Done on 2026-11-24. No mapper changed. The host times each agent's actions, and its workers' too. The merged delta window keeps the times a chunk carries.

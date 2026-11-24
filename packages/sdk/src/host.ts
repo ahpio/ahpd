@@ -62,6 +62,7 @@ import {
 } from './host/channels.js';
 import type { Space } from './host/channels.js';
 import { DELTA_WINDOW_MS, merger } from './host/deltas.js';
+import { reasoningTimer } from './host/reasoning.js';
 import { Claiming } from './host/state.js';
 import type { Claimed, Held, HeldState, Learned, LiveSubagent, NameKind, Origin } from './host/state.js';
 import { GREETINGS, UNGATED, seesAccount, seesConfig, DECLARED, ownIn, ACTION_NEEDS } from './host/gate.js';
@@ -981,7 +982,12 @@ export function createHost(options: HostOptions): Host {
    * sequence number yet, which is why everything that answers a client with
    * state - a snapshot, a replay, a disposal - goes through `flush` first.
    */
-  const deltas = merger({ windowMs: options.deltaWindowMs ?? DELTA_WINDOW_MS, send: emit });
+  const deltas = merger({
+    windowMs: options.deltaWindowMs ?? DELTA_WINDOW_MS,
+    send: (channel, action, origin) => { for (const one of reasoning.timed(channel, action)) emit(channel, one, origin); },
+  });
+  /** Times the reasoning of every chat, on the road each action goes out by. */
+  const reasoning = reasoningTimer();
   /**
    * The dispatches answered already, by the origin each carries: its echo or
    * its refusal. A dispatch is answered once, and a host that said one and then
@@ -1131,6 +1137,10 @@ export function createHost(options: HostOptions): Host {
       if (states.get(channel)?.kind === 'chat') ctx.observed(channel, action, origin);
       return;
     }
+    // A run of reasoning this action ends is said ended first, as this host's own.
+    const timed = reasoning.timed(channel, action);
+    for (const ended of timed.slice(0, -1)) emit(channel, ended, undefined);
+    action = timed.at(-1) as typeof action;
     emit(channel, action, origin, requestAudience(channel, action, origin));
     // A turn's error before its backend had it fails the creation of a
     // session still provisional, said after the error.

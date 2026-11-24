@@ -1,6 +1,6 @@
 ---
 title: A restore keeps the timing
-status: todo
+status: done
 depends: [01, 02]
 layer: "agents"
 refs:
@@ -38,3 +38,8 @@ A restored Claude, pi or cofold chat has `startedAt` on each reasoning part, fro
 - Run each agent suite under the lock, one at a time, with `TMPDIR` set.
 
 ## Resume
+
+Done on 2026-11-24. A Claude frame's time is the end of its block, so a block runs from the frame before it.
+
+- The pi log gives the start of a message that opens with its thinking.
+- The cofold log gives a part's own times. A message's `createdAt` is not used.
