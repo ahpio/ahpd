@@ -15,8 +15,6 @@ A script asks the test daemon for each of the six plans of 2026-11-24, and print
 
 Not here: `accountId`, `resultMetadata`, cofold's and pi's restored reasoning times, and what a window draws. Their test cases cover the first three.
 
-The skills lines fail until the branch `claude/20261124-2230-a-connecting-mcp-server-is-asked-again` is merged.
-
 ## 1. Set up
 
 Run this in a new shell. It stops a test daemon that runs, and starts one from `origin/main`.
