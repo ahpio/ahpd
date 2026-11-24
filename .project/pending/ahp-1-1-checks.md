@@ -15,55 +15,40 @@ A script asks the test daemon for each of the six plans of 2026-11-24, and print
 
 Not here: `accountId`, `resultMetadata`, cofold's and pi's restored reasoning times, and what a window draws. Their test cases cover the first three.
 
-## 1. Set up
+## Before you start
 
-Run this in a new shell. It stops a test daemon that runs, and starts one from `origin/main`.
+- `git`, `node` and `pnpm` are on the `PATH`.
+- `/github/ahpd` can fetch from `origin`.
+- The Claude CLI is signed in as you, for the six turns.
+- Nothing of yours runs on port 39200. Ports 5180 and 37537 are not used.
+- No client is needed: no VS Code and no ahpw.
 
-```bash
-source <(git -C /github/ahpd fetch -q origin && git -C /github/ahpd show origin/main:.project/pending/test-daemon.sh) agent-claude .project/pending/ahp-1-1-plugin/plugin.json
-C=$AHPD_CHECK/.project/pending/ahp-1-1-checks.mjs
-```
-
-Pass: the last lines say `Test daemon on ws://127.0.0.1:39200`.
-
-## 2. Without a model
+## Run it
 
 ```bash
-node $C free
+bash <(git -C /github/ahpd fetch -q origin && git -C /github/ahpd show origin/main:.project/pending/ahp-1-1-checks.sh)
 ```
 
-Pass: 20 `PASS` lines, and `All passed.` at the end.
+The script does each step:
 
-Fail: a `FAIL` line, with what the daemon answered under it.
+1. It checks out `origin/main` in `/github/ahpd.worktrees/pending-check`, installs and builds.
+2. It writes `~/ahpd-check/config/ahpd/config.json` with the Claude plugin and the check's own plugin, and keeps that file's other keys.
+3. It starts the test daemon on port 39200.
+4. It makes the folder `~/ahpd-check/work/ahp-1-1`, trusts it, and runs 20 checks with no model.
+5. It runs 8 checks with six short Claude turns on Sonnet.
+6. It restarts the test daemon and runs 4 checks.
+7. It stops the test daemon.
 
-## 3. With Claude
+It takes about two minutes after the build.
 
-It runs six short turns on Sonnet, and takes about a minute. It makes the folder `~/ahpd-check/work/ahp-1-1`.
+## Read the result
 
-```bash
-node $C claude
-```
+Pass: the last line before the daemon stops is `RESULT: every check passed.`, after 32 `PASS` lines.
 
-Pass: 8 `PASS` lines, and `All passed.` at the end.
+Fail: the line is `RESULT: something failed.`, and each `FAIL` line has what the daemon answered under it.
 
-A `SKIP` line says that the model did not think. Run it again with `AHPD_MODEL=opus node $C claude`.
+`STOP` says what the script needs and did not find. Nothing was checked.
 
-## 4. After a restart
+`SKIP` says that the model did not think, so its reasoning times were not checked. Run it again with `AHPD_MODEL=opus` before `bash`.
 
-```bash
-ahpd stop
-ahpd start --port 39200 --connection-token-file ~/ahpd-check/token
-node $C restart
-```
-
-Pass: 4 `PASS` lines, and `All passed.` at the end.
-
-Fail: the moved chat is not in its new session, or it has lost its turn or its reasoning times.
-
-## 5. Stop
-
-```bash
-ahpd stop
-```
-
-Close the shell. When every section passes, the six plans can be `built`.
+When it passes, the six plans can be `built`.
