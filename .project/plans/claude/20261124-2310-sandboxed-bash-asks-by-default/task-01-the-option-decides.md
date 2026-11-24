@@ -14,7 +14,6 @@ refs:
 ## Files
 
 - `UPDATE: packages/agent-claude/src/options.ts` - `sandbox` stops sending the key, the new option sends it, and the join keeps both.
-- `UPDATE: packages/agent-claude/package.json` - the record's schema, if the option is listed there.
 - `UPDATE: packages/agent-claude/test/agent-claude-declarations.test.ts` - the cases of the option.
 - `UPDATE: packages/agent-claude/test/agent-claude-presets.test.ts` - the sandbox alone.
 - `UPDATE: packages/agent-claude/test/engine.test.ts` - the sandbox alone.
@@ -32,6 +31,8 @@ refs:
 ## Validation
 
 - The agent-claude and sdk suites pass, and `pnpm i18n` passes.
-- By hand with the real CLI: a sandboxed command asks, does not ask with the option on, and is denied under `dontAsk`.
+- With the real CLI, a sandboxed command asks.
+- With the option on, it runs with no question.
+- With `dontAsk` and the option off, the CLI denies it.
 
 ## Resume
