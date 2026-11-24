@@ -10,9 +10,8 @@ Current progress and pending items only, as of 2026-11-24. *Outside this reposit
 ## Main
 
 - **2026-11-24.** The six plans for the rest of AHP 1.1.0 are built, and each plan waits for Softov's review to be `built`:
-  - Merged on his word of 2026-11-24, green: #456 (`8a2109753`, small wire items), #457 (`36dcfbc45`, changeset editing and nonces) and #458 (`b65fd7407`, reasoning times). His dev daemon takes #446 to #458 at its next restart.
-  - #459, a chat on an agent of its own, is open at `f51c70955`. The `chat/moved` plan is stacked on it, at `15b3e6e95` in `host-20261124-0945-moved`, and its PR opens when #459 is in.
-  - The MCP skills plan is on its branch at `9ffe964d5`, in `claude-20261124-0943-skills`. Its PR waits for npm to serve `@cofold/mcp-client@0.2.0`; then the lockfile is made. Until then it runs on a link to `/github/cofold.worktrees/release-1124`, so keep that worktree.
+  - Merged on his word of 2026-11-24, green: #456 (`8a2109753`, small wire items), #457 (`36dcfbc45`, changeset editing and nonces), #458 (`b65fd7407`, reasoning times), #459 (`cc8d19915`, a chat's own agent) and #460 (`925cc1f5f`, `chat/moved`). His dev daemon takes #446 to #460 at its next restart.
+  - The MCP skills plan is on its branch at `658110087`, in `claude-20261124-0943-skills`. Its PR waits for npm to serve `@cofold/mcp-client@0.2.0`; then the lockfile is made. Until then it runs on a link to `/github/cofold.worktrees/release-1124`, so keep that worktree.
   - cofold #12 (`cb40b7c`), #13 (`5332aaa`) and #14 (`b1288d3`) are merged, and the tag `release-2026-11-24` staged `@cofold/agents@0.4.1` and `@cofold/mcp-client@0.2.0` on npm. Softov approves them. Then ahpd decides whether agent-cofold needs the new `@cofold/agents`.
   - Not built: `resultMetadata` after a restart, a skill's toggle after a daemon restart, and times from ACP and for pi's end.
 - **2026-11-22.** All nine `20261121-2250` builds that could be built are merged, and are `built` on Softov's word of 2026-11-23.
