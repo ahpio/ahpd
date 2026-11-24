@@ -1,6 +1,6 @@
 ---
 title: The documents say it
-status: todo
+status: done
 depends: [03]
 layer: "docs"
 refs:
@@ -28,3 +28,5 @@ The protocol page says that a Claude session's MCP servers list their skills, an
 - `pnpm docs:build` passes.
 
 ## Resume
+
+Done on 2026-11-24. A section of `docs/sdk/AHP.md`, and an item of Pass 8.

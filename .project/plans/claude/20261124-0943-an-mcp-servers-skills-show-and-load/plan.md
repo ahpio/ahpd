@@ -1,7 +1,7 @@
 ---
 title: An MCP server's skills show and load
 domain: claude
-status: planned
+status: active
 priority: high
 created: 2026-11-24
 revalidated: 2026-11-24
@@ -63,10 +63,10 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a server lists its skills](task-01-a-server-lists-its-skills.md) | todo | - |
-| [02 - a toggle switches a skill](task-02-a-toggle-switches-a-skill.md) | todo | 01 |
-| [03 - claude loads the skills that are on](task-03-claude-loads-the-skills-that-are-on.md) | todo | 02 |
-| [04 - the documents say it](task-04-the-documents-say-it.md) | todo | 03 |
+| [01 - a server lists its skills](task-01-a-server-lists-its-skills.md) | done | - |
+| [02 - a toggle switches a skill](task-02-a-toggle-switches-a-skill.md) | done | 01 |
+| [03 - claude loads the skills that are on](task-03-claude-loads-the-skills-that-are-on.md) | done | 02 |
+| [04 - the documents say it](task-04-the-documents-say-it.md) | done | 03 |
 
 ## Risks and tradeoffs
 
@@ -76,8 +76,8 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-server-lists-its-skills.md](task-01-a-server-lists-its-skills.md).
+- **Done so far:** tasks 01 to 04, on 2026-11-24, on a branch that is not merged.
+- **Next action:** Softov approves `@cofold/mcp-client` 0.2.0 on npm. Then the lockfile, the whole suite and the PR.
 - **Open questions:** none.
 - **Watch out for:** an empty `children` means the server was asked and serves none; leave it out when it was not asked.
 

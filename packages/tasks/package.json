@@ -61,7 +61,7 @@
   },
   "devDependencies": {
     "@ahpd/sdk": "workspace:*",
-    "@cofold/agents": "^0.4.0"
+    "@cofold/agents": "^0.4.1"
   },
   "ahpd": {
     "entry": "./dist/index.js",

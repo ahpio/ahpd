@@ -27,6 +27,7 @@ Each item waits for a published 1.1.0 package or for local types, as per-chat co
 - [x] **`authenticate.accountId`**, checked and kept with the token. Built in `host/20261124-0923`.
 - [x] **A client's message of any origin** in `chat/turnStarted` and `chat/pendingMessageSet`: ahpd checked none. `createChat`'s first message stays a person's, as VS Code's host keeps it.
 - [x] **`EmptyState`**: a telemetry subscribe answers no snapshot, as VS Code's host does.
+- [x] **`McpServerCustomization.children`**, the skills an MCP server serves (SEP-2640). VS Code fills them from Copilot's SDK; ahpd asks a Claude session's servers itself. Built in `claude/20261124-0943`.
 - [x] **`authenticate.target`** sends a token to one MCP server only. Built in `host/20261030-1608`.
 
 ### Session tools

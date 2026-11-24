@@ -464,6 +464,17 @@ export function createQuery(ctx: SessionContext): Query {
   };
 
   /**
+   * The plugins the CLI starts with: the clients', and the folder of the skills
+   * this session's MCP servers serve, which is there from the start because the
+   * CLI reads which plugins it has only then, and a skill lands in it later.
+   */
+  const pluginsOption = (): Bag => {
+    const served = Object.keys(ctx.mcpServers).length > 0 ? ctx.skills.folder() : undefined;
+    const paths = [...(ctx.options.plugins ?? []).map((one) => one.path), ...(served === undefined ? [] : [served])];
+    return paths.length === 0 ? {} : { plugins: paths.map((path) => ({ type: 'local' as const, path, skipMcpDiscovery: true })) };
+  };
+
+  /**
    * The options of a CLI for this session, on the agent named, carrying the
    * conversation this session already has.
    *
@@ -518,9 +529,7 @@ export function createQuery(ctx: SessionContext): Query {
        * Read at startup, so a set that moved reaches a chat by starting it
        * again rather than by anything here.
        */
-      ...(ctx.options.plugins === undefined || ctx.options.plugins.length === 0 ? {} : {
-        plugins: ctx.options.plugins.map((one) => ({ type: 'local' as const, path: one.path, skipMcpDiscovery: true })),
-      }),
+      ...pluginsOption(),
       /*
        * The CLI's own prompt alone, as VS Code's Claude options name it: the
        * CLI's prompt is what makes it the CLI, and what the host wants said
@@ -737,6 +746,7 @@ export function createQuery(ctx: SessionContext): Query {
       if (ctx.unwritten) ctx.sdkSessionId = undefined;
     }
     const options = optionsFor(agent, first, cut);
+    ctx.cliEnv = options.env ?? process.env;
     /*
      * Where this CLI's running cost starts.
      *

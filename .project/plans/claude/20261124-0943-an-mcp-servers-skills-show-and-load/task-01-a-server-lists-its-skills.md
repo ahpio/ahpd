@@ -1,6 +1,6 @@
 ---
 title: A server lists its skills
-status: todo
+status: done
 depends: []
 layer: "agent-claude"
 refs:
@@ -35,3 +35,5 @@ Each `mcpServer` customization of a Claude session has `children`, the skills it
 - Run the agent-claude suite under the lock, with `TMPDIR` set.
 
 ## Resume
+
+Done on 2026-11-24. The host asks only the servers that the CLI reports connected, so it starts nothing a person did not let start. A stdio server gets the environment the CLI has. `@cofold/mcp-client` 0.2.0 was linked from the local cofold, and the lockfile waits for its release.
