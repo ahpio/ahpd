@@ -1,6 +1,6 @@
 ---
 title: The documents say it
-status: todo
+status: done
 depends: [03]
 layer: "docs"
 refs:
@@ -29,3 +29,5 @@ The protocol page and the configuration page say how chats of other agents work 
 - `pnpm docs:build` passes.
 
 ## Resume
+
+Done on 2026-11-24. The `createChat` row of `docs/sdk/AHP.md`, and the box of Pass 8. No docs page lists the root keys.

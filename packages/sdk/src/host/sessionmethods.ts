@@ -13,6 +13,7 @@ import {
   requireWorkspaceAuthority,
 } from './chatworkspace.js';
 import { mayUseAgent, ownershipOf } from '../agents/usable.js';
+import { multipleChatProvidersOn } from '../vscoderootconfig.js';
 import { freshTurnIds, readCreateSessionImportMeta, takeImport } from './sessionimport.js';
 import { chatIdFor, named, ROOT, schemeOf, spaceOf } from './channels.js';
 import { getAgentHostChatId } from '../vscode/chatid.js';
@@ -1562,6 +1563,34 @@ export function createSessionMethods(ctx: HostContext, conn: ConnectionContext):
       if (!held)
         throw new RpcError(AhpErrorCodes.SessionNotFound, `Session not found: ${uri}`);
       /*
+       * The agent the chat asks for, in VS Code's words where it is refused.
+       * An agent this caller may not use answers as one this host does not
+       * hold, and the policy and the session's machine are asked about it as
+       * they are for a session started on it: a chat is no way round either.
+       * https://github.com/microsoft/vscode/blob/7e993177c9d9/src/vs/platform/agentHost/node/agentService.ts#L10175-L10200
+       */
+      let requested: Agent | undefined;
+      if (params.provider !== undefined) {
+        if (!multipleChatProvidersOn(ctx.rootConfig))
+          throw new RpcError(INVALID_PARAMS, 'This host does not support chats with their own agent.');
+        const named = String(params.provider);
+        requested = agents.get(named);
+        if (requested === undefined || !mayUseAgent(connection.principal, ownershipOf(options.agentOwners?.(), named), {
+          root: connection.root === true,
+          hasDirectory: options.users !== undefined,
+        }))
+          throw new RpcError(INVALID_PARAMS, `Agent ${named} is unknown or disabled.`);
+        if (chatUri === held.defaultChat && requested !== held.agent)
+          throw new RpcError(INVALID_PARAMS, 'The default chat uses its session\'s agent.');
+        if (requested !== held.agent) {
+          const refused = await admitted(connection.principal, charged.get(uri)?.scope, held.config, named, uri, kept.owner(idOf(uri)) ?? ownerFor(connection));
+          if (refused !== undefined) throw new RpcError(-32009, refused);
+          if (sessions.get(uri) !== held)
+            throw new RpcError(AhpErrorCodes.SessionNotFound, `Session not found: ${uri}`);
+        }
+      }
+      const serving = requested ?? held.agent;
+      /*
        * A workspace of the chat's own, read before the default chat is
        * answered and before anything is made. A malformed value is refused
        * here; one that is well formed is checked against what the session and
@@ -1581,8 +1610,8 @@ export function createSessionMethods(ctx: HostContext, conn: ConnectionContext):
           throw new RpcError(INVALID_PARAMS, 'A chat workspace cannot be combined with working directories, a fork or a side chat.');
         if (chatUri === held.defaultChat)
           throw new RpcError(INVALID_PARAMS, 'The default chat cannot get a workspace of its own.');
-        if (held.agent.multipleDirectories !== true)
-          throw new RpcError(INVALID_PARAMS, `The agent ${held.agent.provider} does not support a workspace per chat.`);
+        if (serving.multipleDirectories !== true)
+          throw new RpcError(INVALID_PARAMS, `The agent ${serving.provider} does not support a workspace per chat.`);
         if (workspace.kind === 'folder') requireNonScratchChatFolder(workspace.folder);
       }
       /*
@@ -1594,18 +1623,10 @@ export function createSessionMethods(ctx: HostContext, conn: ConnectionContext):
       if (chatUri === held.defaultChat && params.initialMessage === undefined) return null;
       // A chat whose agent its record turned off or paused starts nothing,
       // said with the sentence that state uses.
-      const unavailable = agentRefusal(ctx.options.disabledAgents?.(), ctx.options.pausedAgents?.(), held.agent.provider);
+      const unavailable = agentRefusal(ctx.options.disabledAgents?.(), ctx.options.pausedAgents?.(), serving.provider);
       if (unavailable !== undefined) throw new RpcError(-32002, unavailable);
       if (idOf(chatUri) === '' || chatUri.indexOf(':') <= 0)
         throw new RpcError(INVALID_PARAMS, `${chatUri} is not a chat URI`);
-      /*
-       * A chat on an agent of its own is VS Code's `multipleChatProviders`,
-       * which this host does not advertise, so a request naming one is refused
-       * in VS Code's words.
-       * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/protocolServerHandler.ts#L2287-L2289
-       */
-      if (params.provider !== undefined)
-        throw new RpcError(INVALID_PARAMS, 'This host does not support chats with their own agent.');
       /*
        * A first message is a person's, or nothing is made, as the reference
        * host refuses one before it creates the chat.
@@ -1693,6 +1714,9 @@ export function createSessionMethods(ctx: HostContext, conn: ConnectionContext):
         if (!from || from.uri !== uri)
           throw new RpcError(INVALID_PARAMS, `${String(source.chat ?? '')} is not a chat in ${uri}`);
         fromChat = from.chat.chatUri;
+        // A conversation is its own agent's, so a copy never changes agents.
+        if (requested !== undefined && requested !== getProviderForChat(held, fromChat))
+          throw new RpcError(INVALID_PARAMS, 'A fork or side chat uses its source chat\'s agent.');
         const turnId = String(source.turnId ?? '');
         // The backend's turns with this host's local turns in their places,
         // as the reference reads a chat's turns, a local one among them.
@@ -1830,14 +1854,17 @@ export function createSessionMethods(ctx: HostContext, conn: ConnectionContext):
        * https://github.com/microsoft/vscode/blob/41c37d126aa93bece57534a18f0750e4dcb6b38c/src/vs/platform/agentHost/node/agentService.ts#L9828-L9838
        */
       if (fromChat !== undefined && made?.seed !== undefined) ctx.persistForkedLocalTurns(uri, fromChat, chatUri, made.seed);
-      const agent = fromChat === undefined ? held.agent : getProviderForChat(held, fromChat);
+      const agent = fromChat === undefined ? serving : getProviderForChat(held, fromChat);
       /*
        * The values it starts with as its own and the config they put it on: a
        * chat of the session's backend runs on the session's config with them
-       * laid over it, and a fork of a chat of another backend on that chat's.
+       * laid over it, a fork of a chat of another backend on that chat's, and
+       * a new chat of another backend on that backend's own defaults, with the
+       * session's machine and what the plugins contributed.
        */
       const ownValues = agent === held.agent ? ctx.initialChatConfig(uri, held, chatUri, origin) : {};
-      const config = agent === held.agent ? { ...held.config, ...ownValues } : chatConfig(uri, held, fromChat as string);
+      const config = agent === held.agent ? { ...held.config, ...ownValues }
+        : fromChat === undefined ? ctx.chatConfigOf(agent, held, undefined) : chatConfig(uri, held, fromChat);
       // Read until something is said in it, written before its state opens.
       startsRead(ctx, uri, chatUri);
       /*
@@ -1922,7 +1949,7 @@ export function createSessionMethods(ctx: HostContext, conn: ConnectionContext):
       // And the row, which lists the session's chats: a client that is only
       // listing sessions reads the new chat from there.
       markSummaryDirty(uri);
-      if (first_ !== undefined) await acceptInitialMessage(uri, chat, held.agent.provider, first_);
+      if (first_ !== undefined) await acceptInitialMessage(uri, chat, agent.provider, first_);
       return null;
     },
     moveChat: (params) => moveChat(connection, conn.tokensFor, params),

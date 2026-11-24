@@ -1,6 +1,6 @@
 ---
 title: A chat is made on the agent it asks for
-status: todo
+status: done
 depends: [01]
 layer: "sdk host"
 refs:
@@ -37,3 +37,5 @@ refs:
 - Run the sdk suite under the lock, with `TMPDIR` set.
 
 ## Resume
+
+Done on 2026-11-24. State, rows and the record already had `provider`. `createChat` also asks who may use the agent, the policies and the session's machine. An asleep chat of another agent read its transcript from the session's agent, in `snapshots.ts` and `outputs.ts`; both are fixed.

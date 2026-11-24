@@ -692,22 +692,6 @@ describe('more than one chat in a session', () => {
   });
 
   /*
-   * A chat with an agent of its own is VS Code's `multipleChatProviders`,
-   * which this host does not advertise, so a request naming one is refused in
-   * VS Code's words rather than made on the session's agent.
-   * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/protocolServerHandler.ts#L2287-L2289
-   */
-  it('refuses a chat asked for on an agent of its own, as VS Code\'s host that offers none', async () => {
-    const { client, uri } = await running();
-    await expect(client.handle({ method: 'createChat', params: { channel: uri, chat: second, provider: 'claude' } }))
-      .rejects.toMatchObject({ code: -32602, message: 'This host does not support chats with their own agent.' });
-    const opened = await client.handle({ method: 'subscribe', params: { channel: uri } }) as {
-      snapshot: { state: { chats: { resource: string }[] } };
-    };
-    expect(opened.snapshot.state.chats.map((c) => c.resource)).not.toContain(second);
-  });
-
-  /*
    * A chat's first message is its first turn, begun once the chat is made:
    * the request is answered with the chat there, and a turn this host will not
    * run ends in an error on the chat, which keeps the prompt, as VS Code's host

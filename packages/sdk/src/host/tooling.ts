@@ -434,6 +434,8 @@ export interface Tooling {
    * against that session's budget, its tree's or its own.
    */
   openChat(session: string, asked: ChatStart, calling?: { uri: string; chatUri: string }): Promise<{ chat: string }>;
+  /** The config one chat of a session is started with, on the backend that serves it. */
+  chatConfigOf(agent: Agent, held: Held, asked: Record<string, unknown> | undefined): Record<string, unknown>;
 }
 
 /**
@@ -3160,7 +3162,7 @@ export function createTooling(ctx: HostContext): Tooling {
     clientTools, clientPluginsOf, toggleClientPlugin, customizationUnder, workingDirectoryOf, withEntries, tellOff, forgetTold, recordCustomizationEnablement, publishSessionCustomizations,
     retool, pluginsSettled, chatMeant, renameChat, renameSession, snapshotDefaultChatTitle, toolContext, sessionlessContext,
     pluginsFor, pluginsMoved, mcpFor, deniedMcpServers,
-    toolsServersGone, boundTools, sessionlessTools, instructions, turnInstructions, reportDiscarded, openChat,
+    toolsServersGone, boundTools, sessionlessTools, instructions, turnInstructions, reportDiscarded, openChat, chatConfigOf,
     moving, served,
   };
 }

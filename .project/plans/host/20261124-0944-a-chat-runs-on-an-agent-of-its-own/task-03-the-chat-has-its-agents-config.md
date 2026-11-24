@@ -1,6 +1,6 @@
 ---
 title: The chat has its agent's own config
-status: todo
+status: done
 depends: [02]
 layer: "sdk host"
 refs:
@@ -32,3 +32,5 @@ A chat on another agent has `config.schema`, its agent's session schema, and `co
 - Run the sdk suite under the lock, with `TMPDIR` set.
 
 ## Resume
+
+Done on 2026-11-24. No source changed: the state, the schema and the check were built for a plugin's chat. `chatConfigOf` gives the config it starts with. A key with no value takes the schema's default, as 1.1.0 says.
