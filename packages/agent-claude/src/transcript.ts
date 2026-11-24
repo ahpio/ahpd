@@ -29,6 +29,20 @@ import { ranOn } from './models.js';
 
 const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 
+/**
+ * When a thinking block ran, from the CLI's own log.
+ *
+ * The CLI writes a frame as its block ends, so the frame's time is the end and
+ * the time of the frame before it - the prompt, a tool's result or the block
+ * before - is where the wait for this one began. Nothing where either is
+ * missing or they run backwards.
+ */
+const thoughtFor = (from: string | undefined, to: string | undefined): { startedAt?: string; duration?: number } => {
+  const start = Date.parse(from ?? '');
+  const duration = Date.parse(to ?? '') - start;
+  return Number.isFinite(duration) && duration >= 0 ? { startedAt: new Date(start).toISOString(), duration } : {};
+};
+
 function resultText(content: unknown): string | undefined {
   if (typeof content === 'string') return content;
   const parts = list(content).map((b) => str(bag(b).text)).filter((t): t is string => t !== undefined);
@@ -650,11 +664,15 @@ function buildTurns(messages: unknown[], forkAnchorUuids?: Map<string, string>):
     if (forkAnchorUuids !== undefined && turn !== undefined && entry !== undefined) forkAnchorUuids.set(String(turn.id), entry);
   };
 
+  /** The time of the frame before the one being read. */
+  let previous: string | undefined;
   for (const entry of messages) {
     const frame = bag(entry);
     const role = str(frame.type);
     const message = bag(frame.message);
     const at = str(frame.timestamp) ?? new Date(0).toISOString();
+    const before = previous;
+    previous = str(frame.timestamp) ?? previous;
 
     if (role === 'user') {
       const said = typeof message.content === 'string'
@@ -853,7 +871,7 @@ function buildTurns(messages: unknown[], forkAnchorUuids?: Map<string, string>):
       if (kind === 'text') {
         parts.push({ id, kind: 'markdown', content: str(block.text) ?? '' } satisfies OnWire<ResponsePart>);
       } else if (kind === 'thinking') {
-        parts.push({ id, kind: 'reasoning', content: str(block.thinking) ?? '' } satisfies OnWire<ResponsePart>);
+        parts.push({ id, kind: 'reasoning', content: str(block.thinking) ?? '', ...thoughtFor(before, str(frame.timestamp)) } satisfies OnWire<ResponsePart>);
       } else if (kind === 'tool_use') {
         const name = str(block.name) ?? 'tool';
         const given = bag(block.input);

@@ -55,6 +55,19 @@ const INTERRUPTED: Bag = {
 };
 
 /**
+ * When a part ran, from the times cofold 0.4.1 writes on each part; a
+ * conversation written before has none, and its message's own time is the end
+ * of the reply, which says neither.
+ */
+const timesOf = (part: ContentPart): { startedAt?: string; duration?: number } => {
+  const { startedAt, endedAt } = part as { startedAt?: unknown; endedAt?: unknown };
+  const start = Date.parse(str(startedAt) ?? '');
+  if (!Number.isFinite(start)) return {};
+  const duration = Date.parse(str(endedAt) ?? '') - start;
+  return { startedAt: new Date(start).toISOString(), ...(Number.isFinite(duration) && duration >= 0 ? { duration } : {}) };
+};
+
+/**
  * cofold's token counts, in the protocol's spelling.
  *
  * `Turn.usage` is required and may be `undefined`, which is "not measured"
@@ -444,7 +457,7 @@ export async function turnsOf(
           // Any text is a part, whitespace included, as it is live.
           if (part.text !== '') live.parts.push({ id, kind: 'markdown', content: part.text });
         } else if (part.type === 'reasoning') {
-          live.parts.push({ id, kind: 'reasoning', content: part.text });
+          live.parts.push({ id, kind: 'reasoning', content: part.text, ...timesOf(part) });
         } else if (part.type === 'toolCall') {
           const held = callPartOf(part, durations.get(part.callId), waiting.get(part.callId), subject.get(part.callId));
           // Registered before the part is pushed, so the result that follows

@@ -1,6 +1,6 @@
 ---
 title: The sdk times a reasoning run
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:
@@ -31,3 +31,5 @@ The sdk exports one timer that an agent's mapper calls when a reasoning part ope
 - Run the sdk suite under the lock, with `TMPDIR` set.
 
 ## Resume
+
+Done on 2026-11-24. The timer is `packages/sdk/src/host/reasoning.ts`, on the host's own road for actions. It is not exported, since no agent calls it.

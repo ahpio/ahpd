@@ -590,6 +590,15 @@ it('shows live the parts its transcript rebuilds, in the order the model wrote t
   expect(read.map(idOf)).toEqual(['m1:0', 'c1', 'm2:0', 'm2:1']);
 });
 
+it('says when a restored reasoning part ran, from the times cofold wrote on it', async () => {
+  const times = { startedAt: '2026-01-01T00:00:00.000Z', endedAt: '2026-01-01T00:00:04.500Z' };
+  const { read } = await played([{
+    deltas: [{ type: 'reasoning.delta', text: 'THINK' }, { type: 'text.delta', text: 'REPLY' }],
+    parts: [{ type: 'reasoning', text: 'THINK', ...times } as Message['parts'][number], { type: 'text', text: 'REPLY' }],
+  }]);
+  expect(read[0]).toMatchObject({ kind: 'reasoning', startedAt: times.startedAt, duration: 4500 });
+});
+
 it('opens a part for text that is only whitespace, live and read back', async () => {
   // Kimi K2.6's shape: a blank text between each thought and its call, which
   // opens a part as any text does, as VS Code's agents open one.
