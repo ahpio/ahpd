@@ -1,6 +1,6 @@
 ---
 title: ACP opens a client's call at its request
-status: todo
+status: done
 depends: []
 layer: agent-acp
 refs:
@@ -20,6 +20,8 @@ A client's call is readied and offered when its `tools/call` arrives, or when th
 - `UPDATE: packages/agent-acp/src/session/handlers.ts:397` - the open after an update goes.
 - `UPDATE: packages/agent-acp/src/session/clientcalls.ts:194-253` - `callFor` looks among the reported calls that no request took, and readies and opens the one it picks.
 - `UPDATE: packages/agent-acp/test/agent-acp-client-tool.test.ts` - the cases of the order.
+- `UPDATE: packages/agent-acp/test/agent-acp-turn.test.ts` - the cases that expected an entry from a report.
+- `UPDATE: packages/agent-acp/test/fixtures/acp-server.mjs` - `mper=` asks for the permission of a reported call.
 
 ## Steps
 
@@ -28,7 +30,7 @@ A client's call is readied and offered when its `tools/call` arrives, or when th
 3. Make `callFor` choose among the unfinished reported calls of that owner and tool that no request has taken.
 4. Keep the order of the choice: the request's id, the lone call, the arguments, a row of its own.
 5. Ready and open the chosen call, unless the person's confirmation did it already.
-6. Keep the ready before the completion of a call that ends with no request.
+6. Say no ready for a call that ends with no request.
 
 ## Validation
 

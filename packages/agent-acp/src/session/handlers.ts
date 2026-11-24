@@ -392,9 +392,6 @@ export function createHandlers(ctx: SessionContext): Handlers {
       noteCall(bag(action));
       emit('chat', action);
     }
-    // The clients' calls this update started, asked for once the chat holds
-    // each one running: an entry names a call in that state.
-    for (const call of current.opening.splice(0)) ctx.openCall(call, current.turnId);
   };
 
   /**
@@ -992,6 +989,7 @@ export function createHandlers(ctx: SessionContext): Handlers {
       mapped.readied = held.readied;
     }
     if (approved && mapped !== undefined && ctx.mapping !== undefined) {
+      mapped.allowed = true;
       ctx.openCall(mapped, ctx.mapping.turnId);
     }
     const chosen = picked?.id ?? (approved ? held.allow : held.reject);
