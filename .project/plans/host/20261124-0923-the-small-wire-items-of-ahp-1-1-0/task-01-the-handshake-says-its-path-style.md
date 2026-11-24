@@ -1,6 +1,6 @@
 ---
 title: The handshake says its path style and keeps the account
-status: todo
+status: done
 depends: []
 layer: "sdk host"
 refs:
@@ -35,3 +35,5 @@ refs:
 - Run the sdk suite under the lock, with `TMPDIR` set.
 
 ## Resume
+
+Done on 2026-11-24. `Credential.accountId` keeps the hint. The account case is in `authenticate-watching.test.ts`, beside the cases that spend a token.

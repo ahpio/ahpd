@@ -89,7 +89,29 @@ const CONFLICT = -32011;
       // plugin registered is asked after it.
       const own = await options.changes?.read?.(uri);
       if (own) return own;
-      return await served(need(storeFor(uri), 'resourceRead').read, 'read', uri)(
+      /*
+       * A byte range, from AHP 1.1.0: each bound a whole number of 0 or more,
+       * and honoured by a store that reads ranges, which answers the size. A
+       * store that does not reads the whole resource, as the protocol lets a
+       * receiver that does not honour ranges.
+       * https://github.com/microsoft/agent-host-protocol/blob/v1.1.0/types/common/commands.ts#L866-L920
+       */
+      for (const bound of ['position', 'length'] as const) {
+        const value = params[bound];
+        if (value !== undefined && !(typeof value === 'number' && Number.isInteger(value) && value >= 0))
+          throw new RpcError(INVALID_PARAMS, `${bound} must be an integer of 0 or more`);
+      }
+      const ranged = params.position !== undefined || params.length !== undefined;
+      const store = storeFor(uri);
+      if (ranged && store !== undefined && 'readRange' in store && typeof store.readRange === 'function') {
+        const range = {
+          ...(params.position !== undefined ? { position: params.position as number } : {}),
+          ...(params.length !== undefined ? { length: params.length as number } : {}),
+        };
+        const encoding = typeof params.encoding === 'string' ? params.encoding : undefined;
+        return await served(store.readRange.bind(store), 'read', uri)(uri, encoding, range);
+      }
+      return await served(need(store, 'resourceRead').read, 'read', uri)(
         uri,
         typeof params.encoding === 'string' ? params.encoding : undefined,
         connection.principal,

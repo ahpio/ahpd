@@ -1,6 +1,6 @@
 ---
 title: A read serves a byte range
-status: todo
+status: done
 depends: []
 layer: "sdk resources"
 refs:
@@ -38,3 +38,5 @@ A `resourceRead` with `position` or `length` answers that slice of a file and th
 - Run the sdk suite under the lock, with `TMPDIR` set.
 
 ## Resume
+
+Done on 2026-11-24. The range goes to a new optional `readRange` on the store, not to `read`, so no store but the file store changes. A store without it answers whole. A slice that starts inside a character is not text, and comes back base64.

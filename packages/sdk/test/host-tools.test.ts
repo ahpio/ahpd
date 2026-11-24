@@ -2360,6 +2360,37 @@ describe('tools a client contributes', () => {
   });
 
   /*
+   * A result's MCP `_meta`, from AHP 1.1.0: kept as `resultMetadata` on the
+   * completed call, and still there once a client confirms the result, as
+   * VS Code's host keeps it for a restored MCP App card.
+   * https://github.com/microsoft/vscode/blob/7e993177c9d9/src/vs/platform/agentHost/node/agentSideEffects.ts#L1666-L1674
+   */
+  it('keeps a result\'s resultMetadata on the call, before and after its confirmation', async () => {
+    const { client, chatUri } = await providing();
+    await calling(client, chatUri);
+    void offered().find((tool) => tool.name === 'probe__openFile')?.handler({ path: '/a.txt' });
+    await settle();
+    const resultMetadata = { ui: { resourceUri: 'ui://probe/card' } };
+    client.handle({
+      method: 'dispatchAction',
+      params: {
+        channel: chatUri,
+        clientSeq: 15,
+        action: { type: 'chat/toolCallComplete', turnId: 't1', toolCallId: 'call-1', requiresResultConfirmation: true, result: { success: true, content: [{ type: 'text', text: 'opened /a.txt' }], resultMetadata } },
+      },
+    });
+    await settle();
+    const seen = async () => JSON.stringify((await client.handle({ method: 'subscribe', params: { channel: chatUri } }) as { snapshot: unknown }).snapshot);
+    expect(await seen()).toContain('ui://probe/card');
+    client.handle({
+      method: 'dispatchAction',
+      params: { channel: chatUri, clientSeq: 16, action: { type: 'chat/toolCallResultConfirmed', turnId: 't1', toolCallId: 'call-1', approved: true } },
+    });
+    await settle();
+    expect(await seen()).toContain('ui://probe/card');
+  });
+
+  /*
    * A second result for one call is said as the first is, as VS Code's host
    * says every completion; the backend, handed the first, logs the second.
    * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentService.ts#L13654-L13679

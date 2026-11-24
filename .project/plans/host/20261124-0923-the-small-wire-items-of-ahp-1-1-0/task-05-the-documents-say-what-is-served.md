@@ -1,6 +1,6 @@
 ---
 title: The documents say what is served
-status: todo
+status: done
 depends: [01, 02, 03, 04]
 layer: "docs"
 refs:
@@ -29,3 +29,5 @@ The protocol page says what ahpd serves of the six items, and UPSTREAM.md ticks 
 - `pnpm docs:build` passes.
 
 ## Resume
+
+Done on 2026-11-24. `docs/sdk/AHP.md` has the three rows and two paragraphs. UPSTREAM.md ticks six boxes.

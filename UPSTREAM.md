@@ -21,7 +21,12 @@ Each item waits for a published 1.1.0 package or for local types, as per-chat co
 - **A chat's config does not inherit from its session**, in the 1.1.0 text at `d7a5579b`: the host sets a chat's initial `values` when it creates the chat, after that they change only through `chat/configChanged`, and a key missing after a `replace` takes its property's `default`. ahpd differs on purpose: a session's value reaches the chats that set none (`20e812035`, `7f7a74ffe`). Softov, 2026-11-10.
 - [ ] **Reasoning timing**: `startedAt` and `duration` on a reasoning part and on `chat/reasoning`, where an empty `content` updates only the timing. Upstream `2780fc5eac21`, `f4823ef3c687`. `packages/agent-claude/src/session/stream.ts`.
 - [ ] **Changeset file `nonce` and `isEditing`**, and `nonce` on a changeset operation target: a mismatch fails with `Conflict`. `packages/sdk/src/sessions/changes.ts`.
-- [ ] **`ToolCallCompletedState.resultMetadata`**, the MCP `CallToolResult._meta`. Upstream keeps it for restored MCP App cards (`8078df0ea8d8`). `packages/sdk/src/host/spawn.ts`.
+- [x] **`ToolCallCompletedState.resultMetadata`**, the MCP `CallToolResult._meta`. Upstream keeps it for restored MCP App cards (`8078df0ea8d8`). A client's result keeps it through its confirmation; a restart loses it, since ahpd rebuilds a chat from its agent's transcript. Built in `host/20261124-0923`.
+- [x] **`InitializeResult.environment.pathStyle`**, the host's path style. Built in `host/20261124-0923`.
+- [x] **A ranged `resourceRead`**: `position`, `length` and the answer's `size`, for a file. Built in `host/20261124-0923`.
+- [x] **`authenticate.accountId`**, checked and kept with the token. Built in `host/20261124-0923`.
+- [x] **A client's message of any origin** in `chat/turnStarted` and `chat/pendingMessageSet`: ahpd checked none. `createChat`'s first message stays a person's, as VS Code's host keeps it.
+- [x] **`EmptyState`**: a telemetry subscribe answers no snapshot, as VS Code's host does.
 - [x] **`authenticate.target`** sends a token to one MCP server only. Built in `host/20261030-1608`.
 
 ### Session tools
