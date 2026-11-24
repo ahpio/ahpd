@@ -1,6 +1,6 @@
 ---
 title: A chat moves across agents
-status: todo
+status: done
 depends: [01]
 layer: "sdk host"
 refs:
@@ -32,3 +32,5 @@ While `multipleChatProviders.enabled` is on, a chat may move to a session of ano
 - Run the sdk suite under the lock, with `TMPDIR` set.
 
 ## Resume
+
+Done on 2026-11-24. `keepChat` takes `null` for a chat that comes to run on its session's agent. The destination's policies and machine are asked about the agent. The cases are in `chat-moved.test.ts`; no case restarts after a move, and the record a restart reads is checked.

@@ -1,6 +1,6 @@
 ---
 title: A move says chat moved
-status: todo
+status: done
 depends: []
 layer: "sdk host"
 refs:
@@ -29,3 +29,5 @@ After a chat moves to another session, its channel gets `chat/moved` with the ne
 - Run the sdk suite under the lock, with `TMPDIR` set.
 
 ## Resume
+
+Done on 2026-11-24. The action goes out after the chat leaves its session. Its new session lists it afterwards, because the new row is read off the state it moves. The chat's values follow in a `chat/configChanged`. The cases are in `chat-moved.test.ts`.
