@@ -8,8 +8,7 @@ revalidated: 2026-11-24
 requires:
   - plans/host/117-ahpd-speaks-ahp-1-1-0/plan.md
 refs:
-  - git://a3118737e - main with the brief, the last commit that holds it whole
-  - "[briefs/the-rest-of-ahp-1-1-0.md](../../../briefs/the-rest-of-ahp-1-1-0.md) - the ten 1.1.0 changes; this plan covers six of them"
+  - git://a3118737e - the brief `briefs/the-rest-of-ahp-1-1-0.md`, the ten 1.1.0 changes; this plan covers six of them
   - git://github.com/microsoft/agent-host-protocol@v1.1.0 - `types/common/commands.ts` for `ResourceReadParams` and `ResourceReadResult`, and `CHANGELOG.md`
   - git://github.com/microsoft/vscode@7e993177c9d9 - VS Code main on 2026-11-24
   - "[code://packages/sdk/src/host/handshake.ts#L441-L446](../../../../packages/sdk/src/host/handshake.ts#L441-L446) - the `initialize` result, which has no `environment`"

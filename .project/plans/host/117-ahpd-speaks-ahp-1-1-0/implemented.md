@@ -45,4 +45,4 @@ ahpd installs AHP 1.1.0 and speaks its wire. A client that offers 1.1.0 agrees o
 ## Left for later
 
 - ahpw reads a canvas's `url` in `src/resources/sessions/SessionHeader.tsx:114`, which works while `url` is sent. Reading `uri` first is an ahpw change.
-- The rest of 1.1.0 is in [the-rest-of-ahp-1-1-0.md](../../../briefs/the-rest-of-ahp-1-1-0.md).
+- The rest of 1.1.0 is in the-rest-of-ahp-1-1-0.md (`git://a3118737e`, now the six `20261124` plans).

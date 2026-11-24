@@ -31,7 +31,7 @@ The per-chat config that main already has reads its types from the package.
 Several steering messages can wait at once, beside the queued ones, in one list.
 A model can name its vendor.
 A canvas says its `uri`, and a session's annotations channel is `ahp-annotations:/<uuid>`.
-The rest of 1.1.0 waits in [the 1.1.0 brief](../../../briefs/the-rest-of-ahp-1-1-0.md).
+The rest of 1.1.0 waits in the 1.1.0 brief (`git://a3118737e`, now the six `20261124` plans).
 
 ## Reconnaissance
 
