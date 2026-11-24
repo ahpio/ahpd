@@ -4,6 +4,7 @@ import type { Bag, Session, Start } from '@ahpd/sdk';
 import { DEFAULT_CLIENT_TOOL_TIMEOUT_MS } from '../../sdk/src/tools/clientcalls.js';
 import { posix } from '../../../tools/posix.ts';
 import { acpAgent, connectAcp, watchSession } from '../src/index.js';
+import { bounded } from '../src/session/turn.js';
 
 /*
  * A server that never starts, and one that exits mid-prompt.
@@ -104,6 +105,56 @@ it('fails the first turn of a session whose command is missing, and nothing esca
   session.sendMessage('t2', 'hi again');
   await until(() => actions.filter((action) => action.type === 'chat/error').length > 1);
   expect(actions.filter((action) => action.type === 'chat/error')).toHaveLength(2);
+  expect(escaped).toEqual([]);
+});
+
+/*
+ * What the send returns is how a host learns the server never had the
+ * session: it rejects after the turn's own error, and a session still being
+ * created fails with it rather than reading ready. The sentence names what was
+ * run and the PATH it ran with, and the trace the server left.
+ */
+it('rejects the send of a session whose command is missing, after the turn\'s error, naming the command and its PATH', async () => {
+  const { session, actions } = await start(MISSING);
+  const sent = session.sendMessage('t1', 'hi') as Promise<void>;
+  await expect(sent).rejects.toThrow(MISSING);
+
+  expect(failure(actions)).toContain(`${MISSING} was started with PATH ${process.env.PATH}`);
+  expect(escaped).toEqual([]);
+});
+
+it('rejects the send of a session whose adapter cannot start its own backend, with what it wrote on stderr', async () => {
+  const { session, actions } = await start(process.execPath, [FIXTURE, '--startup-fails']);
+  const sent = session.sendMessage('t1', 'hi') as Promise<void>;
+  await expect(sent).rejects.toThrow('startup failed: claude --version: Executable not found in $PATH');
+
+  const said = failure(actions);
+  expect(said).toContain(`${process.execPath} was started with PATH ${process.env.PATH}`);
+  expect(said).toContain('spawn claude ENOENT');
+  expect(escaped).toEqual([]);
+});
+
+it('cuts a long stderr tail to its last lines in the turn\'s error, and says it was cut', () => {
+  const short = 'one line\nanother';
+  expect(bounded(short)).toBe(short);
+
+  const long = Array.from({ length: 100 }, (_, i) => `line ${i}`).join('\n');
+  const cut = bounded(long);
+  expect(cut.split('\n')[0]).toBe('(stderr cut to its last 40 lines)');
+  expect(cut.split('\n').slice(1)).toEqual(Array.from({ length: 40 }, (_, i) => `line ${60 + i}`));
+
+  const wide = Array.from({ length: 10 }, (_, i) => `${i}${'x'.repeat(1000)}`).join('\n');
+  const narrowed = bounded(wide);
+  expect(narrowed.length).toBeLessThanOrEqual(4 * 1024 + 64);
+  expect(narrowed.startsWith('(stderr cut to its last ')).toBe(true);
+  expect(narrowed.endsWith(`9${'x'.repeat(1000)}`)).toBe(true);
+});
+
+it('resolves the send once the server holds the session', async () => {
+  const { session, actions } = await start(process.execPath, [FIXTURE]);
+  await (session.sendMessage('t1', 'hello') as Promise<void>);
+
+  expect(failure(actions)).toBeUndefined();
   expect(escaped).toEqual([]);
 });
 

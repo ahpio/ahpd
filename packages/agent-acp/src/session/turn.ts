@@ -17,6 +17,26 @@ const NOT_AN_ANSWER: Partial<Record<StopReason, string>> = {
 };
 
 /** One prompted turn, from its opening to its ending, and the turns handed behind it. */
+/** The most of a server's stderr a turn's error carries, which every client of the session is sent. */
+const TAIL_LINES = 40;
+const TAIL_CHARS = 4 * 1024;
+
+/**
+ * A stderr tail cut to its last `TAIL_LINES` lines and `TAIL_CHARS`
+ * characters, saying so when it was cut, so a server that wrote pages before
+ * it died does not send them all to every client.
+ */
+export const bounded = (tail: string): string => {
+  const lines = tail.split('\n');
+  let kept = lines.length > TAIL_LINES ? lines.slice(-TAIL_LINES).join('\n') : tail;
+  if (kept.length > TAIL_CHARS) {
+    const cut = kept.slice(-TAIL_CHARS);
+    const newline = cut.indexOf('\n');
+    kept = newline === -1 ? cut : cut.slice(newline + 1);
+  }
+  return kept === tail ? tail : `(stderr cut to its last ${kept.split('\n').length} lines)\n${kept}`;
+};
+
 export interface Turn {
   /**
    * Send a turn the host said: prompted now when the server runs nothing, and
@@ -30,7 +50,7 @@ export interface Turn {
     from?: MessageFrom,
     attachments?: MessageAttachment[],
     options?: TurnOptions,
-  ): void;
+  ): Promise<void>;
   /** The running turn's end, VS Code's turn end, whoever ended it. */
   endTurn(
     turnId: string,
@@ -113,7 +133,7 @@ export function createTurn(ctx: SessionContext): Turn {
     startTurn(next.turnId, next.text, next.from, next.attachments);
     // What the host has to say on this turn, asked now that the turn exists.
     const instructions = (next.options?.instructions?.() ?? []).filter((one) => one.trim() !== '');
-    void send(next.turnId, next.text, next.model, next.attachments, instructions);
+    void send(next.turnId, next.text, next.model, next.attachments, instructions, next.handed);
   };
 
   /*
@@ -122,11 +142,22 @@ export function createTurn(ctx: SessionContext): Turn {
    * turn the server still runs after a stop already ended there.
    */
   const sendMessage: Turn['sendMessage'] = (turnId, text, model, from, attachments, options) => {
-    if (ctx.disposed) return;
+    if (ctx.disposed) return Promise.resolve();
     const shown = ctx.pendingTurns.at(-1)?.turnId ?? (ctx.cancelRequested || ctx.active === undefined ? undefined : String(ctx.active.id));
     if (shown !== undefined) ctx.replaced.add(shown);
-    ctx.pendingTurns.push({ turnId, text, model, from, attachments, options });
+    /*
+     * Settled once the server holds the session for this turn, so the host
+     * brings a session up only when its server did: a server that cannot be
+     * started rejects it, and the session's creation fails with the turn.
+     */
+    let handed: { resolve: () => void; reject: (error: Error) => void } | undefined;
+    const settled = new Promise<void>((resolve, reject) => { handed = { resolve, reject }; });
+    // A caller that does not read it is told by the turn's own error, and a
+    // rejection nobody heard would end the daemon.
+    settled.catch(() => {});
+    ctx.pendingTurns.push({ turnId, text, model, from, attachments, options, handed });
     sendNext();
+    return settled;
   };
 
   /**
@@ -382,19 +413,30 @@ export function createTurn(ctx: SessionContext): Turn {
     chosen: Chosen | undefined,
     attachments: MessageAttachment[] | undefined,
     instructions: string[],
+    handed?: { resolve: () => void; reject: (error: Error) => void },
   ): Promise<void> => {
     /** The connection this turn opened, which outlives `live` once it dies. */
     let connection: AcpConnection | undefined;
+    /*
+     * The turn ended before its server had the session: said as the turn's
+     * error first, which fails a session still being created, then as what
+     * `sendMessage` returned.
+     */
+    const failed = (failure: { errorType: string; message: string }): void => {
+      endTurn(turnId, 'error', failure);
+      handed?.reject(new Error(failure.message));
+    };
     try {
       // Before anything is spawned: a record edited since the last turn is
       // what this turn runs on, and one that can no longer be used refuses it.
       const refused = ctx.refreshOptions();
       if (refused !== undefined) {
-        endTurn(turnId, 'error', { errorType: 'sendFailed', message: refused });
+        failed({ errorType: 'sendFailed', message: refused });
         return;
       }
       const held = await ctx.open();
       connection = held.connection;
+      handed?.resolve();
       const turn = ctx.active;
       if (ctx.disposed || turn === undefined || String(turn.id) !== turnId) return;
       if (ctx.cancelRequested) {
@@ -480,7 +522,7 @@ export function createTurn(ctx: SessionContext): Turn {
        */
       const authentication = ctx.authenticationFailure(why);
       if (authentication !== undefined) {
-        endTurn(turnId, 'error', authentication);
+        failed(authentication);
         return;
       }
       /*
@@ -495,8 +537,21 @@ export function createTurn(ctx: SessionContext): Turn {
        * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentSideEffects.ts#L2564-L2574
        */
       const said = messageOf(why);
-      const tail = connection === undefined || ctx.options.stderrTail === 'log' ? '' : await connection.stderrTail();
-      endTurn(turnId, 'error', { errorType: 'sendFailed', message: tail === '' ? said : `${said}\n${tail}` });
+      /*
+       * A server that never answered the open was let go of before this turn
+       * heard why, so its trace is read from the server that open spawned.
+       */
+      const opened = connection === undefined ? ctx.failedOpen : undefined;
+      ctx.failedOpen = undefined;
+      const traced = connection ?? opened?.connection;
+      const tail = traced === undefined || ctx.options.stderrTail === 'log' ? '' : bounded(await traced.stderrTail());
+      // A server that never opened the session is named by what it ran.
+      const ran = opened === undefined ? '' : `\n${opened.command} was started with PATH ${opened.path ?? '(unset)'}`;
+      failed({ errorType: 'sendFailed', message: `${said}${ran}${tail === '' ? '' : `\n${tail}`}` });
+    }
+    finally {
+      // A turn that ended any other way leaves its server holding the session.
+      handed?.resolve();
     }
   };
 

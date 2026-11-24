@@ -401,6 +401,7 @@ export function createOpening(ctx: SessionContext): Opening {
   const open = (): Promise<{ connection: AcpConnection; sessionId: string }> => {
     if (ctx.opening !== undefined) return ctx.opening;
     ctx.loading = true;
+    ctx.failedOpen = undefined;
     /*
      * The config every client holds as the open begins, read before the open
      * learns the server's own: `learnModes`, `learnConfigOptions` and
@@ -408,8 +409,9 @@ export function createOpening(ctx: SessionContext): Opening {
      * session's own are what the open sends.
      */
     const values = { ...ctx.values };
-    /** The server this open spawned, once it has. */
+    /** The server this open spawned, once it has, with what it ran. */
     let made: AcpConnection | undefined;
+    let ran: { command: string; path: string | undefined } | undefined;
     const pending = (async () => {
       /*
        * A folder the host did not vouch for, and an agent that loads the
@@ -433,6 +435,10 @@ export function createOpening(ctx: SessionContext): Opening {
        * keeps the host's, since that is the folder a client named.
        */
       const told = moved === undefined ? cwd : machinePathOf(cwd);
+      const env = moved !== undefined
+        ? moved.env
+        : options.env === undefined && start.env === undefined ? undefined : { ...(options.env ?? {}), ...(start.env ?? {}) };
+      ran = { command: moved?.command ?? options.command, path: env?.PATH ?? (moved === undefined ? process.env.PATH : undefined) };
       const connection = connectAcp({
         command: moved?.command ?? options.command,
         ...(moved !== undefined
@@ -685,6 +691,7 @@ export function createOpening(ctx: SessionContext): Opening {
     void pending.catch(() => {
       if (ctx.opening === pending) ctx.opening = undefined;
       if (made === undefined) return;
+      ctx.failedOpen = { connection: made, command: ran?.command ?? options.command, path: ran?.path };
       if (ctx.live === made) ctx.live = undefined;
       void made.close();
     });
