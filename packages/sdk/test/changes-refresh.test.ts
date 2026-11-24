@@ -987,7 +987,9 @@ it('offers the pull request pair on the first subscribe in a directory outside t
   expect(ids).toContain('create-pr');
   expect(ids).toContain('prepare-pull-request');
   // Asked about the branch before answering, which needs the facts' remote.
-  expect(fake.asked).toEqual(['main']);
+  // And again where the session's start read its folder by then.
+  expect(fake.asked[0]).toBe('main');
+  expect(new Set(fake.asked).size).toBe(1);
 });
 
 it('offers no pull request on the first subscribe when there is no GitHub to ask', async () => {

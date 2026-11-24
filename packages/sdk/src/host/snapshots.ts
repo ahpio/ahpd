@@ -720,11 +720,16 @@ export function createSnapshots(ctx: HostContext): Snapshots {
     const backend = opened?.provider === undefined ? undefined : ctx.agents.get(opened.provider);
     const config = chatConfigState(owning, channel, backend === undefined ? undefined : { agent: backend, config: opened?.config ?? {} });
     if (opened !== undefined && !ctx.ownChat(nameOf(id), opened.uri)) {
-      const own = await ctx.transcriptOf(owner, opened.backendId, ctx.launchWorkingDirectory(id), nameOf(id), opened.uri);
+      // Its own backend's conversation, and no turns where this host does not
+      // serve that backend: another's answer would be somebody else's history.
+      const own = opened.provider !== undefined && backend === undefined ? []
+        : await ctx.transcriptOf(backend ?? owner, opened.backendId, ctx.launchWorkingDirectory(id), nameOf(id), opened.uri);
       return {
         kind: 'chat',
         state: {
           resource: channel,
+          // Its agent, where it is not its session's, as its live state says it.
+          ...(opened.provider === undefined ? {} : { provider: opened.provider }),
           title: opened.uri === leadUri ? leadTitle(besides) : opened.title ?? title,
           status: Status.Idle | kept.chatFlags(id, channel),
           modifiedAt: stamp,
@@ -815,6 +820,7 @@ export function createSnapshots(ctx: HostContext): Snapshots {
         chats: [
           {
             resource: leadUri,
+            ...(lead?.provider === undefined ? {} : { provider: lead.provider }),
             title: leadTitle(besides || workers.length > 0),
             status: Status.Idle | kept.chatFlags(id, leadUri),
             modifiedAt: listedAt,
@@ -833,6 +839,7 @@ export function createSnapshots(ctx: HostContext): Snapshots {
             .filter((one) => one.default !== true)
             .map((one) => ({
               resource: one.uri,
+              ...(one.provider === undefined ? {} : { provider: one.provider }),
               title: one.title ?? title,
               status: Status.Idle | kept.chatFlags(id, one.uri),
               modifiedAt: listedAt,

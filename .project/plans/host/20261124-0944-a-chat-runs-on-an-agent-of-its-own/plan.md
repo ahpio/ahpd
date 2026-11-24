@@ -1,7 +1,7 @@
 ---
 title: A chat runs on an agent of its own
 domain: host
-status: planned
+status: active
 priority: high
 created: 2026-11-24
 revalidated: 2026-11-24
@@ -65,10 +65,10 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - the host says it serves chats of other agents](task-01-the-host-says-it-serves-them.md) | todo | - |
-| [02 - a chat is made on the agent it asks for](task-02-a-chat-is-made-on-its-agent.md) | todo | 01 |
-| [03 - the chat has its agent's own config](task-03-the-chat-has-its-agents-config.md) | todo | 02 |
-| [04 - the documents say it](task-04-the-documents-say-it.md) | todo | 03 |
+| [01 - the host says it serves chats of other agents](task-01-the-host-says-it-serves-them.md) | done | - |
+| [02 - a chat is made on the agent it asks for](task-02-a-chat-is-made-on-its-agent.md) | done | 01 |
+| [03 - the chat has its agent's own config](task-03-the-chat-has-its-agents-config.md) | done | 02 |
+| [04 - the documents say it](task-04-the-documents-say-it.md) | done | 03 |
 
 ## Risks and tradeoffs
 
@@ -77,8 +77,8 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-the-host-says-it-serves-them.md](task-01-the-host-says-it-serves-them.md).
+- **Done so far:** tasks 01 to 04, on 2026-11-24.
+- **Next action:** Softov's review, then `status: built`.
 - **Open questions:** none.
 - **Watch out for:** a chat whose `provider` is the session's own agent is an ordinary chat; record no `provider` for it.
 

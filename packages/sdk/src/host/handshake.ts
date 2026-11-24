@@ -1,6 +1,7 @@
 import { compareProtocolVersions, negotiateProtocolVersion, PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS } from '@microsoft/agent-host-protocol';
 import { RUN_HISTORY_LIMIT } from '../automations/automations.js';
 import { INVALID_PARAMS, RpcError } from '../rpc.js';
+import { multipleChatProvidersOn } from '../vscoderootconfig.js';
 import { uriOf } from '../resources/fileuri.js';
 import { bag, str } from '../utils/values.js';
 import { keyOf, normalizeScopes, tokensForConnection } from './auth.js';
@@ -451,6 +452,12 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
          * https://github.com/microsoft/vscode/blob/7e993177c9d9/src/vs/platform/agentHost/common/agentHostPathStyle.ts#L13
          */
         environment: { pathStyle: process.platform === 'win32' ? 'windows' : 'posix' },
+        /*
+         * Whether one session may hold chats on different agents, said while
+         * the root config allows it and to a client of 1.1.0, which added it.
+         * https://github.com/microsoft/vscode/blob/7e993177c9d9/src/vs/platform/agentHost/node/protocolServerHandler.ts#L1067-L1077
+         */
+        ...(multipleChatProvidersOn(ctx.rootConfig) && compareProtocolVersions(agreed, '1.1.0') >= 0 ? { multipleChatProviders: {} } : {}),
         // What the client should ask about rather than send. A slash is a
         // skill or a prompt the host contributed; an at-sign and a hash are
         // both a file, which is how VS Code's own host answers the two.

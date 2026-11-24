@@ -1,6 +1,6 @@
 ---
 title: The host says it serves chats of other agents
-status: todo
+status: done
 depends: []
 layer: "sdk host"
 refs:
@@ -31,3 +31,5 @@ The root config has `multipleChatProviders.enabled`, default `true`. While it is
 - Run the sdk suite under the lock, with `TMPDIR` set.
 
 ## Resume
+
+Done on 2026-11-24. `multipleChatProvidersOn` reads the key. A window that mirrors its own setting turns it off, since VS Code's default is off.

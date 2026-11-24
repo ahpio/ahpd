@@ -34,6 +34,9 @@ import type { ConfigPropertySchema } from '@microsoft/agent-host-protocol';
  * refused; what is acted on is in `docs/sdk/AHP.md`.
  */
 
+/** VS Code's root key for chats of one session on different agents. */
+export const MULTIPLE_CHAT_PROVIDERS = 'multipleChatProviders.enabled';
+
 /**
  * The properties VS Code's own agent host declares for the keys it pushes.
  *
@@ -577,7 +580,23 @@ export const vscodeRootProperties: Record<string, ConfigPropertySchema> = {
     title: 'Move Chats',
     default: false,
   },
+  /*
+   * `chatProvidersRootConfigSchema`, a schema of its own, whose key a window
+   * mirrors its setting into. VS Code's default is off; this host's is on, so
+   * a window that pushes its own value still turns it off.
+   * https://github.com/microsoft/vscode/blob/7e993177c9d9/src/vs/platform/agentHost/common/agentHostChatProviders.ts#L9-L23
+   */
+  [MULTIPLE_CHAT_PROVIDERS]: {
+    type: 'boolean',
+    title: 'Multiple Chat Providers',
+    description: 'Whether one session may hold chats on different agents.',
+    default: true,
+  },
 };
+
+/** Whether one session may hold chats on different agents: on until the root config turns it off. */
+export const multipleChatProvidersOn = (rootConfig: Record<string, unknown>): boolean =>
+  rootConfig[MULTIPLE_CHAT_PROVIDERS] !== false;
 
 /**
  * The root config keys a start leaves to each window's next push, VS Code's
