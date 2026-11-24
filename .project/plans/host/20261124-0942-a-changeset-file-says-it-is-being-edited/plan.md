@@ -1,7 +1,7 @@
 ---
 title: A changeset file says it is being edited
 domain: host
-status: planned
+status: active
 priority: high
 created: 2026-11-24
 revalidated: 2026-11-24
@@ -56,9 +56,9 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a file being edited is marked](task-01-a-file-being-edited-is-marked.md) | todo | - |
-| [02 - an operation checks the nonce](task-02-an-operation-checks-the-nonce.md) | todo | - |
-| [03 - the documents say it](task-03-the-documents-say-it.md) | todo | 01, 02 |
+| [01 - a file being edited is marked](task-01-a-file-being-edited-is-marked.md) | done | - |
+| [02 - an operation checks the nonce](task-02-an-operation-checks-the-nonce.md) | done | - |
+| [03 - the documents say it](task-03-the-documents-say-it.md) | done | 01, 02 |
 
 ## Risks and tradeoffs
 
@@ -66,8 +66,8 @@ The files read and the patterns to reuse are the `refs` above, each with its not
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-file-being-edited-is-marked.md](task-01-a-file-being-edited-is-marked.md).
+- **Done so far:** tasks 01 to 03, on 2026-11-24.
+- **Next action:** Softov's review, then `status: built`.
 - **Open questions:** none.
 - **Watch out for:** `status` is a bitset; keep bits this host does not know.
 
