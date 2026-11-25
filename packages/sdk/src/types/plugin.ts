@@ -16,6 +16,7 @@ import type { AutomationTriggerDefinition, CanvasState, ChatOrigin, ChatSummary,
 import type { Logger } from '../log.js';
 
 import type { Agent } from './agent.js';
+import type { OperationChannel } from '../kinds/operations.js';
 import type { Engine, AgentOwner, ServedEngine } from './agents.js';
 import type { StartSession } from './automations.js';
 import type { ChangesetOperationContribution } from './changes.js';
@@ -358,6 +359,21 @@ export interface PluginChannel {
   left?(client: string): void;
   /** What a client shows for the channel, read when the host advertises it. */
   describe?(): { title: string; description?: string };
+  /**
+   * The operations this channel offers to `x-ahpd/invokeOperation`, which
+   * serves them at `<scheme>://` beside the daemon's own channels. Only that
+   * URI: the channel's other URIs are read and watched, and offer nothing.
+   *
+   * The command checks each operation's own grant and, when the channel answers
+   * `offers`, whether the target offers it now; an operation `operations()` does
+   * not list is refused. Each grant an operation names is one the plugin
+   * registers, as a channel's and a method's are. List the same operations in
+   * `snapshot`'s `operations`, as a records channel does, so a client sees
+   * what it may run. `begin` and `settle` are told when a call starts and ends,
+   * for a channel that shows an operation's status; one that does not leaves
+   * them out.
+   */
+  operations?: Omit<OperationChannel, 'uri' | 'begin' | 'settle'> & Partial<Pick<OperationChannel, 'begin' | 'settle'>>;
 }
 
 /**

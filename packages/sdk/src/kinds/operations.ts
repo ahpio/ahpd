@@ -27,11 +27,12 @@
 
 import { secretFields } from '../channels/owners.js';
 import { refusalReason } from '../host/gate.js';
+import { listedOperations } from '../plugins/validate.js';
 import { HOST_CATALOGS, translated, type Catalogs } from '../i18n.js';
 import { INTERNAL_ERROR, INVALID_PARAMS, RpcError } from '../rpc.js';
 import type { Operation } from '../types/kinds.js';
 import type { RecordsChannel } from '../resources/recordschannel.js';
-import type { ChannelHandle, PluginMethod } from '../types/plugin.js';
+import type { ChannelHandle, PluginChannel, PluginMethod } from '../types/plugin.js';
 import type { Grant, Principal } from '../types/users.js';
 
 /**
@@ -293,3 +294,47 @@ export const invokeOperation = (options: InvokeOperationOptions): PluginMethod =
     }
   },
 });
+
+/**
+ * The plugin channels that offer operations, as `invokeOperation` reads them.
+ *
+ * Each is served at `<scheme>://`, the URI its snapshot is read at, with the
+ * plugin's own operations side; a channel without one is not listed, so the
+ * command refuses it as a channel with no operations.
+ *
+ * A plugin cannot take one of the daemon's own URIs: the fold already refuses a
+ * channel on a scheme the daemon registered. The list is read at each call;
+ * an entry that cannot be served is left out and said once through
+ * `onProblem`, and a list that throws refuses the call naming the plugin.
+ */
+export const pluginOperationChannels = (
+  channels: Record<string, { by?: string; channel: PluginChannel }> | undefined,
+  onProblem?: (message: string) => void,
+): Record<string, OperationChannel> => {
+  const served: Record<string, OperationChannel> = {};
+  const said = new Set<string>();
+  for (const [scheme, one] of Object.entries(channels ?? {})) {
+    const side = one.channel.operations;
+    if (side === undefined) continue;
+    const uri = `${scheme}://`;
+    const by = one.by ?? 'unknown';
+    served[uri] = {
+      uri,
+      operations: () => {
+        const { operations, problems, failed } = listedOperations(by, uri, () => side.operations());
+        if (failed !== undefined) throw new RpcError(INTERNAL_ERROR, failed);
+        for (const problem of problems) {
+          if (said.has(problem)) continue;
+          said.add(problem);
+          onProblem?.(problem);
+        }
+        return operations;
+      },
+      begin: (operationId, target) => { side.begin?.(operationId, target); },
+      settle: (operationId, target, error) => { side.settle?.(operationId, target, error); },
+      ...(side.offers === undefined ? {} : { offers: (target: string, operationId: string) => side.offers!(target, operationId) }),
+      run: (operation, target, input, reader) => side.run(operation, target, input, reader),
+    };
+  }
+  return served;
+};
