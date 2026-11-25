@@ -6,6 +6,8 @@
  * keyed by that build, reused when it is there, downloaded by the box when it
  * is not, checked with `--version`, the five most recently used kept, and on a
  * failed download the newest other install of this host's run in its place.
+ * A box with no install that runs is sent the files by its host
+ * (`hostcopy.ts`), and the same script installs from them.
  * Every folder the box answers is checked to be one of this host's installs
  * before it is run, as VS Code checks a fallback CLI's path.
  * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/sshRemoteAgentHostService.ts#L935-L938
@@ -44,6 +46,9 @@ export const INSTALL_GLOB = `*-${'[0-9a-f]'.repeat(12)}`;
  */
 export const HOST_MACHINES = { 'linux-x64': ['x86_64', 'amd64'], 'linux-arm64': ['aarch64', 'arm64'] } as const;
 
+/** The folder under the root that a host's copy of the files is in while one install reads it, as the box's `sh` expands it. */
+const COPY_FOLDER = '.copy-$key';
+
 /** The line that ends each file the script writes, which no line of a JSON file is. */
 const END = 'AHPD_PART_FILE';
 
@@ -51,7 +56,7 @@ const END = 'AHPD_PART_FILE';
  * The script, sent to the box's `sh` on stdin after the `files` function that
  * writes the ahpd part's lock, with the install's folder and the two Node
  * downloads with their sums as its arguments. It prints
- * `root=<the root>` and `install=<the folder that runs>`, with `installed=yes`
+ * `root=<the root>`, `platform=<the platform>` and `install=<the folder that runs>`, with `installed=yes`
  * after an install and `fallback=yes` when the folder is another install than
  * the one asked for.
  *
@@ -60,14 +65,16 @@ const END = 'AHPD_PART_FILE';
  * download is unpacked in a folder of its own under the root and renamed into
  * place once `--version` answers, so a folder at the install's path is always
  * a whole install; a second install that finished first is kept, and the
- * later one removed. The launcher finds its folder from its own path, so an
+ * later one removed. A copy the host sent is read in place of the download and
+ * of npm's registry, checked by the same sum and the same lock, and removed
+ * after; `node-pty` is then built with the headers in that Node, not downloaded ones. The launcher finds its folder from its own path, so an
  * install holds no path of the folder it was made in.
  */
 const SCRIPT = `
 key=$1 x64=$2 x64sum=$3 arm64=$4 arm64sum=$5
 case "$(uname -s) $(uname -m)" in
-  ${HOST_MACHINES['linux-x64'].map((one) => `'Linux ${one}'`).join('|')}) url=$x64 sum=$x64sum ;;
-  ${HOST_MACHINES['linux-arm64'].map((one) => `'Linux ${one}'`).join('|')}) url=$arm64 sum=$arm64sum ;;
+  ${HOST_MACHINES['linux-x64'].map((one) => `'Linux ${one}'`).join('|')}) url=$x64 sum=$x64sum platform=linux-x64 ;;
+  ${HOST_MACHINES['linux-arm64'].map((one) => `'Linux ${one}'`).join('|')}) url=$arm64 sum=$arm64sum platform=linux-arm64 ;;
   *) echo "Unsupported remote platform: $(uname -s) $(uname -m)" >&2; exit 1 ;;
 esac
 case "$url" in
@@ -77,7 +84,9 @@ case "$url" in
 esac
 root=${HOST_ROOT}
 dir="$root/$key"
+copy="$root/${COPY_FOLDER}"
 echo "root=$root"
+echo "platform=$platform"
 installs() { ls -1td -- "$root"/${INSTALL_GLOB} 2>/dev/null; }
 prune() { installs | awk 'NR>5' | xargs -I{} rm -rf -- {} 2>/dev/null; true; }
 if [ -x "$dir/bin/ahpd" ]; then
@@ -90,7 +99,12 @@ install() {
   mkdir -p "$root" && tmp=$(mktemp -d "$root/.install-XXXXXX") || return 1
   (
     cd "$tmp" &&
-    curl --fail --silent --show-error --location --output node.tar "$url" &&
+    if [ -d "$copy" ]; then
+      npm_config_cache="$copy/npm" npm_config_offline=true npm_config_nodedir="$tmp/node" && export npm_config_cache npm_config_offline npm_config_nodedir &&
+      cp -- "$copy/node.tar" node.tar
+    else
+      curl --fail --silent --show-error --location --connect-timeout 30 --output node.tar "$url"
+    fi &&
     printf '%s  node.tar\\n' "$sum" | sha256sum --check --strict - &&
     mkdir node && tar "$how" node.tar -C node --strip-components=1 && rm node.tar &&
     PATH="$tmp/node/bin:$PATH" && export PATH &&
@@ -103,7 +117,7 @@ install() {
     bin/ahpd --version
   ) && { [ -e "$dir" ] || mv -- "$tmp" "$dir"; }
   held=$?
-  rm -rf -- "$tmp"
+  rm -rf -- "$tmp" "$copy"
   return $held
 }
 if install >&2; then
@@ -134,6 +148,20 @@ export const isHostInstall = (dir: string, root: string): boolean => {
   return at > 0 && !name.includes('/') && /^[0-9a-f]{12}$/.test(name.slice(at + 1));
 };
 
+/**
+ * What the box runs with the host's copy on its stdin: the files unpacked in a
+ * folder of their own and renamed into the place the script reads, so a copy
+ * that did not arrive whole is never there.
+ */
+export const copyCommand = (install: Pick<HostInstall, 'key'>): string[] => ['sh', '-c', `
+root=${HOST_ROOT}
+copy="$root/.copy-$1"
+mkdir -p "$root" && tmp=$(mktemp -d "$root/.copying-XXXXXX") || exit 1
+tar -xf - -C "$tmp" && rm -rf -- "$copy" && mv -- "$tmp" "$copy" && exit 0
+rm -rf -- "$tmp"
+exit 1
+`, 'sh', install.key];
+
 /** The command the box runs, before the install's arguments, with the install's script on its stdin. */
 export const HOST_INSTALL_COMMAND = ['sh', '-s', '--'] as const;
 
@@ -151,6 +179,10 @@ export interface HostInstall {
   args: string[];
   /** The script, the ahpd part's lock written into it. */
   script: string;
+  /** The Node download of each platform, by the platform the script prints. */
+  node: Record<string, { url: string; sha256: string }>;
+  /** The ahpd part's lock, which the script writes. */
+  lock: readonly Tarball[];
 }
 
 /**
@@ -175,5 +207,5 @@ export const hostInstallOf = (parts: readonly Part[] = readParts(), lock?: reado
   const folder = lockFilesOf(held, true).length === 0 ? [] : ['  mkdir "$1/plugins"'];
   const script = ['files() {', ...folder, ...files, '}', SCRIPT].join('\n');
   const key = `${ahpd.version}-${createHash('sha256').update([script, ...pinned].join('\0')).digest('hex').slice(0, 12)}`;
-  return { version: ahpd.version, key, args: [key, ...pinned], script };
+  return { version: ahpd.version, key, args: [key, ...pinned], script, node: { 'linux-x64': x64, 'linux-arm64': arm64 }, lock: held };
 };

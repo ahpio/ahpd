@@ -358,7 +358,7 @@ A policy names every ssh machine with `computer: ["ssh.*"]`.
 
 ### What the box needs
 
-- What the install below downloads with: Linux on x86_64 or aarch64, `curl`, `tar`, `xz` and `sha256sum`, and a route to nodejs.org and the npm registry. A box without them names in `host` the command that starts an ahpd of its own, by its full path where the `PATH` of a non-interactive login does not hold it, as it does not hold a Node installed by nvm.
+- What the install below downloads with: Linux on x86_64 or aarch64, `curl`, `tar`, `xz` and `sha256sum`, and a route to nodejs.org and the npm registry, or none: the host then sends the files, and `curl` is not needed. A box without them names in `host` the command that starts an ahpd of its own, by its full path where the `PATH` of a non-interactive login does not hold it, as it does not hold a Node installed by nvm.
 - The plugins of the agents it serves beyond cofold and pi, which the install brings, in the box's configuration folder, where `ahpd plugin install` run there puts them, each configured in the box's own `config.json`. The host on the box loads a plugin with the options its own file gives it, and serves the agent records in its own `agents` folder, so cofold's `model` lives in the file and an ACP agent's in its record.
 - Its own model credentials. Nothing is sent from this host: `host` above sources a file on the box, because a non-interactive ssh reads no profile.
 - This host's key in `authorized_keys`, and the box's host key known to this host. Every call passes `BatchMode=yes`, so a password prompt or an unknown host key fails with ssh's own sentence.
@@ -377,7 +377,15 @@ computer: ahpd 0.8.0 was installed on deb at /home/me/.local/share/ahpd/server/0
 ```
 
 A box no download is made for, anything but Linux on x86_64 or aarch64, is refused before anything is installed, in the words VS Code [refuses one with](https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/sshRemoteAgentHostService.ts#L935-L938), `Unsupported remote platform: FreeBSD amd64`, and runs an ahpd of its own by naming it in `host`.
-A download that fails runs the newest other install of this host's there, as VS Code falls back to its [newest other CLI](https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/remoteAgentHostCliInstaller.ts#L111-L123), and the log says so and why; with none, the session is refused with the install's own last line.
+A download that fails runs the newest other install of this host's there, as VS Code falls back to its [newest other CLI](https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/remoteAgentHostCliInstaller.ts#L111-L123), and the log says so and why.
+With none, this host sends the box the files: Node and the npm packages of the two locks, for the box's platform, as one tar over ssh, about 80 MB. The box checks them by the same sum and the same locks, installs from them with no download, and removes them. The log names the box and why its own download failed:
+
+```text
+computer: ahpd 0.16.0 was not installed on deb, so this host sends it the files: curl: (6) Could not resolve host: nodejs.org
+```
+
+This host downloads the files once and keeps them for a week after the last box that needed them, in `$XDG_CACHE_HOME/ahpd/host-copies`, under `~/.cache` when that is unset. A session is refused with both reasons when the files cannot be sent either, and with the first alone for a box no download is made for. A box with an older install that runs keeps running it, with nothing sent, until it can download. A box that reaches nodejs.org and then waits on npm for over ten minutes is refused as one that took too long, and is sent nothing.
+As on a box that downloads, `node-pty` is built where the box has a compiler, and a box without one has no terminals.
 The folder the box answers is checked to be one of this host's installs, directly under its root and named `<version>-<hash>`, before anything runs from it.
 
 ### What the box can run

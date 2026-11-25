@@ -1,7 +1,7 @@
 ---
 title: A box with no internet gets a copy
 domain: container
-status: planned
+status: active
 priority: medium
 created: 2026-11-25
 revalidated: 2026-11-25
@@ -55,7 +55,7 @@ session on a box -> the script fails and finds no install -> host downloads and 
 | A box with a working older install runs it, and the copy runs only when there is none | Softov, 2026-11-25: "Older install first, copy only when none" | 02 |
 | The copy covers Node and the npm packages of both locks | (defaulted: the box needs both) | 01 |
 | The box checks the copied files against the same sums and integrity | (defaulted: the only safe answer) | 02 |
-| The host keeps the files of the current install only, per platform | (defaulted: about 80 MB each, and an older version is never asked for) | 01 |
+| The host keeps the files of an install, per platform, for a week after their last use | (defaulted: two daemons of one user may hold two versions) | 01 |
 
 ## Proposed architecture
 
@@ -67,8 +67,8 @@ session on a box -> the script fails and finds no install -> host downloads and 
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - The host holds the files of an install](task-01-the-host-holds-the-files-of-an-install.md) | todo | - |
-| [02 - A box installs from a copy](task-02-a-box-installs-from-a-copy.md) | todo | 01 |
+| [01 - The host holds the files of an install](task-01-the-host-holds-the-files-of-an-install.md) | done | - |
+| [02 - A box installs from a copy](task-02-a-box-installs-from-a-copy.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -79,8 +79,8 @@ session on a box -> the script fails and finds no install -> host downloads and 
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** build container/20261125-0130 first, then [task-01-the-host-holds-the-files-of-an-install.md](task-01-the-host-holds-the-files-of-an-install.md).
+- **Done so far:** tasks 01 and 02 on 2026-11-25, as [implemented.md](implemented.md) says.
+- **Next action:** the check by hand in [pending/a-box-with-no-internet.md](../../../pending/a-box-with-no-internet.md), then Softov's review.
 - **Open questions:** none.
 - **Watch out for:** the install's key must be equal with and without the copy, so the copied folder is not one of the pinned values.
 

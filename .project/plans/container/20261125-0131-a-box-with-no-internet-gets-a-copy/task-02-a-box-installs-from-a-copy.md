@@ -1,6 +1,6 @@
 ---
 title: A box installs from a copy
-status: todo
+status: done
 depends:
   - task-01-the-host-holds-the-files-of-an-install.md
 layer: "computer, docs"
@@ -40,3 +40,5 @@ A box whose download fails and that has no working install is given the files by
 - Check by hand with a file in `.project/pending/`: a container with sshd and no route out runs a cofold session.
 
 ## Resume
+
+Done on 2026-11-25. A container with no network, reached through a stand-in for ssh, got the copy and loaded agent-cofold and agent-pi. Two departures: the script says `npm_config_nodedir`, so node-pty builds with the headers in the copied Node, and curl's connect timeout is 30 s, so a firewalled box fails soon. A box that waits on npm past ten minutes is refused and not copied to. Not run: the check by hand over a real ssh.

@@ -1,6 +1,6 @@
 ---
 title: The host holds the files of an install
-status: todo
+status: done
 depends: []
 layer: "computer"
 refs:
@@ -36,3 +36,5 @@ The host makes one folder per install and platform, with the Node download and a
 - The system `tar` reads an archive with a 130 byte name.
 
 ## Resume
+
+Done on 2026-11-25. `launch`, which starts npm, moved from the server to the sdk. A copy of another install is removed a week after its last use, not at once, because two daemons of one user may hold two versions. Only a fill by an x64 host for x64 was run to the end; an arm64 cache was only filled.

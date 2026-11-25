@@ -896,7 +896,7 @@ export const dockerfileOf = (part: Part, source?: AhpdSource, lock?: readonly Ta
 };
 
 /** One entry of a tar archive: 512 bytes of header, then the bytes themselves, with its owner and type. */
-const tarEntry = (entry: ArchiveEntry): Buffer => {
+export const tarEntry = (entry: ArchiveEntry, type: '0' | '5' | 'L' = entry.directory === true ? '5' : '0'): Buffer => {
   const { name: path, bytes } = entry;
   const header = Buffer.alloc(512);
   // A path longer than the 100 bytes of the name field is split at a slash,
@@ -905,7 +905,14 @@ const tarEntry = (entry: ArchiveEntry): Buffer => {
   let prefix = '';
   if (Buffer.byteLength(path) > 100) {
     const at = path.indexOf('/', Buffer.byteLength(path) - 101);
-    if (at <= 0 || at > 155) throw new Error(`${path} is too long a path for a tar entry`);
+    if (at <= 0 || at > 155) {
+      // Neither field holds it, as npm's cache names a file by 124 hex digits,
+      // so it goes ahead of its entry as GNU tar writes one, which every `tar`
+      // a box has reads.
+      // https://www.gnu.org/software/tar/manual/html_node/Standard.html
+      const long = { name: '././@LongLink', bytes: Buffer.from(`${path}\0`) };
+      return Buffer.concat([tarEntry(long, 'L'), tarEntry({ ...entry, name: Buffer.from(path).subarray(0, 60).toString('latin1') })]);
+    }
     prefix = path.slice(0, at);
     name = path.slice(at + 1);
   }
@@ -923,7 +930,7 @@ const tarEntry = (entry: ArchiveEntry): Buffer => {
   // https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/build/agent-sdk/package.ts#L312-L328
   header.write('00000000000\0', 136, 12, 'utf8');
   header.write('        ', 148, 8, 'utf8');
-  header.write(entry.directory === true ? '5' : '0', 156, 1, 'utf8');
+  header.write(type, 156, 1, 'utf8');
   header.write('ustar\0', 257, 6, 'utf8');
   header.write('00', 263, 2, 'utf8');
   let sum = 0;
