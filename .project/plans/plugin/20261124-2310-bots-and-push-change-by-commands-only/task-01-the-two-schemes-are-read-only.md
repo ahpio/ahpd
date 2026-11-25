@@ -1,6 +1,6 @@
 ---
 title: The two schemes are read only
-status: todo
+status: done
 depends: []
 layer: bot and push plugins
 refs:
@@ -32,3 +32,5 @@ refs:
 - `rg -n "resourceWrite|resourceDelete" packages/bot/test packages/push/test` shows the refusals alone.
 
 ## Resume
+
+Done 2026-11-24. See [implemented.md](implemented.md).

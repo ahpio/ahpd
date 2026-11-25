@@ -1,6 +1,6 @@
 ---
 title: The documents say it
-status: todo
+status: done
 depends:
   - task-01-the-two-schemes-are-read-only.md
 layer: docs
@@ -27,3 +27,5 @@ The documents name the commands as the one way to change a bot or a device, and 
 - `pnpm docs:build` passes.
 
 ## Resume
+
+Done 2026-11-24. See [implemented.md](implemented.md).

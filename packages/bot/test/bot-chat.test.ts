@@ -222,8 +222,8 @@ const defaultChatOf = async (client: Client, session: string): Promise<string> =
 /** A bot, a chat with it, and a client watching that chat. */
 async function talkTo(client: Client): Promise<void> {
   await client.handle({
-    method: 'resourceWrite',
-    params: { uri: 'bot://backer', data: JSON.stringify({ name: 'Backer' }), createOnly: true },
+    method: 'x-ahpd/bots/put',
+    params: { id: 'backer', record: { name: 'Backer' }, createOnly: true },
   });
   await client.handle({
     method: 'createSession',
@@ -444,8 +444,8 @@ it('makes a talk in the bot\'s folder, trusted, with no grant on the plugin\'s e
   const { host } = made({}, [], null);
   const client = await anyone(host);
   await client.handle({
-    method: 'resourceWrite',
-    params: { uri: 'bot://backer', data: JSON.stringify({ name: 'Backer' }), createOnly: true },
+    method: 'x-ahpd/bots/put',
+    params: { id: 'backer', record: { name: 'Backer' }, createOnly: true },
   });
 
   const answered = await client.handle({
@@ -743,8 +743,8 @@ it('leaves the chat\'s modified time where a steer finds it', async () => {
   const { host, configDir, records } = made();
   const client = await anyone(host);
   await client.handle({
-    method: 'resourceWrite',
-    params: { uri: 'bot://backer', data: JSON.stringify({ name: 'Backer' }), createOnly: true },
+    method: 'x-ahpd/bots/put',
+    params: { id: 'backer', record: { name: 'Backer' }, createOnly: true },
   });
   const agent = await backend(configDir, records, () => {});
   // The session a later subscriber is seeded from, read directly.
@@ -1085,7 +1085,7 @@ it('keeps each chat of a talk other than its default chat in a log of its own, a
 it('keeps a talk under the owner the host recorded where the start has no reader, and keeps none for a plugin\'s session', async () => {
   const { host, configDir, records } = made({}, ['session:trust']);
   const client = await anyone(host);
-  await client.handle({ method: 'resourceWrite', params: { uri: 'bot://backer', data: JSON.stringify({ name: 'Backer' }), createOnly: true } });
+  await client.handle({ method: 'x-ahpd/bots/put', params: { id: 'backer', record: { name: 'Backer' }, createOnly: true } });
   const store = botStore(await records.collection('bots'), await records.collection('bots-gone'), () => {}, { yaml: { parseYaml, stringifyYaml } });
   await store.ready();
   const kept: unknown[][] = [];
@@ -1111,7 +1111,7 @@ it('keeps a talk under the owner the host recorded where the start has no reader
 it('opens a turn of the bot\'s own with speak, whose message is the agent\'s, and reads it back after a restart', async () => {
   const { host, configDir, records } = made({}, ['session:trust']);
   const client = await anyone(host);
-  await client.handle({ method: 'resourceWrite', params: { uri: 'bot://backer', data: JSON.stringify({ name: 'Backer' }), createOnly: true } });
+  await client.handle({ method: 'x-ahpd/bots/put', params: { id: 'backer', record: { name: 'Backer' }, createOnly: true } });
   const store = botStore(await records.collection('bots'), await records.collection('bots-gone'), () => {}, { yaml: { parseYaml, stringifyYaml } });
   await store.ready();
   const fronts = new Map<string, TurnHandle>();
@@ -1327,8 +1327,8 @@ it('hands a turn sent while another is open on once the open turn is answered, s
   // The bot, written the way a person writes one. No session is started here:
   // what is tested below is the backend the host hands its turns to.
   await client.handle({
-    method: 'resourceWrite',
-    params: { uri: 'bot://backer', data: JSON.stringify({ name: 'Backer' }), createOnly: true },
+    method: 'x-ahpd/bots/put',
+    params: { id: 'backer', record: { name: 'Backer' }, createOnly: true },
   });
 
   // Somebody answers this chat, which is what leaves the first turn open.
@@ -1756,8 +1756,8 @@ it('tells a resumed chat\'s messages to the agent\'s listener, as it does a new 
   const { host, configDir, records } = made();
   const client = await anyone(host);
   await client.handle({
-    method: 'resourceWrite',
-    params: { uri: 'bot://backer', data: JSON.stringify({ name: 'Backer' }), createOnly: true },
+    method: 'x-ahpd/bots/put',
+    params: { id: 'backer', record: { name: 'Backer' }, createOnly: true },
   });
   const heard: ChatMessage[] = [];
   const agent = await backend(configDir, records, (message) => { heard.push(message); });
@@ -1789,8 +1789,8 @@ it('offers the bots as the answers to the chat setting', async () => {
   const client = await anyone(host);
   for (const [slug, name] of [['backer', 'Backer'], ['builder', 'Builder']] as const) {
     await client.handle({
-      method: 'resourceWrite',
-      params: { uri: `bot://${slug}`, data: JSON.stringify({ name }), createOnly: true },
+      method: 'x-ahpd/bots/put',
+      params: { id: slug, record: { name }, createOnly: true },
     });
   }
 
@@ -1844,8 +1844,8 @@ it('keeps the bots a query matches, by name or by slug', async () => {
   const client = await anyone(host);
   for (const [slug, name] of [['backer', 'Backer'], ['builder', 'Builder']] as const) {
     await client.handle({
-      method: 'resourceWrite',
-      params: { uri: `bot://${slug}`, data: JSON.stringify({ name }), createOnly: true },
+      method: 'x-ahpd/bots/put',
+      params: { id: slug, record: { name }, createOnly: true },
     });
   }
 

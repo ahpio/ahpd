@@ -1,6 +1,6 @@
 import { posix } from 'node:path';
-import { Status, bag, idOf, reason, secretRef, str, translated } from '@ahpd/sdk';
-import { SUPPORTED_PROTOCOL_VERSIONS } from '@microsoft/agent-host-protocol';
+import { RpcError, Status, bag, idOf, reason, secretRef, str, translated } from '@ahpd/sdk';
+import { AhpErrorCodes, SUPPORTED_PROTOCOL_VERSIONS } from '@microsoft/agent-host-protocol';
 import { DEVICES_SCHEME, devicesChannel, pushMethods } from './channel.js';
 import { WEB_PUSH_HOSTS, deviceStore, pushProvider } from './provider.js';
 import { createSender } from './send.js';
@@ -164,7 +164,16 @@ export const apply: Plugin['apply'] = (host, options) => {
     ...(vapid === undefined ? {} : { vapid }),
     changed: () => { void devices.refresh(); },
   });
-  host.registerResourceProvider('push', provider);
+  /*
+   * Read, listed and watched by address, and changed by the two commands alone.
+   * The scheme keeps its `put` and `delete` words, which the grants and a
+   * client's controls are read from, and refuses the resource call itself.
+   */
+  host.registerResourceProvider('push', {
+    ...provider,
+    write: async () => { throw new RpcError(AhpErrorCodes.NotFound, 'Change a device with x-ahpd/push/put'); },
+    delete: async () => { throw new RpcError(AhpErrorCodes.NotFound, 'Remove a device with x-ahpd/push/remove'); },
+  });
   for (const [command, method] of Object.entries(pushMethods(provider, devices.refresh))) host.registerMethod(command, method);
 
   const accessToken = options['accessToken'];
