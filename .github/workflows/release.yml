@@ -118,6 +118,18 @@ jobs:
       # an sdk it was not built against.
       - run: pnpm sdk-range
       - run: pnpm typecheck
+      # What ci.yml installs before the sandbox runtime's cases, which fail on
+      # CI without it.
+      - name: The sandbox runtime's tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap socat ripgrep
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          if [ -e /etc/apparmor.d/bwrap-userns-restrict ]; then
+            sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns-restrict
+          fi
+          bwrap --unshare-pid --unshare-user --cap-drop ALL --ro-bind / / --proc /proc true
+
       - run: timeout 1500 pnpm test
       - run: pnpm build
 
