@@ -191,6 +191,11 @@
  * offers the `api-key` method and `session/new` answers `auth_required` until
  * `authenticate` has named it.
  *
+ * `--startup-fails` is an adapter whose own backend cannot be started: it
+ * says why on stderr and refuses `session/new` with the sentence Claude's ACP
+ * adapter gives when `claude` is not on its PATH. `--why-last` says why a
+ * moment after it refuses.
+ *
  * `--signin-fails` is a server that offers the same method and refuses the
  * sign-in itself, which is a different thing: `authenticate` answers with an
  * error of its own and the session is never reached.
@@ -1855,6 +1860,16 @@ const onLine = (line) => {
       return;
 
     case 'session/new': {
+      if (process.argv.includes('--startup-fails')) {
+        const refuse = () => write({ jsonrpc: '2.0', id: message.id, error: { code: -32603, message: 'startup failed: claude --version: Executable not found in $PATH' } });
+        if (process.argv.includes('--why-last')) {
+          process.on('SIGTERM', () => {});
+          refuse();
+          setTimeout(() => { process.stderr.write('spawn claude ENOENT\n', () => process.exit(1)); }, 100);
+        }
+        else process.stderr.write('spawn claude ENOENT\n', refuse);
+        return;
+      }
       if (process.argv.includes('--signin') && !signedIn) {
         write({ jsonrpc: '2.0', id: message.id, error: { code: -32000, message: 'Authentication required' } });
         return;

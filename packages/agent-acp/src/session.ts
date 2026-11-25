@@ -155,6 +155,7 @@ export function acpSession(
     replay: [],
     loading: false,
     opening: undefined,
+    failedOpen: undefined,
     startedWith: '',
     cancelRequested: false,
     disposed: false,
@@ -300,11 +301,14 @@ export function acpSession(
       ...(draft !== undefined ? { draft } : {}),
     }),
 
+    // Its send resolves once the server holds the session, and rejects when it could not start one.
+    sendBringsUp: true,
+
     // The model is the one picked for this send.
     sendMessage: (turnId, text, from, attachments, turnOptions) => {
       const model = chosen;
       chosen = undefined;
-      ctx.sendMessage(turnId, text, model, from, attachments, turnOptions);
+      return ctx.sendMessage(turnId, text, model, from, attachments, turnOptions);
     },
 
     changeModel: (model) => { chosen = model; },
