@@ -22,7 +22,7 @@ refs:
 
 The ahpd part in a machine, and the ahpd installed on an ssh box, run the last release that npm serves.
 The weekly parts bump proposes it, as it proposes every other part, so nobody moves the pin by hand.
-The same version as the host is the brief [the-ahpd-part-is-the-releases-own-build.md](../../../briefs/the-ahpd-part-is-the-releases-own-build.md), for 0.16.
+The same version as the host is the plan [container/20261125-0130](../20261125-0130-the-ahpd-part-is-the-releases-own/plan.md), for 0.16.
 
 ## Reconnaissance
 
