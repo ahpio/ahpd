@@ -2150,8 +2150,17 @@ export function createLifecycle(ctx: HostContext): Lifecycle {
     };
     const send = (): Promise<void> | undefined => {
       if (stopped?.() === true) return undefined;
-      // Handed to its backend, which brings a provisional session up.
-      ctx.materialized(session.uri);
+      /*
+       * Handed to its backend, which brings a provisional session up. A
+       * backend whose send says when it has, `sendBringsUp`, brings it up once
+       * the promise its send returns resolves: one that cannot rejects it, and
+       * the session is still provisional when the turn's error is said, so its
+       * creation fails rather than the session reading ready with nothing
+       * behind it. Any other backend has it brought up here, before its send,
+       * so what the send says at once is said on a session already listed.
+       */
+      const deferred = session.sendBringsUp === true;
+      if (!deferred) ctx.materialized(session.uri);
       /*
        * The turn booked as its backend is handed it: its start, as the chat
        * holds it, said again on the chat's road, which keeps what a turn is
@@ -2168,7 +2177,36 @@ export function createLifecycle(ctx: HostContext): Lifecycle {
         ended('sendFailed', error);
         return undefined;
       }
-      return sending instanceof Promise ? sending.catch((error: unknown) => { ended('sendFailed', error); }) : undefined;
+      if (!deferred) return sending instanceof Promise ? sending.catch((error: unknown) => { ended('sendFailed', error); }) : undefined;
+      if (!(sending instanceof Promise)) {
+        ctx.materialized(session.uri);
+        return undefined;
+      }
+      return sending.then(
+        // Brought up, whether or not its turn was stopped meanwhile.
+        () => { ctx.materialized(session.uri); },
+        (error: unknown) => {
+          /*
+           * A backend that ended the turn with its own error has said it
+           * already, and that error failed the creation; the rejection says
+           * nothing twice. A turn stopped before its backend could not start
+           * has said no error, and the rejection fails the creation itself.
+           */
+          const active = ctx.stateOf(session.chatUri)?.activeTurn as Bag | undefined;
+          if (active === undefined || String(active.id ?? '') !== turnId) {
+            forgetSender(turnId);
+            forgetKeys(turnId);
+            // With another turn running, that turn's send says whether the session is up.
+            if (active === undefined) {
+              ctx.failSessionCreationIfStillCreating(session.uri, {
+                errorType: 'sendFailed', message: error instanceof Error ? error.message : String(error),
+              });
+            }
+            return;
+          }
+          ended('sendFailed', error);
+        },
+      );
     };
     let modelChanged: void | Promise<void>;
     try { modelChanged = applicable === undefined ? undefined : session.changeModel(applicable); }

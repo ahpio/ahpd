@@ -4,6 +4,7 @@ import type { Bag, Session, Start } from '@ahpd/sdk';
 import { DEFAULT_CLIENT_TOOL_TIMEOUT_MS } from '../../sdk/src/tools/clientcalls.js';
 import { posix } from '../../../tools/posix.ts';
 import { acpAgent, connectAcp, watchSession } from '../src/index.js';
+import { createHost } from '../../sdk/src/host.js';
 
 /*
  * A server that never starts, and one that exits mid-prompt.
@@ -104,6 +105,98 @@ it('fails the first turn of a session whose command is missing, and nothing esca
   session.sendMessage('t2', 'hi again');
   await until(() => actions.filter((action) => action.type === 'chat/error').length > 1);
   expect(actions.filter((action) => action.type === 'chat/error')).toHaveLength(2);
+  expect(escaped).toEqual([]);
+});
+
+/*
+ * What the send returns is how a host learns the server never had the
+ * session: it rejects after the turn's own error, and a session still being
+ * created fails with it rather than reading ready. The sentence names what was
+ * run and the PATH it ran with, and the trace the server left.
+ */
+it('rejects the send of a session whose command is missing, after the turn\'s error, naming the command and its PATH', async () => {
+  const { session, actions } = await start(MISSING);
+  const sent = session.sendMessage('t1', 'hi') as Promise<void>;
+  await expect(sent).rejects.toThrow(MISSING);
+
+  expect(failure(actions)).toContain(`${MISSING} was started with PATH ${process.env.PATH}`);
+  expect(escaped).toEqual([]);
+});
+
+it('rejects the send of a session whose adapter cannot start its own backend, with what it wrote on stderr', async () => {
+  const { session, actions } = await start(process.execPath, [FIXTURE, '--startup-fails']);
+  const sent = session.sendMessage('t1', 'hi') as Promise<void>;
+  await expect(sent).rejects.toThrow('startup failed: claude --version: Executable not found in $PATH');
+
+  const said = failure(actions);
+  expect(said).toContain(`${process.execPath} was started with PATH ${process.env.PATH}`);
+  expect(said).toContain('spawn claude ENOENT');
+  expect(escaped).toEqual([]);
+});
+
+// Windows has no SIGTERM to outlast: the server is ended as it is closed.
+it.skipIf(process.platform === 'win32')('carries what a refused open\'s server wrote on stderr after its answer', async () => {
+  const { session, actions } = await start(process.execPath, [FIXTURE, '--startup-fails', '--why-last']);
+  await expect(session.sendMessage('t1', 'hi') as Promise<void>).rejects.toThrow('startup failed');
+
+  expect(failure(actions)).toContain('spawn claude ENOENT');
+  expect(escaped).toEqual([]);
+});
+
+it('keeps the PATH and the trace out of the error, where the record leaves the trace to the log', async () => {
+  const { session, actions } = await start(process.execPath, [FIXTURE, '--startup-fails'], 'log');
+  await expect(session.sendMessage('t1', 'hi') as Promise<void>).rejects.toThrow('startup failed');
+
+  const said = failure(actions);
+  expect(said).not.toContain('was started with PATH');
+  expect(said).not.toContain('spawn claude ENOENT');
+  expect(escaped).toEqual([]);
+});
+
+/** A server that cannot start, through the host: the session is failed, not ready. */
+it('fails the creation of a session on a host whose adapter cannot start its own backend', async () => {
+  const told: { type: string; message: string }[] = [];
+  const agent = acpAgent({ command: process.execPath, args: [FIXTURE, '--startup-fails'], provider: 'acp-failure', honoursTrust: true });
+  const host = createHost({ path: process.cwd(), agents: [agent] });
+  const client = host.accept({
+    send: () => {},
+    notify: (method, params) => {
+      if (method !== 'action') return;
+      const { action } = params as { action: Bag };
+      const error = (action.error ?? (action.part as Bag | undefined)?.error ?? {}) as Bag;
+      told.push({ type: String(action.type), message: String(error.message ?? '') });
+    },
+    request: async () => ({}),
+    answered: () => {},
+    close: () => {},
+  });
+  try {
+    await client.handle({ method: 'initialize', params: { clientId: 'probe', protocolVersions: ['0.9.0'], initialSubscriptions: ['ahp-root://'] } });
+    const uri = 'ahp-session:/cannot-start';
+    await client.handle({ method: 'createSession', params: { channel: uri, provider: 'acp-failure' } });
+    const subscribed = await client.handle({ method: 'subscribe', params: { channel: uri } }) as { snapshot: { state: { defaultChat: string } } };
+    const chat = subscribed.snapshot.state.defaultChat;
+    await client.handle({ method: 'subscribe', params: { channel: chat } });
+    await client.handle({
+      method: 'dispatchAction',
+      params: { channel: chat, action: { type: 'chat/turnStarted', turnId: 't1', startedAt: new Date().toISOString(), message: { text: 'hi', origin: { kind: 'user' } } } },
+    });
+    await until(() => told.some((one) => one.type === 'session/creationFailed'));
+
+    expect(told.some((one) => one.type === 'session/ready')).toBe(false);
+    expect(told.find((one) => one.type === 'session/creationFailed')?.message).toContain('startup failed');
+    expect(escaped).toEqual([]);
+  }
+  finally {
+    await host.close();
+  }
+});
+
+it('resolves the send once the server holds the session', async () => {
+  const { session, actions } = await start(process.execPath, [FIXTURE]);
+  await (session.sendMessage('t1', 'hello') as Promise<void>);
+
+  expect(failure(actions)).toBeUndefined();
   expect(escaped).toEqual([]);
 });
 
