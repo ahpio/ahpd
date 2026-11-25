@@ -70,7 +70,8 @@ An agent is a record on `x-ahpd-agents`: `{ id, engine, owner, name, description
 | `env` | none | Variables for the CLI's process, laid over the daemon's own environment on this host, and the whole of it in a machine |
 | `logins` | none | The Claude logins the agent runs on, by the id of a `claude-login` connector, in the order a turn tries them. See [Several logins](#several-logins) |
 | `extraArgs` | none | Arguments the CLI is started with beyond the ones this backend builds. **Host records only** |
-| `sandbox` | `default` | The CLI's own sandbox for shell commands: `default` leaves it to the settings files, `on` and `off` set it. `on` runs a sandboxed Bash command without a prompt |
+| `sandbox` | `default` | The CLI's own sandbox for shell commands: `default` leaves it to the settings files, `on` and `off` set it |
+| `autoAllowBashIfSandboxed` | none | Whether a sandboxed Bash command runs without a question. With none set the settings files decide, and it asks where they are silent. When it asks, the `dontAsk` mode denies it. Deny and ask rules stop a command either way |
 | `computerConfigDir` | the plugin's | The configuration directory the CLI reads *inside a machine*, over the plugin's; `false` leaves the image's own. **Host records only** |
 | `cliStart` | `open` | When a session starts its CLI: `open` as the session is made, so its account, context and plan limits show before any turn; `send` at its first message, as VS Code's Claude agent makes a session provisional until then |
 | `stopEnds` | `turn` | What a stop ends: `turn` interrupts the turn through the SDK and keeps the CLI, ending only the workers the stopped turn spawned, and a steering message the CLI holds is answered after the stop in a turn of its own; `query` aborts the query as VS Code's agent does, its workers, its tasks and the steering it holds with it |
