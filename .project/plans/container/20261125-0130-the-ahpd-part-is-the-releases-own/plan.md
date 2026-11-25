@@ -79,7 +79,7 @@ tag -> parts job packs, writes the version and the lock, builds the image -> rel
 | --- | --- | --- |
 | [01 - The plugins install from a lock](task-01-the-plugins-install-from-a-lock.md) | done | - |
 | [02 - A release writes its version and lock](task-02-a-release-writes-its-version-and-lock.md) | done | 01 |
-| [03 - The release run packs once](task-03-the-release-run-packs-once.md) | doing | 02 |
+| [03 - The release run packs once](task-03-the-release-run-packs-once.md) | done | 02 |
 
 ## Risks and tradeoffs
 
@@ -90,8 +90,8 @@ tag -> parts job packs, writes the version and the lock, builds the image -> rel
 
 ## Resume state
 
-- **Done so far:** tasks 01 and 02, and the build of task 03, on 2026-11-25.
-- **Next action:** the dry run of `release.yml` on the branch, for [task 03](task-03-the-release-run-packs-once.md).
+- **Done so far:** every task, on 2026-11-25, as [implemented.md](implemented.md) says.
+- **Next action:** the rc check in [pending/the-ahpd-part-of-a-release.md](../../../pending/the-ahpd-part-of-a-release.md), then Softov's review.
 - **Open questions:** none.
 - **Watch out for:** the Dockerfile's text is the tag, and an installed host only hashes it. The text must be the same with and without the tarballs. `npm cache add` takes one `./` path per run; without `./` npm 12 reads the path as a git address.
 

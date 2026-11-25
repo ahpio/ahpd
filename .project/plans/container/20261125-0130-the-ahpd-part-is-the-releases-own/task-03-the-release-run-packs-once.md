@@ -1,6 +1,6 @@
 ---
 title: The release run packs the part's packages once
-status: doing
+status: done
 depends:
   - task-02-a-release-writes-its-version-and-lock.md
 layer: "release, docs"
@@ -38,4 +38,4 @@ The parts job packs the four packages, and the release job stages those tarballs
 
 ## Resume
 
-Built on 2026-11-25. The pack and check steps ran on this host as a dry run would, and passed. `release.yml` itself has not run yet. The notes for `v0_16.md`: an installed host runs its own version of ahpd in machines and on boxes.
+Built on 2026-11-25. The pack and check steps ran on this host as a dry run would, and passed. Dry run 45533551795 passed all three jobs. The first one, 45531643591, failed on the sandbox runtime's tools, which the release job now installs. The notes for `v0_16.md`: an installed host runs its own version of ahpd in machines and on boxes.
