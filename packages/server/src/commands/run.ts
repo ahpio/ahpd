@@ -27,7 +27,6 @@ import {
   COMPLETIONS_COMMAND,
   invokeOperation,
   OPERATION_COMMAND,
-  pluginOperationChannels,
   tunnelsChannel,
   createHost,
   createMinuteMeter,
@@ -90,6 +89,7 @@ import { modelCatalog } from '../proxy/catalog.js';
 import { hostAdapters } from '../proxy/adapters.js';
 import { loadPlugins, pluginSet, type LoadOptions, type PluginSet } from '../plugins.js';
 import { applyPlugins, eventFailed, type Applied } from '../applyplugins.js';
+import { channelOperations } from '../channeloperations.js';
 import { pluginsChannel } from '../pluginschannel.js';
 import { fileRecords } from '../records.js';
 import { applyPresets, planPresets, splitModels } from '../agents/migrate.js';
@@ -1103,12 +1103,9 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
     [agentLists.operations.uri]: agentLists.operations,
     [connectorLists.operations.uri]: connectorLists.operations,
   });
-  let pluginOperations: Record<string, OperationChannel> = {};
-  const servePluginOperations = (channels: HostOptions['channels']): void => {
-    pluginOperations = pluginOperationChannels(channels, listProblem);
-  };
-  const channelOperations = invokeOperation({
-    channels: () => ({ ...pluginOperations, ...daemonOperations() }),
+  const pluginOperations = channelOperations(listProblem);
+  const operationCommand = invokeOperation({
+    channels: () => ({ ...pluginOperations.channels(), ...daemonOperations() }),
     check: (value, schema, label) => { check(value, schema as JsonSchema, label); },
     onProblem: listProblem,
   });
@@ -1227,7 +1224,7 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
   const lists = servedRecords(
     'ahpd',
     [...(peopleLists?.channels ?? []), ...policyLists.channels, pluginLists.channel, adapterLists.channel, engineLists.channel, connectorLists.channel, agentLists.channel, tunnels.channel, clients.channel, summary],
-    { ...peopleLists?.methods, ...policyLists.methods, ...pluginLists.methods, ...connectorLists.methods, ...agentLists.methods, [OPERATION_COMMAND]: channelOperations, [COMPLETIONS_COMMAND]: completionsCommand({ connectors: () => connectorLists.refs() }) },
+    { ...peopleLists?.methods, ...policyLists.methods, ...pluginLists.methods, ...connectorLists.methods, ...agentLists.methods, [OPERATION_COMMAND]: operationCommand, [COMPLETIONS_COMMAND]: completionsCommand({ connectors: () => connectorLists.refs() }) },
   );
 
   /*
@@ -1935,7 +1932,11 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
       // A plugin closed while the daemon runs hears `stopping` before its
       // closers, as it would on the way down, and one loaded after the socket
       // opened hears the `listening` the others heard at start.
-      beforeUnload: (_id, events) => raise(events, { type: 'stopping' }, failed('stopping')),
+      beforeUnload: (id, events) => {
+        // Before anything of it closes: a call that arrives later is refused.
+        pluginOperations.close(pluginHoldings.held(id)?.contribution);
+        return raise(events, { type: 'stopping' }, failed('stopping'));
+      },
       afterLoad: async (_id, events) => { if (listened !== undefined) await raise(events, listened, failed('listening')); },
     });
     const now = pluginHoldings.fold().options;
@@ -1950,7 +1951,7 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
     // against, so the list is replaced before they are opened again.
     engines = now.engines ?? {};
     // A plugin's operations come and go with its channel.
-    servePluginOperations(now.channels);
+    pluginOperations.serve(now.channels);
     liveRoutes = answer.routes;
     liveEvents = now.events;
     // A plugin loaded later acts on the host as its own client, as one loaded
@@ -1983,7 +1984,7 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
   tunnelKinds = folded.tunnelKinds ?? {};
   // And the engines a stored agent record is read against when it is opened below.
   engines = folded.engines ?? {};
-  servePluginOperations(folded.channels);
+  pluginOperations.serve(folded.channels);
   // The trigger types a save is now checked against: the host's own two are the
   // store's, and these are what the plugins brought.
   pluginTypes = pluginTriggerTypes(folded.pluginTriggers);
@@ -2207,7 +2208,7 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
     const refused = host.replace({ ...now, connectors: { refs: () => connectorLists.refs(), run: connectorLists.run } });
     if (refused !== undefined) throw new Error(refused);
     // After the host took the fold, so a refused one offers nothing it does not serve.
-    servePluginOperations(now.channels);
+    pluginOperations.serve(now.channels);
     recordAgents = agents;
     return new Set(next.records);
   };
