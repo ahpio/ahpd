@@ -162,7 +162,7 @@ With `sandboxEnabled: true`, a new container is made with the options the comman
 ## How the host inside runs
 
 1. The folder must be a dev container: `.devcontainer/devcontainer.json` or `.devcontainer.json`, refused with a sentence naming the folder if neither is there.
-2. A computer already labelled with the folder is reused, and so is one that is stopped: `devcontainer up` starts it and keeps its id.
+2. A computer already labelled with the folder is reused, and so is one that is stopped, when the connect says `resume: true`: `devcontainer up` starts it and keeps its id.
    When there is none of ours, `devcontainer up --log-level debug --workspace-folder <dir> --id-label ahpd.computer=1 --id-label ahpd.devcontainer.folder=<dir>` makes it, and the CLI's own JSON is read off whichever line carries it - the CLI logs as it works, so the result is one line among several.
    The result counts only with the CLI's exit 0 beside it. Anything else is refused as VS Code refuses it, `Dev Container CLI returned an invalid result: <what the CLI wrote>`, its standard output where it wrote any and its standard error otherwise, with each environment value in it masked, a JSON line's value by value.
    The labels are the CLI's own way of finding a container, so a second connect, or a connect after a session made one, reaches the same container rather than a second one.
