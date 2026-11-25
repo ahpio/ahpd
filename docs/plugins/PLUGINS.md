@@ -595,6 +595,17 @@ handle.publish('x-notes://', { type: 'x-notes/added', note }, {
 - `describe()` is optional, and names the channel in `_meta['ahpd.channels']`
   on `initialize` and on the root state, as an entry `{ scheme, title,
   description?, grant }`. The title is the scheme when there is no `describe`.
+- `operations` is optional, and offers operations to
+  [`x-ahpd/invokeOperation`](#x-ahpd-invokeoperation) at `<scheme>://`, and at
+  no other URI of the scheme. `operations()` lists them, synchronously, and
+  `run(operation, target, input, reader)` does one. `offers(target, operationId,
+  reader)` is optional and says whether the record offers it to this reader now,
+  so it is where a record that is not theirs is refused. `begin` and `settle`
+  are optional and are told when a call starts and ends; what they throw is
+  logged and changes no answer. Put the same list in the snapshot's
+  `operations`, and register each grant it names. It is for a list one plugin
+  serves, and its operations name no kind. A list several plugins add to holds
+  kinds, as the tunnels do with `registerTunnelKind`.
 
 A client may subscribe and may not dispatch: an action a client sends to the
 channel is refused, because the state is the plugin's.
@@ -1964,7 +1975,7 @@ One command runs an operation that a channel's state lists, and the same command
 
 It needs `operation:invoke`. It also admits a caller who holds the grant the operation itself names, such as `tunnel:delete` for a remove. So a person who may change the tunnels needs no second grant to run one.
 
-Every channel with operations puts an `operations` list in its state, and every row carries `operations`, the ids that record offers now. The list holds the label, the description, the input schema and the grant; the row holds only the ids. A client draws a record's buttons from its ids and takes the words from the list. Four channels serve one: `x-ahpd-tunnels`, `x-ahpd-clients`, `x-ahpd-agents` and `x-ahpd-connectors`. A channel works the ids out from the record each time it sends the row.
+Every channel with operations puts an `operations` list in its state, and every row carries `operations`, the ids that record offers now. The list holds the label, the description, the input schema and the grant; the row holds only the ids. A client draws a record's buttons from its ids and takes the words from the list. The daemon's `x-ahpd-tunnels`, `x-ahpd-clients`, `x-ahpd-agents` and `x-ahpd-connectors` serve one, and so may a channel a plugin registers with `operations`. A channel works the ids out from the record each time it sends the row.
 
 The list comes in the locale the client sent at `initialize`. Each `label`, `description` and `confirmation` is looked up at `operations.<row>.<id>` in the host's catalogs, such as `operations.agent.disable.description`. A tunnel kind's create and its own operations are looked up at `operations.<id>` in the catalogs of the plugin that registered the kind. A client that sent no locale gets English.
 

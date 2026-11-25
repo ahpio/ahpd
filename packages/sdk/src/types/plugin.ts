@@ -364,14 +364,18 @@ export interface PluginChannel {
    * serves them at `<scheme>://` beside the daemon's own channels. Only that
    * URI: the channel's other URIs are read and watched, and offer nothing.
    *
+   * This is for a list one plugin serves, so its operations name no kind. A list
+   * that several plugins add to holds kinds, as the tunnels do with
+   * `registerTunnelKind`.
+   *
    * The command checks each operation's own grant and, when the channel answers
-   * `offers`, whether the target offers it now; an operation `operations()` does
-   * not list is refused. Each grant an operation names is one the plugin
+   * `offers`, whether the target offers it now to this reader; an operation
+   * `operations()` does not list is refused. Each grant an operation names is one the plugin
    * registers, as a channel's and a method's are. List the same operations in
    * `snapshot`'s `operations`, as a records channel does, so a client sees
    * what it may run. `begin` and `settle` are told when a call starts and ends,
    * for a channel that shows an operation's status; one that does not leaves
-   * them out.
+   * them out. What they throw is logged, and changes no call's answer.
    */
   operations?: Omit<OperationChannel, 'uri' | 'begin' | 'settle'> & Partial<Pick<OperationChannel, 'begin' | 'settle'>>;
 }

@@ -20,7 +20,7 @@
 import type { StartSession } from '../types/automations.js';
 import type { ChatRequest, PluginContracts, PortKey } from '../types/plugin.js';
 import type { Owner } from '../types/usage.js';
-import type { Operation } from '../types/kinds.js';
+import type { ChannelOperation } from '../types/kinds.js';
 import { SUBJECTS, grantProblem, isGrant, isOperationWord } from '../access/users.js';
 import { isSecret, secretFields } from '../channels/owners.js';
 import { RECORD_SLUG, isRecordSlug } from '../resources/records.js';
@@ -497,26 +497,29 @@ export const checkChannel = (scheme: string, value: unknown, by: string): void =
  * change. An entry is served when it has an id no earlier entry has, a list of
  * scopes, and a grant like `svc:restart`: those are what `invokeOperation`
  * reads before it runs anything. A list that throws, or is not a list, serves
- * nothing and says why in `failed`.
+ * nothing: `failed` is what a caller is told, and what it threw is in
+ * `problems` alone.
  */
 export const listedOperations = (
   by: string,
   uri: string,
   list: () => unknown,
-): { operations: Operation[]; problems: string[]; failed?: string } => {
+): { operations: ChannelOperation[]; problems: string[]; failed?: string } => {
   let listed: unknown;
   try {
     listed = list();
   }
   catch (error) {
-    const failed = `plugin ${by} could not list its operations at ${uri}: ${error instanceof Error ? error.message : String(error)}`;
-    return { operations: [], problems: [failed], failed };
+    const failed = `plugin ${by} could not list its operations at ${uri}`;
+    return { operations: [], problems: [`${failed}: ${error instanceof Error ? error.message : String(error)}`], failed };
   }
   if (!Array.isArray(listed)) {
+    // An `async` list is not one, and its rejection is nobody's to catch later.
+    if (listed instanceof Promise) listed.catch(() => {});
     const failed = `plugin ${by} lists its operations at ${uri} as ${typeof listed}, not a list`;
     return { operations: [], problems: [failed], failed };
   }
-  const operations: Operation[] = [];
+  const operations: ChannelOperation[] = [];
   const problems: string[] = [];
   const seen = new Set<string>();
   for (const one of listed as unknown[]) {
@@ -524,7 +527,7 @@ export const listedOperations = (
     const id = typeof entry.id === 'string' && entry.id !== '' ? entry.id : undefined;
     const why = id === undefined ? 'it has no id'
       : seen.has(id) ? 'an earlier entry has its id'
-        : !Array.isArray(entry.scopes) || !entry.scopes.every((scope) => typeof scope === 'string' && scope !== '') ? 'its scopes are not a list of names'
+        : !Array.isArray(entry.scopes) || entry.scopes.length === 0 || !entry.scopes.every((scope) => typeof scope === 'string' && scope !== '') ? 'its scopes are not a list of names'
           : typeof entry.grant !== 'string' || !isGrant(entry.grant) ? 'its grant is not one like svc:restart'
             : undefined;
     if (why !== undefined) {
@@ -532,7 +535,7 @@ export const listedOperations = (
       continue;
     }
     seen.add(id!);
-    operations.push(one as Operation);
+    operations.push(one as ChannelOperation);
   }
   return { operations, problems };
 };

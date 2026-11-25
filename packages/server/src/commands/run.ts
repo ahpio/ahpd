@@ -2204,9 +2204,10 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
     tunnelKinds = now.tunnelKinds ?? {};
     pluginTypes = pluginTriggerTypes(now.pluginTriggers);
     engines = now.engines ?? {};
-    servePluginOperations(now.channels);
     const refused = host.replace({ ...now, connectors: { refs: () => connectorLists.refs(), run: connectorLists.run } });
     if (refused !== undefined) throw new Error(refused);
+    // After the host took the fold, so a refused one offers nothing it does not serve.
+    servePluginOperations(now.channels);
     recordAgents = agents;
     return new Set(next.records);
   };
