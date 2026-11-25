@@ -152,6 +152,14 @@ THEN the host refuses it, because the plugin is the only writer.
 WHEN two plugins register the same channel
 THEN the second registration is a problem line.
 
+WHEN a plugin registers a channel with `operations`
+THEN `x-ahpd/invokeOperation` serves them at `<scheme>://` and at no other URI of the channel
+AND each operation needs its own grant
+AND an operation listed with a wrong shape is a problem line and is not served.
+
+WHEN the plugin starts to close
+THEN its operations are refused.
+
 The `x-` prefix is the protocol's extension space, so a later protocol channel cannot take the name.
 
 ### A channel filters each action for each subscriber

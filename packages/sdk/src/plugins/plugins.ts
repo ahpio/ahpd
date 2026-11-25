@@ -698,7 +698,7 @@ export function foldHostOptions(base: HostOptions, contributions: Contribution[]
     problems.push(...listed.problems);
     for (const operation of listed.operations) {
       if (listedGrant(entries, operation.grant)) continue;
-      problems.push(`plugin ${served.by} requires ${operation.grant}, which no entry of ahpd.grants lists`);
+      problems.push(`plugin ${served.by} requires ${operation.grant} for ${operation.id}, which no entry of ahpd.grants lists`);
     }
   }
 

@@ -111,7 +111,7 @@ it('runs a list-scoped operation with no target, and checks its input against it
   expect(checked).toEqual([{ name: 'web' }, {}]);
 });
 
-it('leaves out a listed operation it cannot serve, says it once, and reports it and an undeclared grant at the load', async () => {
+it('leaves out a listed operation it cannot serve, says it, and reports it and an undeclared grant at the load', async () => {
   const listed = (): unknown => [RESTART, { id: 'svc/broken', scopes: 'service', grant: 'svc:restart' }, { ...RESTART }, { ...RESTART, id: 'svc/stop', grant: 'svc:stop' }];
   const { host: plugin, contribution } = pluginHost('svc', context());
   plugin.registerGrants('svc', { operations: ['restart'] });
@@ -120,12 +120,11 @@ it('leaves out a listed operation it cannot serve, says it once, and reports it 
   expect(folded.problems).toEqual([
     'plugin svc lists operation svc/broken at x-svc://, which is not served: its scopes are not a list of names',
     'plugin svc lists operation svc/restart at x-svc://, which is not served: an earlier entry has its id',
-    'plugin svc requires svc:stop, which no entry of ahpd.grants lists',
+    'plugin svc requires svc:stop for svc/stop, which no entry of ahpd.grants lists',
   ]);
   const said: string[] = [];
-  const channels = pluginOperationChannels(folded.options.channels, (line) => { said.push(line); });
+  const channels = pluginOperationChannels(folded.options.channels, { onProblem: (line) => { said.push(line); } });
   expect(channels['x-svc://']!.operations().map((one) => one.id)).toEqual(['svc/restart', 'svc/stop']);
-  channels['x-svc://']!.operations();
   expect(said).toEqual(folded.problems.slice(0, 2));
 });
 
@@ -136,7 +135,61 @@ it('refuses a call naming the plugin when its list throws, and reports it at the
   expect(folded.problems).toContain('plugin svc could not list its operations at x-svc://: config unreadable');
   const method = invokeOperation({ channels: () => pluginOperationChannels(folded.options.channels), check: () => {} });
   await expect(method.handle({ channel: 'x-svc://', operationId: 'svc/restart', target: { id: 'web' } }, undefined, 'c1'))
-    .rejects.toThrow('plugin svc could not list its operations at x-svc://: config unreadable');
+    .rejects.toThrow(/^plugin svc could not list its operations at x-svc:\/\/$/);
+  // The list is read before any grant is, so its words are the log's and not a caller's.
+  const said: string[] = [];
+  const told = invokeOperation({ channels: () => pluginOperationChannels(folded.options.channels, { onProblem: (line) => { said.push(line); } }), check: () => {} });
+  expect(await told.authorize!({ channel: 'x-svc://', operationId: 'svc/restart' }, holding([]))).toBe(false);
+  expect(said).toEqual(['plugin svc could not list its operations at x-svc://: config unreadable']);
+});
+
+it.each([
+  ['throws', () => { throw new Error('told badly'); }],
+  ['rejects', async () => { throw new Error('told badly'); }],
+])('answers what run answered when begin and settle %s, and says so', async (_how, bad) => {
+  const said: string[] = [];
+  let runs = 0;
+  const side = { operations: () => [RESTART], begin: bad, settle: bad, run: async (_operation: Operation, target?: string) => { runs += 1; if (target === 'db') throw new Error('unit not found'); return { restarted: target }; } };
+  const method = invokeOperation({
+    channels: () => pluginOperationChannels({ 'x-svc': { by: 'svc', channel: { grant: 'svc:read', snapshot: () => ({}), operations: side } } }, { onProblem: (line) => { said.push(line); } }),
+    check: () => {},
+  });
+  expect(await method.handle({ channel: 'x-svc://', operationId: 'svc/restart', target: { id: 'web' } }, undefined, 'c1')).toEqual({ restarted: 'web' });
+  await new Promise((done) => { setTimeout(done, 0); });
+  expect(runs).toBe(1);
+  expect(said).toEqual([
+    'plugin svc failed in begin of its operations at x-svc://: told badly',
+    'plugin svc failed in settle of its operations at x-svc://: told badly',
+  ]);
+  await expect(method.handle({ channel: 'x-svc://', operationId: 'svc/restart', target: { id: 'db' } }, undefined, 'c1')).rejects.toThrow('unit not found');
+});
+
+it.each([
+  ['no scopes', { scopes: [] }, 'its scopes are not a list of names'],
+  ['no kind', { kind: undefined }, 'it has no kind'],
+  ['a label that is not text', { label: 3 }, 'its label is not text'],
+  ['an input that is not a schema', { input: 'name' }, 'its input is not a JSON Schema object'],
+])('leaves out an operation with %s', (_what, over, why) => {
+  const said: string[] = [];
+  const side = { operations: () => [{ ...RESTART, ...over } as unknown as Operation], run: async () => ({}) };
+  const channels = pluginOperationChannels({ 'x-svc': { by: 'svc', channel: { grant: 'svc:read', snapshot: () => ({}), operations: side } } }, { onProblem: (line) => { said.push(line); } });
+  expect(channels['x-svc://']!.operations()).toEqual([]);
+  expect(said).toEqual([`plugin svc lists operation svc/restart at x-svc://, which is not served: ${why}`]);
+});
+
+it('cannot offer operations on a scheme of the daemon\'s own', () => {
+  const { host: rogue, contribution } = pluginHost('rogue', context());
+  rogue.registerGrants('rogue', { operations: ['go'] });
+  rogue.registerChannel('x-ahpd-tunnels', { grant: 'rogue:go', snapshot: () => ({}), operations: { operations: () => [{ ...RESTART, grant: 'rogue:go' }], run: async () => ({}) } });
+  const own: PluginChannel = { grant: 'tunnel:read', snapshot: () => ({}) };
+  const folded = foldHostOptions({
+    path: root,
+    agents: [{ ...echo({ path: root, pace: 0 }), provider: 'base', displayName: 'Base' }],
+    resources: fileResources(),
+    channels: { 'x-ahpd-tunnels': { by: 'ahpd', scheme: 'x-ahpd-tunnels', channel: own } },
+  }, [contribution]);
+  expect(folded.options.channels!['x-ahpd-tunnels']!.channel).toBe(own);
+  expect(pluginOperationChannels(folded.options.channels)).toEqual({});
 });
 
 it('admits at the gate a caller holding the operation\'s grant', async () => {

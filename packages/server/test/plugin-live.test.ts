@@ -9,6 +9,8 @@ import { createHost } from '../../sdk/src/host.js';
 import { connectorsChannel } from '../../sdk/src/connectors/channel.js';
 import { memoryRecords } from '../../sdk/src/resources/records.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
+import { invokeOperation } from '../../sdk/src/kinds/operations.js';
+import { pluginOperations } from '../src/pluginoperations.js';
 import { applyPlugins, eventFailed, type Applied } from '../src/applyplugins.js';
 import { memoryAutomations } from '../../sdk/src/automations/automations.js';
 import { loadPlugins, pluginSet } from '../src/plugins.js';
@@ -645,4 +647,97 @@ it('raises no alert for a plugin the set does not hold', async () => {
   running.set.alert('gone', { level: 'error', ref: 'event:stopping', text: 'x' });
   expect(running.set.alerts()).toEqual({});
   await running.close();
+});
+
+/** A plugin whose channel offers one operation, and whose closer waits for `release`. */
+const operationPlugin = (id: string): string => {
+  const file = pluginFile(id);
+  writeFileSync(file, `
+export const name = ${JSON.stringify(id)};
+export function apply(host, options) {
+  host.registerGrants('svc', { operations: ['restart'] });
+  host.registerChannel('x-svc', {
+    grant: 'svc:restart',
+    snapshot: () => ({}),
+    operations: {
+      operations: () => [{ id: 'svc/restart', kind: 'svc', label: 'Restart', scopes: ['service'], grant: 'svc:restart', status: 'idle' }],
+      run: async () => ({ by: options.tag }),
+    },
+  });
+  host.registerClose(() => new Promise((done) => { globalThis.__releaseOperations = done; }));
+}
+`);
+  return file;
+};
+
+it('offers a plugin channel\'s operations while the host serves it, and none from the moment it closes', async () => {
+  const base: HostOptions = { path: home, agents: [{ ...echo({ path: home, pace: 0 }), provider: 'base', displayName: 'Base backend' }] };
+  const where = { configDir: REPO, cwd: REPO, log: () => {} };
+  const set = pluginSet({ base, ...where });
+  const options = (await loadPlugins([], { base, ...where, set })).options;
+  const host = createHost(options);
+  const operations = pluginOperations({ channels: () => options.channels, onProblem: () => {} });
+  const method = invokeOperation({ channels: () => operations.channels(), check: () => {} });
+  const invoke = () => method.handle({ channel: 'x-svc://', operationId: 'svc/restart', target: { id: 'web' } }, undefined, 'c1');
+  let loadedAnswer: unknown;
+  const apply = () => applyPlugins({
+    set, configFile, host: () => host, log: () => {},
+    beforeUnload: async (id) => { operations.close(set.held(id)?.contribution.channels ?? {}); },
+    afterLoad: async () => { loadedAnswer = await invoke(); },
+  });
+  const file = operationPlugin('live-operations');
+  const held = globalThis as { __releaseOperations?: () => void };
+  const released = async (): Promise<void> => {
+    for (let i = 0; i < 100 && held.__releaseOperations === undefined; i++) await new Promise((done) => { setTimeout(done, 5); });
+    held.__releaseOperations!();
+    delete held.__releaseOperations;
+  };
+  await expect(invoke()).rejects.toThrow('No channel with operations at x-svc://');
+  configured({ name: file, options: { tag: 'one' } });
+  expect((await apply()).problems).toEqual([]);
+  expect(loadedAnswer).toEqual({ by: 'one' });
+
+  // Configured again: refused while the old one closes, and the new one's once it is held.
+  configured({ name: file, options: { tag: 'two' } });
+  const again = apply();
+  await settle();
+  await expect(invoke()).rejects.toThrow('No channel with operations at x-svc://');
+  await released();
+  await again;
+  expect(loadedAnswer).toEqual({ by: 'two' });
+  expect(await invoke()).toEqual({ by: 'two' });
+
+  configured();
+  const off = apply();
+  await settle();
+  await expect(invoke()).rejects.toThrow('No channel with operations at x-svc://');
+  await released();
+  await off;
+  await host.close();
+});
+
+it('keeps offering what the host serves when the host refuses a fold', async () => {
+  const channel = { grant: 'svc:restart' as const, snapshot: () => ({}), operations: { operations: () => [], run: async () => ({}) } };
+  const options: HostOptions = {
+    path: home,
+    agents: [{ ...echo({ path: home, pace: 0 }), provider: 'base', displayName: 'Base backend' }],
+    channels: { 'x-svc': { by: 'svc', scheme: 'x-svc', channel } },
+  };
+  const host = createHost(options);
+  const operations = pluginOperations({ channels: () => options.channels, onProblem: () => {} });
+  const refused = host.replace({ ...options, agents: [...options.agents, ...options.agents], channels: {} });
+  expect(refused).toContain('both call themselves base');
+  expect(Object.keys(operations.channels())).toEqual(['x-svc://']);
+  expect(host.replace({ ...options, channels: {} })).toBeUndefined();
+  expect(operations.channels()).toEqual({});
+  await host.close();
+});
+
+it('writes a wrong operation once across calls, and not again after the load said it', () => {
+  const said: string[] = [];
+  const channel = { grant: 'svc:restart' as const, snapshot: () => ({}), operations: { operations: () => [{ id: 'a' }, { id: 'b' }] as never, run: async () => ({}) } };
+  const operations = pluginOperations({ channels: () => ({ 'x-svc': { by: 'svc', scheme: 'x-svc', channel } }), onProblem: (line) => { said.push(line); } });
+  operations.said(['plugin svc lists operation a at x-svc://, which is not served: its scopes are not a list of names']);
+  for (let i = 0; i < 3; i++) operations.channels()['x-svc://']!.operations();
+  expect(said).toEqual(['plugin svc lists operation b at x-svc://, which is not served: its scopes are not a list of names']);
 });

@@ -27,7 +27,6 @@ import {
   COMPLETIONS_COMMAND,
   invokeOperation,
   OPERATION_COMMAND,
-  pluginOperationChannels,
   tunnelsChannel,
   createHost,
   createMinuteMeter,
@@ -90,6 +89,7 @@ import { modelCatalog } from '../proxy/catalog.js';
 import { hostAdapters } from '../proxy/adapters.js';
 import { loadPlugins, pluginSet, type LoadOptions, type PluginSet } from '../plugins.js';
 import { applyPlugins, eventFailed, type Applied } from '../applyplugins.js';
+import { pluginOperations } from '../pluginoperations.js';
 import { pluginsChannel } from '../pluginschannel.js';
 import { fileRecords } from '../records.js';
 import { applyPresets, planPresets, splitModels } from '../agents/migrate.js';
@@ -1090,7 +1090,7 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
    * The one command over every channel that offers operations: the daemon's
    * tunnels, clients, agents and connectors channels, and every plugin channel
    * registered with an operations side, at `<scheme>://`. The plugins' are read
-   * each time the load folds them in. The fold refuses a plugin channel on a
+   * from what the host serves at each call. The fold refuses a plugin channel on a
    * scheme the daemon's own serves, and the daemon's are spread last, so a
    * plugin can never stand in for one of the daemon's.
    *
@@ -1103,12 +1103,11 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
     [agentLists.operations.uri]: agentLists.operations,
     [connectorLists.operations.uri]: connectorLists.operations,
   });
-  let pluginOperations: Record<string, OperationChannel> = {};
-  const servePluginOperations = (channels: HostOptions['channels']): void => {
-    pluginOperations = pluginOperationChannels(channels, listProblem);
-  };
+  /** The options the host was built over, which its `replace` changes in place. */
+  let hostOptions: HostOptions | undefined;
+  const operationsOfPlugins = pluginOperations({ channels: () => hostOptions?.channels, onProblem: listProblem });
   const channelOperations = invokeOperation({
-    channels: () => ({ ...pluginOperations, ...daemonOperations() }),
+    channels: () => ({ ...operationsOfPlugins.channels(), ...daemonOperations() }),
     check: (value, schema, label) => { check(value, schema as JsonSchema, label); },
     onProblem: listProblem,
   });
@@ -1935,7 +1934,11 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
       // A plugin closed while the daemon runs hears `stopping` before its
       // closers, as it would on the way down, and one loaded after the socket
       // opened hears the `listening` the others heard at start.
-      beforeUnload: (_id, events) => raise(events, { type: 'stopping' }, failed('stopping')),
+      // Its operations are refused from here on, so none runs after a closer.
+      beforeUnload: (id, events) => {
+        operationsOfPlugins.close(pluginHoldings.held(id)?.contribution.channels ?? {});
+        return raise(events, { type: 'stopping' }, failed('stopping'));
+      },
       afterLoad: async (_id, events) => { if (listened !== undefined) await raise(events, listened, failed('listening')); },
     });
     const now = pluginHoldings.fold().options;
@@ -1949,14 +1952,13 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
     // An engine a plugin brought or took away is what the stored records are read
     // against, so the list is replaced before they are opened again.
     engines = now.engines ?? {};
-    // A plugin's operations come and go with its channel.
-    servePluginOperations(now.channels);
     liveRoutes = answer.routes;
     liveEvents = now.events;
     // A plugin loaded later acts on the host as its own client, as one loaded
     // at start does, and it can only be handed the host once the host exists.
     for (const one of now.pluginConnects ?? []) one.host = host;
     for (const line of answer.problems) stamp(line);
+    operationsOfPlugins.said(answer.problems);
     await pluginLists.refresh();
     await adapterLists.refresh();
     await engineLists.refresh();
@@ -1983,11 +1985,11 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
   tunnelKinds = folded.tunnelKinds ?? {};
   // And the engines a stored agent record is read against when it is opened below.
   engines = folded.engines ?? {};
-  servePluginOperations(folded.channels);
   // The trigger types a save is now checked against: the host's own two are the
   // store's, and these are what the plugins brought.
   pluginTypes = pluginTriggerTypes(folded.pluginTriggers);
   for (const problem of problems) stamp(problem);
+  operationsOfPlugins.said(problems);
 
   /*
    * The ports a plugin may have replaced, taken from this fold before the
@@ -2152,7 +2154,8 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
    * and removes - and the call an action tool makes, which does the live checks
    * in the channel.
    */
-  const host = createHost({ ...started, connectors: { refs: () => connectorLists.refs(), run: connectorLists.run } });
+  hostOptions = { ...started, connectors: { refs: () => connectorLists.refs(), run: connectorLists.run } };
+  const host = createHost(hostOptions);
   /*
    * The client list's source, now that the host holding the connections exists,
    * and a refresh on each arrival and the departure that follows it. A socket's
@@ -2204,7 +2207,6 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
     tunnelKinds = now.tunnelKinds ?? {};
     pluginTypes = pluginTriggerTypes(now.pluginTriggers);
     engines = now.engines ?? {};
-    servePluginOperations(now.channels);
     const refused = host.replace({ ...now, connectors: { refs: () => connectorLists.refs(), run: connectorLists.run } });
     if (refused !== undefined) throw new Error(refused);
     recordAgents = agents;

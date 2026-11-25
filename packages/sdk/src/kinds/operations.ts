@@ -30,6 +30,7 @@ import { refusalReason } from '../host/gate.js';
 import { listedOperations } from '../plugins/validate.js';
 import { HOST_CATALOGS, translated, type Catalogs } from '../i18n.js';
 import { INTERNAL_ERROR, INVALID_PARAMS, RpcError } from '../rpc.js';
+import { reason } from '../utils/values.js';
 import type { Operation } from '../types/kinds.js';
 import type { RecordsChannel } from '../resources/recordschannel.js';
 import type { ChannelHandle, PluginChannel, PluginMethod } from '../types/plugin.js';
@@ -252,7 +253,10 @@ export const invokeOperation = (options: InvokeOperationOptions): PluginMethod =
     const channel = options.channels()[uri];
     if (channel === undefined) return false;
     const operationId = typeof params.operationId === 'string' ? params.operationId : '';
-    const offered = channel.operations().find((one) => one.id === operationId);
+    let offered: Operation | undefined;
+    // A list that cannot be read lets nobody in, and says nothing to a caller no grant has admitted.
+    try { offered = channel.operations().find((one) => one.id === operationId); }
+    catch { return false; }
     return offered !== undefined && reader.can(offered.grant as Grant);
   },
   describe: () => ({
@@ -295,6 +299,14 @@ export const invokeOperation = (options: InvokeOperationOptions): PluginMethod =
   },
 });
 
+/** What `pluginOperationChannels` is told beside the channels. */
+export interface PluginOperationsOptions {
+  /** Where what a plugin got wrong is said, as one line. */
+  onProblem?(message: string): void;
+  /** Whether a channel's plugin is closing or closed, so it offers nothing more. */
+  closed?(channel: PluginChannel): boolean;
+}
+
 /**
  * The plugin channels that offer operations, as `invokeOperation` reads them.
  *
@@ -303,35 +315,43 @@ export const invokeOperation = (options: InvokeOperationOptions): PluginMethod =
  * command refuses it as a channel with no operations.
  *
  * A plugin cannot take one of the daemon's own URIs: the fold already refuses a
- * channel on a scheme the daemon registered. The list is read at each call;
- * an entry that cannot be served is left out and said once through
- * `onProblem`, and a list that throws refuses the call naming the plugin.
+ * channel on a scheme the daemon registered. The list is read at each call; an
+ * entry that cannot be served is left out and said through `onProblem`. A list
+ * that throws refuses the call naming the plugin, and its own words go to
+ * `onProblem` alone, because the list is read before a caller's grant is.
+ *
+ * `begin` and `settle` only tell the plugin how a call goes. One that throws,
+ * or whose promise rejects, is said and changes nothing: the caller gets what
+ * `run` answered.
  */
 export const pluginOperationChannels = (
   channels: Record<string, { by?: string; channel: PluginChannel }> | undefined,
-  onProblem?: (message: string) => void,
+  options: PluginOperationsOptions = {},
 ): Record<string, OperationChannel> => {
   const served: Record<string, OperationChannel> = {};
-  const said = new Set<string>();
   for (const [scheme, one] of Object.entries(channels ?? {})) {
     const side = one.channel.operations;
-    if (side === undefined) continue;
+    if (side === undefined || options.closed?.(one.channel) === true) continue;
     const uri = `${scheme}://`;
     const by = one.by ?? 'unknown';
+    const tell = (member: string, call: () => unknown): void => {
+      const failed = (error: unknown): void => {
+        options.onProblem?.(`plugin ${by} failed in ${member} of its operations at ${uri}: ${reason(error)}`);
+      };
+      // A void member may be written async, and a rejection nobody takes ends the daemon.
+      try { void Promise.resolve(call()).catch(failed); }
+      catch (error) { failed(error); }
+    };
     served[uri] = {
       uri,
       operations: () => {
         const { operations, problems, failed } = listedOperations(by, uri, () => side.operations());
-        if (failed !== undefined) throw new RpcError(INTERNAL_ERROR, failed);
-        for (const problem of problems) {
-          if (said.has(problem)) continue;
-          said.add(problem);
-          onProblem?.(problem);
-        }
+        for (const problem of problems) options.onProblem?.(problem);
+        if (failed !== undefined) throw new RpcError(INTERNAL_ERROR, `plugin ${by} could not list its operations at ${uri}`);
         return operations;
       },
-      begin: (operationId, target) => { side.begin?.(operationId, target); },
-      settle: (operationId, target, error) => { side.settle?.(operationId, target, error); },
+      begin: (operationId, target) => { tell('begin', () => side.begin?.(operationId, target)); },
+      settle: (operationId, target, error) => { tell('settle', () => side.settle?.(operationId, target, error)); },
       ...(side.offers === undefined ? {} : { offers: (target: string, operationId: string) => side.offers!(target, operationId) }),
       run: (operation, target, input, reader) => side.run(operation, target, input, reader),
     };

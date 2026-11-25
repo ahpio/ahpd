@@ -494,10 +494,11 @@ export const checkChannel = (scheme: string, value: unknown, by: string): void =
  *
  * Asked at the fold, so a wrong entry or an undeclared grant is a problem the
  * load reports, and again at each call, because the list is the plugin's to
- * change. An entry is served when it has an id no earlier entry has, a list of
- * scopes, and a grant like `svc:restart`: those are what `invokeOperation`
- * reads before it runs anything. A list that throws, or is not a list, serves
- * nothing and says why in `failed`.
+ * change. An entry is served when it has an id no earlier entry has, at least
+ * one scope, a grant like `svc:restart`, a kind, and a label and an input of
+ * the right shape where it has them: those are what `invokeOperation` reads
+ * before it runs anything, and what a client draws a button from. A list
+ * that throws, or is not a list, serves nothing and says why in `failed`.
  */
 export const listedOperations = (
   by: string,
@@ -524,9 +525,12 @@ export const listedOperations = (
     const id = typeof entry.id === 'string' && entry.id !== '' ? entry.id : undefined;
     const why = id === undefined ? 'it has no id'
       : seen.has(id) ? 'an earlier entry has its id'
-        : !Array.isArray(entry.scopes) || !entry.scopes.every((scope) => typeof scope === 'string' && scope !== '') ? 'its scopes are not a list of names'
+        : !Array.isArray(entry.scopes) || entry.scopes.length === 0 || !entry.scopes.every((scope) => typeof scope === 'string' && scope !== '') ? 'its scopes are not a list of names'
           : typeof entry.grant !== 'string' || !isGrant(entry.grant) ? 'its grant is not one like svc:restart'
-            : undefined;
+            : typeof entry.kind !== 'string' || entry.kind === '' ? 'it has no kind'
+              : entry.label !== undefined && typeof entry.label !== 'string' ? 'its label is not text'
+                : entry.input !== undefined && !right(entry.input, 'object') ? 'its input is not a JSON Schema object'
+                  : undefined;
     if (why !== undefined) {
       problems.push(`plugin ${by} lists operation ${id ?? '(no id)'} at ${uri}, which is not served: ${why}`);
       continue;

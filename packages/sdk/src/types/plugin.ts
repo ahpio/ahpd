@@ -372,6 +372,11 @@ export interface PluginChannel {
    * what it may run. `begin` and `settle` are told when a call starts and ends,
    * for a channel that shows an operation's status; one that does not leaves
    * them out.
+   *
+   * `operations()` is read at every fold and every call, the first before the
+   * host exists: it answers at once, from what the plugin holds, and needs no
+   * connection. `run` is given the reader and `offers` is not, so a channel
+   * whose records belong to people checks the record in `run`.
    */
   operations?: Omit<OperationChannel, 'uri' | 'begin' | 'settle'> & Partial<Pick<OperationChannel, 'begin' | 'settle'>>;
 }
