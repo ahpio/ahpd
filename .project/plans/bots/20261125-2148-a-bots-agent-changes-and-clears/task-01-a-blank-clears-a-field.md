@@ -1,6 +1,6 @@
 ---
 title: A blank clears a field
-status: todo
+status: done
 depends: []
 layer: "bot"
 refs:

@@ -144,7 +144,7 @@ A talk's session, its Front and its row carry the bot in `_meta['ahpd.bot']`, na
 
 ### The Back a message wakes
 
-A Front has one Back, found by its id: the chat of the session whose `tool` origin names the Front. The first message starts it on the bot's `preset`, or its `provider` and `model`, titled `@main/<bot>/<person>` and offered `post_message`; a bot that names neither runs it on the host's default agent, the root config's `defaultAgent` or the first agent found ([HOST.md](../sdk/HOST.md#root-config)). The Back's origin names the Front and the `subagent` call the Front turn shows, so a client draws it under that call, as a subagent's chat. The person is the talk owner's id, or `root` for the root, and `main` is one fixed word for now. With `policies.check` on, the Back's turns are checked and charged as the talk owner's, not as the plugin's. Every later message continues the same Back, and two messages that arrive together for one Front start one Back. A Back session an older daemon started stays as it is, and the next message starts a Back chat.
+A Front has one Back, found by its id: the chat of the session whose `tool` origin names the Front. The first message starts it on the bot's `preset`, or its `provider` and `model`, titled `@main/<bot>/<person>` and offered `post_message`; a bot that names neither runs it on the host's default agent, the root config's `defaultAgent` or the first agent found ([HOST.md](../sdk/HOST.md#root-config)). The Back's origin names the Front and the `subagent` call the Front turn shows, so a client draws it under that call, as a subagent's chat. The person is the talk owner's id, or `root` for the root, and `main` is one fixed word for now. With `policies.check` on, the Back's turns are checked and charged as the talk owner's, not as the plugin's. Every later message continues the same Back, and two messages that arrive together for one Front start one Back. Once the bot's record names another agent or model, the next message starts a new Back on it, which knows nothing of the talk before it; the old one stays a chat of the session, to be read. With the plugin's `agentChange` at `keep`, the old Back goes on. The change waits while the old Back runs a turn or a Front turn waits on it, and a change of the host's default agent alone starts no new Back. Which Back a Front goes to is kept in the bot's `backs/` rows, and a Back from before the rows goes on until the next edit. A Back session an older daemon started stays as it is, and the next message starts a Back chat.
 
 A message that reaches the wake is sent to the Back as a **queued** `chat/pendingMessageSet`, whatever the Back is doing, as VS Code's Agents window sends a message from one session into another: the host takes it up at once when the Back is idle, and after the turn in front of it otherwise. The message is an agent's (`origin: { kind: 'agent' }`), and its `_meta['vscode.chat.delegation']` names the talk's session and the Front. It names no model, agent or attachments, so the Back runs it on its own defaults; the Front keeps those with the person's message. The Front turn is answered by the turn the last message it sent becomes, and a stop of the Front turn takes back the messages still waiting in the Back and cancels its running turn.
 
@@ -302,6 +302,8 @@ A bot that runs on a provider of its own, with something to be:
 }
 ```
 
+An edit keeps every field its body leaves out. A blank clears a `description`, `instructions`, `template`, `provider`, `model`, `preset` or `computer`: `{ "provider": "" }` puts a bot back on the host's default agent.
+
 An edit that asks for a provider, leaving everything else as it was:
 
 ```json
@@ -318,6 +320,7 @@ An edit that asks for a provider, leaving everything else as it was:
 | `contextIn` | `text` | Where a woken message's context goes: `text`, a block in front of the person's words, or `meta`, the words as said with the Front in the message's delegation `_meta` alone, as VS Code delegates a prompt - [The Back a message wakes](#the-back-a-message-wakes) |
 | `askIn` | `main` | Where the Back's question or approval is shown: `main`, copied into the Front turn and answered there, or `own`, left in the Back and listed on the talk's `inputNeeded`, as VS Code lists a subagent's requests on its session - [What the Back answers with](#what-the-back-answers-with) |
 | `secondSession` | `refuse` | What a person's second session with the same bot gets: `refuse`, refused naming their talk, or `allow`, opened, and the bot answers the one they used last - [A talk and its Back chat](#a-talk-and-its-back-chat) |
+| `agentChange` | `new` | What the next message gets after the bot's agent or model changes: `new`, a Back chat on it, or `keep`, the Back it had - [The Back a message wakes](#the-back-a-message-wakes) |
 
 ```json
 { "plugins": [{ "name": "@ahpd/bot", "options": { "root": "/srv/bots" } }] }
