@@ -2183,17 +2183,25 @@ export function createLifecycle(ctx: HostContext): Lifecycle {
         return undefined;
       }
       return sending.then(
-        () => { if (stopped?.() !== true) ctx.materialized(session.uri); },
+        // Brought up, whether or not its turn was stopped meanwhile.
+        () => { ctx.materialized(session.uri); },
         (error: unknown) => {
           /*
            * A backend that ended the turn with its own error has said it
            * already, and that error failed the creation; the rejection says
-           * nothing twice.
+           * nothing twice. A turn stopped before its backend could not start
+           * has said no error, and the rejection fails the creation itself.
            */
           const active = ctx.stateOf(session.chatUri)?.activeTurn as Bag | undefined;
           if (active === undefined || String(active.id ?? '') !== turnId) {
             forgetSender(turnId);
             forgetKeys(turnId);
+            // With another turn running, that turn's send says whether the session is up.
+            if (active === undefined) {
+              ctx.failSessionCreationIfStillCreating(session.uri, {
+                errorType: 'sendFailed', message: error instanceof Error ? error.message : String(error),
+              });
+            }
             return;
           }
           ended('sendFailed', error);

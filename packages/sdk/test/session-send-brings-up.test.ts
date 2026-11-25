@@ -84,7 +84,7 @@ async function opened(agent: Agent) {
   const lifecycle = async (): Promise<string> => ((await client.handle({ method: 'subscribe', params: { channel: uri } })) as {
     snapshot: { state: { lifecycle: string } };
   }).snapshot.state.lifecycle;
-  return { p, lifecycle };
+  return { p, lifecycle, client, chatUri };
 }
 
 it('fails the creation of a session whose backend rejects its first send, with the backend\'s words, and never says it ready', async () => {
@@ -118,4 +118,30 @@ it('says a session ready for a backend that says its send brings it up but retur
 
   expect(told(p)).toEqual(['root/sessionAdded', 'session/ready']);
   expect(await lifecycle()).toBe('ready');
+});
+
+/** A turn stopped while its backend is still being started, which then settles as `settles` says. */
+async function stoppedWhileStarting(settles: (up: () => void, down: (error: Error) => void) => void) {
+  let finish: () => void = () => {};
+  const held = await opened(backend(() => new Promise<void>((resolve, reject) => { finish = () => { settles(resolve, reject); }; })));
+  await settle();
+  await held.client.handle({ method: 'dispatchAction', params: { channel: held.chatUri, action: { type: 'chat/turnCancelled', turnId: 't1', duration: 1 } } });
+  await settle();
+  finish();
+  await settle();
+  return held;
+}
+
+it('says a session ready once its backend is up, though its turn was stopped meanwhile', async () => {
+  const { p, lifecycle } = await stoppedWhileStarting((up) => { up(); });
+
+  expect(told(p)).toEqual(['root/sessionAdded', 'session/ready']);
+  expect(await lifecycle()).toBe('ready');
+});
+
+it('fails the creation of a session whose backend could not start, though its turn was stopped meanwhile', async () => {
+  const { p, lifecycle } = await stoppedWhileStarting((_, down) => { down(new Error('it could not be started')); });
+
+  expect(told(p)).toEqual(['session/creationFailed', 'root/sessionAdded']);
+  expect(await lifecycle()).toBe('failed');
 });

@@ -2534,7 +2534,7 @@ A record of the engine, as `x-ahpd/agents/put` takes it:
 | `stderrBytes` | How much of the server's stderr, in bytes, a failure carries: `8192` by default, as VS Code keeps the last 8192 of a helper's stderr |
 | `killGraceMs` | How long, in milliseconds, the server's process group has between SIGTERM and SIGKILL: `5000` by default, VS Code's grace for ending a process tree |
 | `closeGraceMs` | How long, in milliseconds, a session waits for the server to answer `session/close` before the connection goes: `1000` by default |
-| `stderrTail` | Where the last of a failed server's stderr goes: `sentence`, the default, puts it under the failure in the error a client is shown, and `log` leaves it to the daemon's log, as VS Code's agents do; each line is logged either way |
+| `stderrTail` | Where the last of a failed server's stderr goes: `sentence`, the default, puts it under the failure in the error a client is shown, and `log` leaves it to the daemon's log, as VS Code's agents do; each line is logged either way. A server that could not open its session is named with the PATH it ran with under `sentence` only |
 | `install` | How to install this agent, by system, as the vendor's own docs give it. **Host records only** |
 | `page` | The vendor's install page, for a system the install lines do not cover |
 | `machine` | What a machine needs to run this agent: `env`, variables set only inside the machine, and `copy`, host paths copied in. See below. **Host records only** |

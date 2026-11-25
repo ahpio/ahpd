@@ -17,26 +17,6 @@ const NOT_AN_ANSWER: Partial<Record<StopReason, string>> = {
 };
 
 /** One prompted turn, from its opening to its ending, and the turns handed behind it. */
-/** The most of a server's stderr a turn's error carries, which every client of the session is sent. */
-const TAIL_LINES = 40;
-const TAIL_CHARS = 4 * 1024;
-
-/**
- * A stderr tail cut to its last `TAIL_LINES` lines and `TAIL_CHARS`
- * characters, saying so when it was cut, so a server that wrote pages before
- * it died does not send them all to every client.
- */
-export const bounded = (tail: string): string => {
-  const lines = tail.split('\n');
-  let kept = lines.length > TAIL_LINES ? lines.slice(-TAIL_LINES).join('\n') : tail;
-  if (kept.length > TAIL_CHARS) {
-    const cut = kept.slice(-TAIL_CHARS);
-    const newline = cut.indexOf('\n');
-    kept = newline === -1 ? cut : cut.slice(newline + 1);
-  }
-  return kept === tail ? tail : `(stderr cut to its last ${kept.split('\n').length} lines)\n${kept}`;
-};
-
 export interface Turn {
   /**
    * Send a turn the host said: prompted now when the server runs nothing, and
@@ -544,9 +524,10 @@ export function createTurn(ctx: SessionContext): Turn {
       const opened = connection === undefined ? ctx.failedOpen : undefined;
       ctx.failedOpen = undefined;
       const traced = connection ?? opened?.connection;
-      const tail = traced === undefined || ctx.options.stderrTail === 'log' ? '' : bounded(await traced.stderrTail());
-      // A server that never opened the session is named by what it ran.
-      const ran = opened === undefined ? '' : `\n${opened.command} was started with PATH ${opened.path ?? '(unset)'}`;
+      const tail = traced === undefined || ctx.options.stderrTail === 'log' ? '' : await traced.stderrTail();
+      // A server on this host that never opened the session is named by what it
+      // ran, and not where the record keeps the trace from clients.
+      const ran = opened?.path === undefined || ctx.options.stderrTail === 'log' ? '' : `\n${opened.command} was started with PATH ${opened.path}`;
       failed({ errorType: 'sendFailed', message: `${said}${ran}${tail === '' ? '' : `\n${tail}`}` });
     }
     finally {

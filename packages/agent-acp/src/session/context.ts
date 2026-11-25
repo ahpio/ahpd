@@ -19,7 +19,9 @@ export interface PendingTurn {
   /**
    * Settled once the server holds the session for this turn: resolved when the
    * turn's open answered, rejected with the turn's own failure when the turn
-   * ended before its server had it. What `sendMessage` returned.
+   * ended before its server had it. A turn a stop dropped before it ran is
+   * never settled, as the one it waited behind says whether the session is up.
+   * What `sendMessage` returned.
    */
   handed?: { resolve: () => void; reject: (error: Error) => void } | undefined;
 }
@@ -205,8 +207,9 @@ export interface SessionContext extends Config, Handlers, Opening, Turn, ClientC
   opening: Promise<{ connection: AcpConnection; sessionId: string }> | undefined;
   /**
    * The server the last failed open spawned, the command it ran and the PATH
-   * it ran with, kept until the turn that met the failure has said them: an
-   * open that fails is let go of before the turn hears of it, and a server
+   * it ran with, absent for a server in a machine, kept until the turn that met
+   * the failure has said them: an open that fails is let go of before the turn
+   * hears of it, and a server
    * that could not find what it runs is answered by its command, its PATH and
    * its trace.
    */

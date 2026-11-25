@@ -435,10 +435,11 @@ export function createOpening(ctx: SessionContext): Opening {
        * keeps the host's, since that is the folder a client named.
        */
       const told = moved === undefined ? cwd : machinePathOf(cwd);
-      const env = moved !== undefined
-        ? moved.env
-        : options.env === undefined && start.env === undefined ? undefined : { ...(options.env ?? {}), ...(start.env ?? {}) };
-      ran = { command: moved?.command ?? options.command, path: env?.PATH ?? (moved === undefined ? process.env.PATH : undefined) };
+      // A machine's PATH is the machine's, which this host does not know.
+      ran = {
+        command: moved?.command ?? options.command,
+        path: moved === undefined ? start.env?.PATH ?? options.env?.PATH ?? process.env.PATH : undefined,
+      };
       const connection = connectAcp({
         command: moved?.command ?? options.command,
         ...(moved !== undefined
