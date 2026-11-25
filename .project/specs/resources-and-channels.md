@@ -152,6 +152,18 @@ THEN the host refuses it, because the plugin is the only writer.
 WHEN two plugins register the same channel
 THEN the second registration is a problem line.
 
+WHEN the channel has `operations`
+THEN `x-ahpd/invokeOperation` serves them at `<scheme>://`, and at no other URI of the scheme
+AND each operation needs its own grant
+AND `offers`, when the channel has it, is asked with the reader before anything begins
+AND what `begin` and `settle` throw is logged and changes no answer.
+
+WHEN `operations()` throws or does not answer a list
+THEN the call is refused naming the plugin, and what it threw is only in the log.
+
+The operations name no kind, because the list is one plugin's.
+A list that several plugins add to holds kinds, as `x-ahpd-tunnels` does with `registerTunnelKind`.
+
 The `x-` prefix is the protocol's extension space, so a later protocol channel cannot take the name.
 
 ### A channel filters each action for each subscriber

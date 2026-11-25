@@ -9,6 +9,9 @@ Current progress and pending items only, as of 2026-11-25. *Outside this reposit
 
 ## Main
 
+- **2026-11-25.** #476 (`e06dbc28f`) merged on Softov's word, green: a registered channel offers operations. It starts again from beorn's commit in #474.
+  - #474 shows as merged on GitHub and is not in main. Main was forced back to `c60e02019` on Softov's word, because the second commit on it, `66e1dcb04`, was wrong about kinds.
+  - beorn has not been told of #476. Their `caller` argument for `run`, beorn/ahpd#36, is not in it. Whether it joins 0.16 is open.
 - **2026-11-24.** The six plans for the rest of AHP 1.1.0 are built, and each plan waits for Softov's review to be `built`:
   - Merged on his word of 2026-11-24, green: #456 (`8a2109753`, small wire items), #457 (`36dcfbc45`, changeset editing and nonces), #458 (`b65fd7407`, reasoning times), #459 (`cc8d19915`, a chat's own agent), #460 (`925cc1f5f`, `chat/moved`) and #461 (`afbbae125`, MCP skills). His dev daemon takes #446 to #461 at its next restart.
   - cofold #12 (`cb40b7c`), #13 (`5332aaa`) and #14 (`b1288d3`) are merged, and the tag `release-2026-11-24` released `@cofold/agents@0.4.1` and `@cofold/mcp-client@0.2.0`. npm serves both since 2026-11-24, and #461 takes both.
