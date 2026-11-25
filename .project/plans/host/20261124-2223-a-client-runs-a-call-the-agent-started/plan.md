@@ -1,7 +1,7 @@
 ---
 title: A client runs a call only when the agent started it
 domain: host
-status: active
+status: built
 priority: high
 created: 2026-11-24
 revalidated: 2026-11-24
@@ -92,12 +92,12 @@ The order of the two was read from the code.
 ## Resume state
 
 - **Done so far:** both tasks, 2026-11-24.
-- **Next action:** Softov's review, and the check with a real Claude session.
+- **Next action:** none.
 - **Open questions:** none.
 - **Watch out for:** delaying only the entry fixes nothing, because the host raises it from `running`.
 
 ## Final verification checklist
 
-- [ ] A client that answers at once cannot run a call before the question is answered, on Claude and ACP.
-- [ ] The suites of the sdk, of each agent and of the computer package pass.
-- [ ] With a real Claude session in "Ask Before Edits", ahpw's `listCommands` asks, runs once, and the agent replies.
+- [x] A client that answers at once cannot run a call before the question is answered, on Claude and ACP.
+- [x] The suites of the sdk, of each agent and of the computer package pass.
+- [x] With a real Claude session in "Ask Before Edits", ahpw's `listCommands` asks, runs once, and the agent replies.

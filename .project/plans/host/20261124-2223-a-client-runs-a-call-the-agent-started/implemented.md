@@ -12,7 +12,8 @@ title: A client runs a call only when the agent started it, as built
 - A client that answers at once, with a question and with none, on a call reported whole and on one streamed.
 - The new cases fail on the code before the change.
 - The typecheck and the whole suite.
-- Not verified: a real Claude session. The check is [client-call-order-checks](../../../pending/client-call-order-checks.md).
+- A real Claude session in "Ask Before Edits", with ahpw's tools. Each call asked before it ran, an allowed call ran once, a denied call never reached ahpw, and the agent replied. A script gave the answers over the protocol.
+- Not verified live: a Claude session that asks no question, and a real ACP agent.
 
 ## Departures from the plan
 
