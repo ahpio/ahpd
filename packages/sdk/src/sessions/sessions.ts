@@ -778,8 +778,12 @@ export function fileSessions(options: FileSessionOptions): SessionStore {
     const waiting = [...dirty];
     dirty.clear();
     for (const id of waiting) {
-      const row = rowOf(id);
       const file = join(dir, fileNameOf(id));
+      if (damaged.has(id)) {
+        told(`Did not write ${file}: it cannot be read, so it is left as it is.`);
+        continue;
+      }
+      const row = rowOf(id);
       try {
         // Nothing left to say about this one, which is a session disposed or a
         // flag read and cleared: its file goes with it.
@@ -821,51 +825,52 @@ export function fileSessions(options: FileSessionOptions): SessionStore {
   };
 
   /**
-   * Move a file this version cannot read to `<file>.unreadable-<time>`.
+   * The ids whose file is there and cannot be read, with the reason.
    *
-   * The name does not end in `.json`, so a later load does not read it again,
-   * and the UTC time keeps two moves of one id apart. A move that fails leaves
-   * the file where it is, and says so.
+   * Kept apart from the rows: such an id is not a session this store holds,
+   * and is not one that is missing either. Its file stays where it is and no
+   * write replaces it, so a person can see it and delete it.
    */
-  const setAside = (file: string): void => {
-    const aside = `${file}.unreadable-${new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '')}`;
-    try {
-      renameSync(file, aside);
-      told(`Moved ${file} to ${aside}.`);
-    }
-    catch (error) {
-      told(`Could not move ${file} aside, so the next write for it replaces it: ${(error as NodeJS.ErrnoException).code ?? 'failed'}`);
-    }
-  };
+  const damaged = new Map<string, string>();
 
   const load = (): void => {
     let names: string[];
     try { names = readdirSync(dir); }
     // Not there yet, which is what a first run looks like.
-    catch { return; }
+    catch (error) {
+      // Not there yet is what a first run looks like. A folder that is there
+      // and cannot be read starts an empty store, and says so.
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') told(`Could not read ${dir}: ${(error as NodeJS.ErrnoException).code ?? 'failed'}`);
+      return;
+    }
     for (const name of names) {
       if (!name.endsWith('.json')) continue;
       // A name that is not an id this version could have written is not one of
       // its files.
-      if (idIn(name.slice(0, -'.json'.length)) === undefined) continue;
+      const nameId = idIn(name.slice(0, -'.json'.length));
+      if (nameId === undefined) continue;
       const file = join(dir, name);
       const read = readJson(file);
       let row: Saved | undefined;
+      let reason: string | undefined;
       if (!read.ok) {
         // The parser's error quotes what it choked on, so a file that is not
         // JSON is said to be that and no more.
         if (read.kind === 'missing') continue;
-        told(`Could not read ${file}: ${read.kind === 'unreadable' ? read.code ?? 'unreadable' : 'it is not JSON'}`);
+        reason = read.kind === 'unreadable' ? `it cannot be read: ${read.code ?? 'unreadable'}` : 'it is not JSON';
       }
-      else if ((read.value as Partial<Saved>).version === 1 && typeof (read.value as Partial<Saved>).id === 'string') {
-        row = read.value as Saved;
+      else {
+        const value = read.value as Partial<Saved> | null;
+        if (typeof value !== 'object' || value === null || Array.isArray(value) || value.version !== 1) reason = 'it is not a session store this version can read';
+        else if (value.id !== nameId) reason = 'the id in it is not the one in its name';
+        else row = value as Saved;
       }
-      else told(`Ignoring ${file}: it is not a session store this version can read.`);
-      // One file this version cannot read is one session it does not know, and
-      // the rest of the folder still does. It is moved aside, because the next
-      // write for its id would put what memory holds in its place.
+      // One file this version cannot read is one session it cannot describe,
+      // and the rest of the folder is still read. It stays where it is: its id
+      // is kept as damaged, and no write replaces it.
       if (row === undefined) {
-        setAside(file);
+        damaged.set(nameId, reason ?? 'it cannot be read');
+        told(`Could not read ${file}: ${reason}. It is left in place.`);
         continue;
       }
       heard.add(row.id);
@@ -1090,9 +1095,16 @@ export function fileSessions(options: FileSessionOptions): SessionStore {
     },
     // What this store holds is what it read at construction, which is the whole
     // folder, and what it was told since: the composition answers both.
-    sessions: () => inner.sessions(),
+    sessions: () => inner.sessions().filter((id) => !damaged.has(id)),
+    damaged: () => damaged,
     attachmentsDir: attachmentsOf,
     forget: (id) => {
+      // A person deleted the session, which is the one thing that removes a
+      // damaged file.
+      if (damaged.delete(id)) {
+        try { rmSync(join(dir, fileNameOf(id)), { force: true }); }
+        catch (error) { told(`Could not remove ${join(dir, fileNameOf(id))}: ${error instanceof Error ? error.message : String(error)}`); }
+      }
       heard.delete(id);
       inner.forget(id);
       attachmentsGone(id);
