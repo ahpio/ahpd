@@ -809,6 +809,15 @@ export function createLifecycle(ctx: HostContext): Lifecycle {
     mayDispose(acting, uri);
     const held = sessions.get(uri);
     const owner = owners.get(uri);
+    // A session whose file cannot be read has no owner and no agent to ask.
+    // Its file is the whole of it, and removing the file is the delete.
+    if (!held && !owner && kept.damaged?.().has(idOf(uri))) {
+      kept.forget(idOf(uri));
+      removeNotifiedSummary(uri);
+      broadcast(ROOT, 'root/sessionRemoved', { channel: ROOT, session: uri });
+      log(`deleted the damaged session ${uri}`);
+      return;
+    }
     if (!held && !owner)
       throw new RpcError(AhpErrorCodes.SessionNotFound, `No agent for session: ${uri}`);
     const agent = held?.agent ?? (owner as Agent);
