@@ -1,6 +1,6 @@
 ---
 title: The release run packs the part's packages once
-status: todo
+status: doing
 depends:
   - task-02-a-release-writes-its-version-and-lock.md
 layer: "release, docs"
@@ -37,3 +37,5 @@ The parts job packs the four packages, and the release job stages those tarballs
 - Write a file in `.project/pending/` for the rc check in the plan's *Final verification checklist*.
 
 ## Resume
+
+Built on 2026-11-25. The pack and check steps ran on this host as a dry run would, and passed. `release.yml` itself has not run yet. The notes for `v0_16.md`: an installed host runs its own version of ahpd in machines and on boxes.

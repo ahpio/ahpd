@@ -38,15 +38,9 @@ afterEach(() => {
 });
 const temp = (): string => (loose ??= mkdtempSync(join(tmpdir(), 'ahpd-hostinstall-')));
 
-/** The ahpd the stand-in npm writes: it answers `--version`, and `plugin install` makes each plugin's folder in the plugin root. */
+/** The ahpd the stand-in npm writes: it answers `--version`. */
 const AHPD_STANDIN = `#!/usr/bin/env node
-const { mkdirSync } = require('node:fs');
-const { join } = require('node:path');
-const [first, , , ...specs] = process.argv.slice(2);
-if (first === '--version') console.log('9.9.9');
-if (first === 'plugin') {
-  for (const spec of specs) mkdirSync(join(process.env.AHPD_PLUGIN_ROOT, 'node_modules', spec.slice(0, spec.lastIndexOf('@'))), { recursive: true });
-}
+if (process.argv[2] === '--version') console.log('9.9.9');
 `;
 
 /**
@@ -63,11 +57,16 @@ done
 mkdir -p "$prefix/node_modules/.bin" && cp "$(dirname "$0")/../share/ahpd.js" "$prefix/node_modules/.bin/ahpd"
 `;
 
-/** The ahpd part's two files, standing in for the ones `lockOf` reads. */
+/** The ahpd part's four files, standing in for the ones `lockOf` reads. */
 const LOCK = [
   { name: 'package.json', bytes: Buffer.from('{\n  "name": "ahpd-part-ahpd",\n  "private": true\n}\n') },
   { name: 'package-lock.json', bytes: Buffer.from('{\n  "lockfileVersion": 3\n}\n') },
+  { name: 'plugins/package.json', bytes: Buffer.from('{\n  "name": "ahpd-part-ahpd-plugins"\n}\n') },
+  { name: 'plugins/package-lock.json', bytes: Buffer.from('{\n  "lockfileVersion": 3\n}\n') },
 ];
+
+/** The lock with its plugins' lock moved. */
+const MOVED = LOCK.map((one) => (one.name === 'plugins/package-lock.json' ? { ...one, bytes: Buffer.from('{\n  "lockfileVersion": 4\n}\n') } : one));
 
 /** A Node download, packed as the box unpacks it, and its sha256. */
 const download = (): { url: string; sha256: string } => {
@@ -136,12 +135,15 @@ it.skipIf(!posix)('installs ahpd in the box user folder the first time, and star
   expect(spawnSync(join(dir, 'bin', 'ahpd'), ['--version'], { encoding: 'utf8' }).stdout.trim()).toBe('9.9.9');
   // ahpd from the ahpd part's lock, written byte for byte, by `npm ci` with the part's flags.
   for (const one of LOCK) expect(readFileSync(join(dir, 'ahpd', one.name))).toEqual(one.bytes);
-  const [run] = npmRuns();
+  const [run, plugins] = npmRuns();
   expect(run?.split(' ').slice(0, 2)).toEqual(['ci', '--prefix']);
   expect(run?.split(' ').slice(3)).toEqual(['--no-audit', '--no-fund', '--loglevel=error']);
-  // The plugins are installed into the install's own root.
-  expect(existsSync(join(dir, 'ahpd', 'plugins', 'node_modules', '@ahpd', 'agent-cofold'))).toBe(true);
-  expect(existsSync(join(dir, 'ahpd', 'plugins', 'node_modules', '@ahpd', 'agent-pi'))).toBe(true);
+  // The plugins from their own lock, into the install's own root.
+  expect(plugins?.split(' ')[2]).toBe(`${run?.split(' ')[2]}/plugins`);
+  expect(plugins?.split(' ').slice(3)).toEqual(['--legacy-peer-deps', '--no-audit', '--no-fund', '--loglevel=error']);
+  expect(existsSync(join(dir, 'ahpd', 'plugins', 'node_modules'))).toBe(true);
+  // A plugin lock that moves is another install.
+  expect(hostInstallOf(parts, MOVED).key).not.toBe(key);
   // The folder the download was unpacked in went into place, and nothing else is left.
   expect(readdirSync(installs())).toEqual([key]);
   expect(logged).toEqual([`ahpd 9.9.9 was installed on dev02 at ${join(dir, 'bin', 'ahpd')}`]);
@@ -154,7 +156,7 @@ it.skipIf(!posix)('starts the host from the install it finds, and downloads noth
 
   const second = box(parts);
   expect(await second.runtime.hostCommand('dev02')).toEqual(command);
-  expect(npmRuns()).toHaveLength(1);
+  expect(npmRuns()).toHaveLength(2);
   expect(second.logged).toEqual([]);
 });
 
@@ -164,7 +166,7 @@ it.skipIf(!posix)('installs once for two sessions starting on one box at once', 
 
   const [one, two] = await Promise.all([runtime.hostCommand('dev02'), runtime.hostCommand('dev02')]);
   expect(one).toEqual(two);
-  expect(npmRuns()).toHaveLength(1);
+  expect(npmRuns()).toHaveLength(2);
   expect(readFileSync(join(temp(), 'ssh.jsonl'), 'utf8').trim().split('\n')).toHaveLength(1);
 });
 

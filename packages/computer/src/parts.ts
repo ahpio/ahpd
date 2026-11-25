@@ -730,10 +730,28 @@ const launchersIn = (part: Part): string[] => [`mkdir -p /opt/ahpd/${part.id}/bi
  */
 export const LOCK_FILES = ['package.json', 'package-lock.json'] as const;
 
-/** A part's two files, or nothing for a part with no npm packages; the ahpd part's are `@ahpd/sdk` and `@ahpd/server`. */
+/** The folder of the ahpd part that its plugins' two files are in, and that its plugins are installed in. */
+const PLUGIN_FOLDER = 'plugins';
+
+/** The flags npm installs a part's packages with. */
+export const PART_NPM_FLAGS = '--no-audit --no-fund --loglevel=error';
+
+/**
+ * The flags npm installs the ahpd part's plugins with: no plugin's peer range
+ * checked against another's, as `ahpd plugin install` installs into a plugin
+ * root (`the-daemon-installs-its-own-sdk-beside-the-plugins`).
+ */
+export const PART_PLUGIN_FLAGS = `--legacy-peer-deps ${PART_NPM_FLAGS}`;
+
+/**
+ * A part's two files, or nothing for a part with no npm packages. The ahpd
+ * part's are `@ahpd/sdk` and `@ahpd/server`, and for its plugins two more, of
+ * the plugins with the sdk beside them, named `plugins/<file>`.
+ */
 export const lockOf = (part: Part, path: string = versionsPath()): Tarball[] | undefined => {
   if (part.kind !== 'ahpd' && part.packages === undefined) return undefined;
-  return LOCK_FILES.map((name) => {
+  const plugins = part.kind === 'ahpd' && part.plugins !== undefined ? LOCK_FILES.map((name) => `${PLUGIN_FOLDER}/${name}`) : [];
+  return [...LOCK_FILES, ...plugins].map((name) => {
     const at = join(dirname(path), 'parts', part.id, name);
     if (!existsSync(at)) {
       throw new Error(`${at} is not there, and the ${part.id} part's npm packages are installed from it: node scripts/parts-bump.mjs --locks writes it`);
@@ -742,8 +760,9 @@ export const lockOf = (part: Part, path: string = versionsPath()): Tarball[] | u
   });
 };
 
-/** The flags npm installs a part's packages with. */
-export const PART_NPM_FLAGS = '--no-audit --no-fund --loglevel=error';
+/** The files of a lock that are the plugins' own, or with `false` the ones that are not. */
+export const lockFilesOf = (lock: readonly Tarball[], plugins: boolean): Tarball[] =>
+  lock.filter((one) => one.name.startsWith(`${PLUGIN_FOLDER}/`) === plugins);
 
 /**
  * The `npm ci` that installs a part's packages into `root` from its two files,
@@ -758,12 +777,12 @@ export const PART_NPM_FLAGS = '--no-audit --no-fund --loglevel=error';
  * a package names are installed with it, because dsh's own packages reach one
  * another as peers.
  */
-const fromLock = (root: string, lock: readonly Tarball[]): string => [
+const fromLock = (root: string, lock: readonly Tarball[], flags: string = PART_NPM_FLAGS): string => [
   `COPY ${lock.map((one) => one.name).join(' ')} ${root}/`,
   [
     `RUN cd ${root}`,
-    ...lock.map((one) => `echo "${createHash('sha256').update(one.bytes).digest('hex')}  ${one.name}" | sha256sum --check --strict -`),
-    `npm ci ${PART_NPM_FLAGS}`,
+    ...lock.map((one) => `echo "${createHash('sha256').update(one.bytes).digest('hex')}  ${one.name.slice(one.name.lastIndexOf('/') + 1)}" | sha256sum --check --strict -`),
+    `npm ci ${flags}`,
   ].join(' \\\n && '),
 ].join('\n');
 
@@ -811,7 +830,7 @@ const byNode = (part: Part): string => [
 ].join('\n\n');
 
 /** The root the ahpd part's own plugins are installed in and read from. */
-const PLUGIN_ROOT = '/opt/ahpd/ahpd/plugins';
+const PLUGIN_ROOT = `/opt/ahpd/ahpd/${PLUGIN_FOLDER}`;
 
 /** The launcher the ahpd part leaves, which is the one that sets the root. */
 const ahpdLauncher = (part: Part): string =>
@@ -838,20 +857,21 @@ export const dockerfileOf = (part: Part, source?: AhpdSource, lock?: readonly Ta
     throw new Error(`the ${part.id} part is built from code this checkout has to pack, which is what ahpdSourceOf() answers`);
   }
   if (source.from === 'npm') {
+    const plugins = lockFilesOf(lock ?? [], true);
     return [
       fetching(true, 'ca-certificates'),
-      fromLock(`/opt/ahpd/${part.id}`, lock ?? []),
+      // A release builds this before npm serves its packages, from the tarballs
+      // it stages, beside these files in its context: in npm's cache `npm ci`
+      // finds each by the integrity its lock holds and asks npm for none. A
+      // context without tarballs is the same Dockerfile, so the tag a host asks
+      // for is the release's own.
+      // https://docs.npmjs.com/cli/v11/commands/npm-cache
+      'COPY package.json *.tgz ./',
+      'RUN for one in *.tgz; do if [ -e "$one" ]; then npm cache add "./$one" || exit 1; fi; done',
+      fromLock(`/opt/ahpd/${part.id}`, lockFilesOf(lock ?? [], false)),
       // The nested backends go in the part, not in the config dir, because a
       // `FROM scratch` stage keeps nothing that is not under `/opt/ahpd/ahpd`.
-      //
-      // `ahpd plugin install` is what installs them, and not a plain `npm
-      // install`: the installer is also what reads the package's `"ahpd"`
-      // field and refuses one that is not a plugin. `AHPD_PLUGIN_ROOT` makes
-      // the part's own root the plugin root. `--no-enable` installs the plugin
-      // into that root without naming it in a configuration, because the
-      // profile that names it is written when a session starts.
-      `RUN AHPD_PLUGIN_ROOT=${PLUGIN_ROOT} /opt/ahpd/${part.id}/node_modules/.bin/ahpd plugin install --no-enable ${
-        (part.plugins ?? []).map((one) => `${one}@${part.version}`).join(' ')}`,
+      ...(plugins.length === 0 ? [] : [fromLock(PLUGIN_ROOT, plugins, PART_PLUGIN_FLAGS)]),
       ahpdLauncher(part),
       only(part.id),
     ].join('\n\n');

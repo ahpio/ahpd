@@ -23,7 +23,7 @@ refs:
   - "[code://packages/sdk/src/types/agent.ts#L547-L561](../../packages/sdk/src/types/agent.ts#L547-L561) - `runsNested`"
   - "[code://packages/sdk/src/types/computers.ts#L36-L51](../../packages/sdk/src/types/computers.ts#L36-L51) - `NestedStart`"
   - "[code://packages/computer/src/plugin.ts#L1492-L1520](../../packages/computer/src/plugin.ts#L1492-L1520) - `nestedHost`, the command that starts a host in a machine"
-  - "[code://packages/computer/src/parts.ts#L645-L662](../../packages/computer/src/parts.ts#L645-L662) - the `ahpd` part, with its plugins put in by `ahpd plugin install`"
+  - "[code://packages/computer/src/parts.ts#L645-L662](../../packages/computer/src/parts.ts#L645-L662) - the `ahpd` part, with its plugins put in from their lock"
   - git://d9d4f950^ - the deleted decisions this spec was written from: a-backend-that-runs-nested-names-its-plugin, a-cofold-session-in-a-computer-runs-in-a-nested-host, a-nested-host-gets-a-per-session-proxy-token-and-url, a-nested-host-image-installs-its-plugins-with-ahpd-plugin-install, a-nested-host-is-configured-by-the-machine-profile-only, a-nested-host-is-used-only-where-a-command-cannot-reach-the-agent, a-nested-session-resumes-its-inner-transcript-by-id, a-session-reaches-a-nested-host-through-a-generic-proxy, any-ahpd-can-be-the-hub, the-host-records-which-plugin-registered-each-agent
 ---
 
@@ -83,9 +83,10 @@ A machine off this host gets no value from this host's vault.
 ### The host inside comes from the ahpd part
 
 WHEN the `ahpd` part is built from the published version
-THEN its image installs `@ahpd/server` with npm and each nested plugin with `ahpd plugin install --no-enable`
+THEN its image installs `@ahpd/server` and the nested plugins with `npm ci`, each from a lock of its own
+AND the version is the host's own in a host installed from a release, and the committed one in a host run from a checkout
 AND a machine with that part mounted has the host and its plugins with no install at session start.
-A part built from this checkout installs the packed plugins with npm, because `ahpd plugin install` takes a package name and not a path.
+A part built from this checkout installs the packed plugins with npm, with no lock.
 
 ### The two hosts speak one protocol version
 

@@ -15,7 +15,7 @@
  * What is installed is what a machine's `/opt/ahpd` holds of the `node` and
  * `ahpd` parts, at the versions `versions.json` names: Node from its download,
  * checked by its sha256, `@ahpd/server` by `npm ci` from the ahpd part's lock,
- * the part's plugins in a plugin root of the install's own, and a launcher
+ * the part's plugins from theirs in a plugin root of the install's own, and a launcher
  * that runs it on that Node.
  * The folder is under `$XDG_DATA_HOME/ahpd/server`, where ahpd keeps its data,
  * so the install needs no `sudo` and leaves any other ahpd on the box as it is.
@@ -28,7 +28,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { lockOf, PART_NPM_FLAGS, platformOf, readParts, versionsPath } from './parts.js';
+import { lockFilesOf, lockOf, PART_NPM_FLAGS, PART_PLUGIN_FLAGS, platformOf, readParts, versionsPath } from './parts.js';
 import type { Part, Tarball } from './parts.js';
 
 /** The folder the installs are in, as the box's own `sh` expands it. */
@@ -49,8 +49,8 @@ const END = 'AHPD_PART_FILE';
 
 /*
  * The script, sent to the box's `sh` on stdin after the `files` function that
- * writes the ahpd part's lock, with the install's folder, the two Node
- * downloads with their sums and the plugins as its arguments. It prints
+ * writes the ahpd part's lock, with the install's folder and the two Node
+ * downloads with their sums as its arguments. It prints
  * `root=<the root>` and `install=<the folder that runs>`, with `installed=yes`
  * after an install and `fallback=yes` when the folder is another install than
  * the one asked for.
@@ -65,7 +65,6 @@ const END = 'AHPD_PART_FILE';
  */
 const SCRIPT = `
 key=$1 x64=$2 x64sum=$3 arm64=$4 arm64sum=$5
-shift 5
 case "$(uname -s) $(uname -m)" in
   ${HOST_MACHINES['linux-x64'].map((one) => `'Linux ${one}'`).join('|')}) url=$x64 sum=$x64sum ;;
   ${HOST_MACHINES['linux-arm64'].map((one) => `'Linux ${one}'`).join('|')}) url=$arm64 sum=$arm64sum ;;
@@ -97,7 +96,7 @@ install() {
     PATH="$tmp/node/bin:$PATH" && export PATH &&
     mkdir ahpd && files ahpd &&
     npm ci --prefix "$tmp/ahpd" ${PART_NPM_FLAGS} &&
-    { [ "$#" -eq 0 ] || AHPD_PLUGIN_ROOT="$tmp/ahpd/plugins" "$tmp/ahpd/node_modules/.bin/ahpd" plugin install --no-enable "$@"; } &&
+    { [ ! -d ahpd/plugins ] || npm ci --prefix "$tmp/ahpd/plugins" ${PART_PLUGIN_FLAGS}; } &&
     mkdir bin &&
     printf '%s\\n' '#!/bin/sh' 'here=$(cd -- "$(dirname -- "$0")/.." && pwd)' 'exec "$here/node/bin/node" "$here/ahpd/node_modules/.bin/ahpd" "$@"' > bin/ahpd &&
     chmod +x bin/ahpd &&
@@ -107,7 +106,7 @@ install() {
   rm -rf -- "$tmp"
   return $held
 }
-if install "$@" >&2; then
+if install >&2; then
   echo "install=$dir"
   echo installed=yes
   prune
@@ -144,8 +143,8 @@ export interface HostInstall {
   version: string;
   /**
    * Its folder under the root: the version, then a hash of the script and
-   * every pinned value it is given, so a moved version, lock, download or
-   * plugin is a new folder.
+   * every pinned value it is given, so a moved version, lock or download is
+   * a new folder.
    */
   key: string;
   /** What `HOST_INSTALL_COMMAND` is given after it. */
@@ -166,16 +165,15 @@ export const hostInstallOf = (parts: readonly Part[] = readParts(), lock?: reado
   }
   const x64 = platformOf(node, 'linux-x64');
   const arm64 = platformOf(node, 'linux-arm64');
-  const pinned = [
-    x64.url, x64.sha256, arm64.url, arm64.sha256,
-    ...(ahpd.plugins ?? []).map((one) => `${one}@${ahpd.version}`),
-  ];
+  const pinned = [x64.url, x64.sha256, arm64.url, arm64.sha256];
+  const held = lock ?? lockOf(ahpd) ?? [];
   // Each file as a here-document, its last newline the one the document ends with.
-  const files = (lock ?? lockOf(ahpd) ?? []).flatMap((one) => {
+  const files = held.flatMap((one) => {
     const text = one.bytes.toString('utf8');
     return [`  cat > "$1/${one.name}" <<'${END}'`, text.endsWith('\n') ? text.slice(0, -1) : text, END];
   });
-  const script = ['files() {', ...files, '}', SCRIPT].join('\n');
+  const folder = lockFilesOf(held, true).length === 0 ? [] : ['  mkdir "$1/plugins"'];
+  const script = ['files() {', ...folder, ...files, '}', SCRIPT].join('\n');
   const key = `${ahpd.version}-${createHash('sha256').update([script, ...pinned].join('\0')).digest('hex').slice(0, 12)}`;
   return { version: ahpd.version, key, args: [key, ...pinned], script };
 };

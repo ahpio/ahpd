@@ -1,6 +1,6 @@
 ---
 title: A release writes its own version and lock
-status: todo
+status: done
 depends:
   - task-01-the-plugins-install-from-a-lock.md
 layer: "computer, scripts"
@@ -41,3 +41,5 @@ The part's image builds from the tarballs before npm serves them.
 - Pack the four packages at a version npm does not serve. Build the image from them with `--local --packages`. `ahpd --version` in it answers that version.
 
 ## Resume
+
+Done on 2026-11-25. Four packages at 0.99.0, which npm does not serve, built the image, and `ahpd --version` in it answers 0.99.0.

@@ -1,6 +1,6 @@
 ---
 title: The ahpd part's plugins install from a lock
-status: todo
+status: done
 depends: []
 layer: "computer"
 refs:
@@ -43,3 +43,5 @@ The plugins of the published ahpd part are installed by `npm ci` from a committe
 - Build the part with `node --conditions development --import ./scripts/dev.mjs scripts/parts-publish.mjs --local`, and run a cofold session in a machine with it.
 
 ## Resume
+
+Done on 2026-11-25. A box in a container installed both locks from npm, and its ahpd loaded agent-cofold. Not run: a cofold session in a machine with the part.
