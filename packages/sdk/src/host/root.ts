@@ -11,6 +11,7 @@ import { CLIENT_QUEUE_BYTES, MINIMUM_LIMIT_BYTES, REPLAY_BYTES } from './limits.
 import { ROOT } from './channels.js';
 import type { Connection, HostOptions } from '../types/host.js';
 import { agentRefusal } from './common.js';
+import { DEFAULT_AGENT } from './defaultagent.js';
 import type { Bag } from '../types/common.js';
 import type { HostContext } from './context.js';
 import type { ResourceProvider } from '../types/resources.js';
@@ -403,7 +404,8 @@ export function createRoot(ctx: HostContext): Root {
    * host's reading of the same key (there is none).
    *
    * Each key this host decides by is read where the decision is made:
-   * `defaultShell` where a client's terminal opens, `workspaceTrust` below,
+   * `defaultShell` where a client's terminal opens, `defaultAgent` where a
+   * create names no agent (`defaultagent.ts`), `workspaceTrust` below,
    * the three terminal and edit rules, `permissions` and
    * `autoApprovePolicyRestricted` where `spawn.ts` decides a tool question,
    * `globalAutoApproveEnabled` where `trust.ts` asks before a tool call runs,
@@ -426,6 +428,13 @@ export function createRoot(ctx: HostContext): Root {
         type: 'string',
         title: 'Default Shell',
         description: 'Absolute path to the shell host-managed terminals open. The system shell when unset.',
+      },
+      // The choices are added where a connection reads the root (`rootFor`),
+      // so a start restores the name of an agent that loads after this.
+      [DEFAULT_AGENT]: {
+        type: 'string',
+        title: 'Default Agent',
+        description: 'The agent a new session, chat or bot runs on when it names none. The first agent whose program is found when unset.',
       },
       /*
        * Which folders the host's sessions may load their projects from.
@@ -796,6 +805,20 @@ export function createRoot(ctx: HostContext): Root {
   const personOfConnection = (connection?: Connection): string | undefined =>
     (options.users !== undefined && connection !== undefined && connection.root !== true ? connection.principal?.id : undefined);
 
+  /**
+   * The default agent's property with the served agents as its choices, the
+   * empty one first, and the chosen one kept where the host does not list it.
+   */
+  const withAgentChoices = (property: Bag, listed: Bag[], chosen: unknown): Bag => {
+    const choices = listed.map((one) => ({ id: String(one.provider), name: String(one.displayName ?? one.provider) }));
+    if (typeof chosen === 'string' && chosen !== '' && !choices.some((one) => one.id === chosen)) choices.push({ id: chosen, name: chosen });
+    return {
+      ...property,
+      enum: ['', ...choices.map((one) => one.id)],
+      enumLabels: ['First agent found', ...choices.map((one) => one.name)],
+    };
+  };
+
   const rootFor = (held: Bag, connection?: Connection): Bag => {
     const config = (held.config ?? { schema: ROOT_CONFIG_SCHEMA, values: {} }) as { schema: Bag; values: Bag };
     /*
@@ -823,6 +846,9 @@ export function createRoot(ctx: HostContext): Root {
     const declared = (config.schema.properties ?? {}) as Bag;
     const properties = person === undefined ? declared : Object.fromEntries(Object.entries(declared).map(([key, value]) =>
       [key, APPROVAL_KEYS.includes(key) && typeof value === 'object' && value !== null ? { ...value as Bag, [SCOPE_MARK]: 'person' } : value]));
+    // The agents this connection is told of, as the choices of the default one.
+    const agentsHere = (Array.isArray(held.agents) ? held.agents : []) as Bag[];
+    const offered = properties[DEFAULT_AGENT] === undefined ? properties : { ...properties, [DEFAULT_AGENT]: withAgentChoices(properties[DEFAULT_AGENT] as Bag, agentsHere, values[DEFAULT_AGENT]) };
     const meta = metaFor(connection);
     return {
       ...held,
@@ -830,7 +856,7 @@ export function createRoot(ctx: HostContext): Root {
       // use is listed with no models.
       agents: connection === undefined ? held.agents : ctx.agentsFor(connection, held.agents),
       config: {
-        schema: { ...config.schema, properties: reads ? properties : Object.fromEntries(Object.entries(properties).filter(([key]) => !daemonHeld(key))) },
+        schema: { ...config.schema, properties: reads ? offered : Object.fromEntries(Object.entries(offered).filter(([key]) => !daemonHeld(key))) },
         values,
       },
       ...(Object.keys(meta).length === 0 ? {} : { _meta: meta }),

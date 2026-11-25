@@ -183,6 +183,8 @@ export { uriFor, idFor, idOf, Status, statusOf, activityOf, titleFrom, holdsTheQ
 export { ensureWorkspacelessScratchDir } from './sessions/scratch.js';
 export type { Activity, StatusBits } from './sessions/catalog.js';
 export { tail, older, PAGE } from './sessions/paging.js';
+export { onPath } from './utils/onpath.js';
+export type { OnPathLookup } from './utils/onpath.js';
 export { launch } from './utils/npm.js';
 export type { Launch } from './utils/npm.js';
 export { toolCallDurationMs, withToolCallDuration } from './utils/timing.js';

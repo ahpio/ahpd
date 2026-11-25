@@ -1,6 +1,6 @@
 ---
 title: An agent says its program is missing
-status: todo
+status: done
 depends: []
 layer: "sdk, agent-acp, server"
 refs:
@@ -21,8 +21,9 @@ An `Agent` may answer the program it needs and cannot find. The ACP agent answer
 - `UPDATE: packages/sdk/src/index.ts` - export `onPath` and `OnPathLookup`.
 - `UPDATE: packages/server/src/found.ts` - import `onPath` from the sdk.
 - `UPDATE: packages/server/src/doctor.ts` - import `OnPathLookup` from the sdk.
-- `UPDATE: packages/server/test/onpath.test.ts` - import from the sdk.
-- `UPDATE: packages/agent-acp/src/agent.ts` - answer `missingProgram` from the command, its `env` PATH and its `cwd`.
+- `DELETE: packages/server/test/onpath.test.ts` - moved to the sdk with the code.
+- `CREATE: packages/sdk/test/onpath.test.ts` - the moved cases.
+- `UPDATE: packages/agent-acp/src/agent.ts` - answer `missingProgram` from the command and its `env` PATH.
 - `UPDATE: packages/agent-acp/test` - the cases for the check.
 
 ## Steps
@@ -31,12 +32,11 @@ An `Agent` may answer the program it needs and cannot find. The ACP agent answer
 2. Change the two server imports and the test import.
 3. Add `missingProgram?()` to `Agent`, with a doc comment that says what an absent member means.
 4. Answer it in the ACP agent with `onPath`, on the PATH the spawn gives the program.
-5. Resolve a command that has a folder in it against the spawn `cwd`, as `spawn` does.
-6. Answer nothing when the agent has a machine.
+5. Answer nothing for a relative command with a folder in it, because it runs against each session's folder.
 
 ## Validation
 
-- A case each: command found, command missing, absolute path, relative path, own `env.PATH`, machine.
-- `TMPDIR=/home/softov/tmp/ahpd-test flock /home/softov/tmp/ahpd-test/vitest.lock npx vitest run packages/agent-acp/test packages/server/test/onpath.test.ts` passes.
+- A case each: command found, command missing, absolute path, relative path, own `env.PATH`, and a record with a machine block.
+- `TMPDIR=/home/softov/tmp/ahpd-test flock /home/softov/tmp/ahpd-test/vitest.lock npx vitest run packages/agent-acp/test packages/sdk/test/onpath.test.ts` passes.
 
 ## Resume

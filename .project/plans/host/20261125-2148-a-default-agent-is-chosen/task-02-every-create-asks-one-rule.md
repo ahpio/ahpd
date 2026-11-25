@@ -1,6 +1,6 @@
 ---
 title: Every create asks one rule
-status: todo
+status: done
 depends:
   - task-01-an-agent-says-its-program-is-missing.md
 layer: "sdk, docs"
@@ -16,15 +16,15 @@ One function answers the agent of a create that names none. The root config key 
 
 ## Files
 
-- `UPDATE: packages/sdk/src/host/common.ts:75` - add `defaultAgentFor`.
+- `CREATE: packages/sdk/src/host/defaultagent.ts` - `defaultAgentFor` and `ownerMay`.
 - `UPDATE: packages/sdk/src/host/root.ts:425` - declare `defaultAgent` beside `defaultShell`.
 - `UPDATE: packages/sdk/src/host/root.ts:799` - add the agents as choices of `defaultAgent` for the connection.
 - `UPDATE: packages/sdk/src/host/tooling.ts` - the three creates call the function.
 - `UPDATE: packages/sdk/src/host/sessionmethods.ts` - `createSession` and `resolveSessionConfig` call the function.
 - `UPDATE: packages/sdk/src/host/automations.ts:839` - the start calls the function with the owner.
 - `UPDATE: packages/sdk/test` - the cases of the rule and of each entry point.
-- `UPDATE: packages/bot/test/bot-chat.test.ts` - a bot with no agent takes the default.
-- `UPDATE: docs/sdk/AHP.md` - the key and what it decides.
+- `UPDATE: docs/sdk/HOST.md` - the key and what it decides.
+- `UPDATE: docs/sdk/AHP.md` - the key among those the host acts on.
 - `UPDATE: docs/plugins/BOTS.md` - what a bot that names no agent runs on.
 - `UPDATE: docs/updates/v0_16.md` - the entry and its Upgrading line.
 - `UPDATE: .project/specs/agent-backends.md` - the scenario of a create with no agent.
