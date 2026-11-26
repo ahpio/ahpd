@@ -124,7 +124,9 @@ AND the host shows a problem line that names the bot and the template.
 WHEN a make names no workspace
 THEN the bot folder is `<root>/<slug>`, with `~/.bots` as the default root
 AND a named folder is accepted only under the root
-AND a folder that another bot holds is refused with -32602.
+AND a folder that another bot holds is refused with -32602
+AND a make that names no folder is refused with -32010 where the folder has files
+AND a make that names the folder takes it, and writes its parts into an `AGENTS.md` there.
 
 ### The owner of a new bot
 
