@@ -5,7 +5,7 @@
  * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentSideEffects.ts#L2026-L2048
  */
 
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -17,12 +17,13 @@ import type { Agent, Start } from '../src/types/agent.js';
 import type { Bag } from '../src/types/common.js';
 import type { Peer } from '../src/types/rpc.js';
 import type { Session } from '../src/types/session.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const SESSION = 'ahp-session:/one';
 
 let dir: string;
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'ahpd-mcp-start-')); });
-afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(dir); });
 
 /** An envelope as a client reads it. */
 interface Heard {

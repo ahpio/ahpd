@@ -3,7 +3,7 @@ import type { Agent, McpServer, Start } from '../src/types/agent.js';
 import type { ConnectorRef } from '../src/types/connectors.js';
 import { fileSessions, memorySessions } from '../src/sessions/sessions.js';
 import { chatUriFor, ROOT } from '../src/host/channels.js';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -11,6 +11,7 @@ import {
  sdk, sendAnswered, sendTurn, sessionQueries, serving, settle, running,
 } from './support/host.js';
 import { WORK } from './support/work.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 vi.mock('@anthropic-ai/claude-agent-sdk', async () => (await import('./support/claude-sdk.js')).fake);
 
@@ -469,7 +470,7 @@ describe('a session\'s config across a restart', () => {
     root = mkdtempSync(join(tmpdir(), 'ahpd-config-'));
     dir = join(root, 'sessions');
   });
-  afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+  afterEach(() => { clearFolder(root); });
 
   /** A host on the store folder, introduced. */
   const hostOnFile = async () => {
@@ -904,7 +905,7 @@ describe('the keys this host owns and contributes', () => {
       await host.close();
     }
     finally {
-      rmSync(dir, { recursive: true, force: true });
+      clearFolder(dir);
     }
   });
 });
@@ -949,7 +950,7 @@ describe('the auto-approval restriction a window forwards', () => {
       await host.close();
     }
     finally {
-      rmSync(dir, { recursive: true, force: true });
+      clearFolder(dir);
     }
   });
 });

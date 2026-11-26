@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -7,6 +7,7 @@ import { echo } from '../../../examples/echo/agent.js';
 import type { Ran, Runner } from '../src/install.js';
 import type { HostOptions } from '../../sdk/src/types/host.js';
 import type { InstallAnswer, PluginSpec } from '../../sdk/src/types/plugin.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * What `host.install` does for a plugin.
@@ -26,7 +27,7 @@ beforeEach(() => {
   delete (globalThis as Record<string, unknown>).__pluginInstallAnswers;
   delete (globalThis as Record<string, unknown>).__pluginInstalledPath;
 });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 const base = (): HostOptions => ({ path: home, agents: [echo({ path: home })] });
 

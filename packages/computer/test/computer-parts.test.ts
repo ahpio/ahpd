@@ -1,11 +1,12 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { dockerfileOf, hashOf, lockOf, packageOf, partsLabel, partsSaid, readParts, tagOf, versionsPath } from '../src/parts.js';
 import type { AhpdSource, Part } from '../src/parts.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The versions file, and the tags it answers.
@@ -18,7 +19,7 @@ import type { AhpdSource, Part } from '../src/parts.js';
 
 let loose: string | undefined;
 afterEach(() => {
-  if (loose !== undefined) rmSync(loose, { recursive: true, force: true });
+  if (loose !== undefined) clearFolder(loose);
   loose = undefined;
 });
 

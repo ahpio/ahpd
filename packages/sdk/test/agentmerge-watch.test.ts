@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -12,6 +12,7 @@ import type { PullRequestDetail, PullRequestJob, PullRequestMergeResult } from '
 import type { ToolCall } from '../src/types/host.js';
 import type { Owner } from '../src/types/usage.js';
 import { gitSync } from '../../../tools/git.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The watch behind Agent Merge.
@@ -29,7 +30,7 @@ const PAGE = 'https://github.com/softov/ahpd/pull/9';
 /** The folders a test made, removed with it. */
 let made: string[] = [];
 afterEach(() => {
-  for (const dir of made) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made) clearFolder(dir);
   made = [];
 });
 

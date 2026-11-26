@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -10,6 +10,7 @@ import type { ContainerPort, ContainerSink } from '../src/types/containers.js';
 import type { HostOptions } from '../src/types/host.js';
 import type { Peer } from '../src/types/rpc.js';
 import type { Grant, Users } from '../src/types/users.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The dev container surface.
@@ -26,7 +27,7 @@ import type { Grant, Users } from '../src/types/users.js';
 
 let root: string;
 beforeEach(() => { root = mkdtempSync(join(tmpdir(), 'ahpd-containers-')); });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 type Bag = Record<string, any>;
 

@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -12,6 +12,7 @@ import type { Bag } from '../src/types/common.js';
 import type { Peer } from '../src/types/rpc.js';
 import type { Emit, Session } from '../src/types/session.js';
 import type { Grant, Users } from '../src/types/users.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * An automation's MCP sign-in, asked of the automation owner's clients.
@@ -96,7 +97,7 @@ const made: string[] = [];
 const hosts: ReturnType<typeof createHost>[] = [];
 afterEach(async () => {
   await Promise.all(hosts.splice(0).map((host) => host.close()));
-  for (const dir of made.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made.splice(0)) clearFolder(dir);
 });
 
 /** A host with people in it, and a backend whose sessions a case can move. */

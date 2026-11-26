@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, expect, it, vi } from 'vitest';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * Which conversation a session picks up, by what the SDK holds.
@@ -79,7 +80,7 @@ process.env.CLAUDE_CONFIG_DIR = join(home, 'config');
 afterAll(() => {
   if (before === undefined) delete process.env.CLAUDE_CONFIG_DIR;
   else process.env.CLAUDE_CONFIG_DIR = before;
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 /** Where the CLI writes the transcript of `id` for a conversation of `folder`. */
@@ -337,7 +338,7 @@ it('clears a transcript the SDK holds no session in, in the folder the CLI names
     expect(options).toMatchObject({ sessionId: LONG });
     expect(existsSync(file)).toBe(false);
   }
-  finally { rmSync(top, { recursive: true, force: true }); }
+  finally { clearFolder(top); }
 });
 
 it('keeps a conversation the SDK holds, asked of it, under the id a session starts a new one under', async () => {

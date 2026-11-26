@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -9,6 +9,7 @@ import { loadPlugins } from '../../server/src/plugins.js';
 import { echo } from '../../../examples/echo/agent.js';
 import type { Peer } from '../../sdk/src/types/rpc.js';
 import type { Grant, Principal, Users } from '../../sdk/src/types/users.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The `x-ahpd/push/*` commands and the `x-ahpd-push://` channel, on a host
@@ -25,7 +26,7 @@ type Bag = Record<string, any>;
 
 let loose: string | undefined;
 afterEach(() => {
-  if (loose !== undefined) rmSync(loose, { recursive: true, force: true });
+  if (loose !== undefined) clearFolder(loose);
   loose = undefined;
 });
 

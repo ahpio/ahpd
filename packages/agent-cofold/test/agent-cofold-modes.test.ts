@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -10,6 +10,7 @@ import { EFFORT_LEVELS, PERMISSION_MODES, effortOf, cofoldAgent, harnessConfig, 
 import type { Held } from '../src/agent.js';
 import { startedNow } from '../../sdk/test/support/started.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The two controls a window draws beyond the text fields.
@@ -225,7 +226,7 @@ beforeEach(() => {
 afterEach(() => {
   if (had === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = had;
   globalThis.fetch = real;
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 /** What the endpoint was sent for a session with these settings, over a harness file with `extra` in it. */

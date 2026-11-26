@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -14,6 +14,7 @@ import type { RecordStore } from '../../sdk/src/types/records.js';
 import type { Session } from '../../sdk/src/types/session.js';
 import type { Answering } from '../src/wake.js';
 import type { ChatMessage, TurnHandle } from '../src/chat.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A back session's question is asked where the person is talking.
@@ -30,7 +31,7 @@ import type { ChatMessage, TurnHandle } from '../src/chat.js';
 let loose: string[] = [];
 beforeEach(() => { loose = []; });
 afterEach(() => {
-  for (const dir of loose) rmSync(dir, { recursive: true, force: true });
+  for (const dir of loose) clearFolder(dir);
   loose = [];
 });
 

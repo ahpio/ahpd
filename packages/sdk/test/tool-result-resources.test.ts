@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -7,6 +7,7 @@ import { buildToolResultResourceUri, parseToolResultResourceUri } from '../src/r
 import { createHost, echo, hello, peer } from './support/host.js';
 import type { Agent, Start } from '../src/types/agent.js';
 import type { ContentRef } from '../src/types/changes.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * Content a tool result or an agent's message carries inline, which a backend
@@ -19,7 +20,7 @@ import type { ContentRef } from '../src/types/changes.js';
 
 const made: string[] = [];
 afterEach(() => {
-  for (const dir of made.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made.splice(0)) clearFolder(dir);
 });
 
 /** A host whose sessions keep a folder, one session open, and the start its backend was handed. */

@@ -1,6 +1,6 @@
 import { posix } from '../../../tools/posix.ts';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +12,7 @@ import { profilesOf } from '../src/plugin.js';
 import { checkServer, fixesOf, osOf, reportFrom, SERVER_CHECK, SERVER_ITEMS, serverGate } from '../src/servercheck.js';
 import { sshRuntime } from '../src/ssh.js';
 import { PROCESS_CASE_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
 vi.setConfig({ testTimeout: PROCESS_CASE_MS });
@@ -29,7 +30,7 @@ const REPO = join(import.meta.dirname, '../../..');
 let loose: string | undefined;
 afterEach(async () => {
   await closeAll();
-  if (loose !== undefined) rmSync(loose, { recursive: true, force: true });
+  if (loose !== undefined) clearFolder(loose);
   loose = undefined;
 });
 const temp = (): string => (loose ??= mkdtempSync(join(tmpdir(), 'ahpd-servercheck-')));

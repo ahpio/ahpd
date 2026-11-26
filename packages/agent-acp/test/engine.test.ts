@@ -1,5 +1,5 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,6 +8,7 @@ import { echo } from '../../../examples/echo/agent.js';
 import { loadPlugins } from '../../server/src/plugins.js';
 import { DEFAULT_CLIENT_TOOL_TIMEOUT_MS } from '../../sdk/src/tools/clientcalls.js';
 import type { Engine, AgentView, Bag, Session, Start } from '@ahpd/sdk';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The `acp` engine: one record per ACP server.
@@ -39,7 +40,7 @@ afterEach(async () => {
   // The close awaited, and the removal too: on Windows a folder stays held
   // until the server in it is gone, and the release happens on the event loop.
   for (const session of started.splice(0)) await session.close();
-  for (const path of made.splice(0)) rmSync(path, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  for (const path of made.splice(0)) clearFolder(path);
 });
 
 /** A folder of its own for one case, removed after it. */

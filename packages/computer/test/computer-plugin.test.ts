@@ -1,7 +1,7 @@
 import { machinePathOf } from '@ahpd/sdk';
 import { EventEmitter } from 'node:events';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
@@ -21,6 +21,7 @@ import type { Peer } from '../../sdk/src/types/rpc.js';
 import type { Usage, UsageEntry, UsageTotal } from '../../sdk/src/types/usage.js';
 import { gitSync } from '../../../tools/git.ts';
 import { PROCESS_CASE_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
 vi.setConfig({ testTimeout: PROCESS_CASE_MS });
@@ -42,9 +43,9 @@ let loose: string | undefined;
 afterEach(async () => {
   // Everything the test started, closed before its folders go.
   await closeAll();
-  if (loose !== undefined) rmSync(loose, { recursive: true, force: true });
+  if (loose !== undefined) clearFolder(loose);
   loose = undefined;
-  if (home !== undefined) rmSync(home, { recursive: true, force: true });
+  if (home !== undefined) clearFolder(home);
   home = undefined;
 });
 

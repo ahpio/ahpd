@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -11,6 +11,7 @@ import type { Agent } from '../src/types/agent.js';
 import type { AgentOwner } from '../src/types/agents.js';
 import type { Principal } from '../src/types/users.js';
 import type { HostOptions, Users } from '../src/types/index.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * Who a caller is told about and who may start a session.
@@ -49,7 +50,7 @@ beforeEach(() => {
     { id: 'cy', roles: ['writer'] },
   ]);
 });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 type Bag = Record<string, any>;
 

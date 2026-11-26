@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -18,6 +18,7 @@ import type { Principal, Users } from '../src/types/users.js';
 import type { Chosen, Session } from '../src/types/session.js';
 import type { Worktrees } from '../src/types/worktrees.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * Automations, on a host that holds no clock.
@@ -624,7 +625,7 @@ describe('a host that keeps client plugins', () => {
 
   const dirs: string[] = [];
   afterEach(() => {
-    for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+    for (const dir of dirs.splice(0)) clearFolder(dir);
   });
 
   /** What a client would list for one URI, worked out from the tree it holds. */

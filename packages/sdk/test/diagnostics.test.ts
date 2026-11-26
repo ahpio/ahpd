@@ -11,6 +11,7 @@ import { echo } from '../../../examples/echo/agent.js';
 import { claude } from '../../agent-claude/src/claude.js';
 import type { Agent } from '../src/types/agent.js';
 import type { Peer } from '../src/types/rpc.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * What the reference window asks a host about itself.
@@ -22,7 +23,7 @@ import type { Peer } from '../src/types/rpc.js';
 
 let made: string[] = [];
 afterEach(() => {
-  for (const dir of made) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made) clearFolder(dir);
   made = [];
 });
 const scratch = (): string => {

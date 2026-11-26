@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -6,6 +6,7 @@ import { memoryRecords } from '@ahpd/sdk';
 import type { PluginSpec, RecordCollection, ServedEngine, StoredRecord, Vault } from '@ahpd/sdk';
 import { applyPresets, planPresets, splitModels } from '../src/agents/migrate.js';
 import { fileRecords } from '../src/records.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The presets a configuration file holds, made into host records at the start.
@@ -111,7 +112,7 @@ beforeEach(async () => {
   secrets = new Map();
 });
 
-afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(dir); });
 
 /** A configuration file holding these plugins, as a person would have written it. */
 const written = (plugins: unknown): string => {
@@ -432,7 +433,7 @@ it('keeps a removed claude removed when the records and the file are in differen
     expect(said).toEqual([]);
   }
   finally {
-    rmSync(elsewhere, { recursive: true, force: true });
+    clearFolder(elsewhere);
   }
 });
 

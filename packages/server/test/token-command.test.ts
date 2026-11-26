@@ -12,7 +12,7 @@
  * so a terminal case and a served case read and write the same bytes.
  */
 
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -24,6 +24,7 @@ import { cliRegistry } from '../src/commands/registry.js';
 import { apiOrigins } from '../src/commands/run.js';
 import { servedRegistry, type ServedFacts } from '../src/commands/served.js';
 import { apiHandler } from '../src/http.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // The bytes a case hands the next draw, and the real source after them. A mint
 // draws its id before its secret, so a queued buffer is an id.
@@ -49,7 +50,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   nextBytes.waiting.length = 0;
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 const put = (held: unknown): void => { writeFileSync(config, `${JSON.stringify(held, null, 2)}\n`); };

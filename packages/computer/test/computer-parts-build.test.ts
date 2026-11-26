@@ -1,5 +1,5 @@
 import { posix } from '../../../tools/posix.ts';
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,6 +8,7 @@ import { contextOf, dockerfileOf, ensureJoined, ensurePart, JOINED_BASE, joinedD
 import { dockerRuntime } from '../src/runtime.js';
 import type { Part } from '../src/parts.js';
 import { PROCESS_CASE_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
 vi.setConfig({ testTimeout: PROCESS_CASE_MS });
@@ -25,7 +26,7 @@ vi.setConfig({ testTimeout: PROCESS_CASE_MS });
  */
 
 let loose: string | undefined;
-afterEach(() => { if (loose !== undefined) rmSync(loose, { recursive: true, force: true }); });
+afterEach(() => { if (loose !== undefined) clearFolder(loose); });
 
 /** The state file the scripted docker reads and writes, in a directory of its own. */
 const state = (): string => {
@@ -554,7 +555,7 @@ const withFakePnpm = async (
     process.env.PATH = realPath;
     if (realRoot === undefined) delete process.env.AHPD_PART_AHPD_ROOT;
     else process.env.AHPD_PART_AHPD_ROOT = realRoot;
-    rmSync(dir, { recursive: true, force: true });
+    clearFolder(dir);
   }
 };
 

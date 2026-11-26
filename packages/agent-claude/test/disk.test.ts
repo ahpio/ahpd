@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -6,6 +6,7 @@ import { parseYaml } from '@cofold/yaml';
 import { posix } from '../../../tools/posix.ts';
 import { configDirOf, filesOf as readFiles, frontmatterOf, managedDirOf, projectDirOf } from '../src/session/disk.js';
 import type { DiskRoots } from '../src/session/disk.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The disk read the customizations are laid out from.
@@ -18,7 +19,7 @@ import type { DiskRoots } from '../src/session/disk.js';
 const filesOf = (roots: DiskRoots) => readFiles(roots, parseYaml);
 
 const made: string[] = [];
-afterEach(() => { for (const dir of made.splice(0)) rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => { for (const dir of made.splice(0)) clearFolder(dir); });
 
 /** A fresh folder with each file of `files` written under it. */
 function tree(files: Record<string, string>): string {

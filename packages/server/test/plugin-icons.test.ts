@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -9,6 +9,7 @@ import { echo } from '../../../examples/echo/agent.js';
 import type { HostOptions } from '../../sdk/src/types/host.js';
 import type { PluginSpec } from '../../sdk/src/types/plugin.js';
 import { fileLinks } from '../../../tools/links.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The icons a manifest and an adapter carry.
@@ -23,7 +24,7 @@ import { fileLinks } from '../../../tools/links.ts';
 
 let home: string;
 beforeEach(() => { home = mkdtempSync(join(tmpdir(), 'ahpd-plugin-icons-')); });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 const base = (): HostOptions => ({ path: home, agents: [echo({ path: home })] });
 

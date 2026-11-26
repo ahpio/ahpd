@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +17,7 @@ import {
 import { closeAll, keepingPort } from './support/closing.js';
 import type { ContainerSink, ContainerUserState } from '../../sdk/src/types/containers.js';
 import { PROCESS_CASE_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
 vi.setConfig({ testTimeout: PROCESS_CASE_MS });
@@ -35,7 +36,7 @@ beforeEach(() => {
 });
 afterEach(async () => {
   await closeAll();
-  rmSync(root, { recursive: true, force: true });
+  clearFolder(root);
 });
 
 const LABELS = ['ahpd.computer=1', 'ahpd.devcontainer.folder=/home/me/Box'];

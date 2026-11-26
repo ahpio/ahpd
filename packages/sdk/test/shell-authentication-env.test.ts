@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -12,6 +12,7 @@ import type { HostContext } from '../src/host/context.js';
 import type { Bag } from '../src/types/common.js';
 import type { ComputerPort, Spawn } from '../src/types/computers.js';
 import type { Screen, SpawnPty, SpawnScreen, Terminal } from '../src/types/terminals.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The helper's variables, in the processes this host starts.
@@ -150,7 +151,7 @@ const opened: { auth: ShellAuthentication; folder: string }[] = [];
 afterEach(async () => {
   for (const { auth, folder } of opened.splice(0)) {
     await auth.close();
-    rmSync(folder, { recursive: true, force: true });
+    clearFolder(folder);
   }
 });
 

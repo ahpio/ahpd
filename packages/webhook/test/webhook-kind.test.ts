@@ -1,6 +1,6 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
 import { loggerOf } from '@ahpd/sdk';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -17,6 +17,7 @@ import type { LoaderContext, PluginMethod } from '../../sdk/src/types/plugin.js'
 import type { Vault } from '../../sdk/src/types/vault.js';
 import type { BotSeams } from '../src/bot.js';
 import type { Endpoint } from '../src/record.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The `webhook` adapter, over the route the plugin answers.
@@ -30,7 +31,7 @@ const PREFIX = 'http://127.0.0.1:1/plugins/webhook';
 
 let loose: string[] = [];
 afterEach(() => {
-  for (const dir of loose) rmSync(dir, { recursive: true, force: true });
+  for (const dir of loose) clearFolder(dir);
   loose = [];
 });
 

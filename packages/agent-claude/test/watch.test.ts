@@ -5,6 +5,7 @@ import type { FSWatcher } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createClaudeCustomizationWatcher } from '../src/session/watch.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * Every `fs.watch` the watcher opens, counted: how many were opened, how many
@@ -42,7 +43,7 @@ const made: string[] = [];
 const stops: (() => void)[] = [];
 afterEach(() => {
   for (const stop of stops.splice(0)) stop();
-  for (const dir of made.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made.splice(0)) clearFolder(dir);
 });
 
 const fresh = (): string => {

@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -10,6 +10,7 @@ import { apply } from '../src/plugin.js';
 import { startedNow } from '../../sdk/test/support/started.js';
 import type { Peer } from '../../sdk/src/types/rpc.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The models the endpoint serves.
@@ -36,7 +37,7 @@ beforeEach(() => {
 afterEach(() => {
   if (had === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = had;
   globalThis.fetch = real;
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 /** A harness file with one OpenRouter provider and one configured model. */

@@ -1,6 +1,6 @@
 import { execFile, spawnSync } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
-import { mkdtempSync, readlinkSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readlinkSync, realpathSync, writeFileSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
@@ -12,6 +12,7 @@ import { SHELL_AUTH_SOCKET, SHELL_AUTH_TOKEN } from '../src/host/shellauth.js';
 import type { ConnectionContext, HostContext } from '../src/host/context.js';
 import type { ParentProcess, ShellAuthentication } from '../src/host/shellauth.js';
 import type { Bag } from '../src/types/common.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A command asking the person for a password.
@@ -220,7 +221,7 @@ const opened: { auth: ShellAuthentication; folder: string }[] = [];
 afterEach(async () => {
   for (const { auth, folder } of opened.splice(0)) {
     await auth.close();
-    rmSync(folder, { recursive: true, force: true });
+    clearFolder(folder);
   }
 });
 
@@ -355,7 +356,7 @@ describe('a command asks the person for a password', () => {
       expect(requests(sent)).toEqual([]);
     }
     finally {
-      rmSync(fakeFolder, { recursive: true, force: true });
+      clearFolder(fakeFolder);
     }
   });
 

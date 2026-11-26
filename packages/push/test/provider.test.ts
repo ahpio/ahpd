@@ -1,5 +1,5 @@
 import { createECDH } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -14,6 +14,7 @@ import type { HostOptions } from '../../sdk/src/types/host.js';
 import type { Peer } from '../../sdk/src/types/rpc.js';
 import type { Write } from '../../sdk/src/types/resources.js';
 import { posix } from '../../../tools/posix.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The `push:` scheme, over the devices one daemon keeps.
@@ -39,7 +40,7 @@ const WEB = { platform: 'web', endpoint: 'https://fcm.googleapis.com/wp/one', ke
 /** A temporary directory removed after the test that made it. */
 let loose: string | undefined;
 afterEach(() => {
-  if (loose !== undefined) rmSync(loose, { recursive: true, force: true });
+  if (loose !== undefined) clearFolder(loose);
   loose = undefined;
 });
 

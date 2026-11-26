@@ -18,10 +18,11 @@ import { createHost } from '../src/host.js';
 import { echo } from '../../../examples/echo/agent.js';
 import type { Agent, Listed } from '../src/types/agent.js';
 import type { Peer } from '../src/types/rpc.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let dir: string;
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'ahpd-delete-')); });
-afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(dir); });
 
 const peer = (): Peer & { notes: { method: string; params: unknown }[] } => {
   const notes: { method: string; params: unknown }[] = [];

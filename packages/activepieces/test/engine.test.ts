@@ -1,5 +1,5 @@
 import { fork } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { ChildProcess } from 'node:child_process';
 import { isLog } from '../src/wire.js';
 import type { Answer, DescribedAnswer, LogMessage } from '../src/wire.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The engine process, asked directly.
@@ -33,7 +34,7 @@ afterEach(() => {
 /** The paths a case made, removed after it. */
 const made: string[] = [];
 afterEach(() => {
-  for (const one of made.splice(0)) rmSync(one, { recursive: true, force: true });
+  for (const one of made.splice(0)) clearFolder(one);
 });
 
 /** One empty folder for a case's attachments. */

@@ -8,11 +8,12 @@
  * folder this case created.
  */
 
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { daemonSessions } from '../src/commands/run.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const held = process.env.XDG_CONFIG_HOME;
 
@@ -27,7 +28,7 @@ beforeEach(() => {
 afterEach(() => {
   if (before === undefined) delete process.env.XDG_CONFIG_HOME;
   else process.env.XDG_CONFIG_HOME = before;
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 /** The one file, where the daemon before this layout kept every session. */

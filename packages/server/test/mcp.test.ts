@@ -9,7 +9,7 @@
  * an MCP client sends.
  */
 
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -17,6 +17,7 @@ import { createHost, doorOf, fileUsers, hostTools, type RequestHandler, type Use
 import { echo } from '../../../examples/echo/agent.js';
 import { mcpHandler, type McpTools } from '../src/mcp.js';
 import { withoutApi } from '../src/http.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /** The deployment's own token, which these cases never send anywhere but here. */
 const ROOT_TOKEN = 'deployment-token-for-the-mcp-tests';
@@ -56,7 +57,7 @@ const serving = (eligibleForAutoApproval?: Record<string, boolean>): ReturnType<
 });
 
 afterEach(() => {
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 /** The door, over the host above, with `otherwise` answering a sentence of its own. */

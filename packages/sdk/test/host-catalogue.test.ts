@@ -1,5 +1,5 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +17,7 @@ import {
 } from './support/host.js';
 import type { Agent, Listed } from '../src/types/agent.js';
 import { WORK } from './support/work.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 vi.mock('@anthropic-ai/claude-agent-sdk', async () => (await import('./support/claude-sdk.js')).fake);
 
@@ -1701,7 +1702,7 @@ describe("a row's counts are the session's own", () => {
 
   let made: string[] = [];
   afterEach(() => {
-    for (const dir of made) rmSync(dir, { recursive: true, force: true });
+    for (const dir of made) clearFolder(dir);
     made = [];
   });
 

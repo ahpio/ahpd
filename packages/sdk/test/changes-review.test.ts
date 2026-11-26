@@ -11,7 +11,7 @@
  * https://github.com/microsoft/agent-host-protocol/blob/v1.0.0/docs/guide/reconciliation.md
  */
 
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -25,10 +25,11 @@ import type { Bag } from '../src/types/common.js';
 import type { Peer } from '../src/types/rpc.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
 import { gitSync } from '../../../tools/git.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let made: string[] = [];
 afterEach(() => {
-  for (const dir of made) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made) clearFolder(dir);
   made = [];
 });
 

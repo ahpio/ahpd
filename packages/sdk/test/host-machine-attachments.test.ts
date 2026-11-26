@@ -14,7 +14,7 @@
  * rather than something the order of two calls happens to look like.
  */
 
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -28,13 +28,14 @@ import type { ComputerPort } from '../src/types/computers.js';
 import type { MessageAttachment, MessageFrom, Session } from '../src/types/session.js';
 import type { Peer } from '../src/types/rpc.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /** A PNG's first bytes. Nothing here decodes it, so a header is a picture. */
 const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489', 'hex');
 
 let made: string[] = [];
 afterEach(() => {
-  for (const dir of made) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made) clearFolder(dir);
   made = [];
 });
 

@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -11,6 +11,7 @@ import type { SessionStore } from '../src/types/sessions.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
 import { WORK } from './support/work.js';
 import { uriOf } from '../src/resources/fileuri.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * Sessions in folders no backend lists.
@@ -127,7 +128,7 @@ describe('a session in a folder no backend read', () => {
       expect(items.find((one) => one.resource === 'claude:/ember')?.title).toBe('Ember');
       expect(counted.asked).toContainEqual(['claude', 'ember', BOT]);
     }
-    finally { rmSync(root, { recursive: true, force: true }); }
+    finally { clearFolder(root); }
   });
 
   it('stays listed across two refreshes, with nothing said to be removed', async () => {

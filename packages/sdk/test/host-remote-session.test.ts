@@ -17,7 +17,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { asCreatedBy, asOrigin, depthOf, readOrigin } from '../src/sessions/remotesession.js';
@@ -27,6 +27,7 @@ import {
   claude, createHost, emit, firstMessage, hello, machine, peer, resetSdk, sdk, sessionQueries, settle,
 } from './support/host.js';
 import { WORK, WORK_URI } from './support/work.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 vi.mock('@anthropic-ai/claude-agent-sdk', async () => (await import('./support/claude-sdk.js')).fake);
 
@@ -271,7 +272,7 @@ describe('a session a window sent here', () => {
       expect(state._meta?.[CREATED_BY]).toEqual({ session: 'abc', chat: 'abc#one', turnId: 't1' });
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 });

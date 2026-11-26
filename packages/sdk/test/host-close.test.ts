@@ -7,7 +7,7 @@
  * files.
  */
 
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -21,10 +21,11 @@ import type { Peer } from '../src/types/rpc.js';
 import type { StartTerminals, Terminal } from '../src/types/terminals.js';
 import type { StartSession } from '../src/types/automations.js';
 import type { ComputerPort } from '../src/types/computers.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let dir: string;
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'ahpd-close-')); });
-afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(dir); });
 
 const peer = (): Peer => ({
   name: 'client', send: () => {}, notify: () => {}, request: async () => ({}), answered: () => {}, close: () => {},

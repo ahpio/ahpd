@@ -1,6 +1,6 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
 import { loggerOf } from '@ahpd/sdk';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -28,6 +28,7 @@ import type { LoaderContext } from '../../sdk/src/types/plugin.js';
 import type { Peer } from '../../sdk/src/types/rpc.js';
 import type { Grant, Principal, Users } from '../../sdk/src/types/users.js';
 import { CONTRACTS } from './manifest.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The scheme the bot plugin serves.
@@ -43,7 +44,7 @@ import { CONTRACTS } from './manifest.js';
 let loose: string[] = [];
 beforeEach(() => { loose = []; });
 afterEach(() => {
-  for (const dir of loose) rmSync(dir, { recursive: true, force: true });
+  for (const dir of loose) clearFolder(dir);
   loose = [];
 });
 

@@ -1,5 +1,5 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -11,6 +11,7 @@ import { echo } from '../../../examples/echo/agent.js';
 import type { AnnotationsState } from '@microsoft/agent-host-protocol';
 import type { ResourceAnnotationsStore } from '../src/types/host.js';
 import type { Peer } from '../src/types/rpc.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * Comments on a resource outside any session, `x-ahpd-annotations:<resource URI>`,
@@ -86,7 +87,7 @@ beforeEach(() => {
   channel = `x-ahpd-annotations:file://${file}`;
   shared = `x-ahpd-shared:file://${file}`;
 });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 it('shares a comment, a reply, a resolve and a remove between two clients', async () => {
   const host = makeHost();
@@ -288,7 +289,7 @@ it('shows a session the comments outside any session on its artifacts, outside i
   }
   finally {
     await host.close();
-    rmSync(elsewhere, { recursive: true, force: true });
+    clearFolder(elsewhere);
   }
 });
 

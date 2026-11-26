@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -12,6 +12,7 @@ import type { HostTool } from '../../sdk/src/types/host.js';
 import type { Session } from '../../sdk/src/types/session.js';
 import { startedNow } from '../../sdk/test/support/started.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * What a cofold turn says it used, as the steps of that turn go by.
@@ -43,7 +44,7 @@ beforeEach(() => {
 afterEach(() => {
   if (had === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = had;
   globalThis.fetch = real;
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 /** A harness file naming one provider, whose model is what a session starts on. */

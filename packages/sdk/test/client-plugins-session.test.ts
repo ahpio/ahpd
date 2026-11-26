@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,6 +8,7 @@ import { clientPluginsIn } from '../src/plugins/clientplugins.js';
 import { echo } from '../../../examples/echo/agent.js';
 import type { Agent } from '../src/types/agent.js';
 import type { Peer } from '../src/types/rpc.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The plugins a client hands a session.
@@ -63,7 +64,7 @@ const SOMETIMES = 'Say so before the table.';
 
 const dirs: string[] = [];
 afterEach(() => {
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of dirs.splice(0)) clearFolder(dir);
 });
 
 /** What a client would list for one URI, worked out from the tree it holds. */

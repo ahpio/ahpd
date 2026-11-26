@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -9,6 +9,7 @@ import { steerOf } from '../src/sessions/steer.js';
 import type { HostContext } from '../src/host/context.js';
 import type { SessionStore } from '../src/types/sessions.js';
 import type { Agent, Bag } from '@ahpd/sdk';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The area that keeps a chat's local turns, alone: where a file goes, what a
@@ -18,7 +19,7 @@ import type { Agent, Bag } from '@ahpd/sdk';
 
 let made: string[] = [];
 afterEach(() => {
-  for (const dir of made) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made) clearFolder(dir);
   made = [];
 });
 

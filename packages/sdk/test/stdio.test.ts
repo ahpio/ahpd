@@ -1,5 +1,5 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
@@ -9,6 +9,7 @@ import { echo } from '../../../examples/echo/agent.js';
 import { overStdio } from '../src/listen.js';
 import { fileResources } from '../src/resources/resources.js';
 import type { Grant, Users } from '../src/types/users.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The second transport: one line of JSON per frame, over a pipe.
@@ -24,7 +25,7 @@ import type { Grant, Users } from '../src/types/users.js';
 
 let root: string;
 beforeEach(() => { root = mkdtempSync(join(tmpdir(), 'ahpd-stdio-')); });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 type Bag = Record<string, any>;
 

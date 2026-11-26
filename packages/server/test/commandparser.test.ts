@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -7,6 +7,7 @@ import { commandParserFrom, parserConflict } from '../src/commands/run.js';
 import { loadPlugins } from '../src/plugins.js';
 import { echo } from '../../../examples/echo/agent.js';
 import type { HostOptions } from '../../sdk/src/types/host.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The `commandParser` key: a module whose default export reads a command line.
@@ -25,7 +26,7 @@ beforeEach(() => {
   home = mkdtempSync(join(tmpdir(), 'ahpd-commandparser-'));
   config = join(home, 'config.json');
 });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 const put = (value: unknown): void => { writeFileSync(config, JSON.stringify(value)); };
 

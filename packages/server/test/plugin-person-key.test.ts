@@ -8,7 +8,7 @@
  * admitting a connection that presents it with that person's grants.
  */
 
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -19,6 +19,7 @@ import type { PluginSet, StagedPlugin } from '../src/plugins.js';
 import type { HostOptions } from '../../sdk/src/types/host.js';
 import type { PluginSpec } from '../../sdk/src/types/plugin.js';
 import type { Users } from '../../sdk/src/types/users.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const FIXTURES = join(import.meta.dirname, 'fixtures');
 /** The id the fixture's module exports, which is what the set holds it under. */
@@ -29,7 +30,7 @@ const DEPLOYMENT = 'the-deployment-token';
 let home: string;
 beforeEach(() => { home = mkdtempSync(join(tmpdir(), 'ahpd-person-key-')); });
 afterEach(() => {
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
   delete (globalThis as typeof globalThis & { __personKey?: unknown }).__personKey;
 });
 

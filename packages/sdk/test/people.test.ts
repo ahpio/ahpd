@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -10,6 +10,7 @@ import { echo } from '../../../examples/echo/agent.js';
 import type { Peer } from '../src/types/rpc.js';
 import type { Write } from '../src/types/resources.js';
 import type { Users } from '../src/types/users.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * People, teams, projects and roles, as four resource schemes.
@@ -26,7 +27,7 @@ beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'ahpd-people-'));
   path = join(root, 'users.json');
 });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 const open = () => fileUsers({ path });
 

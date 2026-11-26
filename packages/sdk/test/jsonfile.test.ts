@@ -1,9 +1,10 @@
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { posix } from '../../../tools/posix.ts';
 import { readJson, readJsonObject, writeJsonAtomic } from '../src/utils/jsonfile.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The one reader and the one writer for a JSON file.
@@ -17,7 +18,7 @@ import { readJson, readJsonObject, writeJsonAtomic } from '../src/utils/jsonfile
 
 let dir: string;
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'ahpd-jsonfile-')); });
-afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(dir); });
 
 const at = (name: string): string => join(dir, name);
 

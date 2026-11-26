@@ -1,5 +1,5 @@
 import { createECDH, createHash, createPublicKey, verify } from 'node:crypto';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -7,6 +7,7 @@ import { deviceStore, pushProvider } from '../src/provider.js';
 import { loadVapid } from '../src/vapid.js';
 import { encrypt, vapidHeader, createWebSender } from '../src/webpush.js';
 import type { Vapid } from '../src/vapid.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The web sender: encryption, the VAPID header and the answers a push service
@@ -33,7 +34,7 @@ const RFC = {
 /** A temporary directory removed after the test that made it. */
 let loose: string | undefined;
 afterEach(() => {
-  if (loose !== undefined) rmSync(loose, { recursive: true, force: true });
+  if (loose !== undefined) clearFolder(loose);
   loose = undefined;
 });
 

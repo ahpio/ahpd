@@ -11,7 +11,7 @@
  * reason `usage.timezone` exists.
  */
 
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -24,6 +24,7 @@ import { cliRegistry } from '../src/commands/registry.js';
 import { apiOrigins } from '../src/commands/run.js';
 import { servedRegistry, type ServedFacts } from '../src/commands/served.js';
 import { apiHandler } from '../src/http.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const AUTHORITY = '127.0.0.1:9351';
 /** A Wednesday, mid-morning: the day, the week and the month are all different ranges. */
@@ -48,7 +49,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.useRealTimers();
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 const put = (held: unknown): void => { writeFileSync(config, `${JSON.stringify(held, null, 2)}\n`); };

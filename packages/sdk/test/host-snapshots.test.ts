@@ -5,7 +5,7 @@ import type { ChatState } from '@microsoft/agent-host-protocol';
 import { Status } from '../src/sessions/catalog.js';
 import { chatUriFor } from '../src/host/channels.js';
 import { fileSessions, memorySessions } from '../src/sessions/sessions.js';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -17,6 +17,7 @@ import type { HostTool } from '../src/types/host.js';
 import type { Principal } from '../src/types/users.js';
 import { WORK, WORK_URI } from './support/work.js';
 import { uriOf } from '../src/resources/fileuri.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 vi.mock('@anthropic-ai/claude-agent-sdk', async () => (await import('./support/claude-sdk.js')).fake);
 
@@ -281,7 +282,7 @@ describe('what it says it is doing', () => {
       expect(state.chats.find((one) => one.resource === peerChat)?.title).toBe('Tests');
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -529,7 +530,7 @@ describe('the fields a client reads by name', () => {
       expect(state.draft).toEqual(draft);
     }
     finally {
-      rmSync(dir, { recursive: true, force: true });
+      clearFolder(dir);
     }
   });
 
@@ -1442,7 +1443,7 @@ describe('a session\'s annotations', () => {
       expect(seen.snapshot.state.annotations.map((one) => [one.id, one.entries[0]?.text])).toEqual([['a1', 'kept']]);
     }
     finally {
-      rmSync(dir, { recursive: true, force: true });
+      clearFolder(dir);
     }
   });
 

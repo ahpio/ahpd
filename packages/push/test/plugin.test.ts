@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -7,6 +7,7 @@ import { ENDPOINT } from '../src/send.js';
 import type { EventHandler, EventName, HostEventOf } from '../../sdk/src/types/events.js';
 import type { PluginHost } from '../../sdk/src/types/plugin.js';
 import type { Owner } from '../../sdk/src/types/usage.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * Which devices the plugin tells about a session.
@@ -23,7 +24,7 @@ import type { Owner } from '../../sdk/src/types/usage.js';
 let loose: string | undefined;
 afterEach(() => {
   vi.unstubAllGlobals();
-  if (loose !== undefined) rmSync(loose, { recursive: true, force: true });
+  if (loose !== undefined) clearFolder(loose);
   loose = undefined;
 });
 

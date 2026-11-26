@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -7,6 +7,7 @@ import { baselineOf, captureBaseline, captureTurn, latestOf, removeAll } from '.
 import { gitChanges } from '../src/sessions/changes.js';
 import { uriOf } from '../src/resources/fileuri.js';
 import { gitSync } from '../../../tools/git.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * What a turn leaves behind in the folder it ran in.
@@ -20,7 +21,7 @@ import { gitSync } from '../../../tools/git.ts';
 
 let made: string[] = [];
 afterEach(() => {
-  for (const dir of made) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made) clearFolder(dir);
   made = [];
 });
 

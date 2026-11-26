@@ -24,6 +24,7 @@ import { cliRegistry } from '../src/commands/registry.js';
 import { apiOrigins } from '../src/commands/run.js';
 import { servedRegistry, type ServedFacts } from '../src/commands/served.js';
 import { apiHandler, listenApi } from '../src/http.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /** The origin the cases' daemon is reached on, which its routes and grants are read against. */
 const AUTHORITY = '127.0.0.1:9350';
@@ -40,7 +41,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   if (had === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = had;
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 const put = (held: unknown): void => { writeFileSync(config, `${JSON.stringify(held, null, 2)}\n`); };

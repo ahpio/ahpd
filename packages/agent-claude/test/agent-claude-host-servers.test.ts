@@ -1,9 +1,10 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
 import type { McpServer } from '@ahpd/sdk';
 import { claude } from '../src/claude.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The MCP servers the host offers every session reach a Claude session.
@@ -42,7 +43,7 @@ const sdk = vi.hoisted(() => ({ options: [] as Record<string, unknown>[] }));
 
 let made: string[] = [];
 afterEach(() => {
-  for (const dir of made) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made) clearFolder(dir);
   made = [];
 });
 

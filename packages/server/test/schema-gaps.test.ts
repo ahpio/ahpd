@@ -21,7 +21,7 @@
  */
 
 import { loggerOf } from '@ahpd/sdk';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -41,6 +41,7 @@ import { apply as webhook } from '../../webhook/src/plugin.js';
 import { configSchema, mcpServerSchema } from '../src/commands/options.js';
 import { proxySchema } from '../src/proxy/providers.js';
 import { readManifest } from '../src/plugins.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /** The packages this repository ships, which are the plugins a client draws from. */
 const REPO = join(import.meta.dirname, '..', '..', '..');
@@ -239,7 +240,7 @@ afterAll(async () => {
     for (const close of one.contribution.closers) await close();
   }
   vi.unstubAllEnvs();
-  for (const folder of folders) rmSync(folder, { recursive: true, force: true });
+  for (const folder of folders) clearFolder(folder);
 });
 
 describe('every shipped plugin names every value of its manifest', () => {

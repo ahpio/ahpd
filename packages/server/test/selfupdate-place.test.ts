@@ -13,16 +13,17 @@
  * change with the system the suite runs on. The refusals read real folders.
  */
 
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Running } from '../src/daemon.js';
 import { IN_IMAGE, installPlace, planUpdate } from '../src/selfupdate.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let root: string;
 beforeEach(() => { root = mkdtempSync(join(tmpdir(), 'ahpd-place-')); });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 /** A folder holding a `package.json`, which is what a prefix install and a checkout both have. */
 const manifestIn = (folder: string): string => {

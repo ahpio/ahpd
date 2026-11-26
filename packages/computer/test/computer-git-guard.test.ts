@@ -1,13 +1,14 @@
 import { posix } from '../../../tools/posix.ts';
 import { machinePathOf } from '@ahpd/sdk';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { guardedMounts, gitInside, MACHINE_GIT_TARGET, runsAsHost } from '../src/gitdir.js';
 import { dockerRuntime } from '../src/runtime.js';
 import { gitSync } from '../../../tools/git.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * How a profile guards the git directory its machines see - decision
@@ -42,7 +43,7 @@ const repository = () => {
 
 let loose: string | undefined;
 afterEach(() => {
-  if (loose !== undefined) rmSync(loose, { recursive: true, force: true });
+  if (loose !== undefined) clearFolder(loose);
   loose = undefined;
 });
 

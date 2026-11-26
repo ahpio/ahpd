@@ -1,5 +1,5 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -9,6 +9,7 @@ import { loadPlugins } from '../../server/src/plugins.js';
 import { DEFAULT_CLIENT_TOOL_TIMEOUT_MS } from '../../sdk/src/tools/clientcalls.js';
 import { startedNow } from '../../sdk/test/support/started.js';
 import type { Engine, AgentView, Bag, Session, Start } from '@ahpd/sdk';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The `cofold` engine: one record per endpoint and key.
@@ -36,7 +37,7 @@ const started: Session[] = [];
 
 afterEach(async () => {
   for (const session of started.splice(0)) await session.close();
-  for (const path of made.splice(0)) rmSync(path, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  for (const path of made.splice(0)) clearFolder(path);
 });
 
 /** A folder of its own for one case, removed after it. */

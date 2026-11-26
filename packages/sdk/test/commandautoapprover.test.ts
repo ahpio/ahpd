@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -8,6 +8,7 @@ import type {
   CommandApprovalOptions, CommandSplitter, TerminalAutoApprovePatterns, TerminalAutoApproveRules,
 } from '../src/access/commandautoapprover.js';
 import { vscodeRootProperties } from '../src/vscoderootconfig.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * What the rules say about a command line.
@@ -502,7 +503,7 @@ describe('a write redirect', () => {
   writeFileSync(join(root, 'elsewhere', 'out.txt'), '');
   // A junction on Windows, which links a folder with no privilege and resolves as a link does.
   symlinkSync(join(root, 'elsewhere'), join(folder, 'link'), posix ? 'dir' : 'junction');
-  afterAll(() => rmSync(root, { recursive: true, force: true }));
+  afterAll(() => clearFolder(root));
 
   /** The edit patterns a client pushes, as `editAutoApprovePatterns` writes them. */
   const patterns: TerminalAutoApprovePatterns = { '**/*': true, '**/.git/**': false };

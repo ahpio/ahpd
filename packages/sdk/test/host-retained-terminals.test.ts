@@ -1,5 +1,5 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -19,6 +19,7 @@ import type { SessionStore } from '../src/types/sessions.js';
 import type { SpawnPty, TerminalOutputs } from '../src/types/terminals.js';
 import type { WireTurn } from '../src/types/wire.js';
 import type { Agent, Bag, HostOptions, Listed, Session, Start } from '@ahpd/sdk';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A terminal a tool result names, after the terminal is gone.
@@ -38,7 +39,7 @@ beforeEach(resetSdk);
 
 let made: string[] = [];
 afterEach(() => {
-  for (const dir of made) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made) clearFolder(dir);
   made = [];
 });
 

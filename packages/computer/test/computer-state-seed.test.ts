@@ -1,6 +1,6 @@
 import { posix } from '../../../tools/posix.ts';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +11,7 @@ import { closeAll, keeping } from './support/closing.js';
 import type { Agent } from '../../sdk/src/types/agent.js';
 import type { MachineNeed } from '../../sdk/src/types/machine.js';
 import { PROCESS_CASE_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
 vi.setConfig({ testTimeout: PROCESS_CASE_MS });
@@ -34,9 +35,9 @@ afterEach(async () => {
   // Every load this test made, closed before its folder goes: a load on its
   // own has already read what is out there and armed what it found.
   await closeAll();
-  if (loose !== undefined) rmSync(loose, { recursive: true, force: true });
+  if (loose !== undefined) clearFolder(loose);
   loose = undefined;
-  if (home !== undefined) rmSync(home, { recursive: true, force: true });
+  if (home !== undefined) clearFolder(home);
   home = undefined;
 });
 

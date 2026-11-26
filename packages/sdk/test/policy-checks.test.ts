@@ -18,7 +18,7 @@
  * here say what a limit has used directly rather than by writing records first.
  */
 
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -35,6 +35,7 @@ import type { Policies, Policy } from '../src/types/policies.js';
 import type { Peer } from '../src/types/rpc.js';
 import type { ModelUse, Usage, UsageTotal } from '../src/types/usage.js';
 import type { Grant, Principal, Users } from '../src/types/users.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /** The draft's store, as far as the cases below reach it. */
 const ROWS: Policy[] = [
@@ -48,7 +49,7 @@ const ROWS: Policy[] = [
 
 let root: string;
 beforeEach(() => { root = mkdtempSync(join(tmpdir(), 'ahpd-policy-checks-')); });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 const noted = (): Peer & { notes: { method: string; params: unknown }[] } => {
   const notes: { method: string; params: unknown }[] = [];

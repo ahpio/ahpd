@@ -16,7 +16,7 @@
  * state does.
  */
 
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, sep } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -31,6 +31,7 @@ import type { Bag } from '../src/types/common.js';
 import type { HostOptions } from '../src/types/host.js';
 import type { MessageAttachment, MessageFrom, Session, SteeringMessage } from '../src/types/session.js';
 import type { Peer } from '../src/types/rpc.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /** The key the reference client looks for, and the shape it reads. */
 const TAG = 'vscode.agentHost.snapshotAttachment';
@@ -40,7 +41,7 @@ const PNG = Buffer.from('89504e470d0a1a0a0000000d4948445200000001000000010806000
 
 let made: string[] = [];
 afterEach(() => {
-  for (const dir of made) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made) clearFolder(dir);
   made = [];
 });
 

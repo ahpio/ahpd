@@ -10,7 +10,7 @@
  * whoever runs the suite.
  */
 
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -30,6 +30,7 @@ import type { ServedFacts } from '../src/commands/served.js';
 import { declareUser } from '../src/commands/user.js';
 import { apiHandler } from '../src/http.js';
 import { pluginIdsOf } from '../src/plugins.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const registry = cliRegistry();
 
@@ -40,7 +41,7 @@ beforeEach(() => {
   config = join(root, 'config.json');
   writeFileSync(config, '{}\n');
 });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 /** Every flag the pinning cases pin, which `ahpd start` has to declare. */
 const DAEMON_FLAGS = [

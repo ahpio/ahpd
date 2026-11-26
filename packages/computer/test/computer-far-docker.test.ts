@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +16,7 @@ import type { MachineNeed } from '../../sdk/src/types/machine.js';
 import type { Vault } from '../../sdk/src/types/vault.js';
 import type { Usage, UsageEntry, UsageTotal } from '../../sdk/src/types/usage.js';
 import { PROCESS_CASE_MS, WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
 vi.setConfig({ testTimeout: PROCESS_CASE_MS });
@@ -38,7 +39,7 @@ const SSH = fileURLToPath(new URL('./fixtures/ssh.mjs', import.meta.url));
 let loose: string[] = [];
 afterEach(async () => {
   await closeAll();
-  for (const one of loose) rmSync(one, { recursive: true, force: true });
+  for (const one of loose) clearFolder(one);
   loose = [];
 });
 const temp = (): string => {

@@ -1,5 +1,5 @@
 import { loggerOf } from '@ahpd/sdk';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -14,6 +14,7 @@ import { agentsFilled, agentsTemplatePath, agentsTextOf, DEFAULT_AGENTS_TEMPLATE
 import type { BotRecord } from '../src/record.js';
 import type { LoaderContext } from '../../sdk/src/types/plugin.js';
 import { CONTRACTS } from './manifest.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The files a bot's folder holds, and the template that makes them.
@@ -29,7 +30,7 @@ import { CONTRACTS } from './manifest.js';
 /** A temporary directory removed after the test that made it. */
 let loose: string[] = [];
 afterEach(() => {
-  for (const dir of loose) rmSync(dir, { recursive: true, force: true });
+  for (const dir of loose) clearFolder(dir);
   loose = [];
 });
 

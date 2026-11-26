@@ -13,7 +13,7 @@
  * terminal case and a served case read and write the same bytes.
  */
 
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -26,6 +26,7 @@ import { apiOrigins } from '../src/commands/run.js';
 import { servedRegistry, type ServedFacts } from '../src/commands/served.js';
 import { apiHandler } from '../src/http.js';
 import { fileVault } from '../src/vault.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const AUTHORITY = '127.0.0.1:9361';
 const SECRET = 'kept-out-of-every-answer';
@@ -43,7 +44,7 @@ beforeEach(() => {
   process.env['XDG_CONFIG_HOME'] = home;
   afterEach(() => { if (had === undefined) delete process.env['XDG_CONFIG_HOME']; else process.env['XDG_CONFIG_HOME'] = had; });
 });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 const put = (held: unknown): void => { writeFileSync(config, `${JSON.stringify(held, null, 2)}\n`); };
 

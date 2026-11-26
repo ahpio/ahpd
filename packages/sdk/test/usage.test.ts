@@ -11,7 +11,7 @@
  * with `jq`.
  */
 
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -19,6 +19,7 @@ import { posix } from '../../../tools/posix.ts';
 import { fileUsage } from '../src/usage/usage.js';
 import { createMinuteMeter } from '../src/usage/minute.js';
 import type { ComputerTime, ModelCall, ModelUse, UsageEntry } from '../src/types/usage.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let root: string;
 let folder: string;
@@ -26,7 +27,7 @@ beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'ahpd-usage-'));
   folder = join(root, 'usage');
 });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 const modelUse = (at: string, pools: string[], model: Partial<ModelCall> = {}, rest: Partial<ModelUse> = {}): ModelUse => ({
   at,

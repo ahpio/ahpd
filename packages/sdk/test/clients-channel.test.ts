@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -13,6 +13,7 @@ import type { ClientRegistry } from '../src/types/host.js';
 import type { Connected } from '../src/types/listen.js';
 import type { Peer } from '../src/types/rpc.js';
 import type { Users } from '../src/types/users.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The clients channel over a host serving a few fake sockets.
@@ -54,7 +55,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   await host?.close();
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 /** A host serving the clients channel, with the registry bound as the daemon binds it. */

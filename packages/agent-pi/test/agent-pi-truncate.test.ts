@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -13,6 +13,7 @@ import type { PiModel } from '../src/models.js';
 import { piSession } from '../src/session.js';
 import type { OpenPi } from '../src/session.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A truncation asked for by a client, through the host.
@@ -26,7 +27,7 @@ import { WAIT_MS } from '../../../tools/wait.ts';
 
 let root: string;
 beforeEach(() => { root = mkdtempSync(join(tmpdir(), 'ahpd-pi-truncate-')); });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); forget(); });
+afterEach(() => { clearFolder(root); forget(); });
 
 /** Let a run's zero-delay work finish; nothing here waits on a real model. */
 const until = async (check: () => boolean, ms = WAIT_MS): Promise<void> => {

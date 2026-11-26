@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -11,6 +11,7 @@ import {
 } from './support/host.js';
 import type { Bag } from '../src/types/common.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 vi.mock('@anthropic-ai/claude-agent-sdk', async () => (await import('./support/claude-sdk.js')).fake);
 
@@ -712,7 +713,7 @@ describe('a message that carries attachments', () => {
 
   const made: string[] = [];
   afterEach(() => {
-    for (const dir of made) rmSync(dir, { recursive: true, force: true });
+    for (const dir of made) clearFolder(dir);
     made.length = 0;
   });
 

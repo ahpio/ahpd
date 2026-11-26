@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +11,7 @@ import { echo } from '../../../examples/echo/agent.js';
 import { closeAll, keeping } from './support/closing.js';
 import type { Users } from '../../sdk/src/types/users.js';
 import { PROCESS_CASE_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
 vi.setConfig({ testTimeout: PROCESS_CASE_MS });
@@ -45,7 +46,7 @@ beforeEach(() => {
 });
 afterEach(async () => {
   await closeAll();
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 /** The plugin over the fixture, and a host under the users file. */

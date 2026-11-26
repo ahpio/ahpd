@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -6,6 +6,7 @@ import { piAgent } from '../src/agent.js';
 import { forget, deleteSession, watch } from '../src/catalog.js';
 import { loadPi } from '../src/pi.js';
 import type { PiOptions, WatchedSession } from '../src/types.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * Deleting a pi session.
@@ -69,7 +70,7 @@ beforeEach(async () => {
   found.at = file;
   options = { sessionDir: store } as PiOptions;
 });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); forget(); });
+afterEach(() => { clearFolder(root); forget(); });
 
 it('removes the file pi keeps the session in', async () => {
   await deleteSession(options, 'pi', 'pi-1', root);

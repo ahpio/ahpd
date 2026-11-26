@@ -1,6 +1,6 @@
 import { loggerOf } from '../src/log.js';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -18,6 +18,7 @@ import type { LoaderContext } from '../src/types/plugin.js';
 import type { RecordCollection } from '../src/types/records.js';
 import type { Users } from '../src/types/users.js';
 import type { Vault } from '../src/types/vault.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A connector that is made by signing in to its provider.
@@ -144,7 +145,7 @@ beforeEach(() => {
   usersFile = join(home, 'users.json');
   writeUsers(['connector:list', 'connector:put', 'connector:remove']);
 });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 /** The users file, with the grants `writer` holds, so a test can take one away. */
 const writeUsers = (writer: string[]): void => {

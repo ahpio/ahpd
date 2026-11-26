@@ -1,8 +1,8 @@
-import { endHolders } from '../../../tools/holders.ts';
+import { clearFolder, endHolders } from '../../../tools/holders.ts';
 import { posix } from '../../../tools/posix.ts';
 import { spawn as startProcess } from 'node:child_process';
 import type { ChildProcessWithoutNullStreams } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -73,7 +73,7 @@ afterEach(async () => {
   await Promise.all(killed.map((child) => exited(child)));
   const homes = made.splice(0);
   await endHolders(homes);
-  for (const dir of homes) rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  for (const dir of homes) clearFolder(dir);
   expect(escaped).toEqual([]);
 });
 

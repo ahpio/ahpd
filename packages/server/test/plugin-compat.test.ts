@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -7,6 +7,7 @@ import { loadPlugins } from '../src/plugins.js';
 import { sdkVersion } from '../../sdk/src/version.js';
 import { echo } from '../../../examples/echo/agent.js';
 import type { HostOptions } from '../../sdk/src/types/host.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The range check, and the one moment it matters.
@@ -145,7 +146,7 @@ describe('a plugin that names the oldest sdk it needs', () => {
       });
     }
     finally {
-      rmSync(dir, { recursive: true, force: true });
+      clearFolder(dir);
     }
   };
 

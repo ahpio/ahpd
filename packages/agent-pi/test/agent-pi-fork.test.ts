@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -15,6 +15,7 @@ import type { PiModel } from '../src/models.js';
 import { loadPi } from '../src/pi.js';
 import { piSession } from '../src/session.js';
 import type { OpenPi } from '../src/session.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A fork asked for by a client, through the host.
@@ -28,7 +29,7 @@ import type { OpenPi } from '../src/session.js';
 
 let root: string;
 beforeEach(() => { root = mkdtempSync(join(tmpdir(), 'ahpd-pi-fork-')); });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); forget(); });
+afterEach(() => { clearFolder(root); forget(); });
 
 /** Let a run's zero-delay work finish; nothing here waits on a real model. */
 const until = async (check: () => boolean, times = 400): Promise<void> => {

@@ -1,10 +1,11 @@
 import { IMPORT_CASE_MS } from '../../../tools/wait.ts';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { Engine } from '../../sdk/src/types/index.js';
 import type { Bag, PluginHost, Start } from '../../sdk/src/types/index.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 vi.setConfig({ testTimeout: IMPORT_CASE_MS });
 
@@ -77,7 +78,7 @@ vi.mock('@earendil-works/pi-ai', async () => {
 
 let root: string;
 beforeEach(() => { root = mkdtempSync(join(tmpdir(), 'ahpd-pi-lazy-')); });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 const within = <T>(work: Promise<T>, ms: number): Promise<T | 'timed out'> =>
   Promise.race([work, new Promise<'timed out'>((done) => { setTimeout(() => { done('timed out'); }, ms); })]);

@@ -1,8 +1,9 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, expect, it } from 'vitest';
 import type { Bag } from '@ahpd/sdk';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A compacted Claude session, read back by the real SDK.
@@ -19,7 +20,7 @@ process.env.CLAUDE_CONFIG_DIR = CONFIG;
 afterAll(() => {
   if (configBefore === undefined) delete process.env.CLAUDE_CONFIG_DIR;
   else process.env.CLAUDE_CONFIG_DIR = configBefore;
-  rmSync(CONFIG, { recursive: true, force: true });
+  clearFolder(CONFIG);
 });
 
 const { turnsOf } = await import('../src/transcript.js');

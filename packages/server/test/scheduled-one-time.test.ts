@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { AutomationStore, Bag } from '@ahpd/sdk';
 import { scheduledAutomations } from '../src/scheduled.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The one-time trigger, as AHP 1.2.0 describes it and VS Code fires it: one
@@ -49,7 +50,7 @@ beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'ahpd-once-')); });
 afterEach(() => {
   store?.close?.();
   store = undefined;
-  rmSync(dir, { recursive: true, force: true });
+  clearFolder(dir);
 });
 
 /** A store whose due runs are run, as the host runs them, and the origins they ran with. */

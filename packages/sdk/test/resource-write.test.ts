@@ -20,6 +20,7 @@ import { afterEach, beforeEach, expect, it } from 'vitest';
 import { posix } from '../../../tools/posix.ts';
 import { resolve, write } from '../src/resources/resources.js';
 import type { Write } from '../src/types/resources.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixture = JSON.parse(readFileSync(join(here, './fixtures/resource-write.json'), 'utf8')) as Fixture;
@@ -43,7 +44,7 @@ const REFUSALS: Record<string, number> = {
 
 let root: string;
 beforeEach(() => { root = mkdtempSync(join(tmpdir(), 'ahpd-write-')); });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 for (const one of fixture.cases) {
   // A fixture whose `before` is a symbolic link needs a link to a file, which

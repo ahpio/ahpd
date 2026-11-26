@@ -1,10 +1,11 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, expect, it } from 'vitest';
 import type { Agent, ComputerPort, SessionMachine } from '@ahpd/sdk';
 import { acpAgent, watchSession } from '../src/index.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A catalogue read in the machines the sessions ran in.
@@ -23,7 +24,7 @@ const FIXTURE = fileURLToPath(new URL('./fixtures/acp-server.mjs', import.meta.u
 const made: string[] = [];
 
 afterEach(() => {
-  for (const path of made.splice(0)) rmSync(path, { recursive: true, force: true });
+  for (const path of made.splice(0)) clearFolder(path);
 });
 
 /** A fresh directory under the system temp root, kept for cleanup. */

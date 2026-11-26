@@ -2,7 +2,7 @@ import { WAIT_MS } from '../../../tools/wait.ts';
 import { describe, expect, it, vi } from 'vitest';
 import { createHost, hello, machine, peer, settle } from './support/host.js';
 import { echo } from '../../../examples/echo/agent.js';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileSessions, memorySessions } from '../src/sessions/sessions.js';
@@ -12,6 +12,7 @@ import type { WireTurn } from '../src/types/wire.js';
 import type { SessionStore } from '../src/types/sessions.js';
 import { WORK } from './support/work.js';
 import { uriOf } from '../src/resources/fileuri.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * Opening a session this host is not running.
@@ -358,7 +359,7 @@ describe('a stored session no listing names', () => {
       expect(opened?.createdAt).toBe('2026-11-10T00:00:00.000Z');
       expect(opened?.modifiedAt).toBe('2026-11-10T00:00:00.000Z');
     }
-    finally { rmSync(dir, { recursive: true, force: true }); }
+    finally { clearFolder(dir); }
   });
 
   it('refuses one its backend does not hold, and registers nothing', async () => {
@@ -369,7 +370,7 @@ describe('a stored session no listing names', () => {
         .rejects.toMatchObject({ code: -32001 });
       expect((await list(client)).items.map((one) => one.resource)).not.toContain('claude:/ember');
     }
-    finally { rmSync(dir, { recursive: true, force: true }); }
+    finally { clearFolder(dir); }
   });
 
   it('says a backend that failed to load apart from a conversation nobody has', async () => {
@@ -380,6 +381,6 @@ describe('a stored session no listing names', () => {
         .rejects.toMatchObject({ code: -32603, message: expect.stringContaining('could not load session ember') });
       expect((await list(client)).items.map((one) => one.resource)).not.toContain('claude:/ember');
     }
-    finally { rmSync(dir, { recursive: true, force: true }); }
+    finally { clearFolder(dir); }
   });
 });

@@ -8,6 +8,7 @@ import { customizationsOf } from '../src/session.js';
 import { diskOf as readDisk } from '../src/session/disk.js';
 import type { DiskRoots } from '../src/session/disk.js';
 import type { Bag } from '../../sdk/src/types/common.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /** The disk read with the YAML the host hands a plugin, as the daemon's context does. */
 const diskOf = (roots: DiskRoots) => readDisk(roots, parseYaml);
@@ -360,13 +361,13 @@ describe('where an agent lives', () => {
       );
       expect(agentNamed(out, 'scribe')).toMatchObject({ uri: uriOf(join(root, 'agents', 'scribe.md')) });
       expect(agentNamed(out, 'acme:ghost')).toMatchObject({ uri: 'claude-internal:/agent/acme%3Aghost' });
-    } finally { restore(); rmSync(root, { recursive: true, force: true }); }
+    } finally { restore(); clearFolder(root); }
   });
 });
 
 describe('where each entry\'s file is', () => {
   const made: string[] = [];
-  afterEach(() => { for (const dir of made.splice(0)) rmSync(dir, { recursive: true, force: true }); });
+  afterEach(() => { for (const dir of made.splice(0)) clearFolder(dir); });
 
   /** A config directory, a working directory and a managed directory, with each file of `files` written under the three. */
   function roots(files: Record<string, string>): { root: string; config: string; work: string; managed: string } {

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { bag } from '@ahpd/sdk';
 import type { AutomationStore, Bag } from '@ahpd/sdk';
 import { migrateAutomations, scheduledAutomations } from '../src/scheduled.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * What an automation *is* on this disk: one Markdown file a person reads and
@@ -63,7 +64,7 @@ beforeEach(() => {
 afterEach(() => {
   store?.close?.();
   store = undefined;
-  rmSync(dir, { recursive: true, force: true });
+  clearFolder(dir);
 });
 
 describe('one automation is one Markdown file', () => {

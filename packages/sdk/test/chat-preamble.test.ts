@@ -1,5 +1,5 @@
 import { loggerOf } from '../src/log.js';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -14,6 +14,7 @@ import type { Agent, BoundTool } from '../src/types/agent.js';
 import type { ChatPreamble, LoaderContext, OpenedChat } from '../src/types/plugin.js';
 import type { Peer } from '../src/types/rpc.js';
 import type { Session } from '../src/types/session.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The text a plugin gives a new chat, asked by the host.
@@ -25,7 +26,7 @@ import type { Session } from '../src/types/session.js';
 
 let made: string[] = [];
 afterEach(() => {
-  for (const dir of made) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made) clearFolder(dir);
   made = [];
 });
 

@@ -1,4 +1,4 @@
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it, describe } from 'vitest';
@@ -7,6 +7,7 @@ import type { AutomationStore, Bag, CapturedPlugin, Peer } from '@ahpd/sdk';
 import { echo } from '../../../examples/echo/agent.js';
 import { scheduledAutomations } from '../src/scheduled.js';
 import { posix } from '../../../tools/posix.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The half `memoryAutomations` deliberately does not have: a clock, and the
@@ -73,7 +74,7 @@ beforeEach(() => {
 afterEach(() => {
   store?.close?.();
   store = undefined;
-  rmSync(dir, { recursive: true, force: true });
+  clearFolder(dir);
 });
 
 describe('what it says is coming', () => {

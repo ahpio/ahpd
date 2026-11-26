@@ -1,7 +1,7 @@
 import { PROCESS_CASE_MS, WAIT_MS } from '../../../tools/wait.ts';
 import { posix } from '../../../tools/posix.ts';
 import { machinePathOf } from '@ahpd/sdk';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
@@ -24,6 +24,7 @@ import type { MachineNeed } from '../../sdk/src/types/machine.js';
 import type { Peer } from '../../sdk/src/types/rpc.js';
 import type { Vault } from '../../sdk/src/types/vault.js';
 import { gitSync } from '../../../tools/git.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
 vi.setConfig({ testTimeout: PROCESS_CASE_MS });
@@ -51,7 +52,7 @@ afterEach(async () => {
   // still holding a nested host is a process writing into a folder the line
   // below takes away.
   await closeAll();
-  for (const one of loose.splice(0)) rmSync(one, { recursive: true, force: true });
+  for (const one of loose.splice(0)) clearFolder(one);
 });
 
 const temp = (): string => {

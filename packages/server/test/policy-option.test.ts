@@ -16,11 +16,12 @@
  */
 
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { configSchema, flagFields, optionsFrom } from '../src/commands/options.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const REPO = join(import.meta.dirname, '../../..');
 const MAIN = 'packages/server/src/main.ts';
@@ -32,7 +33,7 @@ beforeEach(() => {
   mkdirSync(join(home, 'ahpd'), { recursive: true });
   config = join(home, 'config.json');
 });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 /** The options a run would take with this file and no flags. */
 const folded = (value: unknown) => {

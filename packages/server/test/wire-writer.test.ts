@@ -8,13 +8,14 @@
  * neither of them loses the shape a reader of the capture depends on.
  */
 
-import { chmodSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { filesOf, lineFor, writerFor } from '../src/wire.js';
 import type { Capture } from '../src/wire.js';
 import { posix } from '../../../tools/posix.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let home: string;
 let at: string;
@@ -24,7 +25,7 @@ beforeEach(() => {
   at = join(home, 'wire.jsonl');
 });
 
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 /** A capture file, and every one it has rolled into. */
 const files = (): string[] => readdirSync(home).sort();

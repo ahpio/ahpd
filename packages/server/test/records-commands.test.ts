@@ -8,10 +8,11 @@
  */
 
 import { spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const REPO = join(import.meta.dirname, '../../..');
 const MAIN = 'packages/server/src/main.ts';
@@ -32,7 +33,7 @@ const READ_ONLY: Record<string, string> = {
 
 let home: string;
 beforeEach(() => { home = mkdtempSync(join(tmpdir(), 'ahpd-records-commands-')); });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 /** What `initialize` answered a daemon with the bundled plugins and a users file. */
 const advertised = async (): Promise<{ channels: string[]; methods: string[] }> => {

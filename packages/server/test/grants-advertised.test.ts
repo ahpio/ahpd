@@ -12,10 +12,11 @@
  */
 
 import { spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const REPO = join(import.meta.dirname, '../../..');
 const MAIN = 'packages/server/src/main.ts';
@@ -38,7 +39,7 @@ beforeEach(() => {
   mkdirSync(join(home, 'ahpd'), { recursive: true });
   writeFileSync(join(home, 'config.json'), JSON.stringify({ plugins: [ECHO, BOT] }));
 });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 /** The child's own directories, so nothing reads the configuration of whoever runs the suite. */
 const environment = (): NodeJS.ProcessEnv => ({

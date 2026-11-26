@@ -1,5 +1,5 @@
 import { loggerOf } from '../src/log.js';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +17,7 @@ import type { Connector, ServedAdapter } from '../src/types/connectors.js';
 import type { HostOptions, HostTool } from '../src/types/host.js';
 import type { Contribution, LoaderContext } from '../src/types/plugin.js';
 import type { Vault } from '../src/types/vault.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 vi.mock('@anthropic-ai/claude-agent-sdk', async () => (await import('./support/claude-sdk.js')).fake);
 
@@ -302,7 +303,7 @@ describe('an action offered as a tool', () => {
 
       expect(ran[0]?.files).toBe(store.attachmentsDir?.(idOf('ahp-session:/one')));
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      clearFolder(dir);
     }
   });
 

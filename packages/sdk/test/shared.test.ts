@@ -1,5 +1,5 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -8,6 +8,7 @@ import { fileResources } from '../src/resources/resources.js';
 import { echo } from '../../../examples/echo/agent.js';
 import { SHARED_LOG } from '../src/host/shared.js';
 import type { Peer } from '../src/types/rpc.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A shared resource of kind `text`, `x-ahpd-shared:<file URI>`, against a real folder.
@@ -80,7 +81,7 @@ beforeEach(() => {
   writeFileSync(file, '## Tasks\n- one\n');
   channel = `x-ahpd-shared:file://${file}`;
 });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 it('hands a subscriber the text, version 0 and the people, and tells the others who joined and left', async () => {
   const host = makeHost();

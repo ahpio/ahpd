@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import type { SandboxConfigValue } from '@ahpd/sdk';
 import { hostSandboxPlace, hostSandboxRefusal, sandboxedCommand, sandboxSettingsOf, writeSandboxSettings } from '../src/sandbox.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * `@ahpio/sandbox-runtime` run for real on Linux: a chat that allows the whole
@@ -34,7 +35,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await new Promise<void>((done) => server.close(() => done()));
-  rmSync(folder, { recursive: true, force: true });
+  clearFolder(folder);
 });
 
 /** Runs `line` by `sh -c` inside the runtime with the chat's sandbox settings, and answers its exit code and output. */

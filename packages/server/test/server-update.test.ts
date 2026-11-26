@@ -14,7 +14,7 @@
 import { createServer } from 'node:http';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -38,6 +38,7 @@ import { planUpdate, targetSdk } from '../src/selfupdate.js';
 import type { HelperOptions, PlaceFacts } from '../src/selfupdate.js';
 import type { Fetch } from '../src/update.js';
 import { version } from '../src/version.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const AUTHORITY = '127.0.0.1:9350';
 /** What the fake registry calls latest. Above any version this package will be. */
@@ -78,7 +79,7 @@ afterEach(async () => {
   if (hadHome === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = hadHome;
   if (hadRegistry === undefined) delete process.env.npm_config_registry; else process.env.npm_config_registry = hadRegistry;
   await new Promise<void>((done) => { registryServer.close(() => { done(); }); });
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 /** The record `ahpd start` would have written for the daemon being updated. */

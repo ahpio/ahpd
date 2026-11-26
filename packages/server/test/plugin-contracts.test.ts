@@ -11,7 +11,7 @@
  * an entry outside the package.
  */
 
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -20,6 +20,7 @@ import { loadPlugins } from '../src/plugins.js';
 import { echo } from '../../../examples/echo/agent.js';
 import type { HostOptions } from '../../sdk/src/types/host.js';
 import type { PluginSpec } from '../../sdk/src/types/plugin.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const here = import.meta.dirname;
 const repo = join(here, '../../..');
@@ -89,7 +90,7 @@ describe('every shipped plugin declares its contracts', () => {
       expect(loaded[0]?.manifest?.contracts).toBeDefined();
     }
     finally {
-      rmSync(configDir, { recursive: true, force: true });
+      clearFolder(configDir);
     }
   });
 });

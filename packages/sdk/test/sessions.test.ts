@@ -9,7 +9,7 @@
  * file.
  */
 
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -26,6 +26,7 @@ import type { Principal, Users } from '../src/types/users.js';
 import type { Agent, Listed } from '../src/types/agent.js';
 import type { MessageAttachment, MessageFrom } from '../src/types/session.js';
 import { startedNow } from './support/started.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const ROOT = 'ahp-root://';
 const SESSION = 'ahp-session:/one';
@@ -37,7 +38,7 @@ const HOST = 'builder';
 
 let root: string;
 beforeEach(() => { root = mkdtempSync(join(tmpdir(), 'ahpd-store-')); });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 /**
  * What one session's own file holds, or nothing when it has no file.

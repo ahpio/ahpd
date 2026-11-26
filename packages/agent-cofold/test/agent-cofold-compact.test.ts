@@ -1,5 +1,5 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -13,6 +13,7 @@ import { cofoldSession, compactionNotification, harnessConfig, storeOf, turnsOf 
 import type { CofoldOptions, Held } from '../src/agent.js';
 import type { SessionContext } from '../src/context.js';
 import { AUTO_COMPACT_AT, DEFAULT_CONTEXT_TOKENS, createTurnAgent } from '../src/turnagent.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A session that folds its own history before it fills the model.
@@ -37,7 +38,7 @@ beforeEach(() => {
 
 afterEach(() => {
   if (had === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = had;
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 /** A harness file that owns the endpoint the configured model is asked for. */

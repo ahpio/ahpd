@@ -8,7 +8,7 @@
  * stayed open.
  */
 
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -18,6 +18,7 @@ import { peopleChannels } from '../src/access/people.js';
 import { servedRecords } from '../src/resources/recordschannel.js';
 import { echo } from '../../../examples/echo/agent.js';
 import type { Users } from '../src/types/users.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 type Bag = Record<string, any>;
 
@@ -39,7 +40,7 @@ beforeEach(() => {
     users: [{ id: 'mo', roles: ['manager'] }, { id: 'ad', roles: ['admin'] }],
   }));
 });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 /** A host serving the people channels and commands over the file in `home`. */
 const served = () => {

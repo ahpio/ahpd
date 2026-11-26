@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { webcrypto } from 'node:crypto';
@@ -7,6 +7,7 @@ import { fileUsers, signInRecord } from '../src/access/users.js';
 import { githubIssuer, isIssuerUrl, issuerFrom, issuerKind, jwtIssuer, oidcIssuer } from '../src/access/issuers.js';
 import type { Fetcher } from '../src/access/issuers.js';
 import type { Issuer, IssuerVerify, Users } from '../src/types/users.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A credential this host did not mint.
@@ -27,7 +28,7 @@ beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'ahpd-issuer-'));
   path = join(root, 'users.json');
 });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 /** A `fetch` that answers from a table and keeps the questions it was asked. */
 const answering = (answers: Record<string, unknown>): { fetch: Fetcher; seen: string[] } => {

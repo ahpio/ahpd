@@ -9,7 +9,7 @@
  */
 
 import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -21,6 +21,7 @@ import {
   answerJson, fakeProvider, isAnthropicError, isOpenAiError, MARKER, memoryUsage, pause, people, providerConnector, ROOT_TOKEN, send,
   serveProxy, type People, type ProviderFixture, type Served, type ServeOptions,
 } from './fixtures/proxy-harness.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let folder: string;
 let who: People;
@@ -35,7 +36,7 @@ beforeEach(async () => {
 afterEach(async () => {
   for (const one of open.splice(0)) await one.close();
   for (const one of fakes.splice(0)) await one.close();
-  rmSync(folder, { recursive: true, force: true });
+  clearFolder(folder);
 });
 
 /** The proxy, with the users file above unless the options say otherwise. */

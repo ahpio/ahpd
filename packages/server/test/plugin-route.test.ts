@@ -15,12 +15,13 @@
 
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { connect } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { announcedNames } from '../src/commands/run.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const REPO = join(import.meta.dirname, '../../..');
 const MAIN = 'packages/server/src/main.ts';
@@ -147,7 +148,7 @@ afterAll(async () => {
       one.child.once('exit', () => { clearTimeout(timer); done(); });
     });
   }
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 describe('a route with http off', () => {

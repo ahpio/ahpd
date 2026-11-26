@@ -20,6 +20,7 @@ import type { NestedStart } from '../src/types/computers.js';
 import type { HostOptions } from '../src/types/host.js';
 import type { ServedCanvases } from '../src/types/plugin.js';
 import type { Handler, Peer, Wire } from '../src/types/rpc.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The proxy: a session the outer host owns, running in a host inside a machine.
@@ -1762,7 +1763,7 @@ it('a nested session whose folders change starts the host inside again, and disp
     expect(port.asked().some(({ method }) => method === 'disposeSession')).toBe(false);
   }
   finally {
-    rmSync(elsewhere, { recursive: true, force: true });
+    clearFolder(elsewhere);
   }
   await host.close();
   port.done();
@@ -1881,8 +1882,8 @@ it('a command typed into a nested session runs in the host inside, and in no ter
     await host.close();
     // And the shell the host inside ran the command in, which Windows will not remove the folder under.
     await inner.host.close();
-    rmSync(dir, { recursive: true, force: true });
-    if (mounted !== dir) rmSync(mounted, { recursive: true, force: true });
+    clearFolder(dir);
+    if (mounted !== dir) clearFolder(mounted);
   }
 });
 

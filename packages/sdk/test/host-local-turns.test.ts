@@ -1,5 +1,5 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -13,6 +13,7 @@ import { uriOf } from '../src/resources/resources.js';
 import type { SessionStore } from '../src/types/sessions.js';
 import type { WireTurn } from '../src/types/wire.js';
 import type { Agent, Bag, Listed, Session, Start } from '@ahpd/sdk';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A `!` command's turn, kept for its chat.
@@ -31,7 +32,7 @@ beforeEach(resetSdk);
 
 let made: string[] = [];
 afterEach(() => {
-  for (const dir of made) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made) clearFolder(dir);
   made = [];
 });
 

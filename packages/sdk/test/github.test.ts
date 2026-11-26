@@ -1,9 +1,10 @@
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { posix } from '../../../tools/posix.ts';
 import { githubPullRequests } from '../src/repo/github.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The pull request of a branch, asked two ways.
@@ -17,7 +18,7 @@ import { githubPullRequests } from '../src/repo/github.js';
 let made: string[] = [];
 const was = { path: process.env.PATH };
 afterEach(() => {
-  for (const dir of made) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made) clearFolder(dir);
   made = [];
   process.env.PATH = was.path;
   vi.unstubAllGlobals();

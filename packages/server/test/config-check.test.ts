@@ -8,12 +8,13 @@
  */
 
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from 'vitest';
 import { configSchema, flagFields, optionsFrom, serverFields } from '../src/commands/options.js';
 import type { Config } from '../src/config.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const REPO = join(import.meta.dirname, '../../..');
 const MAIN = 'packages/server/src/main.ts';
@@ -26,7 +27,7 @@ beforeEach(() => {
   home = mkdtempSync(join(tmpdir(), 'ahpd-config-check-'));
   config = join(home, 'config.json');
 });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 const put = (value: unknown): void => { writeFileSync(config, JSON.stringify(value)); };
 

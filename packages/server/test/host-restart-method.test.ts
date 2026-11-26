@@ -9,7 +9,7 @@
  * test writes, and the restart is a fact that records what it was asked.
  */
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -19,6 +19,7 @@ import type { Running } from '../src/daemon.js';
 import type { Options } from '../src/commands/options.js';
 import { FOREGROUND, restartMethod } from '../src/commands/restart.js';
 import type { ServedFacts } from '../src/commands/served.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const AUTHORITY = '127.0.0.1:9350';
 const ARGV = ['--port', '9350'];
@@ -33,7 +34,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   if (had === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = had;
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 /** The record `ahpd start` would have written for this daemon, or none for one in the foreground. */

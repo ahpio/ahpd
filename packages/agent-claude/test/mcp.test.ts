@@ -1,10 +1,11 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { protectedResource, serversFor, urlOf } from '../src/mcp.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A server's sign-in metadata, found as VS Code finds it: the path-appended
@@ -58,7 +59,7 @@ describe('the metadata a server publishes about signing in', () => {
 
 let made: string[] = [];
 afterEach(() => {
-  for (const dir of made) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made) clearFolder(dir);
   made = [];
 });
 

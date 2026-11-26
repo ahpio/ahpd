@@ -8,7 +8,7 @@
  * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/common/meta/vscode/agentHostCreateChatWorkspaceMeta.ts
  */
 
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -21,6 +21,7 @@ import { WAIT_MS } from '../../../tools/wait.ts';
 import { actions, defaultChatOf, hello, peer, settle } from './support/host.js';
 import type { Agent, Start } from '../src/types/agent.js';
 import type { Session } from '../src/types/session.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const SESSION = 'ahp-session:/workspace';
 const CHAT = 'ahp-chat:/isolated';
@@ -30,8 +31,8 @@ const made: string[] = [];
 const scratch: string[] = [];
 
 afterEach(() => {
-  for (const one of scratch.splice(0)) rmSync(one, { recursive: true, force: true });
-  for (const one of made.splice(0)) rmSync(one, { recursive: true, force: true });
+  for (const one of scratch.splice(0)) clearFolder(one);
+  for (const one of made.splice(0)) clearFolder(one);
 });
 
 /** A folder under a fresh root, made now. */

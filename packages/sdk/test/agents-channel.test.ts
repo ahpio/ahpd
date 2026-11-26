@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
@@ -20,6 +20,7 @@ import type { RecordCollection } from '../src/types/records.js';
 import type { Vault } from '../src/types/vault.js';
 import type { Icon } from '@microsoft/agent-host-protocol';
 import { WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The agents channel over a store in memory and a vault that is a map.
@@ -145,7 +146,7 @@ beforeEach(() => {
   }));
 });
 afterEach(() => {
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 type Host = ReturnType<typeof createHost>;

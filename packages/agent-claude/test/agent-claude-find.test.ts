@@ -1,9 +1,10 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, expect, it, vi } from 'vitest';
 import { uriOf } from '@ahpd/sdk';
 import type { Listed } from '@ahpd/sdk';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The CLI's store, asked by id and listed whole.
@@ -133,7 +134,7 @@ process.env.CLAUDE_CONFIG_DIR = join(home, 'config');
 afterAll(() => {
   if (before === undefined) delete process.env.CLAUDE_CONFIG_DIR;
   else process.env.CLAUDE_CONFIG_DIR = before;
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 /** The transcript the CLI writes for a session of `folder`, with one line in it. */

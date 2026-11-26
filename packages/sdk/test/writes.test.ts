@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, symlinkSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, symlinkSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -7,6 +7,7 @@ import { createHost } from '../src/host.js';
 import { fileResources, pathOf, uriOf } from '../src/resources/resources.js';
 import { echo } from '../../../examples/echo/agent.js';
 import type { Peer } from '../src/types/rpc.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The write half, against a real directory.
@@ -54,8 +55,8 @@ beforeEach(() => {
   outside = mkdtempSync(join(tmpdir(), 'ahpd-out-'));
 });
 afterEach(() => {
-  rmSync(root, { recursive: true, force: true });
-  rmSync(outside, { recursive: true, force: true });
+  clearFolder(root);
+  clearFolder(outside);
 });
 
 it('creates a file, and overwrites one whole', async () => {

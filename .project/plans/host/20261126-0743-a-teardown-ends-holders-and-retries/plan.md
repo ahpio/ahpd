@@ -1,7 +1,7 @@
 ---
 title: A teardown ends the folder's holders and retries its removal
 domain: host
-status: planned
+status: active
 priority: high
 created: 2026-11-26
 revalidated: 2026-11-26
@@ -27,14 +27,15 @@ A test that removes its temp folder in a teardown never fails on `ENOTEMPTY` or 
 | A teardown ends every process whose environment names the folder, then removes it with Node's own retry | Softov, 2026-11-26, chose "Both: end holders, then retry" | 01 |
 | `clearFolder` is synchronous, so it drops into any teardown as the removal it replaces | (defaulted: many teardowns are not async) | 01 |
 | Only a removal in an `afterEach`, `afterAll` or `finally` block changes; one in the middle of a case stays | (defaulted: ending a holder mid-case could end a process the case still uses) | 02 |
+| The two new tests are in `packages/sdk/test`, beside the suites that use `tools/holders.ts` | (defaulted: the shards are timed per test file there) | 02 |
 | A test refuses a bare removal in a teardown | (defaulted: the fix holds only if no new teardown skips it) | 02 |
 
 ## Tasks
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a-folder-is-cleared-in-one-call](task-01-a-folder-is-cleared-in-one-call.md) | todo | - |
-| [02 - every-teardown-clears-its-folder](task-02-every-teardown-clears-its-folder.md) | todo | 01 |
+| [01 - a-folder-is-cleared-in-one-call](task-01-a-folder-is-cleared-in-one-call.md) | done | - |
+| [02 - every-teardown-clears-its-folder](task-02-every-teardown-clears-its-folder.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -43,12 +44,12 @@ A test that removes its temp folder in a teardown never fails on `ENOTEMPTY` or 
 
 ## Resume state
 
-- **Done so far:** the plan.
-- **Next action:** task 01.
+- **Done so far:** both tasks, on 2026-11-26. [implemented.md](implemented.md) holds the checks.
+- **Next action:** Softov's review, and `check-windows` over more runs.
 - **Open questions:** none.
 - **Watch out for:** a removal in the middle of a case stays as it is.
 
 ## Final verification checklist
 
-- [ ] Every teardown removal uses `clearFolder`, and the check passes.
+- [x] Every teardown removal uses `clearFolder`, and the check passes.
 - [ ] The full suite passes on Linux, and `check-windows` passes.

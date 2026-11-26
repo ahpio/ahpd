@@ -1,12 +1,13 @@
 import { posix } from '../../../tools/posix.ts';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, expect, it } from 'vitest';
 import { readParts } from '../src/parts.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The bump script, run the way the workflow runs it.
@@ -22,7 +23,7 @@ const SCRIPT = fileURLToPath(new URL('../../../scripts/parts-bump.mjs', import.m
 
 const loose: string[] = [];
 afterEach(() => {
-  for (const one of loose.splice(0)) rmSync(one, { recursive: true, force: true });
+  for (const one of loose.splice(0)) clearFolder(one);
 });
 
 /** An archive part at a version, as the file it is read from spells one. */

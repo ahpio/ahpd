@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, it } from 'vitest';
@@ -17,6 +17,7 @@ import type { OpenPi } from '../src/session.js';
 import type { BackendOptions } from '../src/backend.js';
 import { toPiTool } from '../src/tools.js';
 import { callIn, driveCall, fakePi, opened, root, settled, turn } from './fake-pi.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // Host tools --------------------------------------------------------------
 
@@ -90,7 +91,7 @@ it("offers a host tool named like one of pi's own in the place of pi's", async (
     expect(session.getToolDefinition('bash')?.label).toBe('Host shell');
     session.dispose();
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    clearFolder(dir);
   }
 });
 

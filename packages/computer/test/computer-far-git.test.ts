@@ -1,6 +1,6 @@
 import { machinePathOf } from '@ahpd/sdk';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -8,6 +8,7 @@ import { originOf, SEED_BUNDLE } from '../src/clone.js';
 import { fetchedInto } from '../src/machinegit.js';
 import { dockerRuntime } from '../src/runtime.js';
 import { gitSync } from '../../../tools/git.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A session's code on another box's Docker, on a real Docker.
@@ -35,7 +36,7 @@ const DOCKER = answers();
 
 let loose: string | undefined;
 afterEach(() => {
-  if (loose !== undefined) rmSync(loose, { recursive: true, force: true });
+  if (loose !== undefined) clearFolder(loose);
   loose = undefined;
 });
 

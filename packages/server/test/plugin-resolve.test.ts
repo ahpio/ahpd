@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { configDir } from '../src/config.js';
 import { denoMessage, entryOf, hasScheme, loadPlugins, resolvePlugin } from '../src/plugins.js';
 import { echo } from '../../../examples/echo/agent.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * Turning a spec into something importable, without importing it.
@@ -34,7 +35,7 @@ beforeEach(() => {
 afterEach(() => {
   if (had === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = had;
   if (hadRoot === undefined) delete process.env.AHPD_PLUGIN_ROOT; else process.env.AHPD_PLUGIN_ROOT = hadRoot;
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 /** A path under the configuration directory this test owns. */

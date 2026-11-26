@@ -1,5 +1,5 @@
 import { loggerOf } from '../src/log.js';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -14,6 +14,7 @@ import type { Adapter, ServedAdapter } from '../src/types/connectors.js';
 import type { LoaderContext } from '../src/types/plugin.js';
 import type { Users } from '../src/types/users.js';
 import type { Icon } from '@microsoft/agent-host-protocol';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The adapters channel over a fold that holds two adapters.
@@ -68,7 +69,7 @@ beforeEach(() => {
     ],
   }));
 });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 type Host = ReturnType<typeof createHost>;
 

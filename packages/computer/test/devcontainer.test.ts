@@ -1,5 +1,5 @@
 import { posix } from '../../../tools/posix.ts';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
@@ -13,6 +13,7 @@ import type { DockerOptions } from '../src/runtime.js';
 import type { MadePart } from '../src/parts.js';
 import type { ContainerSink } from '../../sdk/src/types/containers.js';
 import { PROCESS_CASE_MS, WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
 vi.setConfig({ testTimeout: PROCESS_CASE_MS });
@@ -42,7 +43,7 @@ afterEach(async () => {
   // connected holds a host inside a container, which goes on writing into the
   // folder the line below takes away.
   await closeAll();
-  rmSync(root, { recursive: true, force: true });
+  clearFolder(root);
 });
 
 /** A folder that is a dev container, and one that is not. */
@@ -375,7 +376,7 @@ it.skipIf(!posix)('installs only what the configuration directory has not got, w
       .toBe('node /w/main.js plugin install --no-enable @ahpd/agent-acp@0.7.0\n');
   }
   finally {
-    rmSync(home, { recursive: true, force: true });
+    clearFolder(home);
   }
 });
 

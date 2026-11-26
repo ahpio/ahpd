@@ -1,6 +1,6 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
 import { loggerOf } from '@ahpd/sdk';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -11,6 +11,7 @@ import { ENDPOINT, RECEIPTS, createSender } from '../src/send.js';
 import type { EventHandler, EventName, HostEventOf } from '../../sdk/src/types/events.js';
 import type { PluginHost } from '../../sdk/src/types/plugin.js';
 import type { Owner } from '../../sdk/src/types/usage.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The push plugin, against a service that is a stub.
@@ -50,7 +51,7 @@ let loose: string | undefined;
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
-  if (loose !== undefined) rmSync(loose, { recursive: true, force: true });
+  if (loose !== undefined) clearFolder(loose);
   loose = undefined;
 });
 

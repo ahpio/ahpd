@@ -11,6 +11,7 @@ import {
 } from '../src/sandbox.js';
 import { closeAll, keeping } from './support/closing.js';
 import type { HostOptions } from '../../sdk/src/types/host.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The sandbox as this plugin hosts it: the root `sandbox` property it
@@ -26,7 +27,7 @@ const FIXTURE = fileURLToPath(new URL('./fixtures/docker.mjs', import.meta.url))
 let loose: string | undefined;
 afterEach(async () => {
   await closeAll();
-  if (loose !== undefined) rmSync(loose, { recursive: true, force: true });
+  if (loose !== undefined) clearFolder(loose);
   loose = undefined;
 });
 

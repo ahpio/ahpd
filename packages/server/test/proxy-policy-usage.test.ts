@@ -7,7 +7,7 @@
  */
 
 import { WAIT_MS } from '../../../tools/wait.ts';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -17,6 +17,7 @@ import {
   type FakeProvider, type People, type ProviderFixture, type Served, type ServeOptions,
 } from './fixtures/proxy-harness.js';
 import type { ProxySetting } from '../src/proxy/providers.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let folder: string;
 let who: People;
@@ -31,7 +32,7 @@ beforeEach(async () => {
 afterEach(async () => {
   for (const one of open.splice(0)) await one.close();
   for (const one of fakes.splice(0)) await one.close();
-  rmSync(folder, { recursive: true, force: true });
+  clearFolder(folder);
 });
 
 const CHAT = '/v1/chat/completions';

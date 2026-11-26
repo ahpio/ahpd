@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -9,6 +9,7 @@ import type { HostOptions } from '../../sdk/src/types/host.js';
 import type { PluginSpec } from '../../sdk/src/types/plugin.js';
 import { fileLinks } from '../../../tools/links.ts';
 import { posix } from '../../../tools/posix.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The catalogs a manifest names in `ahpd.i18n`.
@@ -20,7 +21,7 @@ import { posix } from '../../../tools/posix.ts';
 
 let home: string;
 beforeEach(() => { home = mkdtempSync(join(tmpdir(), 'ahpd-plugin-i18n-')); });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 const base = (): HostOptions => ({ path: home, agents: [echo({ path: home })] });
 

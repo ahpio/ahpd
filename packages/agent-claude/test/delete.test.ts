@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it } from 'vitest';
 import { posix } from '../../../tools/posix.ts';
 import { claude } from '../src/claude.js';
 import { forgetSession, transcriptOf } from '../src/catalog.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * Deleting a Claude session.
@@ -38,7 +39,7 @@ afterEach(() => {
   // The mode is put back before the tree goes, so a directory this file made
   // unreadable does not stop the next test's cleanup.
   for (const dir of [ran, elsewhere]) if (existsSync(project(dir))) chmodSync(project(dir), 0o755);
-  rmSync(root, { recursive: true, force: true });
+  clearFolder(root);
 });
 
 /** A session on disk, transcript and subagent folder, as the CLI leaves it. */

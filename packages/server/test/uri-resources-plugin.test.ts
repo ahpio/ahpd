@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -8,6 +8,7 @@ import { describePlugin, loadPlugins } from '../src/plugins.js';
 import { echo } from '../../../examples/echo/agent.js';
 import type { HostOptions } from '../../sdk/src/types/host.js';
 import type { Peer } from '../../sdk/src/types/rpc.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A scheme, through the whole path: a plugin on disk to a URI a client reads.
@@ -22,7 +23,7 @@ const SPEC = './packages/server/test/fixtures/plugin-uri-resources';
 
 let root: string;
 beforeEach(() => { root = mkdtempSync(join(tmpdir(), 'ahpd-uri-plugin-')); });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 const peer = (): Peer => ({
   send: () => {}, notify: () => {}, request: async () => ({}), answered: () => {}, close: () => {},

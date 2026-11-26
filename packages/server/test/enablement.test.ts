@@ -7,12 +7,13 @@
  * file - and one of them hands the file something a person broke.
  */
 
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { enablementKeyOf } from '@ahpd/sdk';
 import { fileEnablement } from '../src/enablement.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /** One plugin, and the key a decision about it is kept under. */
 const PLUGIN = 'file:///copies/holder/a-plugin';
@@ -33,7 +34,7 @@ beforeEach(() => {
   file = join(dir, 'customizations-state.json');
   problems = [];
 });
-afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(dir); });
 
 /** A store over the test's file, which is what a daemon builds at its start. */
 const open = () => fileEnablement({ file, onProblem: (message) => problems.push(message) });
