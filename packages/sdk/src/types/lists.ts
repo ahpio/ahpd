@@ -151,7 +151,7 @@ export type ProcessLifecycle = 'pending' | 'running' | 'completed' | 'failed' | 
 
 /** One process as a kind answers it. */
 export interface ListProcess {
-  /** Its id, unique in its kind, so its URI is `x-ahpd-processes://<list>/<kind>/<id>`. */
+  /** Its id, unique in its kind, so its URI is `x-ahpd-processes://<channel>/<kind>/<id>`. */
   id: string;
   /** What a client shows for it. */
   title?: string;

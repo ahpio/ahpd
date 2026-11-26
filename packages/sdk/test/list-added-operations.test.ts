@@ -90,7 +90,7 @@ it('lists a deploy onto two kinds as two ids, offered by its own offered, and an
 it('runs a long deploy as a process the deploy plugin keeps, and an export with no target', async () => {
   const { invoke, ran, settle, folded } = served();
   const answer = await invoke('systemd/deploy', { target: { id: 'nginx' }, input: { version: '1.2' } }) as { process: string };
-  expect(answer.process).toMatch(/^x-ahpd-processes:\/\/service\/deploy\//);
+  expect(answer.process).toMatch(/^x-ahpd-processes:\/\/x-ahpd-services\/deploy\//);
   await settle();
   expect(ran).toEqual(['deploy nginx 1.2']);
   const processes = folded.options.channels![PROCESSES_SCHEME] as ServedChannel;

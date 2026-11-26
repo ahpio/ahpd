@@ -4,8 +4,9 @@
  * A process is one run of something a list's record describes: a service a
  * kind started, a deploy, a CI job. The kind keeps its processes, from where
  * the work lives, and answers them through `processes`; the host keeps none.
- * A process reads at `x-ahpd-processes://<list>/<kind>/<id>`, so the path
- * names the kind to ask, and the channel's root lists every process a reader
+ * A process reads at `x-ahpd-processes://<channel>/<kind>/<id>`, where
+ * `<channel>` is the scheme of the channel the kind is on, so the path names
+ * the kind to ask, and the channel's root lists every process a reader
  * may see.
  *
  * While a process the host started runs, the host holds its abort signal and
@@ -31,10 +32,10 @@ export const PROCESS_GRANT = 'process:get' as Grant;
 /** The protocol's code for a resource that is not there. */
 const NOT_FOUND = -32008;
 
-/** One process as a client reads it: the kind's process, with its URI, list and kind. */
+/** One process as a client reads it: the kind's process, with its URI, the channel of its list, and its kind. */
 export interface ServedProcess extends ListProcess {
   uri: string;
-  list: string;
+  channel: string;
   kind: string;
 }
 
@@ -48,21 +49,21 @@ export interface ProcessesServing {
   /** `source` is the kind, or the plugin that added the operation, whose processes it is. */
   start(list: ServedList, source: string, work: (process: ProcessWork) => Promise<void>): string;
   /** Read a process again and tell its subscribers. */
-  changed(list: string, kind: string, id: string): void;
+  changed(channel: string, kind: string, id: string): void;
 }
 
 /** The URI of one process. */
-export const processUri = (list: string, kind: string, id: string): string => `${PROCESSES}${list}/${kind}/${encodeURIComponent(id)}`;
+export const processUri = (channel: string, kind: string, id: string): string => `${PROCESSES}${channel}/${kind}/${encodeURIComponent(id)}`;
 
-/** The list, kind and id a process URI names, or nothing for the root. */
-const partsOf = (uri: string): { list: string; kind: string; id: string } | undefined => {
+/** The channel, kind and id a process URI names, or nothing for the root. */
+const partsOf = (uri: string): { channel: string; kind: string; id: string } | undefined => {
   const path = uri.slice(PROCESSES.length).replace(/^\/+/, '');
   if (path === '') return undefined;
-  const [list, kind, ...rest] = path.split('/');
-  if (list === undefined || kind === undefined || rest.length === 0) {
-    throw new RpcError(INVALID_PARAMS, `${uri} is not a process; read ${PROCESSES}<list>/<kind>/<id>`);
+  const [channel, kind, ...rest] = path.split('/');
+  if (channel === undefined || kind === undefined || rest.length === 0) {
+    throw new RpcError(INVALID_PARAMS, `${uri} is not a process; read ${PROCESSES}<channel>/<kind>/<id>`);
   }
-  return { list, kind, id: decodeURIComponent(rest.join('/')) };
+  return { channel, kind, id: decodeURIComponent(rest.join('/')) };
 };
 
 /** Build the channel of processes. `onProblem` is told of a kind that fails to answer. */
@@ -81,34 +82,41 @@ export function processesChannel(onProblem: (message: string) => void = () => {}
       name: added.owner, by: added.by, processes: added.processes, operations: [added.operation], ...(added.problem === undefined ? {} : { problem: added.problem }),
     }])),
   ];
-  const kindOf = (list: string, name: string): { list: ServedList; kind: Source } => {
-    const held = lists[list];
+  /** The list served on a channel scheme. */
+  const listOn = (channel: string): ServedList | undefined => Object.values(lists).find((one) => one.channel === channel);
+  const kindOf = (channel: string, name: string): { list: ServedList; kind: Source } => {
+    const held = listOn(channel);
     const found = held === undefined ? undefined : sourcesOf(held).find((one) => one.name === name);
-    if (held === undefined || found === undefined) throw new RpcError(NOT_FOUND, `No processes of ${list} ${name}`);
+    if (held === undefined || found === undefined) throw new RpcError(NOT_FOUND, `No processes of ${channel} ${name}`);
     return { list: held, kind: found };
   };
 
-  const mayRead = (list: string, reader: Principal | undefined): boolean => reader === undefined || reader.can(`${list}:get` as Grant);
+  /** Whether a reader may read the processes of the list on a channel: a reader of the list may. */
+  const mayRead = (channel: string, reader: Principal | undefined): boolean => {
+    if (reader === undefined) return true;
+    const list = listOn(channel);
+    return list !== undefined && reader.can(`${list.name}:get` as Grant);
+  };
 
-  const served = (list: string, kind: string, process: ListProcess): ServedProcess => ({ ...process, uri: processUri(list, kind, process.id), list, kind });
+  const served = (channel: string, kind: string, process: ListProcess): ServedProcess => ({ ...process, uri: processUri(channel, kind, process.id), channel, kind });
 
   const read = async (uri: string, reader: Principal | undefined): Promise<ServedProcess> => {
     const parts = partsOf(uri);
     if (parts === undefined) throw new RpcError(INVALID_PARAMS, `${uri} is the list of processes`);
-    const { kind } = kindOf(parts.list, parts.kind);
+    const { kind } = kindOf(parts.channel, parts.kind);
     const process = await kind.processes.read(parts.id, reader);
     if (process === undefined) throw new RpcError(NOT_FOUND, `No process at ${uri}`);
-    return served(parts.list, parts.kind, process);
+    return served(parts.channel, parts.kind, process);
   };
 
   /** Every process a reader may see, from each kind that keeps them, newest first. */
   const all = async (reader: Principal | undefined): Promise<ServedProcess[]> => {
     const asked: Promise<ServedProcess[]>[] = [];
     for (const list of Object.values(lists)) {
-      if (!mayRead(list.name, reader)) continue;
+      if (!mayRead(list.channel, reader)) continue;
       for (const kind of sourcesOf(list)) {
         asked.push(Promise.resolve(kind.processes.list(reader))
-          .then((processes) => processes.map((one) => served(list.name, kind.name, one)))
+          .then((processes) => processes.map((one) => served(list.channel, kind.name, one)))
           .catch((error: unknown) => {
             kind.problem?.(`kind ${kind.name} could not list its processes: ${reason(error)}`);
             onProblem(`plugin ${kind.by}: kind ${kind.name} could not list its processes: ${reason(error)}`);
@@ -125,8 +133,8 @@ export function processesChannel(onProblem: (message: string) => void = () => {}
     channel: undefined as unknown as PluginChannel,
   };
 
-  const send = (uri: string, action: { type: string } & Record<string, unknown>, list?: string): void => {
-    servedChannel.publish?.(uri, action, list === undefined ? {} : { visible: (reader) => mayRead(list, reader) });
+  const send = (uri: string, action: { type: string } & Record<string, unknown>, channel?: string): void => {
+    servedChannel.publish?.(uri, action, channel === undefined ? {} : { visible: (reader) => mayRead(channel, reader) });
   };
 
   const channel: PluginChannel = {
@@ -135,7 +143,7 @@ export function processesChannel(onProblem: (message: string) => void = () => {}
     // A reader of a process's list may read it; the root lists only what each reader may read.
     authorize: async (uri, reader) => {
       const parts = partsOf(uri);
-      return parts === undefined || mayRead(parts.list, reader);
+      return parts === undefined || mayRead(parts.channel, reader);
     },
     snapshot: async (uri, reader) => {
       const parts = partsOf(uri);
@@ -148,7 +156,7 @@ export function processesChannel(onProblem: (message: string) => void = () => {}
   /** The grant a stop asks: the grant of the operation that started the process, else the list's `put`. */
   const stopGrant = async (uri: string, reader: Principal | undefined): Promise<Grant> => {
     const process = await read(uri, reader);
-    const { list, kind } = kindOf(process.list, process.kind);
+    const { list, kind } = kindOf(process.channel, process.kind);
     const operation = kind.operations.find((one) => one.id === process.origin?.operation);
     return (operation?.grant ?? `${list.name}:put`) as Grant;
   };
@@ -171,7 +179,7 @@ export function processesChannel(onProblem: (message: string) => void = () => {}
         return {};
       }
       const parts = partsOf(uri)!;
-      const { kind } = kindOf(parts.list, parts.kind);
+      const { kind } = kindOf(parts.channel, parts.kind);
       if (kind.processes.stop === undefined) throw new RpcError(INVALID_PARAMS, `${uri} is not running on this host, and its kind cannot stop it`);
       await kind.processes.stop(parts.id);
       return {};
@@ -180,10 +188,10 @@ export function processesChannel(onProblem: (message: string) => void = () => {}
 
   const start: ProcessesServing['start'] = (list, source, work) => {
     const id = randomUUID();
-    const uri = processUri(list.name, source, id);
+    const uri = processUri(list.channel, source, id);
     const abort = new AbortController();
     running.set(uri, abort);
-    const report = (said: ProcessReport): void => { send(uri, { type: `${PROCESSES_SCHEME}/reported`, ...said }, list.name); };
+    const report = (said: ProcessReport): void => { send(uri, { type: `${PROCESSES_SCHEME}/reported`, ...said }, list.channel); };
     report({ lifecycle: 'running' });
     void work({ id, report, signal: abort.signal })
       .then(() => { report({ lifecycle: abort.signal.aborted ? 'stopped' : 'completed' }); })
@@ -195,13 +203,13 @@ export function processesChannel(onProblem: (message: string) => void = () => {}
     return uri;
   };
 
-  const changed: ProcessesServing['changed'] = (list, kind, id) => {
-    const uri = processUri(list, kind, id);
+  const changed: ProcessesServing['changed'] = (channel, kind, id) => {
+    const uri = processUri(channel, kind, id);
     void read(uri, undefined)
       .then((process) => {
         const action = { type: `${PROCESSES_SCHEME}/changed`, process };
-        send(uri, action, list);
-        send(PROCESSES, action, list);
+        send(uri, action, channel);
+        send(PROCESSES, action, channel);
       })
       .catch((error: unknown) => { onProblem(`${uri} could not be read: ${reason(error)}`); });
   };
