@@ -1,7 +1,7 @@
 ---
 title: A plugin adds operations to kinds it did not register
 domain: plugin
-status: planned
+status: active
 priority: high
 created: 2026-11-26
 revalidated: 2026-11-26
@@ -35,14 +35,17 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 | An id that clashes with a kind's own, or with create, update or remove, is refused at the fold, and the kind's own stays | (defaulted: the fold reports a clash and keeps the first) | 02 |
 | The added operation's `invoke` is the adding plugin's, given the row and the input | the brief's *Deploy* | 02 |
 | Its grant, words and text come from the adding plugin | (defaulted: the plugin that wrote it says it) | 02 |
+| A long added operation keeps its processes in the adding plugin, at `x-ahpd-processes://<list>/<plugin>/<id>` | Softov, 2026-11-26, chose "The adding plugin keeps them" | 02 |
+| A list operation's `<plugin>` is the plugin's name without its scope, so `@acme/backup` adds `backup/export` | (defaulted: a scope has a slash, which splits an id) | 02 |
+| `ahpd.channels` lists a list's added operations in the entry's `operations` | (defaulted: no kind holds them) | 02 |
 | An operation onto a kind that no plugin registered is kept, and lands when the kind loads | (defaulted: plugins load in any order) | 02 |
 
 ## Tasks
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a-plugin-registers-an-operation](task-01-a-plugin-registers-an-operation.md) | todo | - |
-| [02 - the-list-serves-added-operations](task-02-the-list-serves-added-operations.md) | todo | 01 |
+| [01 - a-plugin-registers-an-operation](task-01-a-plugin-registers-an-operation.md) | done | - |
+| [02 - the-list-serves-added-operations](task-02-the-list-serves-added-operations.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -51,13 +54,13 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ## Resume state
 
-- **Done so far:** the plan.
-- **Next action:** task 01.
+- **Done so far:** both tasks, on 2026-11-26. [implemented.md](implemented.md) holds the checks.
+- **Next action:** Softov's review.
 - **Open questions:** none.
 - **Watch out for:** the host keeps no row of a plugin's list.
 
 ## Final verification checklist
 
-- [ ] An operation onto two kinds of another plugin is listed and runs.
-- [ ] An operation onto a list runs with no row.
-- [ ] `pnpm typecheck`, the sdk and server suites, and `pnpm docs:build` pass.
+- [x] An operation onto two kinds of another plugin is listed and runs.
+- [x] An operation onto a list runs with no row.
+- [x] `pnpm typecheck`, the sdk and server suites, and `pnpm docs:build` pass.

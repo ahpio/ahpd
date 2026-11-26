@@ -207,6 +207,7 @@ against its contract before it is recorded.
 | `registerResourceProvider(scheme, provider)` | register, open key | One host-owned URI scheme, routed beside the `file:` store |
 | `registerChannel(scheme, channel)` | register, open key | One channel a client subscribes to, under an `x-` scheme; answers a handle to publish on |
 | `registerList(list)` | register, joined by name | One list the host serves and no plugin owns: its channel, its row scheme, its filters and sorts. Every plugin's declaration of one name joins |
+| `registerOperation(operation)` | register, by list and id | One operation onto kinds of a list that other plugins registered, or onto the list as a whole; answers a handle whose `processChanged` tells a process's subscribers |
 | `registerKind(kind)` | register, by list and name | One kind of record in a list: its schema, its operations, where its rows are, and `invoke`; answers a handle whose `changed` tells the list's subscribers |
 | `registerAdapter(adapter)` | register, open key | One adapter, whose schema a client draws the form from, and the connectors a person makes of it |
 | `registerBindings(read)` | set | One function the host asks, synchronously, for the connectors a session may use, by alias - at each tool list and each call. `@ahpd/bot` answers a bot's for the sessions it started |
@@ -951,6 +952,8 @@ The host serves the list at its channel. A client subscribes to `x-ahpd-todos://
 The operations are each kind's `<kind>/create`, `<kind>/update` and `<kind>/remove`, with the kind's schema as their form, and the kind's own as `<kind>/<id>`. A client runs one with `x-ahpd/invokeOperation`, which checks the grant, the target and the input against the schema. `ahpd.channels` lists the list with `kinds`, one entry per kind with its title, description, schema and every operation in full. A kind that throws while it answers rows is left out of that answer, with a warning on its plugin's row.
 
 A process is something a list's record runs: a service, a deploy, a CI job. A kind that runs processes gives `processes`, whose `list(reader)` and `read(id, reader)` answer them from where the work lives - its own store, journalctl, a CI's API - and an optional `stop(id)` for one the host did not start. The host keeps no process. An operation with `long: true` answers its call with `{ process }` at once, and the kind's `invoke` gets a fourth argument, `{ id, report, signal }`: `report({ lifecycle, progress, line, error })` is passed on to the process's subscribers, and `signal` aborts when a person stops it. The kind keeps the process under that `id`, and calls the handle's `processChanged(id)` when it changes. A client follows a process at `x-ahpd-processes://<list>/<kind>/<id>`, lists every process it may read at `x-ahpd-processes://`, and stops one with `x-ahpd/processes/stop { process }`, under the grant of the operation that started it. A reader of a list may read its processes.
+
+A plugin may add an operation onto kinds that other plugins registered, with `registerOperation({ channel, kinds, operation, invoke, processes? })`. It lands on each named kind under that kind's id, such as `systemd/deploy`, and reaches every row of the kind; its `offered` narrows it to some rows. With no `kinds` it is on the list as a whole, as `<plugin>/<id>`, and `ahpd.channels` lists it in the list's `operations`. `invoke(row, input, process?)` is the adding plugin's. A long one keeps its processes in its own `processes`, at `x-ahpd-processes://<list>/<plugin>/<id>`, and the handle's `processChanged(id)` says one changed. An id a kind already has is reported, and the kind's own stays. The contract key is `operations`.
 
 ### An engine of your own
 
@@ -1724,6 +1727,7 @@ that method may be called with:
 | `tunnelKinds` | `registerTunnelKind(kind)`, by the kind's name |
 | `lists` | `registerList(list)`, by the list's `name` |
 | `kinds` | `registerKind(kind)`, by the kind's name |
+| `operations` | `registerOperation(operation)`, by the operation's id |
 | `tools` | `registerTool(tool)`, by the tool's `name` |
 | `sessionConfigs` | `registerSessionConfig(key, ...)`, by key |
 | `providerConfigurations` | `registerProviderConfiguration(registration)`, by `provider` |
