@@ -75,7 +75,7 @@ function served() {
 it('answers a long call with its process at once, and relays its reports until it completes', async () => {
   const { deploy, sent, settle, finish, channel } = served();
   const { process } = await deploy();
-  expect(process).toMatch(/^x-ahpd-processes:\/\/service\/compose\/[0-9a-f-]+$/);
+  expect(process).toMatch(/^x-ahpd-processes:\/\/x-ahpd-services\/compose\/[0-9a-f-]+$/);
   await settle();
   const reported = () => sent.filter((one) => one.uri === process && one.action['type'] === `${PROCESSES_SCHEME}/reported`).map((one) => one.action);
   expect(reported()).toEqual([
@@ -83,7 +83,7 @@ it('answers a long call with its process at once, and relays its reports until i
     { type: 'x-ahpd-processes/reported', progress: 0.5, line: 'built' },
   ]);
   // The kind keeps the process, so a read answers it while it runs.
-  expect(await channel.channel.snapshot(process, undefined, 'c1')).toMatchObject({ process: { uri: process, list: 'service', kind: 'compose', lifecycle: 'running', origin: { row: 'web', operation: 'deploy' } } });
+  expect(await channel.channel.snapshot(process, undefined, 'c1')).toMatchObject({ process: { uri: process, channel: 'x-ahpd-services', kind: 'compose', lifecycle: 'running', origin: { row: 'web', operation: 'deploy' } } });
 
   finish();
   await settle();
@@ -108,7 +108,7 @@ it('stops a process the host runs by its signal, and asks the kind to stop one i
   await settle();
   expect(sent.filter((one) => one.uri === process).at(-1)?.action).toEqual({ type: 'x-ahpd-processes/reported', lifecycle: 'stopped' });
 
-  expect(await stop.handle({ process: 'x-ahpd-processes://service/compose/ci-1' }, holding(['service:put']), 'c1')).toEqual({});
+  expect(await stop.handle({ process: 'x-ahpd-processes://x-ahpd-services/compose/ci-1' }, holding(['service:put']), 'c1')).toEqual({});
   expect(stoppedByKind).toEqual(['ci-1']);
 });
 
@@ -126,14 +126,14 @@ it('lists every process at the root, newest first, and a finished one still read
   finish();
   await settle();
   const state = await channel.channel.snapshot(PROCESSES, undefined, 'c1') as { processes: { uri: string; lifecycle: string }[] };
-  expect(state.processes.map((one) => one.uri)).toEqual([process, 'x-ahpd-processes://service/compose/ci-1']);
+  expect(state.processes.map((one) => one.uri)).toEqual([process, 'x-ahpd-processes://x-ahpd-services/compose/ci-1']);
   expect(state.processes[0]?.lifecycle).toBe('completed');
 });
 
 it('lets a reader of the list read its processes, and refuses a kind with a long operation and no processes', async () => {
   const { channel } = served();
-  expect(await channel.channel.authorize!('x-ahpd-processes://service/compose/ci-1', holding(['service:get']))).toBe(true);
-  expect(await channel.channel.authorize!('x-ahpd-processes://service/compose/ci-1', holding(['todo:get']))).toBe(false);
+  expect(await channel.channel.authorize!('x-ahpd-processes://x-ahpd-services/compose/ci-1', holding(['service:get']))).toBe(true);
+  expect(await channel.channel.authorize!('x-ahpd-processes://x-ahpd-services/compose/ci-1', holding(['todo:get']))).toBe(false);
   const { host } = pluginHost('bad', context());
   expect(() => host.registerKind({
     channel: 'x-ahpd-services', name: 'bad', title: 'Bad', schema: { type: 'object' },

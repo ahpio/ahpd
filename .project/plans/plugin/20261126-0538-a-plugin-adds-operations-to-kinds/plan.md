@@ -35,7 +35,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 | An id that clashes with a kind's own, or with create, update or remove, is refused at the fold, and the kind's own stays | (defaulted: the fold reports a clash and keeps the first) | 02 |
 | The added operation's `invoke` is the adding plugin's, given the row and the input | the brief's *Deploy* | 02 |
 | Its grant, words and text come from the adding plugin | (defaulted: the plugin that wrote it says it) | 02 |
-| A long added operation keeps its processes in the adding plugin, at `x-ahpd-processes://<list>/<plugin>/<id>` | Softov, 2026-11-26, chose "The adding plugin keeps them" | 02 |
+| A long added operation keeps its processes in the adding plugin, at `x-ahpd-processes://<channel>/<plugin>/<id>` | Softov, 2026-11-26, chose "The adding plugin keeps them" | 02 |
 | A list operation's `<plugin>` is the plugin's name without its scope, so `@acme/backup` adds `backup/export` | (defaulted: a scope has a slash, which splits an id) | 02 |
 | `ahpd.channels` lists a list's added operations in the entry's `operations` | (defaulted: no kind holds them) | 02 |
 | An operation onto a kind that no plugin registered is kept, and lands when the kind loads | (defaulted: plugins load in any order) | 02 |

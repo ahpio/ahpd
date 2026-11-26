@@ -291,10 +291,10 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
       kind.changed = (_instance, id) => {
         void changed(id).catch((error: unknown) => { onProblem(`list ${list.name} could not send ${id}: ${reason(error)}`); });
       };
-      kind.processChanged = (id) => { processes?.changed(list.name, kind.name, id); };
+      kind.processChanged = (id) => { processes?.changed(list.channel, kind.name, id); };
     }
     for (const added of list.operations ?? []) {
-      added.processChanged = (id) => { processes?.changed(list.name, added.owner, id); };
+      added.processChanged = (id) => { processes?.changed(list.channel, added.owner, id); };
     }
   };
   wire();

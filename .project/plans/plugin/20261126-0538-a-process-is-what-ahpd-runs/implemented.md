@@ -9,7 +9,7 @@ refs:
 A kind of a list may run processes: a service, a deploy, a CI job.
 The kind answers them through `processes`, from where the work lives, and the host keeps none.
 An operation with `long: true` answers its call with a process at once, and the kind's `invoke` runs in it.
-A client follows a process at `x-ahpd-processes://<list>/<kind>/<id>`, lists them at `x-ahpd-processes://`, and stops one with `x-ahpd/processes/stop`.
+A client follows a process at `x-ahpd-processes://<channel>/<kind>/<id>`, lists them at `x-ahpd-processes://`, and stops one with `x-ahpd/processes/stop`.
 
 ## What was built
 
@@ -28,7 +28,7 @@ A client follows a process at `x-ahpd-processes://<list>/<kind>/<id>`, lists the
 ## Departures from the plan
 
 - The kind keeps its processes from its own source, so the host has no `keep` call. Softov chose it on 2026-11-26.
-- A process URI carries its list and kind in the path.
+- A process URI carries its channel and kind in the path.
 - The channel's grant is `process:get`, and `authorize` lets in a reader of the process's list.
 - A stop asks the grant of the operation that started the process, else the list's `put`.
 - `processes` is required only on a kind with a long operation. A runtime kind requires it in its own plan.

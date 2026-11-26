@@ -34,7 +34,7 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 | A process has `origin` (its list, kind, row and operation), `lifecycle` (`pending`, `running`, `completed`, `failed`, `stopped`), `progress` and `log`, as an automation run has a lifecycle | (defaulted: the brief's "a lifecycle, progress, a log and cancel, as an automation run") | 01 |
 | `running` is a resting state for a service and a passing one for a deploy | (defaulted: one lifecycle for both) | 01 |
 | The kind answers its processes from where the work lives, and the host relays reports and keeps nothing | Softov, 2026-11-26, chose "The kind, from its own source" | 01 |
-| A process URI is `x-ahpd-processes://<list>/<kind>/<id>`, so the path names the kind to ask | (defaulted: the host keeps no process, so it cannot look one up by id alone) | 02 |
+| A process URI is `x-ahpd-processes://<channel>/<kind>/<id>`, with the scheme of the list's channel, so the path names the kind to ask | Softov, 2026-11-26, chose "The channel scheme": every channel has a unique scheme, so a `registerChannel` channel can have processes later with no new form | 02 |
 | `long: true` on an operation says its call answers with a process, and a client knows before it invokes it | the brief's *What Softov chose while drafting* | 03 |
 | The work of a process gets a report for its lifecycle, progress and log lines, and an abort signal | (defaulted: a stop needs a way in) | 02 |
 | `x-ahpd/processes/stop` stops a process, under the grant of the operation that started it | (defaulted: as a run is stopped by a command) | 02 |
