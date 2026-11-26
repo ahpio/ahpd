@@ -139,7 +139,7 @@ Current progress and pending items only, as of 2026-11-26. *Outside this reposit
 - `release.yml` runs the whole `pnpm test` under `timeout 1500` before it publishes, so a flaky case can fail a tag run. The suite took 520 s on 2026-11-12.
 - A case that fails at random gets a problem file, to be fixed. The CI runs since 2026-11-10 were read on 2026-11-13. A case counts when it failed on main, or passed on a rerun of the same commit.
 - With a problem file:
-  - `computer-devcontainer.test.ts`: three cases are fixed by container/20261113-2134, the fourth is [a-dev-container-case-waits-on-a-late-docker-call.md](../problems/a-dev-container-case-waits-on-a-late-docker-call.md), and the fifth is [a-dev-container-stop-case-reads-running-after-the-stop.md](../problems/a-dev-container-stop-case-reads-running-after-the-stop.md).
+  - `computer-devcontainer.test.ts`: three cases are fixed by container/20261113-2134, the fourth has not failed since the EPERM lock fix of 2026-11-15, and its problem file is deleted, and the fifth is [a-dev-container-stop-case-reads-running-after-the-stop.md](../problems/a-dev-container-stop-case-reads-running-after-the-stop.md).
   - The ACP and service-install teardowns: [a-test-removes-its-folder-while-a-child-writes-in-it.md](../problems/a-test-removes-its-folder-while-a-child-writes-in-it.md).
   - `nested-process.test.ts` leaves refs under `refs/agents/` in the repository: [nested-process-cases-write-checkpoints-into-the-repository.md](../problems/nested-process-cases-write-checkpoints-into-the-repository.md).
   - `host-attachments.test.ts`: [two-attachment-cases-time-out-on-windows.md](../problems/two-attachment-cases-time-out-on-windows.md).
