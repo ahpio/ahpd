@@ -25,7 +25,7 @@ export type { CofoldOptions } from './agent.js';
 // place.
 export { EFFORT_LEVELS, PERMISSION_MODES, effortOf } from '@cofold/agents';
 export { DEFAULT_TOOLS, toolsOf } from './capabilities.js';
-export type { SearchConfig, ToolsConfig } from '@cofold/tools';
+export type { SearchConfig, ShellSpec, ToolsConfig } from '@cofold/tools';
 export { harnessConfig, harnessConfigPath } from './config.js';
 export { splitModel } from '@cofold/model-openai-compat';
 export type { ProviderConfig } from '@cofold/model-openai-compat';

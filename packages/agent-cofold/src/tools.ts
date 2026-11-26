@@ -49,11 +49,17 @@ const PERMISSION_ROWS: Readonly<Record<string, { kind: PermissionKind; field?: s
  * input, as VS Code's agents raise a pending confirmation: its kind by the
  * table above, the path its input names resolved against the workspace with
  * cofold's own resolver, the URL a fetch is of, and a shell call's command in
- * the language of the shell cofold runs it through, its `DEFAULT_SHELL`:
- * PowerShell on Windows and `sh` everywhere else, read as bash.
+ * `language`, the language of the program cofold runs it through. That is
+ * PowerShell on Windows and `sh`, read as bash, everywhere else, for cofold's
+ * `DEFAULT_SHELL`, and nothing for a program of another language, such as cmd.
  * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/claude/claudeCanUseTool.ts#L147-L175
  */
-export const confirmationOf = (name: string, input: unknown, workspace: string): PendingConfirmation => {
+export const confirmationOf = (
+  name: string,
+  input: unknown,
+  workspace: string,
+  language: 'bash' | 'powershell' | undefined,
+): PendingConfirmation => {
   const row = PERMISSION_ROWS[name];
   const permissionKind = row?.kind ?? 'custom-tool';
   const given = typeof input === 'object' && input !== null ? input as Bag : {};
@@ -64,7 +70,7 @@ export const confirmationOf = (name: string, input: unknown, workspace: string):
     permissionKind,
     ...(target === undefined ? {} : permissionKind === 'url' ? { permissionUrl: target } : { permissionPath: resolveWithin(workspace, target).absolute }),
     ...(permissionKind === 'shell' && typeof command === 'string'
-      ? { shellCommand: command, shellLanguage: process.platform === 'win32' ? 'powershell' as const : 'bash' as const }
+      ? { shellCommand: command, ...(language === undefined ? {} : { shellLanguage: language }) }
       : {}),
   };
 };

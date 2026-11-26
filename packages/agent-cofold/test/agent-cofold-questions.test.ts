@@ -9,6 +9,7 @@ import { bag } from '@ahpd/sdk';
 import type { Bag, Session, Start } from '@ahpd/sdk';
 import { cofoldAgent, cofoldSession } from '../src/index.js';
 import { startedNow } from '../../sdk/test/support/started.js';
+import { FAST_SHELL } from './support/shell.js';
 
 /*
  * The question cofold raises about a call, put to the host.
@@ -52,9 +53,12 @@ async function open(args: {
   settings?: Record<string, unknown>;
   alwaysAsks?: Start['alwaysAsks'];
   store?: Store;
+  /** Run shell calls through cofold's own shell, for a case that checks the language a question names. */
+  defaultShell?: boolean;
 }) {
   const model = createFakeModel({ script: args.script, stream: true });
-  const agent = cofoldAgent({ adapter: model, memory: true });
+  const shell = args.defaultShell === true ? {} : { shell: FAST_SHELL };
+  const agent = cofoldAgent({ adapter: model, memory: true, ...shell });
   const notes: Note[] = [];
   const dir = mkdtempSync(join(tmpdir(), 'ahpd-cofold-questions-'));
   const start = {
@@ -67,7 +71,7 @@ async function open(args: {
     ...(args.alwaysAsks === undefined ? {} : { alwaysAsks: args.alwaysAsks }),
   } as unknown as Start;
   // A store the test holds is read by one session over it, as the backend's own sessions read theirs.
-  const session: Session = startedNow(args.store === undefined ? agent.create(start) : cofoldSession({ adapter: model }, start, args.store));
+  const session: Session = startedNow(args.store === undefined ? agent.create(start) : cofoldSession({ adapter: model, ...shell }, start, args.store));
   return { session, model, notes, dir };
 }
 
@@ -81,6 +85,7 @@ it('says a shell call\'s command in the shell cofold runs it through, with no op
       { toolCalls: [{ name: 'shell_exec', input: { command: 'echo hi' }, callId: 'c1' }] },
       { text: 'done' },
     ],
+    defaultShell: true,
   });
   session.sendMessage('t1', 'run it');
   await when(() => of(notes, 'session/inputNeededSet').length > 0);
@@ -89,7 +94,8 @@ it('says a shell call\'s command in the shell cofold runs it through, with no op
   expect(bag(entry.toolCall)).not.toHaveProperty('options');
   expect(readyFor(notes, 'c1')).not.toHaveProperty('options');
   expect(readyFor(notes, 'c1')).toMatchObject({ permissionKind: 'shell', shellCommand: 'echo hi', shellLanguage: SHELL });
-  session.confirm('c1', true, 'allow-once');
+  // Refused, so the default shell never starts.
+  session.confirm('c1', false);
   await when(() => endings(notes) === 1);
   rmSync(dir, { recursive: true, force: true });
 });

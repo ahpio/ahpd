@@ -395,6 +395,7 @@ export const createTurnAgent = (
         workspace: where,
         ...(memoryDir === undefined ? {} : { memoryDir }),
         ...(start.env === undefined ? {} : { env: start.env }),
+        ...(options.shell === undefined ? {} : { shell: options.shell }),
       }, taken),
       /*
        * The edits a cofold tool makes, on their way to the changeset.

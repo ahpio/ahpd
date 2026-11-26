@@ -74,7 +74,9 @@ const optionsOf = (values: Record<string, unknown>): CofoldOptions => {
   if (values.strictTools !== false && values.tools !== undefined) {
     check(values.tools, TOOLS_SCHEMA, 'tools');
   }
-  return values as CofoldOptions;
+  // The shell program is code's to choose: a configuration does not name one.
+  const { shell: _shell, ...rest } = values;
+  return rest as CofoldOptions;
 };
 
 /**

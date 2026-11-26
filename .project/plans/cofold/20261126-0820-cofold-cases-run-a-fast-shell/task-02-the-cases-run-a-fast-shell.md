@@ -1,6 +1,6 @@
 ---
 title: The cases run a fast shell
-status: todo
+status: done
 depends: [task-01-the-shell-is-chosen-in-code.md]
 layer: "agent-cofold"
 ---
@@ -29,3 +29,5 @@ Every agent-cofold case that runs a shell call on Windows runs it through cmd, w
 - `check-windows` passes on the PR.
 
 ## Resume
+
+Built on 2026-11-26. In the tools file, `pwd` is `cd` on Windows, and the mode table's `true` is `echo hi`.
