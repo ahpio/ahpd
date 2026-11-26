@@ -469,7 +469,7 @@ The host finds the kind from the row, and hands the call to the mail plugin's `i
 
 ## Open points
 
-1. **The id of an operation a plugin registers onto kinds it did not register.** An operation id is `<kind>/<operation>`, but deploy's is `deploy/deploy`, where `deploy` is the plugin and no kind. Deploy alone is one case, so these are written to settle it from more than one:
+1. **The id of an operation a plugin registers onto kinds it did not register.** Settled on 2026-11-26 in [a plugin adds operations to kinds](../plans/plugin/20261126-0538-a-plugin-adds-operations-to-kinds/plan.md): `<kind>/<operation>` under each kind, and `<plugin>/<operation>` on a list. An operation id is `<kind>/<operation>`, but deploy's is `deploy/deploy`, where `deploy` is the plugin and no kind. Deploy alone is one case, so these are written to settle it from more than one:
 
    | Plugin | Operation | Onto | What it shows |
    | --- | --- | --- | --- |
