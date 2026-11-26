@@ -1,7 +1,7 @@
 ---
 title: A list's operations are translated
 domain: plugin
-status: planned
+status: active
 priority: high
 created: 2026-11-26
 revalidated: 2026-11-26
@@ -31,13 +31,16 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 | A list translates its operations as the tunnels do: the host's words at `operations.list.<name>`, and a kind's own at `operations.<name>` in its plugin's catalogs | (defaulted: mirror the tunnels) | 01 |
 | A kind's title and description are read at `kinds.<name>` in its plugin's catalogs | (defaulted: a kind's words are its plugin's) | 01 |
 | The remove question names the kind, with the kind's translated title | (defaulted: "Remove this todo?" today) | 01 |
+| The remove question in `pt` and `es` is "Remover {kind}?" and "¿Eliminar {kind}?" | (defaulted: "este" does not fit a feminine kind) | 01 |
+| An added operation is read in the catalogs of the plugin that added it | (defaulted: the plugin that wrote it says it) | 01 |
+| `ahpd.channels` is read in the connection's locale | (defaulted: a kind's words reach a reader there) | 01 |
 | The snapshot, each `operations` action and the `ahpd.channels` entry use the reader's locale | (defaulted: as the tunnels do) | 01 |
 
 ## Tasks
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a-list-speaks-the-readers-language](task-01-a-list-speaks-the-readers-language.md) | todo | - |
+| [01 - a-list-speaks-the-readers-language](task-01-a-list-speaks-the-readers-language.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -45,12 +48,12 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ## Resume state
 
-- **Done so far:** the plan.
-- **Next action:** task 01.
+- **Done so far:** task 01, on 2026-11-26. [implemented.md](implemented.md) holds the checks.
+- **Next action:** Softov's review.
 - **Open questions:** none.
 - **Watch out for:** the host keeps no row of a plugin's list.
 
 ## Final verification checklist
 
-- [ ] A list reads in the reader's language, as the tunnels do.
-- [ ] `pnpm typecheck`, the sdk and server suites, and `pnpm docs:build` pass.
+- [x] A list reads in the reader's language, as the tunnels do.
+- [x] `pnpm typecheck`, the sdk and server suites, and `pnpm docs:build` pass.

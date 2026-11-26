@@ -1,6 +1,6 @@
 ---
 title: A list speaks the readers language
-status: todo
+status: done
 depends: []
 layer: "sdk"
 ---
@@ -31,3 +31,5 @@ A list's operations, its kinds' words and the remove question reach a reader in 
 - A reader with no locale reads English.
 
 ## Resume
+
+Built on 2026-11-26.

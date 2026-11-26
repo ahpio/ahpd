@@ -746,6 +746,8 @@ export function foldHostOptions(base: HostOptions, contributions: Contribution[]
         problems.push(`plugin ${kind.by} adds kind ${kind.name} to list ${list.name}, which plugin ${held.by} already added; the first stays`);
         continue;
       }
+      // The plugin's catalogs go with the kind, as a tunnel kind's do, for its words.
+      if (contribution.i18n !== undefined) kind.catalogs = contribution.i18n;
       list.kinds[kind.name] = kind;
     }
   }
@@ -759,6 +761,7 @@ export function foldHostOptions(base: HostOptions, contributions: Contribution[]
    */
   for (const contribution of contributions) {
     for (const added of Object.values(contribution.listOperations ?? {})) {
+      if (contribution.i18n !== undefined) added.catalogs = contribution.i18n;
       const list = listOn.get(added.channel);
       if (list === undefined) {
         problems.push(`plugin ${added.by} adds operation ${added.operation.id} to ${added.channel}, which no plugin declared as a list; it is left out`);
