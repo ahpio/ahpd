@@ -76,10 +76,7 @@ As beorn proposes it, with tunnels as the model:
 
 ## Open points
 
-1. **Which shape.** Three ways, for Softov:
-   - A host list built for services, with a `registerServiceKind` copied from `registerTunnelKind`. It fits beorn's proposal now, and services and tunnels move to `registerList` and `registerKind` later.
-   - Services as the first list of `registerList` and `registerKind`. This means building both now, which Softov said not to do.
-   - No host list: beorn keeps their own channel on #476, with process-compose only.
+1. **Which shape.** Services is one list of [a-list-and-its-kinds.md](a-list-and-its-kinds.md), with process-compose and systemd as kinds, as its *Example: a machine's services* writes it. When it is built is open.
 2. **Who owns deploy.** beorn calls it a host operation, and offers it as a plugin. A plugin that adds an operation to every row of a list it does not own is new in ahpd: tunnels have no such thing.
 3. **Running commands.** `build`, `before_switch` and `check` are commands the host runs. beorn keeps them on the service record, so `deploy:deploy` alone chooses no command. Who may write the declaration then decides who may run code on the machine.
 4. **The word.** "Service" already names `ahpd service`. The list may need another word, such as "program".

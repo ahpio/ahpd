@@ -28,6 +28,8 @@ Softov wants a second example beside the todo app, so the host parts are not sha
 
 ## The plugin
 
+[a-list-and-its-kinds.md](a-list-and-its-kinds.md) is the shape of a list and its kinds now, and writes this CRM as one of its examples. Where this brief differs, that brief holds.
+
 The plugin `@local/crm` registers three lists:
 
 ```js
@@ -44,13 +46,13 @@ The CRM registers the kinds it knows. A mail plugin adds the kind `email` to `in
 
 ```js
 // in @local/crm
-host.registerKind({ list: 'ticket', name: 'request', title: 'Request', schema: requestSchema, operations: ticketOperations });
-host.registerKind({ list: 'ticket', name: 'incident', title: 'Incident', schema: incidentSchema, operations: incidentOperations });
-host.registerKind({ list: 'interaction', name: 'note', title: 'Note', schema: noteSchema });
+host.registerKind({ channel: 'x-ahpd-tickets', name: 'request', title: 'Request', schema: requestSchema, operations: ticketOperations });
+host.registerKind({ channel: 'x-ahpd-tickets', name: 'incident', title: 'Incident', schema: incidentSchema, operations: incidentOperations });
+host.registerKind({ channel: 'x-ahpd-interactions', name: 'note', title: 'Note', schema: noteSchema });
 
 // in @local/mail
 host.registerList({ name: 'interaction', title: 'Interactions', description: 'One contact with a client: an email, a call or a note.' });
-host.registerKind({ list: 'interaction', name: 'email', title: 'Email', schema: emailSchema,
+host.registerKind({ channel: 'x-ahpd-interactions', name: 'email', title: 'Email', schema: emailSchema,
   operations: [{ id: 'send', label: 'Send', icon: 'send', offered: (email) => email.state === 'draft' }] });
 ```
 
@@ -151,7 +153,7 @@ Softov, 2026-11-23, chose each of these.
 "A handle from registerKind". `registerKind` answers `rows`, which changes that kind's rows only:
 
 ```js
-const emails = host.registerKind({ list: 'interaction', name: 'email', /* ... */ });
+const emails = host.registerKind({ channel: 'x-ahpd-interactions', name: 'email', /* ... */ });
 
 mail.on('bounce', async (id) => {
   await emails.rows.update(id, { ...(await emails.rows.get(id)).record, state: 'bounced' });
