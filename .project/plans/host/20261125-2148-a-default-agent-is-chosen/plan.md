@@ -1,7 +1,7 @@
 ---
 title: A default agent is chosen
 domain: host
-status: planned
+status: active
 priority: high
 created: 2026-11-25
 revalidated: 2026-11-25
@@ -18,7 +18,7 @@ refs:
   - "[code://packages/sdk/src/host/root.ts#L419](../../../../packages/sdk/src/host/root.ts#L419) - `ROOT_CONFIG_SCHEMA`, where `defaultShell` is the pattern for a setting of this host"
   - "[code://packages/sdk/src/host/root.ts#L799](../../../../packages/sdk/src/host/root.ts#L799) - `rootFor`, which builds the config schema for one connection"
   - "[code://packages/sdk/src/host/common.ts#L75](../../../../packages/sdk/src/host/common.ts#L75) - `agentRefusal`, the sentence for an agent that is off or paused"
-  - "[code://packages/server/src/onpath.ts](../../../../packages/server/src/onpath.ts) - `onPath`, the lookup that finds a command on POSIX and Windows"
+  - "[code://packages/sdk/src/utils/onpath.ts](../../../../packages/sdk/src/utils/onpath.ts) - `onPath`, the lookup that finds a command on POSIX and Windows"
   - "[code://packages/agent-acp/src/connection.ts#L158-L166](../../../../packages/agent-acp/src/connection.ts#L158-L166) - the sentence for a program that is not found"
 ---
 
@@ -60,7 +60,7 @@ create with no provider -> defaultAgent(ctx, caller) -> root config `defaultAgen
 | When no program is found, the first agent that is on and that the caller may use is taken, as today, so the start fails with its own sentence | (defaulted: the sentence names the missing program) | 02 |
 | A plugin chat never runs on an agent of that plugin, also when the setting names one | (defaulted: a Back on `bot-chat` would wake itself) | 02 |
 | Only `agent-acp` answers the check in this plan; an agent with no check counts as found | (defaulted: the other three agents run a package they ship) | 01 |
-| An ACP agent whose record names a machine counts as found | (defaulted: its program is in the machine) | 01 |
+| A create on a computer does not ask the check | (defaulted: the program is in the machine. A record's `machine` block is only what it needs there, and the shipped rows have one) | 01, 02 |
 | `outputs.ts` and `snapshots.ts` keep `ctx.first` | (defaulted: they read old sessions, and start nothing) | 02 |
 
 ## Proposed architecture
@@ -69,14 +69,14 @@ create with no provider -> defaultAgent(ctx, caller) -> root config `defaultAgen
 - **Event flow** - unchanged; the setting arrives as `root/configChanged`.
 - **State flow** - the setting is kept in the root config store. The program check is asked at each create and keeps nothing.
 - **Layer responsibilities** - sdk: the rule, the setting and `onPath` · agent-acp: the check · server: imports `onPath` from the sdk.
-- **Source-of-truth files** - [`code://packages/sdk/src/host/common.ts`](../../../../packages/sdk/src/host/common.ts)
+- **Source-of-truth files** - [`code://packages/sdk/src/host/defaultagent.ts`](../../../../packages/sdk/src/host/defaultagent.ts)
 
 ## Tasks
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - an agent says its program is missing](task-01-an-agent-says-its-program-is-missing.md) | todo | - |
-| [02 - every create asks one rule](task-02-every-create-asks-one-rule.md) | todo | 01 |
+| [01 - an agent says its program is missing](task-01-an-agent-says-its-program-is-missing.md) | done | - |
+| [02 - every create asks one rule](task-02-every-create-asks-one-rule.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -86,8 +86,8 @@ create with no provider -> defaultAgent(ctx, caller) -> root config `defaultAgen
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-an-agent-says-its-program-is-missing.md](task-01-an-agent-says-its-program-is-missing.md).
+- **Done so far:** both tasks, on 2026-11-25. [implemented.md](implemented.md) holds the checks.
+- **Next action:** Softov's review.
 - **Open questions:** none.
 - **Watch out for:** `resolveSessionConfig` and `createSession` must answer the same agent, or the form draws the settings of another one.
 
