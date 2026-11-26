@@ -1,7 +1,7 @@
 ---
 title: A plugin serves a list and its kinds
 domain: plugin
-status: planned
+status: active
 priority: high
 created: 2026-11-25
 revalidated: 2026-11-25
@@ -109,7 +109,7 @@ plugin apply -> registerList, registerKind -> fold joins lists, attaches kinds
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a-kinds-operations-are-built-once](task-01-a-kinds-operations-are-built-once.md) | todo | - |
+| [01 - a-kinds-operations-are-built-once](task-01-a-kinds-operations-are-built-once.md) | done | - |
 | [02 - a-plugin-declares-a-list-and-kinds](task-02-a-plugin-declares-a-list-and-kinds.md) | todo | - |
 | [03 - the-fold-joins-a-lists-declarations](task-03-the-fold-joins-a-lists-declarations.md) | todo | 02 |
 | [04 - a-list-is-served-as-a-channel](task-04-a-list-is-served-as-a-channel.md) | todo | 01, 03 |
@@ -124,8 +124,8 @@ plugin apply -> registerList, registerKind -> fold joins lists, attaches kinds
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-kinds-operations-are-built-once.md](task-01-a-kinds-operations-are-built-once.md), or task 02, which does not depend on it.
+- **Done so far:** task 01: `kindOperations` and `kindOffers` in `kinds/operations.ts`, used by the tunnels channel.
+- **Next action:** [task-02-a-plugin-declares-a-list-and-kinds.md](task-02-a-plugin-declares-a-list-and-kinds.md).
 - **Open questions:** none.
 - **Watch out for:** the host keeps no row of a plugin's list; do not reach for `RecordsChannel` or a record collection. The tunnels channel stays in the server and keeps its rows.
 
