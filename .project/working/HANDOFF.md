@@ -202,7 +202,7 @@ Each plan here has every task `implemented`, and closes as `built` on Softov's w
 
 ## Next
 
-- Planned on 2026-11-25 with Softov, before the bump to rc.1: [a default agent is chosen](../plans/host/20261125-2148-a-default-agent-is-chosen/plan.md), then [a bot's agent changes and its fields clear](../plans/bots/20261125-2148-a-bots-agent-changes-and-clears/plan.md). Neither is started. The ahpw form is a draft plan on the local ahpw branch `plans/the-bot-form-sets-every-field`, and its mockup waits for Softov.
+- Planned on 2026-11-25 with Softov, before the bump to rc.1: [a default agent is chosen](../plans/host/20261125-2148-a-default-agent-is-chosen/plan.md), then [a bot's agent changes and its fields clear](../plans/bots/20261125-2148-a-bots-agent-changes-and-clears/plan.md). Both are built: #481, and #482 stacked on it. Softov said to merge both when green; #482 moves to main once #481 merges. The ahpw form is a draft plan on the local ahpw branch `plans/the-bot-form-sets-every-field`, and its mockup waits for Softov.
 - The bot talk is merged: #321, then #322 for a host with no users. What was fixed and why is in the plans' Resume states and implemented records.
   - Found on main: [the chats of a bot talk share one log](../plans/bots/20261123-0945-each-bot-chat-keeps-its-own-log/plan.md).
   - A Back chat is titled `@main/<bot>/<person>`, with `main` fixed for now (Softov, 2026-11-13). The host name in `root:<host>` is `os.hostname()`, and nothing sets it yet; see [briefs/the-root-owner-has-a-fixed-host-name.md](../briefs/the-root-owner-has-a-fixed-host-name.md).
