@@ -1,7 +1,8 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, expect, it, vi } from 'vitest';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A probe's own CLI calls for no probe, whatever it writes.
@@ -48,7 +49,7 @@ process.env.CLAUDE_CONFIG_DIR = at.config;
 afterAll(() => {
   if (before === undefined) delete process.env.CLAUDE_CONFIG_DIR;
   else process.env.CLAUDE_CONFIG_DIR = before;
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 const { claude } = await import('../src/claude.js');

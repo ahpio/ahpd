@@ -8,7 +8,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
@@ -21,6 +21,7 @@ import { automationStatePath, isIdentifier, hostId, namedIssuer, personalUrl, po
 import type { Control, Running } from '../src/daemon.js';
 import type { Held, Manager } from '../src/service.js';
 import { posix } from '../../../tools/posix.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const REPO = join(import.meta.dirname, '../../..');
 const MAIN = 'packages/server/src/main.ts';
@@ -233,7 +234,7 @@ describe('the record on disk', () => {
   });
   afterEach(() => {
     if (had === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = had;
-    rmSync(home, { recursive: true, force: true });
+    clearFolder(home);
   });
   const put = (record: Running): void => {
     writeFileSync(join(home, 'ahpd', 'daemon.json'), `${JSON.stringify(record)}\n`);
@@ -902,7 +903,7 @@ describe('hostId', () => {
   });
   afterEach(() => {
     if (had === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = had;
-    rmSync(home, { recursive: true, force: true });
+    clearFolder(home);
   });
 
   it('makes an id on the first start and reads it back after', () => {
@@ -1018,7 +1019,7 @@ describe('the temp files beside what the daemon writes whole', () => {
   });
   afterEach(() => {
     if (had === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = had;
-    rmSync(home, { recursive: true, force: true });
+    clearFolder(home);
   });
 
   /** A pid no process can have: above 2^22, the highest `pid_max` Linux allows. */

@@ -1,9 +1,10 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { applyProcessorsAndValidators, coerceEmptyContainerInputs, diagnose, fillDefaultsForMissingOptionalProps, inputOf } from '../src/props.js';
 import type { Props } from '../src/props.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * An action's input, as Activepieces makes it before the action runs: the
@@ -14,7 +15,7 @@ import type { Props } from '../src/props.js';
 /** The folders a case made, removed after it. */
 const made: string[] = [];
 afterEach(() => {
-  for (const one of made.splice(0)) rmSync(one, { recursive: true, force: true });
+  for (const one of made.splice(0)) clearFolder(one);
 });
 
 /** One action's props, of most of the framework's types. */

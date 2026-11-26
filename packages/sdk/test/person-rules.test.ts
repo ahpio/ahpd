@@ -1,8 +1,9 @@
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { filePersonRules, personOf } from '../src/access/personrules.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The rules each person keeps for their own sessions, a file per person: a
@@ -17,7 +18,7 @@ const folder = (): string => {
   return join(made, 'permissions');
 };
 afterEach(() => {
-  for (const one of folders.splice(0)) rmSync(one, { recursive: true, force: true });
+  for (const one of folders.splice(0)) clearFolder(one);
 });
 
 it('adds a grant\'s rules once, and keeps the first grant beside a second', () => {

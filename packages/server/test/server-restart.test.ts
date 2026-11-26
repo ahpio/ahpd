@@ -10,7 +10,7 @@
  */
 
 import { WAIT_MS } from '../../../tools/wait.ts';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -29,6 +29,7 @@ import { servedRegistry, type ServedFacts } from '../src/commands/served.js';
 import type { ControlledSignal, Running } from '../src/daemon.js';
 import type { Held, Manager, Service } from '../src/service.js';
 import { apiHandler } from '../src/http.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const AUTHORITY = '127.0.0.1:9350';
 const ARGV = ['--port', '9350', '--path', '/x', '--http'];
@@ -43,7 +44,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   if (had === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = had;
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 /** The record `ahpd start` would have written for this process; `null` is an older daemon's, with no line. */

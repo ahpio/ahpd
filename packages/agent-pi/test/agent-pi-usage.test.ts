@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -10,6 +10,7 @@ import type { BackendOptions, PiBackend } from '../src/backend.js';
 import { piSession } from '../src/session.js';
 import { metaKeys } from '../../../tools/wire.mjs';
 import type { OpenPi } from '../src/session.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * What a pi turn says it used, as the calls of that turn go by.
@@ -23,7 +24,7 @@ import type { OpenPi } from '../src/session.js';
 
 let root: string;
 beforeEach(() => { root = mkdtempSync(join(tmpdir(), 'ahpd-pi-usage-')); });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); forget(); });
+afterEach(() => { clearFolder(root); forget(); });
 
 /** A pi that settles a turn only when a case says so, so calls can be raised. */
 function fakePi() {

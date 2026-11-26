@@ -8,7 +8,7 @@
  * network.
  */
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -21,6 +21,7 @@ import { cliRegistry } from '../src/commands/registry.js';
 import { apiOrigins } from '../src/commands/run.js';
 import { servedRegistry } from '../src/commands/served.js';
 import { apiHandler, listenApi } from '../src/http.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let home: string;
 let had: string | undefined;
@@ -32,7 +33,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   if (had === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = had;
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 /** The record a detached daemon writes of itself, which is what says one is up. */

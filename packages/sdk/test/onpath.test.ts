@@ -9,11 +9,12 @@
  * system's.
  */
 
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { onPath } from '../src/utils/onpath.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let root: string;
 let first: string;
@@ -26,7 +27,7 @@ beforeEach(() => {
   mkdirSync(first);
   mkdirSync(second);
 });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 /** The PATH separator of the system running this test. */
 const SEPARATOR = process.platform === 'win32' ? ';' : ':';

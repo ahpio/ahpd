@@ -13,7 +13,7 @@
  * restart and the other keeps nothing at all.
  */
 
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -21,6 +21,7 @@ import { posix } from '../../../tools/posix.ts';
 import { filePolicies, memoryPolicies } from '../src/access/policies.js';
 import { RpcError } from '../src/rpc.js';
 import type { Measure, Policies, Policy, PolicyLimit } from '../src/types/policies.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let root: string;
 let file: string;
@@ -28,7 +29,7 @@ beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'ahpd-policies-'));
   file = join(root, 'policies.json');
 });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 /** The store a case runs against: the one that keeps a file and the one that keeps nothing. */
 const stores = (): [string, () => Policies][] => [

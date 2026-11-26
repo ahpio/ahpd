@@ -7,7 +7,7 @@
  * listen on a path in a folder.
  */
 
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { connect } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -18,6 +18,7 @@ import { controlIn, controlServer } from '../src/control.js';
 import type { ControlHandlers } from '../src/control.js';
 import { answerRestartSignal, restartAtTerminal } from '../src/commands/restart.js';
 import type { RestartOutcome } from '../src/commands/restart.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let home: string;
 let socket: string;
@@ -25,7 +26,7 @@ beforeEach(() => {
   home = mkdtempSync(join(tmpdir(), 'ahpd-control-'));
   socket = join(home, 'control.sock');
 });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 /** A control this machine can listen on: a unix socket path, or on Windows a pipe of the kind a start makes. */
 const here = (): Control => controlFor('win32', process.platform === 'win32' ? undefined : socket) as Control;

@@ -9,6 +9,7 @@ import { registry } from '../src/update.js';
 import type { Fetch } from '../src/update.js';
 import { readInstalled, recordInstalled, refreshMarketplace } from '../src/pluginlist.js';
 import type { ListedPlugin, ListedVersion } from '../src/pluginlist.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * `ahpd plugin install` and `ahpd plugin remove`, without npm.
@@ -32,7 +33,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   if (hadRoot === undefined) delete process.env.AHPD_PLUGIN_ROOT; else process.env.AHPD_PLUGIN_ROOT = hadRoot;
-  rmSync(root, { recursive: true, force: true });
+  clearFolder(root);
 });
 
 /**

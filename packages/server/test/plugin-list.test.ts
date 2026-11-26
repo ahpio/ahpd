@@ -1,10 +1,11 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { describePlugin, pluginIdsOf, pluginLine } from '../src/plugins.js';
 import { sdkVersion } from '../../sdk/src/version.js';
 import type { PluginSpec } from '../../sdk/src/types/plugin.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The listing: what a run would load, without loading any of it.
@@ -22,7 +23,7 @@ const listing = (spec: PluginSpec) => describePlugin(spec, { configDir: fixtures
 
 let loose: string | undefined;
 afterEach(() => {
-  if (loose !== undefined) rmSync(loose, { recursive: true, force: true });
+  if (loose !== undefined) clearFolder(loose);
   loose = undefined;
 });
 

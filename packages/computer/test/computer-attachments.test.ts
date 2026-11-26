@@ -1,5 +1,5 @@
 import { hostPathOf, machinePathOf } from '@ahpd/sdk';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +16,7 @@ import type { HostOptions } from '../../sdk/src/types/host.js';
 import type { Peer } from '../../sdk/src/types/rpc.js';
 import type { SessionStore } from '../../sdk/src/types/sessions.js';
 import { PROCESS_CASE_MS, WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
 vi.setConfig({ testTimeout: PROCESS_CASE_MS });
@@ -52,7 +53,7 @@ afterEach(async () => {
   // let finish.
   vi.useRealTimers();
   await closeAll();
-  for (const one of loose.splice(0)) rmSync(one, { recursive: true, force: true });
+  for (const one of loose.splice(0)) clearFolder(one);
 });
 
 const temp = (): string => {

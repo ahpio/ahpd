@@ -1,8 +1,9 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
 import { claude } from '../src/claude.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * Which settings files a session loads, from the two answers it is started with.
@@ -41,7 +42,7 @@ const sdk = vi.hoisted(() => ({ options: [] as Record<string, unknown>[] }));
 
 let made: string[] = [];
 afterEach(() => {
-  for (const dir of made) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made) clearFolder(dir);
   made = [];
 });
 

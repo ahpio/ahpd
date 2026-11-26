@@ -1,8 +1,9 @@
 import { spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * What a daemon with no backend does.
@@ -21,7 +22,7 @@ const REPO = join(import.meta.dirname, '../../..');
 
 let home: string;
 beforeEach(() => { home = mkdtempSync(join(tmpdir(), 'ahpd-backend-')); });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 /**
  * The daemon on a pipe, answered with its exit code and what it said.

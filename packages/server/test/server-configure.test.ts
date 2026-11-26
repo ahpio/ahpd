@@ -8,7 +8,7 @@
  * a fake so no case needs a registry, a network or a package.
  */
 
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -20,6 +20,7 @@ import { cliRegistry } from '../src/commands/registry.js';
 import { missingLines } from '../src/found.js';
 import type { Ran, Runner, RunOptions } from '../src/install.js';
 import type { Fetch } from '../src/update.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let root: string;
 let configDir: string;
@@ -92,7 +93,7 @@ beforeEach(() => {
   failing.clear();
   hanging.clear();
 });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 /** The eight main plugins a first run installs, in the order the questions offer them. */
 const MAIN = ['@ahpd/web', '@ahpd/tasks', '@ahpd/computer', '@ahpd/push', '@ahpd/bot', '@ahpd/webhook', '@ahpd/tunnel-devtunnel', '@ahpd/activepieces'];

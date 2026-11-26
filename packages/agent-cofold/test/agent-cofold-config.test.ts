@@ -1,10 +1,11 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { splitModel } from '@cofold/model-openai-compat';
 import { createHost } from '../../sdk/src/host.js';
 import { cofoldAgent, harnessConfig, harnessConfigPath, modelOf, resourceOf } from '../src/index.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The harness's own configuration, read by the backend.
@@ -33,7 +34,7 @@ beforeEach(() => {
 afterEach(() => {
   if (had === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = had;
   for (const name of VARIABLES) delete process.env[name];
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 /** The harness file, as the harness itself writes it. */

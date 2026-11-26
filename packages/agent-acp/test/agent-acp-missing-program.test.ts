@@ -1,8 +1,9 @@
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { acpAgent } from '../src/index.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /* What an ACP agent says of its program: the name it cannot find, or nothing. */
 
@@ -14,7 +15,7 @@ beforeEach(() => {
   writeFileSync(join(dir, file), '');
   chmodSync(join(dir, file), 0o755);
 });
-afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(dir); });
 
 const asked = (command: string, env?: Record<string, string>): string | undefined =>
   acpAgent({ command, ...(env === undefined ? {} : { env }) }).missingProgram?.();

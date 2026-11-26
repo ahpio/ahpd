@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -7,6 +7,7 @@ import { echo } from '../../../examples/echo/agent.js';
 import { closeAll, keeping } from './support/closing.js';
 import { profilesOf } from '../src/plugin.js';
 import manifest from '../package.json' with { type: 'json' };
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The profile schema a client reads, against the fields a profile holds.
@@ -60,7 +61,7 @@ const profileProperties = (): Record<string, Record<string, unknown>> =>
 let home: string | undefined;
 afterEach(async () => {
   await closeAll();
-  if (home !== undefined) rmSync(home, { recursive: true, force: true });
+  if (home !== undefined) clearFolder(home);
   home = undefined;
 });
 

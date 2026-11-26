@@ -1,5 +1,5 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
-import { mkdtempSync, mkdirSync, renameSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -7,6 +7,7 @@ import { createHost } from '../src/host.js';
 import { fileResources, list, read, resolve, complete } from '../src/resources/resources.js';
 import { echo } from '../../../examples/echo/agent.js';
 import type { Peer } from '../src/types/rpc.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * Watching a directory, against a real one.
@@ -65,7 +66,7 @@ const refused = async (run: Promise<unknown>): Promise<{ code: number; message: 
 };
 
 beforeEach(() => { root = mkdtempSync(join(tmpdir(), 'ahpd-watch-')); });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 it('hands back a channel, and says what the watch is when you subscribe to it', async () => {
   const { client } = await connected();

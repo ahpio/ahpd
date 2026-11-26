@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +17,7 @@ import type { HostTool, ToolCall } from '../../sdk/src/types/host.js';
 import type { ChannelHandle, PluginHost } from '../../sdk/src/types/plugin.js';
 import type { Principal } from '../../sdk/src/types/users.js';
 import { PROCESS_CASE_MS, WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
 vi.setConfig({ testTimeout: PROCESS_CASE_MS });
@@ -39,7 +40,7 @@ let loose: string | undefined;
 let home: string | undefined;
 afterEach(async () => {
   await closeAll();
-  for (const one of [loose, home]) if (one !== undefined) rmSync(one, { recursive: true, force: true });
+  for (const one of [loose, home]) if (one !== undefined) clearFolder(one);
   loose = undefined;
   home = undefined;
 });

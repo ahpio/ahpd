@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +10,7 @@ import type { ContainerConnectResult, ContainerSink } from '../../sdk/src/types/
 import type { EnvironmentCommand, EnvironmentCommandResult, EnvironmentCommands } from '../src/environments.js';
 import { PROCESS_CASE_MS, WAIT_MS } from '../../../tools/wait.ts';
 import { posix } from '../../../tools/posix.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
 vi.setConfig({ testTimeout: PROCESS_CASE_MS });
@@ -33,7 +34,7 @@ let root: string;
 beforeEach(() => { root = mkdtempSync(join(tmpdir(), 'ahpd-environments-')); });
 afterEach(async () => {
   await closeAll();
-  rmSync(root, { recursive: true, force: true });
+  clearFolder(root);
 });
 
 const answer = (stdout = ''): EnvironmentCommandResult => ({ code: 0, stdout, stderr: '' });

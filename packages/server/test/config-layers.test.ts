@@ -8,13 +8,14 @@
  */
 
 import { spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { optionsFrom } from '../src/commands/options.js';
 import { loadConfig } from '../src/config.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const REPO = join(import.meta.dirname, '../../..');
 const MAIN = join(REPO, 'packages/server/src/main.ts');
@@ -38,7 +39,7 @@ beforeEach(() => {
   delete process.env['AHPD_CONFIG'];
 });
 afterEach(() => {
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
   if (held.xdg === undefined) delete process.env['XDG_CONFIG_HOME'];
   else process.env['XDG_CONFIG_HOME'] = held.xdg;
   if (held.env === undefined) delete process.env['AHPD_CONFIG'];

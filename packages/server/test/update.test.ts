@@ -1,12 +1,13 @@
 import { execFile } from 'node:child_process';
 import { createServer, type Server } from 'node:http';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import { promisify } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { checkingUpdates, newer, readUpdate, refreshUpdate, registry, registryPath, stale, updateLine } from '../src/update.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The update check, without a network.
@@ -93,7 +94,7 @@ describe('the file', () => {
   });
   afterEach(() => {
     if (had === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = had;
-    rmSync(home, { recursive: true, force: true });
+    clearFolder(home);
   });
   const at = (): string => join(home, 'ahpd', 'update.json');
   const put = (text: string): void => {
@@ -237,7 +238,7 @@ describe('ahpd status, and whether a newer release is out', () => {
       );
       return stdout;
     }
-    finally { rmSync(home, { recursive: true, force: true }); }
+    finally { clearFolder(home); }
   };
 
   it('prints the line last, from the file', async () => {

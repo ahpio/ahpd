@@ -17,6 +17,7 @@ import type { Part } from '../src/parts.js';
 import { quote, sshRuntime } from '../src/ssh.js';
 import type { SshMachine } from '../src/ssh.js';
 import { PROCESS_CASE_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
 vi.setConfig({ testTimeout: PROCESS_CASE_MS });
@@ -39,7 +40,7 @@ const FIXTURE = fileURLToPath(new URL('./fixtures/ssh.mjs', import.meta.url));
 /** A temporary directory removed after the test that made it. */
 let loose: string | undefined;
 afterEach(() => {
-  if (loose !== undefined) rmSync(loose, { recursive: true, force: true });
+  if (loose !== undefined) clearFolder(loose);
   loose = undefined;
 });
 /** The server a case's Node download is on, for a host that reads it by HTTP. */

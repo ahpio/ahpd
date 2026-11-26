@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, expect, it, vi } from 'vitest';
 import type { Turn } from '@microsoft/agent-host-protocol';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A conversation a client brought, written as one this CLI ran.
@@ -86,7 +87,7 @@ process.env.CLAUDE_CONFIG_DIR = join(home, 'config');
 afterAll(() => {
   if (before === undefined) delete process.env.CLAUDE_CONFIG_DIR;
   else process.env.CLAUDE_CONFIG_DIR = before;
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 const settle = async (times = 12): Promise<void> => {

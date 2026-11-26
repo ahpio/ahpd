@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeEach, expect, it, vi } from 'vitest';
 import type { Bag } from '@ahpd/sdk';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A Claude transcript read back as turns.
@@ -48,7 +49,7 @@ process.env.CLAUDE_CONFIG_DIR = CONFIG;
 afterAll(() => {
   if (configBefore === undefined) delete process.env.CLAUDE_CONFIG_DIR;
   else process.env.CLAUDE_CONFIG_DIR = configBefore;
-  rmSync(CONFIG, { recursive: true, force: true });
+  clearFolder(CONFIG);
 });
 
 beforeEach(() => {

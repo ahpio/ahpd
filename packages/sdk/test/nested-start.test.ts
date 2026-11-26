@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +11,7 @@ import type { Agent } from '../src/types/agent.js';
 import type { HostOptions } from '../src/types/host.js';
 import type { Peer } from '../src/types/rpc.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * How the computers port starts a whole host inside a machine.
@@ -32,9 +33,9 @@ const FIXTURE = fileURLToPath(new URL('../../computer/test/fixtures/docker.mjs',
 /** A temporary directory removed after the test that made it. */
 let loose: string | undefined;
 afterEach(() => {
-  if (loose !== undefined) rmSync(loose, { recursive: true, force: true });
+  if (loose !== undefined) clearFolder(loose);
   loose = undefined;
-  if (home !== undefined) rmSync(home, { recursive: true, force: true });
+  if (home !== undefined) clearFolder(home);
   home = undefined;
 });
 

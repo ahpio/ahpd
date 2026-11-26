@@ -1,6 +1,6 @@
 import { posix } from '../../../tools/posix.ts';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:https';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import { tmpdir } from 'node:os';
@@ -17,6 +17,7 @@ import type { ProxmoxOptions } from '../src/proxmox.js';
 import { keygenWith } from '../src/keys.js';
 import type { MachineSpec } from '../src/runtime.js';
 import { PROCESS_CASE_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
 vi.setConfig({ testTimeout: PROCESS_CASE_MS });
@@ -81,14 +82,14 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await new Promise<void>((resolve) => { if (server === undefined) resolve(); else server.close(() => { resolve(); }); });
-  if (certs !== undefined) rmSync(certs, { recursive: true, force: true });
+  if (certs !== undefined) clearFolder(certs);
 });
 
 /** A temporary directory removed after the test that made it. */
 let loose: string | undefined;
 afterEach(async () => {
   await closeAll();
-  if (loose !== undefined) rmSync(loose, { recursive: true, force: true });
+  if (loose !== undefined) clearFolder(loose);
   loose = undefined;
   api.vms.clear();
   api.calls.length = 0;

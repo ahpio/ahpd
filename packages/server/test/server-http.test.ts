@@ -24,6 +24,7 @@ import { apiOrigins } from '../src/commands/run.js';
 import { servedRegistry, type ServedFacts } from '../src/commands/served.js';
 import { apiHandler, withoutApi } from '../src/http.js';
 import { version } from '../src/version.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const REPO = join(import.meta.dirname, '../../..');
 const MAIN = 'packages/server/src/main.ts';
@@ -91,7 +92,7 @@ afterEach(async () => {
       one.child.once('exit', () => { clearTimeout(timer); done(); });
     });
   }
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 /**

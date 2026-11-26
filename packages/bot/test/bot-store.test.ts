@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -11,6 +11,7 @@ import type { BotStore } from '../src/store.js';
 import type { BotRecord } from '../src/record.js';
 import type { RecordCollection, RecordStore, StoredRecord } from '../../sdk/src/types/records.js';
 import type { Write } from '../../sdk/src/types/resources.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The bot store, as two collections of the host's record store.
@@ -71,7 +72,7 @@ beforeEach(() => {
   loose.push(root);
 });
 afterEach(() => {
-  for (const dir of loose) rmSync(dir, { recursive: true, force: true });
+  for (const dir of loose) clearFolder(dir);
   loose = [];
 });
 

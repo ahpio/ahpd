@@ -1,4 +1,4 @@
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -7,6 +7,7 @@ import { gitChanges } from '../src/sessions/changes.js';
 import { gitBranches } from '../src/repo/git.js';
 import { SLOW_GIT_MS, gitArgv, onSlowGit, runGit } from '../src/repo/hardened.js';
 import { gitWorktrees } from '../src/repo/worktrees.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * Every git this host runs turns off what a repository's own files could make
@@ -34,7 +35,7 @@ afterEach(() => {
   process.env.PATH = before.path;
   if (before.log === undefined) delete process.env.AHPD_FAKE_GIT_LOG;
   else process.env.AHPD_FAKE_GIT_LOG = before.log;
-  rmSync(root, { recursive: true, force: true });
+  clearFolder(root);
 });
 
 const calls = (): string[] => (existsSync(log) ? readFileSync(log, 'utf8').split('\n').filter((one) => one !== '') : []);

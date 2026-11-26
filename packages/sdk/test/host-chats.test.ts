@@ -1,5 +1,5 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -17,6 +17,7 @@ import { startedNow } from './support/started.js';
 import type { Agent, Bag, HostOptions, Session, Start } from '@ahpd/sdk';
 import { WORK } from './support/work.js';
 import { uriOf } from '../src/resources/fileuri.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 vi.mock('@anthropic-ai/claude-agent-sdk', async () => (await import('./support/claude-sdk.js')).fake);
 
@@ -1202,7 +1203,7 @@ describe('more than one chat in a session', () => {
       expect(session.state.chats?.map((one) => one.resource)).toEqual([session.state.defaultChat, PEER]);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1258,7 +1259,7 @@ describe('more than one chat in a session', () => {
       expect(said(await opened(second.client, session.state.defaultChat as string))).toEqual(['first']);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1300,7 +1301,7 @@ describe('more than one chat in a session', () => {
       expect(said(await opened(second.client, PEER))).toEqual(['second', 'third']);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1329,7 +1330,7 @@ describe('more than one chat in a session', () => {
       expect(resuming(starts.slice(before))).toEqual([{ chatId: undefined, resume: 'live', first: 'first' }]);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1364,7 +1365,7 @@ describe('more than one chat in a session', () => {
       expect(said(await opened(second.client, PEER))).toEqual(['made here', 'said again']);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1396,7 +1397,7 @@ describe('more than one chat in a session', () => {
       expect(starts).toHaveLength(2);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1424,7 +1425,7 @@ describe('more than one chat in a session', () => {
       await expect(opened(second.client, LIVE)).rejects.toMatchObject({ message: `No agent for session: ${LIVE}` });
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1458,7 +1459,7 @@ describe('more than one chat in a session', () => {
       expect(said(await opened(second.client, PEER))).toEqual(['second', 'also again']);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1490,7 +1491,7 @@ describe('more than one chat in a session', () => {
       expect(await close(join(root, 'deleting'), { closedChats: 'delete' })).toEqual([UUID]);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1526,7 +1527,7 @@ describe('more than one chat in a session', () => {
         .filter((one) => one !== undefined)).toEqual([]);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1577,7 +1578,7 @@ describe('more than one chat in a session', () => {
         .rejects.toMatchObject({ code: -32001 });
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1613,7 +1614,7 @@ describe('more than one chat in a session', () => {
       expect((await opened(client, PEER)).state.movable).toBe(true);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1646,7 +1647,7 @@ describe('more than one chat in a session', () => {
       expect((await opened(client, session.state.defaultChat as string)).state.movable).toBeUndefined();
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1669,7 +1670,7 @@ describe('more than one chat in a session', () => {
         .map((e) => (e.action.changes as { movable?: boolean }).movable).filter((one) => one !== undefined)).toEqual([true]);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1696,7 +1697,7 @@ describe('more than one chat in a session', () => {
       expect(moves(p, PEER)).toEqual([false, true]);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1723,7 +1724,7 @@ describe('more than one chat in a session', () => {
       expect(told.at(-1)).toBe(true);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1760,7 +1761,7 @@ describe('more than one chat in a session', () => {
       expect(moves(p, PEER)).toEqual([false, true]);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1779,7 +1780,7 @@ describe('more than one chat in a session', () => {
       expect(moves(p, PEER)).toEqual([]);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1851,7 +1852,7 @@ describe('more than one chat in a session', () => {
       worker?.end('complete');
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1874,7 +1875,7 @@ describe('more than one chat in a session', () => {
       expect(listed(await opened(client, LIVE))).toEqual([PEER, first, THIRD]);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1932,7 +1933,7 @@ describe('more than one chat in a session', () => {
       expect(listed(await opened(client, LIVE))).toEqual(before);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -1967,7 +1968,7 @@ describe('more than one chat in a session', () => {
       // The host holds the scratch folder open, which Windows will not remove while it does.
       await close();
       vi.unstubAllEnvs();
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -2004,7 +2005,7 @@ describe('more than one chat in a session', () => {
       expect(reorders(p, LIVE)).toHaveLength(1);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -2040,7 +2041,7 @@ describe('more than one chat in a session', () => {
       expect(listed(session)).toEqual([session.state.defaultChat, THIRD, PEER]);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -2086,7 +2087,7 @@ describe('more than one chat in a session', () => {
       expect(await read(LIVE)).toBe(true);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -2110,7 +2111,7 @@ describe('more than one chat in a session', () => {
       expect(starts.slice(before).map((one) => one.additional)).toEqual([[EXTRA, MORE]]);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -2214,7 +2215,7 @@ describe('more than one chat in a session', () => {
       expect(mine.additional).toEqual([EXTRA, MORE]);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -2264,7 +2265,7 @@ describe('more than one chat in a session', () => {
       expect(openedWorker.state.turns.length).toBeGreaterThan(0);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -2333,7 +2334,7 @@ describe('more than one chat in a session', () => {
       expect(reorders(p, LIVE)).toEqual([]);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -2378,7 +2379,7 @@ describe('more than one chat in a session', () => {
       expect(JSON.stringify(ended.map((e) => e.action.part))).toContain('will not work there');
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -2410,7 +2411,7 @@ describe('more than one chat in a session', () => {
       expect(listed(there)).toEqual([PEER]);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -2496,7 +2497,7 @@ describe('more than one chat in a session', () => {
       expect(said(await opened(second.client, PEER))).toEqual(['over here', 'and again']);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 });

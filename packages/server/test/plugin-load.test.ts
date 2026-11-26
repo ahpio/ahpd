@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -9,6 +9,7 @@ import { echo } from '../../../examples/echo/agent.js';
 import { FRONTMATTER } from './fixtures/plugin-yaml/index.js';
 import type { HostOptions } from '../../sdk/src/types/host.js';
 import type { PluginHost, PluginSpec } from '../../sdk/src/types/plugin.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * Loading a plugin: resolve, manifest, import, apply.
@@ -200,7 +201,7 @@ describe('the manifest a client lists', () => {
       expect(loaded[0]?.manifest).toEqual({ id: 'custom', name: 'Custom', version: '1.0.0' });
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -243,7 +244,7 @@ describe('the manifest a client lists', () => {
       expect(problems[0]).toContain('ahpd plugin update all');
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -260,7 +261,7 @@ describe('the manifest a client lists', () => {
       expect(problems[0]).toContain('declared-id');
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -284,7 +285,7 @@ describe('the manifest a client lists', () => {
       expect(problems[0]).toContain('ahpd plugin update all');
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -304,7 +305,7 @@ describe('the manifest a client lists', () => {
       expect(problems[0]).toContain('ahpd plugin update all');
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 });
@@ -363,7 +364,7 @@ describe('a first-party plugin', { timeout: IMPORT_CASE_MS }, () => {
     }
     finally {
       for (const one of set.loaded()) await set.unload(one.name);
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 });
@@ -572,7 +573,7 @@ describe('a plugin file that sits in no plugin package', () => {
       expect(loaded.map((one) => one.name)).toEqual(['loose']);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -590,7 +591,7 @@ describe('a plugin file that sits in no plugin package', () => {
       expect(problems[0]).toContain('id');
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -606,7 +607,7 @@ describe('a plugin file that sits in no plugin package', () => {
       expect(loaded[0]?.manifest?.description).toBe('Describes itself from beside.');
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -627,7 +628,7 @@ describe('a plugin file that sits in no plugin package', () => {
       expect((globalThis as Record<string, unknown>).__besideOtherImported).toBeUndefined();
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 });
@@ -670,7 +671,7 @@ describe('a plugin id', () => {
       expect(loaded.map((one) => one.name)).toEqual(['plain']);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -685,7 +686,7 @@ describe('a plugin id', () => {
       expect(pluginIdOf(root)).toBe('acme-y');
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -702,7 +703,7 @@ describe('a plugin id', () => {
       expect(loaded).toEqual([]);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 
@@ -717,7 +718,7 @@ describe('a plugin id', () => {
       expect(loaded).toEqual([]);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 });
@@ -735,7 +736,7 @@ describe('an entry is written with its source', () => {
       expect(written.plugins).toEqual([{ source: './fixtures/plugin-hello', options: { a: 1 }, enabled: false }]);
     }
     finally {
-      rmSync(root, { recursive: true, force: true });
+      clearFolder(root);
     }
   });
 });

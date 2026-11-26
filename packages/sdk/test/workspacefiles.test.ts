@@ -1,8 +1,9 @@
-import { chmodSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ripgrepFiles } from '../src/resources/workspacefiles.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * VS Code's listing of a working directory, driven against a stand-in for
@@ -14,7 +15,7 @@ import { ripgrepFiles } from '../src/resources/workspacefiles.js';
 
 let made: string[] = [];
 afterEach(() => {
-  for (const dir of made) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made) clearFolder(dir);
   made = [];
 });
 

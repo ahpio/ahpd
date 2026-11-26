@@ -1,9 +1,10 @@
 import { execFile } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, expect, it } from 'vitest';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The repair script, run as a person runs it, over a daemon folder and a CLI
@@ -17,7 +18,7 @@ const CHAT = '9a1b2c3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d';
 
 const loose: string[] = [];
 afterEach(() => {
-  for (const one of loose.splice(0)) rmSync(one, { recursive: true, force: true });
+  for (const one of loose.splice(0)) clearFolder(one);
 });
 
 const folder = (name: string): string => {

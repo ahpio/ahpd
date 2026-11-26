@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { GITFILE, MACHINE_GIT_TARGET, MACHINE_OBJECTS, gitMounts } from '../src/gitdir.js';
 import { gitSync } from '../../../tools/git.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The git directory the runtime is handed, checked before it makes anything.
@@ -27,7 +28,7 @@ const statOf = (path: string) => {
 
 let loose: string | undefined;
 afterEach(() => {
-  if (loose !== undefined) rmSync(loose, { recursive: true, force: true });
+  if (loose !== undefined) clearFolder(loose);
   loose = undefined;
 });
 

@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -18,6 +18,7 @@ import type { Bag } from '../src/types/common.js';
 import type { AskedAnswers, AskedQuestion, Host, ToolCall } from '../src/types/host.js';
 import type { Peer } from '../src/types/rpc.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The comment tools, in the shapes VS Code's host answers them.
@@ -374,7 +375,7 @@ describe('as a tool', () => {
 // subscribed to the annotations channel then reads.
 let made: string[] = [];
 afterEach(() => {
-  for (const dir of made) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made) clearFolder(dir);
   made = [];
 });
 

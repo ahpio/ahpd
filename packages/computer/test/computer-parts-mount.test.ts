@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,6 +8,7 @@ import { dockerRuntime } from '../src/runtime.js';
 import type { DockerOptions } from '../src/runtime.js';
 import type { MadePart } from '../src/parts.js';
 import { PROCESS_CASE_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
 vi.setConfig({ testTimeout: PROCESS_CASE_MS });
@@ -22,7 +23,7 @@ vi.setConfig({ testTimeout: PROCESS_CASE_MS });
  */
 
 let loose: string;
-afterEach(() => { rmSync(loose, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(loose); });
 
 const CODEX: MadePart = { id: 'codex', tag: 'ahpd-part/codex:2.1.1', version: '2.1.1' };
 const NODE: MadePart = { id: 'node', tag: 'ahpd-part/node:24.21.0', version: '24.21.0' };

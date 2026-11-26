@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -12,6 +12,7 @@ import {
 import { directory } from './users-gate-helpers.js';
 import type { Bag } from '../src/types/common.js';
 import type { Grant, Users } from '../src/types/users.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * An automation deleted with the sessions its runs made, as VS Code's window
@@ -32,7 +33,7 @@ const made: string[] = [];
 const hosts: ReturnType<typeof createHost>[] = [];
 afterEach(async () => {
   await Promise.all(hosts.splice(0).map((host) => host.close()));
-  for (const dir of made.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made.splice(0)) clearFolder(dir);
 });
 
 /** One automation whose runs start an echo session. */

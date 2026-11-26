@@ -1,4 +1,4 @@
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +10,7 @@ import { echo } from '../../../examples/echo/agent.js';
 import { posix } from '../../../tools/posix.js';
 import { name } from '../src/plugin.js';
 import { keyVariablesOf, presets as shipped } from '../src/presets.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The shipped rows, as records.
@@ -44,7 +45,7 @@ afterEach(async () => {
     process.env.PATH = savedPath;
     savedPath = undefined;
   }
-  for (const path of made.splice(0)) rmSync(path, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  for (const path of made.splice(0)) clearFolder(path);
 });
 
 /** A folder of its own for one case, removed after it. */

@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -9,6 +9,7 @@ import {
 } from '../src/pluginlist.js';
 import type { ListedPlugin, ListedVersion } from '../src/pluginlist.js';
 import type { Fetch } from '../src/update.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The plugin lists, without a network.
@@ -20,7 +21,7 @@ import type { Fetch } from '../src/update.js';
 
 let dir: string;
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'ahpd-pluginlist-')); });
-afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(dir); });
 
 const OURS = 'https://plugins.example.com/v1/plugins.json';
 const THEIRS = 'https://other.example.com/v1/plugins.json';

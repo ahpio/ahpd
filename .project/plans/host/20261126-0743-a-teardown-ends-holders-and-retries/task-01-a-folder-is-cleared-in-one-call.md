@@ -1,6 +1,6 @@
 ---
 title: A folder is cleared in one call
-status: todo
+status: done
 depends: []
 layer: "tools"
 ---
@@ -25,3 +25,5 @@ layer: "tools"
 - A folder that is not there is not an error.
 
 ## Resume
+
+Built on 2026-11-26.

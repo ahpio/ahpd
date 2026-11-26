@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -8,6 +8,7 @@ import { fileUsers } from '../src/access/users.js';
 import type { FileUserOptions } from '../src/access/users.js';
 import { scopeFor } from '../src/usage/scopes.js';
 import type { Users } from '../src/types/users.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // Counted, not replaced: every comparison still happens, and a case can say
 // how many the one pass made.
@@ -47,7 +48,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   nextBytes.waiting.length = 0;
-  rmSync(root, { recursive: true, force: true });
+  clearFolder(root);
 });
 
 const open = (options: Partial<FileUserOptions> = {}): Users => fileUsers({ path, ...options });

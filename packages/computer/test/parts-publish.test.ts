@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +9,7 @@ import { posix } from '../../../tools/posix.ts';
 import { ahpdSourceOf, dockerfileOf, JOINED_BASE, lockOf, readParts, registryOf, tagOf } from '../src/parts.js';
 import type { Part } from '../src/parts.js';
 import { PROCESS_CASE_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
 vi.setConfig({ testTimeout: PROCESS_CASE_MS });
@@ -28,7 +29,7 @@ const FIXTURE = fileURLToPath(new URL('./fixtures/docker.mjs', import.meta.url))
 
 const loose: string[] = [];
 afterEach(() => {
-  for (const one of loose.splice(0)) rmSync(one, { recursive: true, force: true });
+  for (const one of loose.splice(0)) clearFolder(one);
 });
 
 interface Built { platforms: string[]; tags: string[]; contexts: string[]; labels: string[]; push: boolean; dockerfile?: string; files?: string[] }

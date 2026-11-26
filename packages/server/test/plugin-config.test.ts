@@ -19,6 +19,7 @@ import { cliRegistry } from '../src/commands/registry.js';
 import { apiOrigins } from '../src/commands/run.js';
 import { servedRegistry, type ServedFacts } from '../src/commands/served.js';
 import { apiHandler } from '../src/http.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /** A plugin whose `apiKey` is write-only, `region` is not, and `retries` is bounded. */
 const SECRET = join(import.meta.dirname, 'fixtures', 'plugin-secret', 'index.ts');
@@ -40,7 +41,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   if (had === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = had;
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 const put = (held: unknown): void => { writeFileSync(config, `${JSON.stringify(held, null, 2)}\n`); };

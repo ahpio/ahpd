@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -8,6 +8,7 @@ import { optionsFrom } from '../src/commands/options.js';
 import { echo } from '../../../examples/echo/agent.js';
 import type { PluginSpec } from '@ahpd/sdk';
 import type { RootConfigPort } from '@ahpd/sdk';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The daemon's own settings, as root config carries them.
@@ -24,7 +25,7 @@ beforeEach(() => {
   home = mkdtempSync(join(tmpdir(), 'ahpd-root-config-'));
   config = join(home, 'config.json');
 });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 /** The port for a run that was given this file and these flags. */
 const port = (typed: Record<string, unknown> = {}): RootConfigPort => {

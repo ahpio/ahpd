@@ -9,7 +9,7 @@
  * and the restart are facts.
  */
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -25,6 +25,7 @@ import type { PlaceFacts } from '../src/selfupdate.js';
 import { IN_IMAGE } from '../src/selfupdate.js';
 import type { Fetch } from '../src/update.js';
 import { version } from '../src/version.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const AUTHORITY = '127.0.0.1:9350';
 /** What the fake registry calls latest. Above any version this package will be. */
@@ -34,7 +35,7 @@ const CURRENT = version();
 
 let home: string;
 beforeEach(() => { home = mkdtempSync(join(tmpdir(), 'ahpd-host-update-')); });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 /** The record `ahpd start` would have written for the daemon being updated. */
 const RECORD: Running = {

@@ -19,6 +19,7 @@ import type { HostOptions, HostTool } from '../../sdk/src/types/host.js';
 import type { MachineNeed } from '../../sdk/src/types/machine.js';
 import type { Vault } from '../../sdk/src/types/vault.js';
 import { PROCESS_CASE_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
 vi.setConfig({ testTimeout: PROCESS_CASE_MS });
@@ -45,9 +46,9 @@ afterEach(async () => {
   // folder goes: a load on its own has already read what is out there.
   vi.useRealTimers();
   await closeAll();
-  if (loose !== undefined) rmSync(loose, { recursive: true, force: true });
+  if (loose !== undefined) clearFolder(loose);
   loose = undefined;
-  if (home !== undefined) rmSync(home, { recursive: true, force: true });
+  if (home !== undefined) clearFolder(home);
   home = undefined;
 });
 

@@ -8,6 +8,7 @@ import { echo } from '../../../examples/echo/agent.js';
 import { loadPlugins } from '../src/plugins.js';
 import { fileRecords, readRecordFile, recordFile } from '../src/records.js';
 import { posix } from '../../../tools/posix.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The daemon's record store: a folder per collection, a Markdown or JSON file
@@ -23,7 +24,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  rmSync(dir, { recursive: true, force: true });
+  clearFolder(dir);
 });
 
 const store = () => fileRecords(dir, { onProblem: (message) => { problems.push(message); } });

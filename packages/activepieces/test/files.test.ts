@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
 import { open } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fileProcessor } from '../src/files.js';
 import type { ApFile, ApStreamingFile } from '../src/files.js';
 import { fileLinks } from '../../../tools/links.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // The real `open`, which a case can make refuse once.
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -28,7 +29,7 @@ const made: string[] = [];
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  for (const one of made.splice(0)) rmSync(one, { recursive: true, force: true });
+  for (const one of made.splice(0)) clearFolder(one);
 });
 
 /** One folder with the named files written into it. */

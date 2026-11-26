@@ -4,7 +4,7 @@
  * The four rows of issue 471: a damaged file, with the external sessions of the
  * root shown and hidden, and the same session readable beside them.
  */
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -13,11 +13,12 @@ import { fileSessions } from '../src/sessions/sessions.js';
 import { echo } from '../../../examples/echo/agent.js';
 import type { Peer } from '../src/types/rpc.js';
 import type { Agent, Listed } from '../src/types/agent.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let root: string;
 let dir: string;
 beforeEach(() => { root = mkdtempSync(join(tmpdir(), 'ahpd-damaged-')); dir = join(root, 'sessions'); mkdirSync(dir); });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 const peer = (): Peer => ({ send: () => {}, notify: () => {}, request: async () => ({}), answered: () => {}, close: () => {} });
 const ROOT = 'ahp-root://';

@@ -8,6 +8,7 @@ import { uriOf } from '../src/resources/fileuri.js';
 import { gitChanges } from '../src/sessions/changes.js';
 import type { ChangeWords, ChangeWordsMode, ChangesetOperationContext } from '../src/types/changes.js';
 import { gitSync } from '../../../tools/git.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * Staging and the commit form's arguments, on a real repository.
@@ -20,7 +21,7 @@ import { gitSync } from '../../../tools/git.ts';
 
 let made: string[] = [];
 afterEach(() => {
-  for (const dir of made) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made) clearFolder(dir);
   made = [];
 });
 

@@ -1,5 +1,5 @@
 import { loggerOf } from '../src/log.js';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -21,6 +21,7 @@ import type { Vault } from '../src/types/vault.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
 import { WORK } from './support/work.js';
 import { uriOf } from '../src/resources/fileuri.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 vi.mock('@anthropic-ai/claude-agent-sdk', async () => (await import('./support/claude-sdk.js')).fake);
 
@@ -126,7 +127,7 @@ beforeEach(() => {
     ],
   }));
 });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 /**
  * An automation store and a webhook plugin over this host's automations.

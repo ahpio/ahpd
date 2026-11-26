@@ -11,7 +11,7 @@
  * host serves.
  */
 
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -35,6 +35,7 @@ import { apiOrigins } from '../src/commands/run.js';
 import { servedRegistry, type ServedFacts } from '../src/commands/served.js';
 import { apiHandler } from '../src/http.js';
 import { scheduledAutomations } from '../src/scheduled.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const FIXTURE = join(import.meta.dirname, 'fixtures', 'review-yesterday-s-commits.automation.md');
 const ZONE = 'America/Campo_Grande';
@@ -250,7 +251,7 @@ describe('ahpd automation export', () => {
   afterEach(() => {
     if (had === undefined) delete process.env['XDG_CONFIG_HOME'];
     else process.env['XDG_CONFIG_HOME'] = had;
-    rmSync(home, { recursive: true, force: true });
+    clearFolder(home);
   });
 
   const ID = '0b6f1c1e-4d8e-4d8a-9a43-6a3f4c2b9e10';
@@ -357,7 +358,7 @@ describe('ahpd automation list', () => {
   afterEach(() => {
     if (had === undefined) delete process.env['XDG_CONFIG_HOME'];
     else process.env['XDG_CONFIG_HOME'] = had;
-    rmSync(home, { recursive: true, force: true });
+    clearFolder(home);
   });
 
   const ID = '0b6f1c1e-4d8e-4d8a-9a43-6a3f4c2b9e10';
@@ -481,7 +482,7 @@ describe('ahpd automation import', () => {
   afterEach(() => {
     if (had === undefined) delete process.env['XDG_CONFIG_HOME'];
     else process.env['XDG_CONFIG_HOME'] = had;
-    rmSync(home, { recursive: true, force: true });
+    clearFolder(home);
   });
 
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
@@ -643,7 +644,7 @@ describe('ahpd\'s own automation file', () => {
   afterEach(() => {
     if (had === undefined) delete process.env['XDG_CONFIG_HOME'];
     else process.env['XDG_CONFIG_HOME'] = had;
-    rmSync(home, { recursive: true, force: true });
+    clearFolder(home);
   });
 
   const ID = 'nightly-review';

@@ -12,7 +12,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -22,10 +22,11 @@ import { uriOf } from '../src/resources/fileuri.js';
 import type { Bag } from '../src/types/common.js';
 import type { MessageAttachment } from '../src/types/session.js';
 import type { Part } from '../src/resources/attachments.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let made: string[] = [];
 afterEach(() => {
-  for (const dir of made) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made) clearFolder(dir);
   made = [];
 });
 

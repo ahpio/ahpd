@@ -1,6 +1,6 @@
 import { posix } from '../../../tools/posix.ts';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +11,7 @@ import { DEFAULT_CLIENT_TOOL_TIMEOUT_MS } from '../../sdk/src/tools/clientcalls.
 import type { Agent, Bag, Emit, MessageAttachment, Session, Start } from '@ahpd/sdk';
 import { acpAgent } from '../src/index.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * What a prompt carries, what a queued message keeps, and what a session is
@@ -43,7 +44,7 @@ const started: Session[] = [];
 
 afterEach(() => {
   for (const session of started.splice(0)) session.close();
-  for (const path of made.splice(0)) rmSync(path, { recursive: true, force: true });
+  for (const path of made.splice(0)) clearFolder(path);
 });
 
 /** A fresh directory under the system temp root, kept for cleanup. */

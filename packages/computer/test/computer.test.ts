@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -10,6 +10,7 @@ import type { ToolCall } from '../../sdk/src/types/host.js';
 import type { PluginHost } from '../../sdk/src/types/plugin.js';
 import type { Write } from '../../sdk/src/types/resources.js';
 import type { Owner } from '../../sdk/src/types/usage.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The provider and the tools, against a runtime that is a plain object.
@@ -23,7 +24,7 @@ import type { Owner } from '../../sdk/src/types/usage.js';
 /** The temporary directory the tests that name a host path keep their paths in. */
 let loose: string | undefined;
 afterEach(() => {
-  if (loose !== undefined) rmSync(loose, { recursive: true, force: true });
+  if (loose !== undefined) clearFolder(loose);
   loose = undefined;
 });
 

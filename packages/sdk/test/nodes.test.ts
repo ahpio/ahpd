@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -16,6 +16,7 @@ import type { NodeChange } from '../src/types/host.js';
 import type { Listener } from '../src/types/listen.js';
 import type { Handler } from '../src/types/rpc.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The hub's half of a join: who may dial the join path, what a node says when
@@ -52,7 +53,7 @@ afterEach(async () => {
   for (const socket of sockets.splice(0)) socket.close();
   for (const host of hosts.splice(0)) await host.close();
   for (const listener of listeners.splice(0)) await listener.close();
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
+  for (const dir of dirs.splice(0)) clearFolder(dir);
 });
 
 /** Wait for something that happens asynchronously, without a fixed sleep. */

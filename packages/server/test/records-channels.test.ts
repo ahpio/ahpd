@@ -9,12 +9,13 @@
  */
 
 import { spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { createHost, filePolicies, fileResources, fileUsers, peopleChannels, policyChannels, servedRecords, type Users } from '@ahpd/sdk';
 import { echo } from '../../../examples/echo/agent.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const ROOT = 'ahp-root://';
 const REPO = join(import.meta.dirname, '../../..');
@@ -36,7 +37,7 @@ beforeEach(() => {
     users: [{ id: 'ana', roles: ['clerk'] }, { id: 'bo', roles: [] }, { id: 'cy', roles: ['keeper'] }],
   }));
 });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 const wait = async (ms: number): Promise<void> => { await new Promise((done) => { setTimeout(done, ms); }); };
 

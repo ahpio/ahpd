@@ -7,11 +7,12 @@
  * the file is the host's to decide, in `root-config.test.ts`.
  */
 
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { fileRootConfigStore } from '../src/rootconfigstore.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let dir: string;
 let file: string;
@@ -23,7 +24,7 @@ beforeEach(() => {
   file = join(dir, 'root-config.json');
   problems = [];
 });
-afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(dir); });
 
 /** A store over the test's file, which is what a daemon builds at its start. */
 const open = () => fileRootConfigStore({ file, onProblem: (message) => problems.push(message) });

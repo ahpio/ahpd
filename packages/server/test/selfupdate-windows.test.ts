@@ -9,7 +9,7 @@
  * helper itself is a fixture file, copied as a build of it would be.
  */
 
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -17,6 +17,7 @@ import { handOffToHelper } from '../src/selfupdate.js';
 import type { Starter } from '../src/selfupdate.js';
 import { updateOnce } from '../src/updater.js';
 import type { HelperFacts, HelperManifest, HelperRunOptions } from '../src/updater.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /** Where a Windows npm install of ahpd puts the package, as `packageEntry` reads it. */
 const PREFIX = 'C:\\npm-prefix';
@@ -29,7 +30,7 @@ const VERSION = '99.0.0';
 let home: string;
 
 beforeEach(() => { home = mkdtempSync(join(tmpdir(), 'ahpd-windows-')); });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 /** A build of the helper where the package's own `dist` would have one. */
 const HELPER = 'export const helper = true;\n';

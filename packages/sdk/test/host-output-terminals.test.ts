@@ -7,16 +7,17 @@
  * not appear: the list of this machine's shells.
  */
 
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { actions, createHost, echo, hello, peer, settle } from './support/host.js';
 import type { Agent, Start } from '@ahpd/sdk';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let dir: string;
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'ahpd-output-')); });
-afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(dir); });
 
 /** The state an output terminal's subscription carries. */
 interface TerminalSnapshot {

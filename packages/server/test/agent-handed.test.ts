@@ -8,10 +8,11 @@
  */
 
 import { spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const ROOT = 'ahp-root://';
 const REPO = join(import.meta.dirname, '../../..');
@@ -22,7 +23,7 @@ type Bag = Record<string, any>;
 
 let home: string;
 beforeEach(() => { home = mkdtempSync(join(tmpdir(), 'ahpd-agent-handed-')); });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 /** A stdio host with the engine fixture, handed `record`, closed once it answers `initialize`. */
 const host = (record: Bag): Promise<{ frames: Bag[]; said: string }> => {

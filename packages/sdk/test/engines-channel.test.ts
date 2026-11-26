@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -11,6 +11,7 @@ import { echo } from '../../../examples/echo/agent.js';
 import type { Icon } from '@microsoft/agent-host-protocol';
 import type { ServedEngine } from '../src/types/agents.js';
 import type { Users } from '../src/types/users.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The engines channel over a fold that holds two engines.
@@ -82,7 +83,7 @@ beforeEach(() => {
     ],
   }));
 });
-afterEach(() => { rmSync(home, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(home); });
 
 type Host = ReturnType<typeof createHost>;
 

@@ -7,7 +7,7 @@
  * for both.
  */
 
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -16,6 +16,7 @@ import { call, directory, hello, host, signIn } from './users-gate-helpers.js';
 import type { ServedMethod } from '../src/types/plugin.js';
 import type { ModelUse, Owner } from '../src/types/usage.js';
 import type { Principal } from '../src/types/users.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /** A Wednesday, mid-morning, in the middle of the month the cases are written in. */
 const NOW = '2026-10-07T12:00:00.000Z';
@@ -28,7 +29,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.useRealTimers();
-  rmSync(folder, { recursive: true, force: true });
+  clearFolder(folder);
 });
 
 const modelUse = (at: string, pools: string[], amount: number, owner: Owner = 'user:ana'): ModelUse => ({

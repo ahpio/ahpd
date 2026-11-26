@@ -1,5 +1,5 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +12,7 @@ import type { Engine, AgentView, Bag } from '@ahpd/sdk';
 import type { HostOptions } from '../../sdk/src/types/host.js';
 import type { PluginSpec } from '../../sdk/src/types/plugin.js';
 import type { Peer } from '../../sdk/src/types/rpc.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The package as a plugin: the manifest, the loader and a served turn.
@@ -35,7 +36,7 @@ const FIXTURE = fileURLToPath(new URL('./fixtures/acp-server.mjs', import.meta.u
 /** A temporary directory removed after the one test that made it. */
 let loose: string | undefined;
 afterEach(() => {
-  if (loose !== undefined) rmSync(loose, { recursive: true, force: true });
+  if (loose !== undefined) clearFolder(loose);
   loose = undefined;
   vi.unstubAllEnvs();
 });

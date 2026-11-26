@@ -8,7 +8,7 @@
  * opens is driven by fake timers rather than by five real seconds.
  */
 
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -26,6 +26,7 @@ import {
   type DoctorFacts,
 } from '../src/doctor.js';
 import type { Ran, Runner } from '../src/install.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let root: string;
 let home: string;
@@ -56,7 +57,7 @@ beforeEach(() => {
 afterEach(() => {
   if (hadXdg === undefined) delete process.env['XDG_CONFIG_HOME'];
   else process.env['XDG_CONFIG_HOME'] = hadXdg;
-  rmSync(root, { recursive: true, force: true });
+  clearFolder(root);
 });
 
 /**

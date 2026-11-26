@@ -8,12 +8,13 @@
  * nobody else, and a file that is not a vault is refused rather than replaced.
  */
 
-import { chmodSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { fileVault } from '../src/vault.js';
 import { posix } from '../../../tools/posix.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let dir: string;
 let file: string;
@@ -21,7 +22,7 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'ahpd-vault-file-'));
   file = join(dir, 'vault.json');
 });
-afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(dir); });
 
 it('is an empty vault with no file, and writes nothing until there is something to write', async () => {
   const vault = fileVault({ file });

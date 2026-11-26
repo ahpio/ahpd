@@ -7,7 +7,7 @@
  */
 
 import { WAIT_MS } from '../../../tools/wait.ts';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -15,6 +15,7 @@ import { createHost } from '../src/host.js';
 import { fileResources } from '../src/resources/resources.js';
 import { echo } from '../../../examples/echo/agent.js';
 import type { Peer } from '../src/types/rpc.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const SESSION = 'ahp-session:/one';
 /** The name the host holds it under, the URI it was created with. */
@@ -50,7 +51,7 @@ const heard = async (seen: Map<string, string[]>, type: string): Promise<string[
 
 let dir: string;
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'ahpd-turning-')); });
-afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(dir); });
 
 describe('turning', () => {
   it('names a session while its turn runs, and not before or after', async () => {

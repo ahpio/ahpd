@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Ajv } from 'ajv';
@@ -16,6 +16,7 @@ import type { Write } from '../src/types/resources.js';
 import type { Policy } from '../src/types/policies.js';
 import type { Usage, UsageTotal } from '../src/types/usage.js';
 import type { Users } from '../src/types/users.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The `policy:` scheme, which is a second door onto the `Policies` port.
@@ -32,7 +33,7 @@ beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'ahpd-policy-scheme-'));
   file = join(root, 'policies.json');
 });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 /** The provider over a store in the config folder, and the store itself. */
 const served = () => {

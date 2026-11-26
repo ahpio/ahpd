@@ -1,9 +1,10 @@
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, expect, it } from 'vitest';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The range script, run the way CI runs it.
@@ -18,7 +19,7 @@ const SCRIPT = fileURLToPath(new URL('../../../scripts/sdk-range.mjs', import.me
 let root: string | undefined;
 
 afterEach(() => {
-  if (root !== undefined) rmSync(root, { recursive: true, force: true });
+  if (root !== undefined) clearFolder(root);
   root = undefined;
 });
 

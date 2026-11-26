@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { expect, it } from 'vitest';
@@ -7,6 +7,7 @@ import type { Bag, BoundTool, Start } from '../../sdk/src/types/index.js';
 import { piAgent } from '../src/agent.js';
 import { callIn, driveCall, opened, root, settled } from './fake-pi.js';
 import { posix } from '../../../tools/posix.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /**
  * The tool call statuses a client would show, folded from the actions.
@@ -535,7 +536,7 @@ it('judges a path where pi will use it, not where the string points', async () =
     expect(await verdict('acceptEdits', 'write', { path: 'inside.txt' })).toBe('run');
   }
   finally {
-    rmSync(elsewhere, { recursive: true, force: true });
+    clearFolder(elsewhere);
   }
 });
 

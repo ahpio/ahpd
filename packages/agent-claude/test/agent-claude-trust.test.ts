@@ -1,8 +1,9 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
 import { claude } from '../src/claude.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * What a session carries from a folder nobody vouched for.
@@ -42,7 +43,7 @@ const sdk = vi.hoisted(() => ({ options: [] as Record<string, unknown>[] }));
 
 let made: string[] = [];
 afterEach(() => {
-  for (const dir of made) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made) clearFolder(dir);
   made = [];
 });
 

@@ -1,6 +1,6 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
 import { loggerOf } from '@ahpd/sdk';
-import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -31,6 +31,7 @@ import type { Principal } from '../../sdk/src/types/users.js';
 import { undeclaredIn } from '../../sdk/test/support/wire.js';
 import { callsIn, openedFrom, replayed } from '../../sdk/test/support/replay.js';
 import { CONTRACTS } from './manifest.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A chat with a bot is a session with no harness.
@@ -51,7 +52,7 @@ import { CONTRACTS } from './manifest.js';
 let loose: string[] = [];
 beforeEach(() => { loose = []; });
 afterEach(() => {
-  for (const dir of loose) rmSync(dir, { recursive: true, force: true });
+  for (const dir of loose) clearFolder(dir);
   loose = [];
 });
 

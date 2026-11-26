@@ -1,6 +1,6 @@
 import { loggerOf } from '../src/log.js';
 import { expect, it } from 'vitest';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,6 +24,7 @@ import type { Request, Peer } from '../src/types/rpc.js';
 import type { ResourceProvider } from '../src/types/resources.js';
 import type { Principal, Users } from '../src/types/users.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * What a value may not do once it has crossed the plugin boundary.
@@ -259,7 +260,7 @@ it('freezes the roles a person signed in with, which no provider may add to', as
     await expect(read(client)).rejects.toThrow(TypeError);
     expect(seen[0]?.roles).toEqual(['admin']);
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    clearFolder(root);
   }
 });
 

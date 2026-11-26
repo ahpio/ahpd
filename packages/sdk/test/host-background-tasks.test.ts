@@ -7,16 +7,17 @@
  * opens, and the reports the host declines to take twice.
  */
 
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { actions, createHost, echo, hello, peer, settle } from './support/host.js';
 import type { Agent, BackgroundTask, HostOptions, Start } from '@ahpd/sdk';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let dir: string;
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'ahpd-background-')); });
-afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(dir); });
 
 /** One task, with a command, a shell makes of it. */
 const task = (over: Partial<BackgroundTask> = {}): BackgroundTask => ({

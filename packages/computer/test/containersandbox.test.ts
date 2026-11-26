@@ -1,5 +1,5 @@
 import { posix } from '../../../tools/posix.ts';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +10,7 @@ import { sandboxRunArgs, sandboxSecurityOptions } from '../src/sandbox.js';
 import { closeAll, keepingPort } from './support/closing.js';
 import type { ContainerSink } from '../../sdk/src/types/containers.js';
 import { PROCESS_CASE_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // Each scripted CLI call is a process of its own: see `PROCESS_CASE_MS`.
 vi.setConfig({ testTimeout: PROCESS_CASE_MS });
@@ -29,7 +30,7 @@ beforeEach(() => {
 });
 afterEach(async () => {
   await closeAll();
-  rmSync(root, { recursive: true, force: true });
+  clearFolder(root);
 });
 
 /** A folder that is a dev container, with the definition a test names. */

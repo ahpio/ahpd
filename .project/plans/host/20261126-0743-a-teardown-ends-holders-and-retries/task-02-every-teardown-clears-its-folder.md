@@ -1,6 +1,6 @@
 ---
 title: Every teardown clears its folder
-status: todo
+status: done
 depends:
   - task-01-a-folder-is-cleared-in-one-call.md
 layer: "tests"
@@ -28,3 +28,5 @@ Each removal of a temp folder in a teardown uses `clearFolder`, and a test keeps
 - The full suite passes on Linux, and `check-windows` passes.
 
 ## Resume
+
+Built on 2026-11-26.

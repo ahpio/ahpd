@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { logoOf, LOGO_LIMIT, MARKS } from '../src/logos.js';
 import type { Answer } from '../src/fetch.js';
 import type { LogoFetcher } from '../src/logos.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The logo one piece publishes, read from the cache or fetched once, as VS
@@ -21,7 +22,7 @@ let home: string;
 beforeEach(() => { home = mkdtempSync(join(tmpdir(), 'ahpd-logos-')); });
 afterEach(() => {
   vi.useRealTimers();
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 /** The folder the host reads a `mark:<name>` from. */

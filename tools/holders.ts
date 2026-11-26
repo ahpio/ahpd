@@ -105,3 +105,28 @@ export const removeFolder = (folder: string, about?: (path: string) => string | 
     );
   }
 };
+
+/** Wait `ms` without yielding, so a synchronous teardown can wait too. */
+const pause = (ms: number): void => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); };
+
+/** `SIGKILL` every holder of `folders`, until none is left or `ms` has passed, without yielding. */
+export const endHoldersNow = (folders: readonly string[], ms = 5_000): void => {
+  const end = Date.now() + ms;
+  for (let left = holders(folders); left.length > 0 && Date.now() < end; left = holders(folders)) {
+    for (const pid of left) {
+      try { process.kill(pid, 'SIGKILL'); }
+      catch { /* gone already */ }
+    }
+    pause(50);
+  }
+};
+
+/**
+ * Clear a temp folder a case made: end every process still working in it,
+ * then remove it, trying again while Windows finishes releasing a file. One
+ * synchronous call, so any teardown takes it in place of `rmSync`.
+ */
+export const clearFolder = (folder: string, about?: (path: string) => string | undefined): void => {
+  endHoldersNow([folder]);
+  removeFolder(folder, about);
+};

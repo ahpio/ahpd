@@ -10,12 +10,13 @@
  * own, so none of them touches the configuration of whoever runs the suite.
  */
 
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { optionsFrom, secret } from '../src/commands/options.js';
 import type { Options } from '../src/commands/options.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 let root: string;
 let configFile: string;
@@ -25,7 +26,7 @@ beforeEach(() => {
   configFile = join(root, 'config.json');
   writeFileSync(configFile, '{}\n');
 });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 /** The options of a start given this token file, over a configuration of this case's own. */
 const options = (connectionTokenFile: string): Options => optionsFrom({ configFile, connectionTokenFile });

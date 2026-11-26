@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -15,6 +15,7 @@ import type { Peer } from '../../sdk/src/types/rpc.js';
 import type { Users } from '../../sdk/src/types/users.js';
 import type { Vault } from '../../sdk/src/types/vault.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A webhook call that talks to a bot, on a daemon with both plugins loaded.
@@ -37,7 +38,7 @@ const GRANTS = ['bot:get', 'bot:chat', 'session:read', 'session:create', 'sessio
 
 let loose: string[] = [];
 afterEach(() => {
-  for (const dir of loose) rmSync(dir, { recursive: true, force: true });
+  for (const dir of loose) clearFolder(dir);
   loose = [];
 });
 

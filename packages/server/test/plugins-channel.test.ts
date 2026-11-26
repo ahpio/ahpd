@@ -27,6 +27,7 @@ import { pluginsChannel } from '../src/pluginschannel.js';
 import { recordInstalled, refreshMarketplace } from '../src/pluginlist.js';
 import type { ListedPlugin, ListedVersion } from '../src/pluginlist.js';
 import { daemonRootConfig } from '../src/rootconfig.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const URI = 'x-ahpd-plugins://';
 const ROOT = 'ahp-root://';
@@ -90,7 +91,7 @@ beforeEach(() => {
 afterEach(() => {
   if (had === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = had;
   if (hadRoot === undefined) delete process.env.AHPD_PLUGIN_ROOT; else process.env.AHPD_PLUGIN_ROOT = hadRoot;
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 const wait = async (ms: number): Promise<void> => { await new Promise((done) => { setTimeout(done, ms); }); };

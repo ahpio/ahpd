@@ -12,7 +12,7 @@
  * Bun, and skips everywhere else.
  */
 
-import { existsSync, mkdtempSync, readdirSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, realpathSync, symlinkSync } from 'node:fs';
 import { homedir, tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,6 +25,7 @@ import { getShellIntegrationInjection, shellIntegrationOf } from '../src/shellin
 const shellIntegration = shellIntegrationOf('owned');
 import { pty } from '../src/pty.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /** The folder the scripts are in: this package's root, from `test` and from `dist` alike. */
 const scripts = fileURLToPath(new URL('../shellintegration', import.meta.url));
@@ -91,8 +92,8 @@ describe('the injection a shell is given', () => {
     finally {
       if (was === undefined) delete process.env.TMPDIR;
       else process.env.TMPDIR = was;
-      rmSync(shared, { recursive: true, force: true });
-      rmSync(target, { recursive: true, force: true });
+      clearFolder(shared);
+      clearFolder(target);
     }
   });
 
@@ -112,8 +113,8 @@ describe('the injection a shell is given', () => {
     finally {
       if (was === undefined) delete process.env.TMPDIR;
       else process.env.TMPDIR = was;
-      rmSync(shared, { recursive: true, force: true });
-      rmSync(target, { recursive: true, force: true });
+      clearFolder(shared);
+      clearFolder(target);
     }
   });
 

@@ -1,5 +1,5 @@
 import { loggerOf } from '../src/log.js';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -11,6 +11,7 @@ import { echo } from '../../../examples/echo/agent.js';
 import type { HostEvent } from '../src/types/events.js';
 import type { LoaderContext } from '../src/types/plugin.js';
 import type { Users } from '../src/types/users.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * `users_changed`: the users file, watched while a plugin listens.
@@ -26,7 +27,7 @@ beforeEach(() => {
   path = join(root, 'users.json');
   writeFileSync(path, JSON.stringify({ roles: {}, users: [{ id: 'ana', roles: ['admin'] }] }));
 });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 const wait = async (ms: number): Promise<void> => { await new Promise((r) => { setTimeout(r, ms); }); };
 

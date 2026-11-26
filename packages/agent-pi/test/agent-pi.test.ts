@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, it, vi } from 'vitest';
@@ -14,6 +14,7 @@ import { optionsOf } from '../src/plugin.js';
 import { piSession } from '../src/session.js';
 import type { OpenPi } from '../src/session.js';
 import { callIn, driveCall, fakePi, opened, root, settled, streamed } from './fake-pi.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * pi as a backend, without a model provider.
@@ -59,7 +60,7 @@ it('reports the folder it works in as a URI a host reads back as that folder', (
     expect(session.workingDirectories()).toEqual([uriOf(where)]);
     expect((session.sessionState() as Bag).workingDirectories).toEqual([uriOf(where)]);
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    clearFolder(root);
   }
 });
 
@@ -135,7 +136,7 @@ it('works in a scratch folder of its own when the client gave it none', () => {
     else process.env.HOME = was;
     if (wasProfile === undefined) delete process.env.USERPROFILE;
     else process.env.USERPROFILE = wasProfile;
-    rmSync(home, { recursive: true, force: true });
+    clearFolder(home);
   }
 });
 

@@ -9,7 +9,7 @@
  * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentSideEffects.ts#L1684-L1766
  */
 
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -25,6 +25,7 @@ import type { Peer } from '../src/types/rpc.js';
 import type { Session } from '../src/types/session.js';
 import type { Users } from '../src/types/users.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const SESSION = 'ahp-session:/one';
 /** The session's chat, which the host mints: read off the session's state by `serving`. */
@@ -45,7 +46,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.unstubAllEnvs();
-  rmSync(dir, { recursive: true, force: true });
+  clearFolder(dir);
 });
 
 /** An envelope as a client reads it. */

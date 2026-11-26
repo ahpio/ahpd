@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -15,6 +15,7 @@ import type { PluginView, ViewHandle } from '../src/types/plugin.js';
 import type { RecordCollection } from '../src/types/records.js';
 import type { Principal, Users } from '../src/types/users.js';
 import type { Vault } from '../src/types/vault.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The connectors channel over a store in memory and a vault that is a map.
@@ -108,7 +109,7 @@ beforeEach(() => {
   }));
 });
 afterEach(() => {
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
   delete process.env['AHPD_TEST_CONNECTOR_KEY'];
 });
 

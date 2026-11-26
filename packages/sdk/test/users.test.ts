@@ -1,4 +1,4 @@
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -6,6 +6,7 @@ import { posix } from '../../../tools/posix.ts';
 import { fileUsers, grantProblem, GROUPS, holds, isGrant, OPERATIONS, signInRecord, SUBJECTS } from '../src/access/users.js';
 import { scopeFor } from '../src/usage/scopes.js';
 import type { Grant } from '../src/types/users.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The user directory, on its own.
@@ -21,7 +22,7 @@ beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'ahpd-users-'));
   path = join(root, 'users.json');
 });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { clearFolder(root); });
 
 const open = (onProblem?: (message: string) => void) =>
   fileUsers({ path, ...(onProblem === undefined ? {} : { onProblem }) });

@@ -1,11 +1,12 @@
 import { loggerOf } from '@ahpd/sdk';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apply } from '../src/plugin.js';
 import type { Adapter, Connector, PluginHost } from '@ahpd/sdk';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * One action, run through the adapter the plugin registered.
@@ -201,7 +202,7 @@ describe('an action runs in the engine', () => {
       expect(await run(connector('work'), 'read', { file: 'notes.txt' }, { files: dir }))
         .toMatchObject({ filename: 'notes.txt', text: 'hello' });
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      clearFolder(dir);
     }
   });
 

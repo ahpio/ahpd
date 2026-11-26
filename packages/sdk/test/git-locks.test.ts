@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -7,6 +7,7 @@ import { posix } from '../../../tools/posix.ts';
 import { gitBranches } from '../src/repo/git.js';
 import { gitChanges } from '../src/sessions/changes.js';
 import { gitSync } from '../../../tools/git.ts';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The git that `gitBranches` and `gitChanges` run in the background takes no
@@ -23,7 +24,7 @@ let made: string[] = [];
 const path = process.env.PATH;
 afterEach(() => {
   process.env.PATH = path;
-  for (const dir of made) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made) clearFolder(dir);
   made = [];
 });
 

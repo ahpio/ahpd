@@ -8,7 +8,7 @@
  * https://github.com/microsoft/vscode/blob/ddbdd50a9ed1/src/vs/platform/agentHost/common/meta/vscode/agentHostCreateSessionImportMeta.ts
  */
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -29,6 +29,7 @@ import { hello, peer, settle } from './support/host.js';
 import { call, directory, hello as helloUser, host as usersHost, peer as usersPeer, signIn } from './users-gate-helpers.js';
 import type { Agent, ImportedConversation, Start } from '../src/types/agent.js';
 import type { Session } from '../src/types/session.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 const META = 'vscode.importConversation';
 const SESSION = 'ahp-session:/imported';
@@ -37,7 +38,7 @@ type Client = ReturnType<ReturnType<typeof createHost>['accept']>;
 
 const made: string[] = [];
 afterEach(() => {
-  for (const one of made.splice(0)) rmSync(one, { recursive: true, force: true });
+  for (const one of made.splice(0)) clearFolder(one);
 });
 
 /** A folder under a fresh root, made now. */

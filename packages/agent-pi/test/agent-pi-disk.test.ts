@@ -1,4 +1,4 @@
-import { appendFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { expect, it } from 'vitest';
@@ -10,6 +10,7 @@ import { loadPi } from '../src/pi.js';
 import { piSession } from '../src/session.js';
 import { promptOf, resumeOrCreate, resumePoint } from '../src/backend.js';
 import { answer, driveCall, fakePi, opened, root, sessionOnDisk, settled, streamed } from './fake-pi.js';
+import { clearFolder } from '../../../tools/holders.ts';
 
 // A session from disk -------------------------------------------------------
 
@@ -479,8 +480,8 @@ it('lists a session pi ran in a folder this host does not serve', async () => {
   finally {
     if (before === undefined) delete process.env.PI_CODING_AGENT_DIR;
     else process.env.PI_CODING_AGENT_DIR = before;
-    rmSync(agentDir, { recursive: true, force: true });
-    rmSync(elsewhere, { recursive: true, force: true });
+    clearFolder(agentDir);
+    clearFolder(elsewhere);
   }
 });
 

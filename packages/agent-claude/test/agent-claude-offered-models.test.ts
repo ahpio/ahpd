@@ -1,8 +1,9 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, expect, it, vi } from 'vitest';
 import type { Bag } from '@ahpd/sdk';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * The models a Claude agent offers, only where a credential is set up.
@@ -34,7 +35,7 @@ process.env.CLAUDE_CONFIG_DIR = join(home, 'config');
 afterAll(() => {
   if (before === undefined) delete process.env.CLAUDE_CONFIG_DIR;
   else process.env.CLAUDE_CONFIG_DIR = before;
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 const { claude } = await import('../src/claude.js');

@@ -1,10 +1,11 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { apply } from '../src/plugin.js';
 import type { Adapter, Alert, InstallAnswer, PluginHost } from '@ahpd/sdk';
+import { clearFolder } from '../../../tools/holders.ts';
 
 /*
  * A piece that is named and not there.
@@ -41,7 +42,7 @@ afterEach(async () => {
     for (const close of one.closes) await close();
   }
   started = [];
-  rmSync(home, { recursive: true, force: true });
+  clearFolder(home);
 });
 
 /** What one host kept, for the cases of one plugin. */
