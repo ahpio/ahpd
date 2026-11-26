@@ -42,8 +42,8 @@ A cofold case that runs a shell call never times out on a slow PowerShell start 
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - the-shell-is-chosen-in-code](task-01-the-shell-is-chosen-in-code.md) | todo | - |
-| [02 - the-cases-run-a-fast-shell](task-02-the-cases-run-a-fast-shell.md) | todo | 01 |
+| [01 - the-shell-is-chosen-in-code](task-01-the-shell-is-chosen-in-code.md) | done | - |
+| [02 - the-cases-run-a-fast-shell](task-02-the-cases-run-a-fast-shell.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -52,12 +52,12 @@ A cofold case that runs a shell call never times out on a slow PowerShell start 
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** task 01.
+- **Done so far:** both tasks, on 2026-11-26. [implemented.md](implemented.md) holds the checks.
+- **Next action:** Softov's review, and `check-windows` over more runs.
 - **Open questions:** none.
 - **Watch out for:** `shellLanguage` is absent for cmd, so a case that checks it uses the default shell.
 
 ## Final verification checklist
 
-- [ ] The agent-cofold suite passes on Linux.
+- [x] The agent-cofold suite passes on Linux.
 - [ ] `check-windows` passes.

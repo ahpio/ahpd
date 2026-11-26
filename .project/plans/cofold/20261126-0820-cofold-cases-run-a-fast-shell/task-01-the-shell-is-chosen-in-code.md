@@ -1,6 +1,6 @@
 ---
 title: The shell is chosen in code
-status: todo
+status: done
 depends: []
 layer: "agent-cofold"
 ---
@@ -35,3 +35,5 @@ layer: "agent-cofold"
 - A plugin value named `shell` does not reach the session.
 
 ## Resume
+
+Built on 2026-11-26. A default for `language` took `undefined` as absent and named bash, so the argument is required.
