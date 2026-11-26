@@ -11,6 +11,7 @@ import { closeAll, keeping } from './support/closing.js';
 import { profilesOf } from '../src/plugin.js';
 import { checkServer, fixesOf, osOf, reportFrom, SERVER_CHECK, SERVER_ITEMS, serverGate } from '../src/servercheck.js';
 import { sshRuntime } from '../src/ssh.js';
+import { boxesOf, openServers } from './support/sshboxes.js';
 import { PROCESS_CASE_MS } from '../../../tools/wait.ts';
 import { clearFolder } from '../../../tools/holders.ts';
 
@@ -227,7 +228,7 @@ const box = (env: Record<string, string> = {}, host?: string[]) => {
     command: process.execPath,
     args: [FIXTURE],
     env: { SSH_FAKE_LOG: join(temp(), 'ssh.jsonl'), SSH_FAKE_CHECK: said, ...env },
-    machines: { dev02: { destination: 'dev02', ...(host === undefined ? {} : { host }) } },
+    boxes: boxesOf({ dev02: { destination: 'dev02', ...(host === undefined ? {} : { host }) } }),
     connectTimeout: 1,
   });
 };
@@ -275,7 +276,7 @@ const loadWith = async (profiles: Record<string, unknown>) => {
         command: process.execPath,
         args: [DOCKER_FIXTURE],
         env: { DOCKER_FAKE_STATE: join(temp(), 'docker.json'), SSH_FAKE_LOG: join(temp(), 'ssh.jsonl') },
-        ssh: { command: process.execPath, args: [FIXTURE], machines: { dev02: { destination: 'dev02' } } },
+        ssh: { command: process.execPath, args: [FIXTURE] },
         profiles,
       },
     }],
@@ -287,15 +288,16 @@ const loadWith = async (profiles: Record<string, unknown>) => {
     },
   );
   keeping(result.options);
+  openServers(result.options, { dev02: { destination: 'dev02' } });
   return { ...result, lines };
 };
 
-it('keeps a profile whose server is a box, and leaves out one whose server is not, with a line', async () => {
-  const { problems, lines } = await loadWith({ remote: { server: 'dev02' }, lost: { server: 'nope' } });
+it('keeps a profile whose server is a login, and refuses a machine on one whose login is not open', async () => {
+  const { problems, options } = await loadWith({ remote: { server: 'dev02' }, lost: { server: 'nope' } });
   expect(problems).toEqual([]);
-  const said = lines.filter((line) => line.includes('names the server'));
-  expect(said).toHaveLength(1);
-  expect(said[0]).toContain('profiles.lost names the server nope, which ssh.machines does not, so the profile is left out');
+  const provider = options.resourceProviders?.computer as { write(uri: string, content: { data: string; encoding: string }): Promise<void> };
+  await expect(provider.write('computer://one', { data: JSON.stringify({ image: 'node:22', profile: 'lost' }), encoding: 'utf-8' }))
+    .rejects.toThrow(/the ssh login nope is not open/);
 });
 
 it('refuses a box without Docker with both Docker fix lines, and lets a box with it through', async () => {

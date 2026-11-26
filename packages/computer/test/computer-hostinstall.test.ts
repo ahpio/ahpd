@@ -15,6 +15,7 @@ import { archiveOf } from '../src/parts.js';
 import type { Npm } from '../src/hostcopy.js';
 import type { Part } from '../src/parts.js';
 import { quote, sshRuntime } from '../src/ssh.js';
+import { boxesOf } from './support/sshboxes.js';
 import type { SshMachine } from '../src/ssh.js';
 import { PROCESS_CASE_MS } from '../../../tools/wait.ts';
 import { clearFolder } from '../../../tools/holders.ts';
@@ -115,7 +116,7 @@ const box = (parts: Part[], options: { env?: Record<string, string>; machine?: P
       NPM_LOG: join(temp(), 'npm.log'),
       ...options.env,
     },
-    machines: { dev02: { destination: 'dev02', ...options.machine } },
+    boxes: boxesOf({ dev02: { destination: 'dev02', ...options.machine } }),
     parts,
     lock: LOCK,
     copy: { cache: join(temp(), 'copies'), npm: options.npm ?? (async () => ({ code: 1, stderr: 'this host has no npm' })) },

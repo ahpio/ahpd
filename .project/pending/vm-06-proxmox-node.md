@@ -8,7 +8,7 @@ plans:
 
 Task 06 of the VM plan. The Proxmox runtime passes its tests against a fake API, and has not met a real node yet.
 The check needs a Proxmox VE node that this workstation reaches on port 8006.
-This workstation must also reach the node's VM network, directly or through a box in `ssh.machines`.
+This workstation must also reach the node's VM network, directly or through a box the host has an `ssh` connector for.
 
 ## Steps
 

@@ -85,6 +85,7 @@
     ],
     "contracts": {
       "channels": ["x-ahpd-computers"],
+      "adapters": ["ssh"],
       "resourceProviders": ["computer"],
       "methods": [
         "x-ahpd/computers/create",
@@ -102,32 +103,18 @@
     "optionsSchema": {
       "type": "object",
       "properties": {
-        "runtime": { "type": "string", "enum": ["docker", "ssh"], "description": "How machines are provided. 'docker' (default) creates them; 'ssh' only lists the boxes in ssh." },
+        "runtime": { "type": "string", "enum": ["docker", "ssh"], "description": "What a create that names no runtime makes. 'docker' (default) makes a machine; 'ssh' makes a box reached with an ssh connector into a computer." },
         "command": { "type": "string", "description": "The program that runs machines. Defaults to 'docker'." },
         "args": { "type": "array", "items": { "type": "string" }, "description": "Arguments placed before the program's own, for a wrapper or a Docker context." },
         "ssh": {
           "type": "object",
-          "description": "Boxes this host reaches over ssh. They are listed, never created, started or removed here. A session on one starts its host from the ahpd this host installs in the user's folder there.",
+          "description": "How this host runs ssh. A box becomes a computer by a create with runtime ssh, reached with an ssh connector.",
           "properties": {
             "command": { "type": "string", "description": "The program that reaches a box. Defaults to 'ssh'." },
-            "args": { "type": "array", "items": { "type": "string" }, "description": "Arguments placed before ssh's own, for a wrapper or a jump host." },
+            "args": { "type": "array", "items": { "type": "string" }, "description": "Arguments placed before ssh's own, for a wrapper." },
             "connectTimeout": { "type": "integer", "minimum": 1, "description": "Seconds to wait for a box before giving up. Defaults to 30." },
             "pollSeconds": { "type": "integer", "minimum": 1, "description": "Seconds between checks of each box, so its up time is billed up to the last check. Without it, only a listing updates the meter." },
-            "machines": {
-              "type": "object",
-              "description": "The boxes, by name. The entry 'dev02' becomes the machine 'ssh.dev02'.",
-              "additionalProperties": {
-                "type": "object",
-                "properties": {
-                  "destination": { "type": "string", "description": "The ssh host: user@host, or a name from your ssh config. An entry without one is dropped." },
-                  "port": { "type": "string", "description": "The ssh port, when it is not ssh's own default." },
-                  "identity": { "type": "string", "description": "The private key to connect with, when ssh would not pick one itself." },
-                  "workdir": { "type": "string", "description": "Where commands start on the box. Defaults to the login directory, so paths from this host do not apply." },
-                  "host": { "type": "array", "items": { "type": "string" }, "description": "The command that starts a nested host on the box, run as written. Defaults to the ahpd this host installs in the user's folder there." },
-                  "agents": { "type": "array", "items": { "type": "string" }, "description": "The agents the box is prepared for. Sessions of other agents are refused." }
-                }
-              }
-            }
+            "vaultKey": { "type": "string", "enum": ["agent", "file"], "description": "How a login's key from the vault reaches ssh: an ssh-agent of the login's own (default), or a file only the daemon user can read." }
           }
         },
         "libvirt": {
@@ -184,7 +171,7 @@
               "memory": { "type": "string", "description": "Memory limit for its machines. Defaults to the plugin's memory." },
               "ociRuntime": { "type": "string", "description": "The OCI runtime Docker uses for its machines, such as 'runsc' for gVisor. Defaults to Docker's own." },
               "runtime": { "type": "string", "enum": ["docker", "libvirt", "proxmox"], "description": "What creates its machines. 'docker' (default) runs a container on the server's Docker; 'libvirt' and 'proxmox' create a VM, as those options set up." },
-              "server": { "type": "string", "description": "The box its machines run on, by its name in ssh.machines. The box is checked first. Defaults to this host." },
+              "server": { "type": "string", "description": "The box its machines run on, by the id of one of the host's ssh connectors. The box is checked first. Defaults to this host." },
               "code": { "type": "string", "enum": ["bundle", "clone"], "description": "How a machine on a server gets the session's code. 'bundle' (default) sends the commit from this host; 'clone' fetches the branch from origin over https, so public repositories only." },
               "workdir": { "type": "string", "description": "Where commands start. Defaults to folder, or the image's own working directory." },
               "mounts": { "type": "array", "items": { "type": "string" }, "description": "Mounts added after the plugin's own." },

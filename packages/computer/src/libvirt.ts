@@ -42,9 +42,9 @@ const INSTALL_MS = 5 * 60_000;
 
 /** The box one profile's VMs are made on. */
 export interface LibvirtProfile extends VmProfile {
-  /** The box's name in `ssh.machines`. */
+  /** The id of the host's ssh login the box is reached with. */
   server: string;
-  /** The box, as the ssh option wrote it. */
+  /** The box, as its login says it now. */
   box: SshMachine;
 }
 
@@ -186,7 +186,7 @@ export const libvirtRuntime = (options: LibvirtOptions): ComputerRuntime => {
   const [virsh = 'virsh', ...virshArgs] = options.virsh ?? [];
   const [virtInstall = 'virt-install', ...virtInstallArgs] = options.virtInstall ?? [];
 
-  /** Each box a profile names, by its name in `ssh.machines`. */
+  /** Each box a profile names, by the id of its login. */
   const boxes = new Map(Object.values(options.profiles).map((one) => [one.server, one.box]));
 
   const uriFor = (server: string): string => {
@@ -195,9 +195,15 @@ export const libvirtRuntime = (options: LibvirtOptions): ComputerRuntime => {
     return options.uri ?? uriOf(box);
   };
 
+  /** The variables a call to one box is run with: the plugin's, and the box's login's own over them. */
+  const envFor = (server: string): Record<string, string> | undefined => {
+    const own = boxes.get(server)?.env;
+    return own === undefined ? options.env : { ...(options.env ?? {}), ...own };
+  };
+
   /** One `virsh` call on one box. */
   const virshOn = (server: string, args: string[], timeout = VIRSH_MS): Promise<Ran> =>
-    ranWith(virsh, [...virshArgs, '-c', uriFor(server), ...args], options.env, timeout);
+    ranWith(virsh, [...virshArgs, '-c', uriFor(server), ...args], envFor(server), timeout);
 
   /** The same, thrown with its last line when it fails. */
   const mustOn = async (server: string, args: string[], timeout = VIRSH_MS): Promise<string> => {
@@ -238,7 +244,7 @@ export const libvirtRuntime = (options: LibvirtOptions): ComputerRuntime => {
         '--cloud-init', `user-data=${userFile},meta-data=${metaFile}`,
         '--graphics', 'none',
         '--noautoconsole',
-      ], options.env, INSTALL_MS);
+      ], envFor(server), INSTALL_MS);
       if (ran.code !== 0) {
         await virshOn(server, ['vol-delete', volume, '--pool', options.pool]);
         throw new Error(`virt-install on ${server} exited ${String(ran.code)}: ${lastLine(ran.stderr) || lastLine(ran.stdout)}`);
@@ -296,6 +302,8 @@ export const libvirtRuntime = (options: LibvirtOptions): ComputerRuntime => {
       const box = boxes.get(server);
       return box === undefined ? undefined : hostPortOf(box);
     },
+
+    boxOf: (server) => boxes.get(server),
 
     // An overlay on the template, a VM booted on it, then its labels; a VM whose labels are not written is removed.
     make: async (server, made) => {

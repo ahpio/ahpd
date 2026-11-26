@@ -624,19 +624,18 @@ it('refuses a body naming a runtime this host does not serve, and names the ones
     describe(): { manifest?: { properties?: Record<string, { enum?: unknown[]; default?: unknown; readOnly?: boolean }> } };
   };
 
-  // The form shows the one runtime this host makes machines on, and a client
-  // cannot change it: the spec's `readOnly`.
-  expect(provider.describe().manifest?.properties?.runtime).toMatchObject({ default: 'docker', readOnly: true });
-  expect(provider.describe().manifest?.properties?.runtime?.enum).toBeUndefined();
+  // The form offers the runtime this host makes machines on, the default, and
+  // an ssh box beside it.
+  expect(provider.describe().manifest?.properties?.runtime).toMatchObject({ default: 'docker', enum: ['docker', 'ssh'] });
+  expect(provider.describe().manifest?.properties?.runtime?.readOnly).toBeUndefined();
   /*
-   * Naming one of the others is refused for what it is rather than for not
-   * existing, because `ssh` is a runtime this project has and this host does
-   * not serve: the sentence says which ones it does.
+   * A runtime this host does not serve is refused for not existing, and the
+   * sentence says which ones it does.
    */
   await expect(provider.write('computer://box', {
-    data: JSON.stringify({ runtime: 'ssh' }),
+    data: JSON.stringify({ runtime: 'vmware' }),
     encoding: 'utf-8',
-  })).rejects.toThrow(/ssh is not a runtime this host serves; it serves docker/);
+  })).rejects.toThrow(/vmware is not a runtime this host serves; it serves docker, ssh/);
 
   // The one it serves is still made, and its id is its name alone: a machine on
   // the local Docker is addressed the way it always was.

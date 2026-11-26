@@ -169,6 +169,7 @@ export function computerProvider(runtime: ComputerRuntime, options: ProviderOpti
      */
     manifest: MANIFEST_SCHEMA({
       runtime: runtime.kind,
+      ...(options.runtimes === undefined ? {} : { runtimes: options.runtimes }),
       image: options.image,
       ...(options.profiles === undefined ? {} : { profiles: options.profiles }),
       ...(options.bodyMounts === undefined ? {} : { bodyMounts: options.bodyMounts }),
@@ -389,6 +390,7 @@ export function computerProvider(runtime: ComputerRuntime, options: ProviderOpti
       description: 'A machine a session can run in.',
       manifest: MANIFEST_SCHEMA({
         runtime: runtime.kind,
+        ...(options.runtimes === undefined ? {} : { runtimes: options.runtimes }),
         image: options.image,
         ...(options.profiles === undefined ? {} : { profiles: options.profiles }),
         ...(options.bodyMounts === undefined ? {} : { bodyMounts: options.bodyMounts }),

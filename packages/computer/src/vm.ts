@@ -86,9 +86,9 @@ const NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 
 /** The server one profile's VMs are made on. */
 export interface VmProfile {
-  /** The server: a box in `ssh.machines` for libvirt, the node for Proxmox. */
+  /** The server: the id of the host's ssh login for libvirt, the node for Proxmox. */
   server: string;
-  /** The box a VM is reached through, as the ssh option wrote it. */
+  /** The box a VM is reached through, as its login says it now. */
   box?: SshMachine;
   /** How a VM from this profile starts its nested host, when not `VM_HOST`. */
   host?: string[];
@@ -148,6 +148,8 @@ export interface VmMaker {
   addressOn(server: string, name: string): Promise<{ address?: string; said: string }>;
   /** The box `ssh -J` goes through to a VM on the server, as `host` or `host:port`. */
   jumpOf(server: string, profile?: VmProfile): string | undefined;
+  /** The box a server is, when the maker reaches one, so a reach through it takes the box's own variables. */
+  boxOf?(server: string): SshMachine | undefined;
   /** One VM made from its template and booted, with its labels; nothing is left of one that fails. */
   make(server: string, made: VmMade): Promise<void>;
   start(server: string, name: string): Promise<void>;
@@ -336,11 +338,14 @@ export const vmRuntime = (maker: VmMaker, options: VmOptions): ComputerRuntime =
    */
   const reachTo = (key: MachineKey, server: string, address: string, profile: VmProfile | undefined, workdir?: string): SshReach => {
     const jump = maker.jumpOf(server, profile);
+    // The jump is the server's, so its login's agent is what reaches it.
+    const box = profile?.box ?? maker.boxOf?.(server);
     return sshReach(options.ssh, {
       destination: `${user}@${address}`,
       identity: key.private,
       knownHosts: key.knownHosts,
       ...(jump === undefined ? {} : { jump }),
+      ...(box?.env === undefined ? {} : { env: box.env }),
       host: profile?.host ?? VM_HOST,
       ...(workdir === undefined ? {} : { workdir }),
     });

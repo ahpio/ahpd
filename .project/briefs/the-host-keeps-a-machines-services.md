@@ -4,6 +4,11 @@ created: 2026-11-25
 refs:
   - git://5ae0ec13e - main when the facts were checked
   - git://999571657 - beorn/ahpd main, where the services and deploy plugins were read
+  - git://1f3168c22 - main when the lists, the nodes and the ssh login were checked, 2026-11-26
+  - git://e87c7f817 - beorn/ahpd main, where the host installer was read, 2026-11-26
+  - "[code://packages/sdk/src/types/plugin.ts#L1724-L1740](../../packages/sdk/src/types/plugin.ts#L1724-L1740) - `registerList`, `registerKind` and `registerOperation`, on main since 0cafb7158 and be2935b97"
+  - "[code://packages/server/src/commands/join.ts](../../packages/server/src/commands/join.ts) - `ahpd join`: a node dials the hub, which opens sessions on it"
+  - "[plans/container/20261126-0740-an-ssh-login-is-a-connector/plan.md](../plans/container/20261126-0740-an-ssh-login-is-a-connector/plan.md) - an ssh login as a connector, and an ssh box as a computer made by create"
   - https://github.com/ahpio/ahpd/pull/474#issuecomment-7176745512 - beorn's proposal of 2026-11-25 22:45 UTC, the last comment on #474
   - "[briefs/the-host-keeps-the-tunnels.md](the-host-keeps-the-tunnels.md) - the pattern beorn's proposal copies: the host keeps the list, a plugin adds a kind"
   - "[briefs/a-todo-app-is-the-first-agent-app.md](a-todo-app-is-the-first-agent-app.md) - Softov's lists and kinds, of which services would be one list"
@@ -42,7 +47,8 @@ Their words on #474, as statements:
 
 - **Tunnels** are the one list the host keeps with kinds from plugins. A kind is a `TunnelKind`, with a `schema`, its own `operations` and the handlers the host calls. The host owns the channel, the records and the grants.
 - **A registered channel** can offer operations since #476. It is one plugin's list, its operations name no kind, and a second plugin cannot join it.
-- **Lists and kinds** are Softov's design in the todo and CRM briefs, with `registerList` and `registerKind`. A list is a channel the host keeps, which any plugin may declare and add kinds to. Softov does not want them built now (2026-11-25).
+- **Lists and kinds** are on main: `registerList`, `registerKind` and `registerOperation`. A list is a channel the host keeps, which any plugin may declare and add kinds to. `registerOperation` adds an operation onto the kinds of a list that other plugins registered, which is the shape of beorn's deploy.
+- **A machine is reached two ways.** A computer of the `ssh` runtime is a box reached with an `ssh` connector, per [the ssh login plan](../plans/container/20261126-0740-an-ssh-login-is-a-connector/plan.md). A node is a box that ran `ahpd join` and dialled this host. Neither gives the hub the lists of the box's own plugins: `join` opens sessions there, and nothing more.
 - **The word "service"** already names the daemon as the machine's own service: `ahpd service install`, `start`, `stop` and `restart`.
 
 ## What beorn has today
@@ -53,6 +59,7 @@ Read on their fork's `main`, `999571657`. Nothing of it is in `ahpio/ahpd`.
 | --- | --- |
 | `packages/services`, published as `@hallohuman/hightea-services` | One channel, `x-hh-services://`, with one row per process-compose service. Its operations are `put`, `remove`, `start`, `stop`, `restart` and `accept`. It also alerts on drift between the file and what runs. |
 | `packages/deploy`, published as `@ahpd/deploy` | One channel, `x-hh-deploys://`, with one operation, `deploy`, which takes `{ service, version }`. A run answers at once and goes on in a child process; its journal is `hh-deploys://<id>/log`. |
+| `ahpd-host-install`, in `packages/deploy` at `e87c7f817` | A customer host's install: one folder the user owns, one boot item in the user's session, and four downloads pinned with a checksum: the runtime, ahpd, their host plugin and process-compose. `--plan` prints what it creates, and `uninstall` removes only that. |
 
 - The service record is neutral, so that another supervisor can carry it. Its deploy declaration is written in the process-compose file as `x-hh-deploy`.
 - Both packages run on Linux and macOS only.
@@ -77,9 +84,9 @@ As beorn proposes it, with tunnels as the model:
 ## Open points
 
 1. **Which shape.** Services is one list of [a-list-and-its-kinds.md](a-list-and-its-kinds.md), with process-compose and systemd as kinds, as its *Example: a machine's services* writes it. When it is built is open.
-2. **Who owns deploy.** beorn calls it a host operation, and offers it as a plugin. A plugin that adds an operation to every row of a list it does not own is new in ahpd: tunnels have no such thing.
+2. **Who owns deploy.** beorn calls it a host operation, and offers it as a plugin. `registerOperation` adds an operation to the rows of a list another plugin owns, so deploy can be a plugin of its own.
 3. **Running commands.** `build`, `before_switch` and `check` are commands the host runs. beorn keeps them on the service record, so `deploy:deploy` alone chooses no command. Who may write the declaration then decides who may run code on the machine.
 4. **The word.** "Service" already names `ahpd service`. The list may need another word, such as "program".
-5. **One machine or many.** Each host keeps its own machine's services in beorn's plugins. A list across machines is a different design.
+5. **One machine or many.** Each host keeps its own machine's services in beorn's plugins, and their client reaches each host on its own. A list across machines would take each computer as an instance of the list. It needs the hub to read a box's lists, which neither an ssh computer nor a node gives today.
 6. **Where the plugins live.** beorn offers them through `ahpio/plugins`. The kind for process-compose and the deploy part could live there, and the host list in `ahpio/ahpd`.
 7. **`caller`.** Their services log names who made a change from `caller.owner`. In ahpd that is the plugin when a plugin relays the call, never the person it acts for.

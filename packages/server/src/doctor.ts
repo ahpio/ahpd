@@ -263,6 +263,35 @@ export const serviceCheck = (facts: DoctorFacts): Check | undefined => {
   return { name: 'Service', result: 'ok', line: `the ${service} file is at ${file}` };
 };
 
+/** A value as an object of keys, or nothing when it is not one. */
+const keysOf = (value: unknown): Record<string, unknown> | undefined =>
+  (typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : undefined);
+
+/**
+ * The paths of the options a plugin's schema does not name, such as
+ * `ssh.machines`.
+ *
+ * Only where the schema names its keys: a node whose `additionalProperties`
+ * is a schema or `true` takes any key, and its values are walked against that
+ * schema instead. A key the loader accepts but no schema names is one a plugin
+ * ignores, which is a setting its operator believes does something.
+ */
+export const undeclaredOptions = (options: unknown, schema: unknown, at = ''): string[] => {
+  const given = keysOf(options);
+  const node = keysOf(schema);
+  if (given === undefined || node === undefined) return [];
+  const named = keysOf(node.properties);
+  const extra = node.additionalProperties;
+  const open = extra === true || keysOf(extra) !== undefined;
+  return Object.entries(given).flatMap(([key, value]) => {
+    const path = at === '' ? key : `${at}.${key}`;
+    const declared = named?.[key];
+    if (declared !== undefined) return undeclaredOptions(value, declared, path);
+    if (keysOf(extra) !== undefined) return undeclaredOptions(value, extra, path);
+    return open || named === undefined ? [] : [path];
+  });
+};
+
 /** Every plugin the configuration names, and whether it would load. */
 export const pluginCheck = async (facts: DoctorFacts): Promise<Check> => {
   let plugins: PluginSpec[];
@@ -305,6 +334,19 @@ export const pluginCheck = async (facts: DoctorFacts): Promise<Check> => {
   }
   const off = rows.filter((row) => row.state === 'disabled').length;
   const live = rows.length - off;
+  const undeclared = rows.flatMap((row) => {
+    const options = typeof row.spec === 'string' ? undefined : row.spec.options;
+    const schema = row.manifest?.optionsSchema;
+    return options === undefined || schema === undefined ? [] : undeclaredOptions(options, schema).map((path) => `${row.name}: ${path} is not an option`);
+  });
+  if (undeclared.length > 0) {
+    return {
+      name: 'Plugins',
+      result: 'warn',
+      line: withoutUserinfoIn(undeclared.join('; ')),
+      fix: 'remove it from the configuration',
+    };
+  }
   return {
     name: 'Plugins',
     result: 'ok',

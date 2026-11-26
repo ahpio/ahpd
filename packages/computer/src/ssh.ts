@@ -1,13 +1,13 @@
 /**
  * Machines on boxes this host does not own, reached over `ssh`.
  *
- * An ssh machine is listed rather than made: its operator writes the box's
- * destination in the plugin's options, and this runtime answers about it from
- * those options and from what one `ssh` command says. A box carries no label of
- * this host's, so there is no label here to find one by and no machine to start
- * or to stop, and the verbs that would make one are refused. What this host
- * puts there is the ahpd a session's host runs, in the folder of the user it
- * reaches the box as.
+ * An ssh machine is a box somebody already has, made into a computer by a
+ * create: the create names the `ssh` connector the box is reached with and
+ * what the box is for, and the record is kept beside the configuration. A box
+ * carries no label of this host's, so there is nothing on it to start or to
+ * stop, and a remove forgets the record and leaves the box as it was. What
+ * this host puts there is the ahpd a session's host runs, in the folder of the
+ * user it reaches the box as.
  *
  * The remote command is one string the box's login shell parses, because `ssh`
  * has no flag for a remote directory and none for a remote variable - `ssh(1)`.
@@ -18,7 +18,7 @@
 import { spawn } from 'node:child_process';
 import { createWriteStream } from 'node:fs';
 import { Readable } from 'node:stream';
-import type { Spawn, SpawnOptions } from '@ahpd/sdk';
+import type { Owner, Spawn, SpawnOptions } from '@ahpd/sdk';
 import { copyFolder, tarOf } from './hostcopy.js';
 import type { CopyOptions } from './hostcopy.js';
 import { copyCommand, HOST_INSTALL_COMMAND, hostInstallOf, isHostInstall } from './hostinstall.js';
@@ -26,6 +26,7 @@ import type { Part, Tarball } from './parts.js';
 import type { ComputerRuntime, ExecResult, Machine, MachineStats, RuntimeCapabilities } from './runtime.js';
 import { checkServer, SERVER_CHECK } from './servercheck.js';
 import type { ServerReport } from './servercheck.js';
+import type { SshBoxRecord } from './owners.js';
 import type { LogLevel } from '@ahpd/sdk';
 
 /** What `capabilities` reports for this runtime. */
@@ -63,10 +64,10 @@ const CHECK_MARGIN_MS = 10_000;
 const RUNNING = 'running';
 
 /**
- * One box, as the operator wrote it in the plugin's options.
+ * One box: how it is reached, and what it is for.
  *
- * There is no image, no label and no owner here: a box somebody set up by hand
- * is made of none of those, and what this host knows about it is this record.
+ * There is no image and no label here: a box somebody set up by hand is made
+ * of neither, and what this host knows about it is its login and its record.
  */
 export interface SshMachine {
   /** What `ssh` is given as the host, `user@host` or a name from its own config. */
@@ -75,6 +76,17 @@ export interface SshMachine {
   port?: string;
   /** The private key, when `ssh` would not pick one itself. */
   identity?: string;
+  /**
+   * The name the box's host key is kept under, in place of its address.
+   *
+   * A login's known-hosts file holds one box, so the key is found by the
+   * login's own name whatever the destination resolves to.
+   */
+  alias?: string;
+  /** The agent this box's key is held in, when the login keeps one of its own. */
+  agentSocket?: string;
+  /** Variables the `ssh` program is run with to reach this box, over the program's own. */
+  env?: Record<string, string>;
   /** Where a command starts on the box, when the login directory is not it. */
   workdir?: string;
   /**
@@ -88,6 +100,30 @@ export interface SshMachine {
   agents?: string[];
 }
 
+/** One box as the runtime keeps it: its record, and who made it. */
+export interface SshBox extends SshBoxRecord {
+  owner?: Owner;
+  team?: string;
+  project?: string;
+}
+
+/**
+ * Where the runtime's boxes come from, and where a create and a remove go.
+ *
+ * The plugin's, because a box's record lives beside the configuration and its
+ * login is a connector, and neither is this runtime's to keep.
+ */
+export interface SshBoxes {
+  /** Every box, by the name its machine id is spelled with. */
+  records(): Record<string, SshBox>;
+  /** The login a connector id names, ready to reach, or the sentence that says why there is none. */
+  login(connector: string): Promise<SshTarget | string>;
+  /** Record a box, or throw the sentence that says why it is not one. */
+  add(name: string, box: SshBox): Promise<void>;
+  /** Forget a box's record. Nothing on the box changes. */
+  forget(name: string): void;
+}
+
 /** What this runtime was configured with. */
 export interface SshOptions {
   /** The program that reaches a box. `ssh` unless a configuration said otherwise. */
@@ -96,8 +132,8 @@ export interface SshOptions {
   args?: string[];
   /** Environment for the program, merged over this process's own. */
   env?: Record<string, string>;
-  /** The boxes, by the name a machine id is spelled with. */
-  machines: Record<string, SshMachine>;
+  /** The boxes, and the logins they are reached with. */
+  boxes: SshBoxes;
   /** How long `ssh` is given to reach a box, in seconds. */
   connectTimeout?: number;
   /**
@@ -138,41 +174,6 @@ const isText = (value: unknown): value is string => typeof value === 'string' &&
 /** A list of words, or nothing when the value is not a list at all. */
 const words = (value: unknown): string[] | undefined => (Array.isArray(value) ? value.map(String) : undefined);
 
-/**
- * One box from the option's map, or nothing when the entry cannot be one.
- *
- * The plugin's rule throughout: a misspelled key costs its own setting rather
- * than the plugin, so an entry with no destination is not a box and the rest
- * still load.
- */
-const machineOf = (value: unknown): SshMachine | undefined => {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
-  const said = value as Record<string, unknown>;
-  if (!isText(said.destination)) return undefined;
-  const port = said.port === undefined ? undefined : String(said.port);
-  const host = words(said.host);
-  const agents = words(said.agents);
-  return {
-    destination: said.destination,
-    ...(port === undefined || port === '' ? {} : { port }),
-    ...(isText(said.identity) ? { identity: said.identity } : {}),
-    ...(isText(said.workdir) ? { workdir: said.workdir } : {}),
-    ...(host === undefined ? {} : { host }),
-    ...(agents === undefined ? {} : { agents }),
-  };
-};
-
-/** The boxes the option names, or nothing when it names none this host can use. */
-export const machinesOf = (value: unknown): Record<string, SshMachine> | undefined => {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
-  const held: Record<string, SshMachine> = {};
-  for (const [name, one] of Object.entries(value as Record<string, unknown>)) {
-    const machine = machineOf(one);
-    if (machine !== undefined) held[name] = machine;
-  }
-  return Object.keys(held).length === 0 ? undefined : held;
-};
-
 /** What one `ssh` process printed, and how it ended. */
 export interface Ran {
   code: number;
@@ -183,15 +184,15 @@ export interface Ran {
 }
 
 /**
- * The one refusal the verbs that make a machine answer with.
+ * The one refusal the verbs that would start or stop a box answer with.
  *
- * A box is on a machine somebody else set up, so there is nothing here to make,
- * start, stop or remove: what a person wants is the box's own service manager,
- * and a host that answered this by running one would be a daemon acting on a
+ * A box is on a machine somebody else set up, so there is nothing here to
+ * start or stop: what a person wants is the box's own service manager, and a
+ * host that answered this by running one would be a daemon acting on a
  * machine it does not own.
  */
 const madeElsewhere = (id: string): Error =>
-  new Error(`${id}: an ssh machine is listed in this host's options, not made by this host`);
+  new Error(`${id} is a box this host reaches over ssh, and it is not started or stopped here`);
 
 /** What a box's answer came to: whether it is up, and its last line either way. */
 export interface Reached {
@@ -297,6 +298,10 @@ const TRANSFER_MS = 10 * 60_000;
 /** How the `ssh` program is run, whichever box it reaches. */
 export type SshProgram = Pick<SshOptions, 'command' | 'args' | 'env' | 'connectTimeout'>;
 
+/** The program with a box's own variables over its own, which is what reaches that box. */
+const programFor = (program: SshProgram, target: SshMachine): SshProgram =>
+  (target.env === undefined ? program : { ...program, env: { ...(program.env ?? {}), ...target.env } });
+
 /** One destination, with what reaching it takes beyond a box an operator wrote. */
 export interface SshTarget extends SshMachine {
   /** The box `ssh -J` goes through first, for a destination on a network this host has no route to. */
@@ -343,7 +348,8 @@ export interface SshReach {
  * in it again. `-J` reaches the jump with the person's own configuration,
  * because `ssh` gives the jump none of the `-o` options here.
  */
-export const sshReach = (program: SshProgram, target: SshTarget): SshReach => {
+export const sshReach = (given: SshProgram, target: SshTarget): SshReach => {
+  const program = programFor(given, target);
   const connect = program.connectTimeout ?? DEFAULT_CONNECT_TIMEOUT;
   // The connect timeout is the box's; this is the process's, and it is the one
   // that ends a command the box accepted and never finished.
@@ -356,9 +362,13 @@ export const sshReach = (program: SshProgram, target: SshTarget): SshReach => {
     ...(target.knownHosts === undefined
       ? []
       : ['-o', 'StrictHostKeyChecking=accept-new', '-o', `UserKnownHostsFile=${target.knownHosts}`, '-o', 'HashKnownHosts=no']),
+    ...(target.alias === undefined ? [] : ['-o', `HostKeyAlias=${target.alias}`]),
+    ...(target.agentSocket === undefined ? [] : ['-o', `IdentityAgent=${target.agentSocket}`]),
     ...(target.jump === undefined ? [] : ['-J', target.jump]),
     ...(target.port === undefined ? [] : ['-p', target.port]),
-    ...(target.identity === undefined ? [] : ['-i', target.identity]),
+    // A key named for this box is the only one offered to it, so a login's
+    // key is never tried against another login's box.
+    ...(target.identity === undefined ? [] : ['-i', target.identity, '-o', 'IdentitiesOnly=yes']),
     target.destination,
     '--',
     remote,
@@ -396,6 +406,9 @@ export const sshReach = (program: SshProgram, target: SshTarget): SshReach => {
       // A caller's `cwd` is a path on this host and is left out: the box's
       // own `workdir` is what a command starts in.
       args: [...(program.args ?? []), ...argv(remote([asked.command, ...(asked.args ?? [])], asked.env))],
+      // The box's own variables, its agent's socket among them, for the
+      // `ssh` this host spawns.
+      ...(target.env === undefined ? {} : { env: target.env }),
     }),
 
     exec: async (command, env) => {
@@ -453,48 +466,68 @@ export const sshReach = (program: SshProgram, target: SshTarget): SshReach => {
  * Every verb is one run of the `ssh` program, and nothing here is remembered
  * between two of them: a box can be reached from anywhere this host's ssh
  * can, so a listing is the only thing that says whether it is up right now.
+ * The boxes are read again on every call, so one made or forgotten is listed
+ * or gone at the next one.
  */
 export const sshRuntime = (options: SshOptions): ComputerRuntime => {
-  const machines = options.machines;
-  const known = Object.keys(machines);
-  const reaches = new Map(Object.entries(machines).map(([name, machine]) => [name, sshReach(options, machine)]));
+  const boxes = options.boxes;
 
-  /** One box, or a sentence naming the ones this host lists instead. */
-  const must = (name: string): SshMachine => {
-    const held = machines[name];
+  /** One box's record, or a sentence naming the ones this host has instead. */
+  const must = (name: string): SshBox => {
+    const records = boxes.records();
+    const held = records[name];
     if (held === undefined) {
-      throw new Error(`there is no ssh machine called ${name}${known.length === 0 ? '' : `; this host lists ${known.join(', ')}`}`);
+      const known = Object.keys(records);
+      throw new Error(`there is no ssh machine called ${name}${known.length === 0 ? '' : `; this host has ${known.join(', ')}`}`);
     }
     return held;
   };
 
-  /** The reach of a box that `must` found. */
-  const reachOf = (name: string): SshReach => {
-    must(name);
-    return reaches.get(name) as SshReach;
+  /** A box's login and record as one target, or the sentence that says why it cannot be reached. */
+  const targetOf = async (box: SshBox): Promise<SshTarget | string> => {
+    const login = await boxes.login(box.connector);
+    if (typeof login === 'string') return login;
+    return {
+      ...login,
+      ...(box.workdir === undefined ? {} : { workdir: box.workdir }),
+      ...(box.host === undefined ? {} : { host: box.host }),
+      ...(box.agents === undefined ? {} : { agents: box.agents }),
+    };
+  };
+
+  /** The reach of a box that `must` found, or the sentence thrown when its login is not usable. */
+  const reachOf = async (name: string): Promise<SshReach> => {
+    const target = await targetOf(must(name));
+    if (typeof target === 'string') throw new Error(`${name} cannot be reached: ${target}`);
+    return sshReach(options, target);
+  };
+
+  /** The reach of a box, or nothing when it is not a box or its login is not usable. */
+  const reachIf = async (name: string): Promise<SshReach | undefined> => {
+    const box = boxes.records()[name];
+    if (box === undefined) return undefined;
+    const target = await targetOf(box);
+    return typeof target === 'string' ? undefined : sshReach(options, target);
   };
 
   /**
-   * One machine's record, which is the operator's own line and nothing else.
+   * One machine's record, which is what its create said and nothing else.
    *
    * A box carries no label of ours, no image of ours and no moment this host
-   * saw it made, so what this host knows about it is what the options said. A
-   * runtime that answered Docker's shape here would be making up a record for a
-   * machine Docker has never heard of, and every reader of it would be reading
-   * a fact this host invented.
+   * saw it made, so what this host knows about it is its record. Nothing of the
+   * login is here: a destination and a key are the connector's, and a reader
+   * of a machine is not a reader of the connector it is reached with.
    *
    * Nothing here reaches the box: a record that cost one `ssh` would make every
    * listing pay a second reach per box, and what a caller wants to know about a
    * box that is up is `state`, which does reach it.
    */
-  const recordOf = (name: string, machine: SshMachine): Record<string, unknown> => ({
+  const recordOf = (name: string, box: SshBox): Record<string, unknown> => ({
     id: name,
-    destination: machine.destination,
-    ...(machine.port === undefined ? {} : { port: machine.port }),
-    ...(machine.identity === undefined ? {} : { identity: machine.identity }),
-    ...(machine.workdir === undefined ? {} : { workdir: machine.workdir }),
-    ...(machine.host === undefined ? {} : { host: machine.host }),
-    ...(machine.agents === undefined ? {} : { agents: machine.agents }),
+    connector: box.connector,
+    ...(box.workdir === undefined ? {} : { workdir: box.workdir }),
+    ...(box.host === undefined ? {} : { host: box.host }),
+    ...(box.agents === undefined ? {} : { agents: box.agents }),
   });
 
   /*
@@ -511,7 +544,7 @@ export const sshRuntime = (options: SshOptions): ComputerRuntime => {
     if (held !== undefined) return held;
     const made = (async () => {
       const install = hostInstallOf(options.parts, options.lock);
-      const reach = reachOf(name);
+      const reach = await reachOf(name);
       const run = async () => {
         const ran = await reach.ran([...HOST_INSTALL_COMMAND, ...install.args], Buffer.from(install.script));
         if (ran.timedOut) throw new Error(`ahpd ${install.version} was not installed on ${name} within ${TRANSFER_MS}ms`);
@@ -569,14 +602,16 @@ export const sshRuntime = (options: SshOptions): ComputerRuntime => {
     envInCommand: true,
 
     /*
-     * One row per configured box, each asked in parallel.
+     * One row per box, each asked in parallel.
      *
      * `running` is what `isRunning` reads as up, and the reason a box that did
      * not answer is not `unreachable` alone is that the line after it is the
-     * only thing that says which box went and why.
+     * only thing that says which box went and why. A box whose login is not
+     * open is unreachable for that reason, with no `ssh` run.
      */
-    list: async () => Promise.all([...reaches].map(async ([name, reach]): Promise<Machine> => {
-      const held = await reach.reached();
+    list: async () => Promise.all(Object.entries(boxes.records()).map(async ([name, box]): Promise<Machine> => {
+      const target = await targetOf(box);
+      const held = typeof target === 'string' ? { up: false, said: target } : await sshReach(options, target).reached();
       return {
         id: name,
         // Not made from anything here: a box is set up by hand, so there is no
@@ -589,8 +624,8 @@ export const sshRuntime = (options: SshOptions): ComputerRuntime => {
     })),
 
     inspect: async (id) => {
-      const machine = machines[id];
-      return machine === undefined ? undefined : recordOf(id, machine);
+      const box = boxes.records()[id];
+      return box === undefined ? undefined : recordOf(id, box);
     },
 
     /*
@@ -598,73 +633,84 @@ export const sshRuntime = (options: SshOptions): ComputerRuntime => {
      *
      * Nothing here remembers whether a box was up - it can be reached from
      * anywhere this host's ssh can - so the only answer is the one `ssh` gives
-     * now: `running` for a box that answered, `stopped` for one that did not.
-     * A box that is not configured is not a machine, which is `undefined`.
+     * now: `running` for a box that answered, `stopped` for one that did not
+     * or whose login is not open. A box with no record is not a machine, which
+     * is `undefined`.
      */
     state: async (id) => {
-      const reach = reaches.get(id);
-      if (reach === undefined) return undefined;
+      const box = boxes.records()[id];
+      if (box === undefined) return undefined;
+      const reach = await reachIf(id);
+      if (reach === undefined) return 'stopped';
       return (await reach.reached()).up ? RUNNING : 'stopped';
     },
 
     /*
-     * The agents the operator prepared this box for.
+     * The agents the box was made for.
      *
-     * On the box there is no label to read, so this is the option's own list: a
+     * On the box there is no label to read, so this is its record's own list: a
      * box prepared for nobody answers an empty list, and every agent may run in
      * it.
      */
     agents: async (id) => {
-      const machine = machines[id];
-      return machine === undefined ? undefined : machine.agents ?? [];
+      const box = boxes.records()[id];
+      return box === undefined ? undefined : box.agents ?? [];
     },
 
     /*
      * No parts: they are images mounted when a machine is made, and a box is
-     * listed rather than made. Its ahpd is the one this host installs there,
-     * with the ahpd part's own plugins, or the one `host` starts, and its
-     * agents are its own, so there is nothing for an agent's part need to be
-     * checked against.
+     * set up by hand. Its ahpd is the one this host installs there, with the
+     * ahpd part's own plugins, or the one `host` starts, and its agents are its
+     * own, so there is nothing for an agent's part need to be checked against.
      */
     parts: async () => undefined,
 
-    /*
-     * Nobody here made the box.
-     *
-     * So it says nothing about who owns it, and the plugin reads its own record
-     * beside the configuration instead: a box nobody claimed is the host's own,
-     * which is the answer that record ends at, read
-     * the other way round.
-     */
-    owner: async (id) => (machines[id] === undefined ? undefined : {}),
+    /* Whoever made the box into a computer, as its record says. */
+    owner: async (id) => {
+      const box = boxes.records()[id];
+      if (box === undefined) return undefined;
+      return {
+        ...(box.owner === undefined ? {} : { owner: box.owner }),
+        ...(box.team === undefined ? {} : { team: box.team }),
+        ...(box.project === undefined ? {} : { project: box.project }),
+      };
+    },
 
     /*
      * A command on the box, with its directory and its variables written into
      * the remote string - `ssh` has no `-w` and no `-e` to give them to.
      */
-    how: async (id, asked) => reaches.get(id)?.how(asked) satisfies Spawn | undefined,
+    how: async (id, asked) => (await reachIf(id))?.how(asked) satisfies Spawn | undefined,
 
-    /** How this box starts a nested host: the command its operator wrote, or the ahpd this host installs there. */
+    /** How this box starts a nested host: the command its record names, or the ahpd this host installs there. */
     hostCommand: async (id) => {
-      const machine = machines[id];
-      if (machine === undefined) return undefined;
-      return machine.host ?? installedOn(id);
+      const box = boxes.records()[id];
+      if (box === undefined) return undefined;
+      return box.host ?? installedOn(id);
     },
 
     /*
-     * The verbs that make a machine, which a box is not.
-     *
-     * Nothing of this host's is on the box, so there is nothing to make, start,
-     * stop or remove: what a person wants here is the box's own service
-     * manager, and this host only ever lists it.
+     * A create makes nothing on the box: it records the box, and which login
+     * reaches it, once that login has reached it. A remove forgets the record
+     * and runs nothing there.
      */
-    run: async (spec) => { throw madeElsewhere(spec.name); },
+    run: async (spec) => {
+      if (spec.ssh === undefined) throw new Error(`${spec.name}: a create on ssh names the connector the box is reached with`);
+      if (boxes.records()[spec.name] !== undefined) throw new Error(`${spec.name} is already a computer; remove it or choose another name`);
+      await boxes.add(spec.name, {
+        ...spec.ssh,
+        ...(spec.owner === undefined ? {} : { owner: spec.owner }),
+        ...(spec.team === undefined ? {} : { team: spec.team }),
+        ...(spec.project === undefined ? {} : { project: spec.project }),
+      });
+      return { id: spec.name, image: '', status: RUNNING, created: new Date().toISOString() };
+    },
     start: async (id) => { must(id); throw madeElsewhere(id); },
     stop: async (id) => { must(id); throw madeElsewhere(id); },
     restart: async (id) => { must(id); throw madeElsewhere(id); },
-    remove: async (id) => { must(id); throw madeElsewhere(id); },
+    remove: async (id) => { must(id); boxes.forget(id); },
 
-    exec: async (id, command, env): Promise<ExecResult> => reachOf(id).exec(command, env),
+    exec: async (id, command, env): Promise<ExecResult> => (await reachOf(id)).exec(command, env),
 
     /*
      * A file written onto the box is not a thing this host does.
@@ -696,10 +742,13 @@ export const sshRuntime = (options: SshOptions): ComputerRuntime => {
     bringBack: async () => undefined,
     follow: async () => {},
 
-    stats: async (id) => reaches.get(id)?.stats(),
+    stats: async (id) => (await reachIf(id))?.stats(),
 
-    check: async (id) => reaches.get(id)?.check(id),
-    checks: (id) => machines[id] !== undefined,
+    check: async (id) => {
+      if (boxes.records()[id] === undefined) return undefined;
+      return (await reachOf(id)).check(id);
+    },
+    checks: (id) => boxes.records()[id] !== undefined,
 
     capabilities: () => CAPABILITIES,
 

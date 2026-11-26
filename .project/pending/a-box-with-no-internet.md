@@ -5,7 +5,7 @@ title: A box with no internet
 # A box with no internet
 
 Plan [container/20261125-0131](../plans/container/20261125-0131-a-box-with-no-internet-gets-a-copy/plan.md) was checked with a stand-in for ssh. This is the check over a real ssh, with a session.
-Take a Linux box that is in the `ssh` option of the computer plugin, names no `host`, and has `python3`, `make` and `g++`.
+Take a Linux box that is an ssh computer with no `host`, and has `python3`, `make` and `g++`. [ssh logins on dev02](ssh-logins-on-dev02.md) says how to make one.
 
 1. On the box, remove its installs: `rm -rf ~/.local/share/ahpd/server`.
 2. On the box, send nodejs.org and npm nowhere: `echo '127.0.0.9 nodejs.org registry.npmjs.org' | sudo tee -a /etc/hosts`.

@@ -326,42 +326,84 @@ A key is never in the shipped block: a host record fills its variable in its own
 
 ## ssh machines
 
-A box is listed in the plugin's `ssh` option and reached over ssh.
-This host never makes, starts, stops or removes one: it lists it, runs commands on it, and starts a host on it for each session, from the ahpd it installs there in the user's own folder.
+An ssh machine is a box somebody already has, made into a computer.
+Two records make one: an ssh connector says how this host logs in to the box, and a create with `"runtime": "ssh"` says what the box is for.
+This host never starts, stops or changes the box: it runs commands on it, and starts a host on it for each session, from the ahpd it installs there in the user's own folder.
+
+### The ssh login
+
+An ssh login is a connector of the `ssh` adapter, which the computer plugin registers.
+A person, a team or the host owns it, as any connector.
+Make it from a client's connector form, or with `x-ahpd/connectors/put`:
 
 ```json
-{ "plugins": [{ "name": "@ahpd/computer", "options": { "ssh": { "machines": {
-  "deb": {
-    "destination": "me@box.example",
-    "workdir": "/home/me/work",
-    "host": ["sh", "-c", ". \"$HOME/.keys\" && exec ahpd \"$@\"", "ahpd"]
-  }
-} } } }] }
+{ "adapter": "ssh", "id": "deb", "owner": "host",
+  "config": { "destination": "me@box.example.com", "port": "2229", "auth": "vault", "key": "-----BEGIN OPENSSH PRIVATE KEY-----\n..." } }
 ```
+
+| Field | What it holds |
+| --- | --- |
+| `destination` | `user@host`, or a `Host` from the daemon user's ssh config. Required. |
+| `port` | The port, when it is not 22. |
+| `jump` | A box to go through first, as `ssh -J` takes it. |
+| `auth` | How the login logs in: `agent`, `file` or `vault`. `agent` when absent. |
+| `identity` | The private key file on this host, for `file`. |
+| `key` | The private key, for `vault`. It has no passphrase. The vault keeps it. |
+| `hostKey` | The box's public host key, such as `ssh-ed25519 AAAA...`. Empty accepts the first key the box shows. |
+
+The three ways to log in:
+
+- `agent` is the daemon user's own ssh: its agent, its `~/.ssh/config` and its keys.
+- `file` names a key file on this host. It is offered to its own box only, with `IdentitiesOnly=yes`.
+- `vault` keeps the key in the vault. Each open login gets an `ssh-agent` of its own, which holds that one key, so box A is never offered box B's key. The agent stops when the login closes.
+
+On a host with users, a person's or a team's login logs in with `vault` only: `agent` and `file` use the daemon user's own keys, which only a host login may use. A destination, a jump host or a port that is not one plain word is refused, so no value reaches `ssh` as an option.
+
+Set the plugin's `ssh.vaultKey` to `file` to write a vault key to a file only the daemon user can read, in place of an agent. Windows needs this: there a `vault` login with no `ssh.vaultKey: file` is refused with a sentence that names the setting.
+
+Each login keeps its box's host key in a file of its own, `<configDir>/computer-ssh/logins/<id>/known_hosts`, under the name `ahpd-ssh-<id>`. The first key the box shows is accepted, and every later one must be the same. A `hostKey` on the form is the only key accepted from the start. To accept a changed key, put the box's new key in `hostKey`.
+
+The connector's check runs one `ssh ... true`. It answers `ok` with the host key's SHA256 fingerprint, `denied` when the box refused the key, and `unreachable` when it did not answer.
+
+### Making the computer
+
+A create with `"runtime": "ssh"` names the login and what the box is for. Nothing is made on the box:
+
+```json
+{ "runtime": "ssh", "connector": "deb", "workdir": "/home/me/work",
+  "host": ["sh", "-c", ". \"$HOME/.keys\" && exec ahpd \"$@\"", "ahpd"], "agents": ["claude"] }
+```
+
+| Field | What it does |
+| --- | --- |
+| `connector` | The ssh login the box is reached with. Required. |
+| `workdir` | Where a command and a session start on the box. The login directory when absent. |
+| `host` | The command that starts a host on the box, run as written, and nothing is installed. Absent, the host is the ahpd this host installs there; see [The ahpd on the box](#the-ahpd-on-the-box). |
+| `agents` | The agents the box is prepared for. A session of another agent is refused. |
+
+The create reaches the box once through the login, and refuses when it does not answer. On a host with users, a person may use a login of their own, of their team, or of the host. The computer is the person's who made it, and its record is kept in `computers.json` beside the configuration. A create written to `computer://deb` makes the machine `computer://ssh.deb`. A remove forgets the record and runs nothing on the box.
+
+An id is `<runtime>.<name>`, and a machine on the local Docker keeps a bare name with no dot.
+A policy names every ssh machine with `computer: ["ssh.*"]`.
+
+The plugin's `ssh` option says how `ssh` is run:
 
 | Option | What it does |
 | --- | --- |
 | `ssh.command` | The program that reaches a box. `ssh` when absent. |
-| `ssh.args` | Arguments before its own, for a wrapper or a jump host. |
+| `ssh.args` | Arguments before its own, for a wrapper. |
 | `ssh.connectTimeout` | Seconds ssh is given to reach a box. 30 when absent, VS Code's handshake bound for an ssh host. |
 | `ssh.pollSeconds` | Seconds between checks of each box. Absent, only a listing moves the up-time meter. |
-| `ssh.machines.<name>.destination` | `user@host`, or a name from ssh's own config. |
-| `ssh.machines.<name>.port` | The port, when it is not the one ssh would use. |
-| `ssh.machines.<name>.identity` | The private key, when ssh would not pick one itself. |
-| `ssh.machines.<name>.workdir` | Where a command and a session start on the box. The login directory when absent. |
-| `ssh.machines.<name>.host` | The command that starts a host on the box, run as written, and nothing is installed. Absent, the host is the ahpd this host installs there; see [The ahpd on the box](#the-ahpd-on-the-box). |
-| `ssh.machines.<name>.agents` | The agents the box is prepared for. A session of another agent is refused. |
+| `ssh.vaultKey` | How a `vault` key reaches ssh: `agent`, the default, or `file`. |
 
-The entry `deb` is the machine `computer://ssh.deb`.
-An id is `<runtime>.<name>`, and a machine on the local Docker keeps a bare name with no dot.
-A policy names every ssh machine with `computer: ["ssh.*"]`.
+`ssh.machines` is no longer read. A configuration that still holds it loads, the log gives one line per entry with the login and the create that take its place, and `ahpd doctor` warns about it.
 
 ### What the box needs
 
 - What the install below downloads with: Linux on x86_64 or aarch64, `curl`, `tar`, `xz` and `sha256sum`, and a route to nodejs.org and the npm registry, or none: the host then sends the files, and `curl` is not needed. A box without them names in `host` the command that starts an ahpd of its own, by its full path where the `PATH` of a non-interactive login does not hold it, as it does not hold a Node installed by nvm.
 - The plugins of the agents it serves beyond cofold and pi, which the install brings, in the box's configuration folder, where `ahpd plugin install` run there puts them, each configured in the box's own `config.json`. The host on the box loads a plugin with the options its own file gives it, and serves the agent records in its own `agents` folder, so cofold's `model` lives in the file and an ACP agent's in its record.
 - Its own model credentials. Nothing is sent from this host: `host` above sources a file on the box, because a non-interactive ssh reads no profile.
-- This host's key in `authorized_keys`, and the box's host key known to this host. Every call passes `BatchMode=yes`, so a password prompt or an unknown host key fails with ssh's own sentence.
+- The login's key in `authorized_keys`. Every call passes `BatchMode=yes`, so a password prompt fails with ssh's own sentence.
 
 ### The ahpd on the box
 
@@ -428,10 +470,10 @@ A restart of this host leaves the session on the box, and the next turn resumes 
 
 ### What an ssh machine cannot do
 
-- It is never made: a create that names `"runtime": "ssh"` is refused.
+- Nothing is made or removed on the box: a create records it and a remove forgets it.
 - It has no state to set: start, stop and restart are refused.
 - It takes no parts and no bind mounts, and a value named from the vault is refused in a command, since ssh carries a variable inside the remote command.
-- Its up time is charged to the host, `root:<host>`, as stretches that open when a listing finds it reachable and close when one finds it gone or the daemon stops.
+- Its up time is charged to the person who made it, or to the host, `root:<host>`, for a record that names nobody. A stretch opens when a listing finds the box reachable and closes when one finds it gone or the daemon stops.
 
 ## Joined nodes
 
@@ -595,13 +637,14 @@ Two agents that ask for the same thing at one target get it once: an environment
 
 A mount whose host path is not there is refused at create, naming the mount and whether it came from the plugin options, a profile or a body - not mounted as an empty directory for the session to find out about later. A relative source is refused the same way, because Docker reads `cache:/cache` as a named volume rather than as a path on this host. The check is at create and not at load, so a folder made after the daemon started is still accepted, and the same is true of a need's own value.
 
-The names are published in the create schema as an `enum` with each profile's title and description in the spec's parallel `enumLabels` and `enumDescriptions`, so a client can draw a picker. No profiles means no such property. The runtime is published with its one value as the default and `readOnly`, a field shown and not changeable.
+The names are published in the create schema as an `enum` with each profile's title and description in the spec's parallel `enumLabels` and `enumDescriptions`, so a client can draw a picker. No profiles means no such property. The runtime is published as a choice between the plugin's own runtime, the default, and `ssh`, with the fields an ssh box is made with beside it; see [Making the computer](#making-the-computer).
 
-`server` names the entry of `ssh.machines` that a profile's machines are made on, and that box's `server` leaf says what it can run. A profile whose `server` is not an entry there is left out, with a line in the log:
+`server` names the host's ssh login that a profile's machines are made through. A login that is not open, that a person or a team owns, or that logs in with `file` refuses the machine with a sentence that names it, because Docker's transport and `ssh -J` take no key file. Log a server in with `agent` or `vault`:
+
+Here `dev02` is an ssh connector the host owns:
 
 ```json
 { "plugins": [{ "name": "@ahpd/computer", "options": {
-  "ssh": { "machines": { "dev02": { "destination": "dev02" } } },
   "profiles": {
     "remote": {
       "title": "On dev02",
@@ -620,9 +663,9 @@ The names are published in the create schema as an `enum` with each profile's ti
 } }] }
 ```
 
-The machine is made on the box's own Docker, which this host reaches as `DOCKER_HOST=ssh://<destination>`. The parts it mounts are pulled there too, because a part is mounted by its image and only the Docker that holds the image can mount it.
+The machine is made on the box's own Docker, which this host reaches as `DOCKER_HOST=ssh://<destination>`, with the login's own agent for a `vault` login. The parts it mounts are pulled there too, because a part is mounted by its image and only the Docker that holds the image can mount it.
 
-This is one profile's Docker, not the plugin's. The plugin's `env.DOCKER_HOST` moves every machine to that Docker, and `server` moves only that profile's machines, which get ids such as `docker-<profile>.ahpd-computer-…`. A profile whose `server` is the plugin's own `env.DOCKER_HOST` makes its machines there, as any other profile does. Docker is given no key file, so a box with `identity` is left out: name the key for its destination in ssh's own configuration instead.
+This is one profile's Docker, not the plugin's. The plugin's `env.DOCKER_HOST` moves every machine to that Docker, and `server` moves only that profile's machines, which get ids such as `docker-<profile>.ahpd-computer-…`. The address and the agent are read from the login on every call, so a login changed on its form is the one the next call uses.
 
 A machine on another box mounts no path of this host's. A bind mount from the plugin options, the profile or the body is refused at create, with the mount named. A dev container is refused too, because the Dev Container CLI reads the folder on this host. With `sessionFolder`, the machine has a volume of its own at the folder's path, and `code` says how the session's code gets into it.
 
@@ -641,7 +684,7 @@ A credential of this host's own never goes to another box. An agent need marked 
 
 `runtime` says what makes a profile's machines. `docker`, the default, makes a container. `libvirt` makes a VM on the libvirt of the profile's `server`, and `proxmox` makes a VM on the node that the `proxmox` option names. A VM is a linked clone of a template, so it is made in seconds and its disk holds only what it changed.
 
-A libvirt profile must name its `server`, and the box must be an entry of `ssh.machines`. Before a VM is made there, the box's `kvm`, `libvirt` and `libvirtAccess` items must be ok, as [What the box can run](#what-the-box-can-run) says:
+A libvirt profile must name its `server`, an ssh login the host owns. Before a VM is made there, the box's `kvm`, `libvirt` and `libvirtAccess` items must be ok, as [What the box can run](#what-the-box-can-run) says:
 
 ```json
 { "plugins": [{ "name": "@ahpd/computer", "options": {
@@ -709,7 +752,7 @@ Either runtime refuses a VM when its option names neither `template` nor `image`
 
 A change to `versions.json` or to the ahpd part is a new hash, so the next VM builds a new template and backs onto it. Two VMs asked for at once build the template once. An older template is kept while a VM backs onto it, and removed once none has for a week, as VS Code removes a [cached version](https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentSdkCache.ts#L17-L78) unused for a week: each VM made on a server sweeps its older templates, the time one was first found with no VM is kept in `<configDir>/computer-templates.json` across restarts, and a removal is one line in the log.
 
-A VM is another host, so every backend of a session in one runs nested, and its login is reached with this host's own key, through the box. A box with an `identity` is left out, as it is for Docker: name the key for its destination in ssh's own configuration instead. A VM takes no bind mount, no copied file, no variable and no state volume, so a profile that needs one of them is refused at create, with what it needs named. Use `state: "host"`, or a Docker profile.
+A VM is another host, so every backend of a session in one runs nested, and its login is reached with this host's own key, through the box with `ssh -J`. The jump takes the server login's agent, so a server logs in with `agent` or `vault`, as it does for Docker. A VM takes no bind mount, no copied file, no variable and no state volume, so a profile that needs one of them is refused at create, with what it needs named. Use `state: "host"`, or a Docker profile.
 
 A VM that does not come up (no address, no ssh, a cloud-init that failed, or a tree that was not seeded) is stopped and kept, and the make answers why, as VS Code stops a [container whose preparation failed](https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/devContainerAgentHostService.ts#L443-L456) and keeps it: start it again, or remove it, once its console has been read. A stop that fails too is one line in the log.
 

@@ -1,7 +1,7 @@
 /**
  * What a box can run, and what to install on it when it cannot.
  *
- * A box in `ssh.machines` is one an operator set up by hand, and a profile that
+ * A box reached over ssh is one somebody set up by hand, and a profile that
  * makes machines there - a Docker on another box, a VM on a libvirt one - fails
  * late and in the runtime's own words when the box lacks the program it needs.
  * So the box is asked first: one `sh` script goes to it on stdin, prints one

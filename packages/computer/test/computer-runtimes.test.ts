@@ -216,7 +216,7 @@ it('keeps the rows a runtime last answered while it does not answer', async () =
   expect(lines).toEqual(['Could not list the ssh machines, so the 1 it last listed are kept: ssh: connect to host dev02: No route to host']);
 });
 
-it('charges the host for a machine a listing runtime found up and then gone', async () => {
+it('charges a machine a listing runtime found up and then gone to whoever its record names', async () => {
   const opened: string[] = [];
   const closed: [string, Claim][] = [];
   // The same book the plugin keeps: one stretch per machine, and a close for a
@@ -226,7 +226,7 @@ it('charges the host for a machine a listing runtime found up and then gone', as
     open: (id) => { if (!up.has(id)) { up.add(id); opened.push(id); } },
     close: async (id, claimed) => { if (!up.has(id)) return; up.delete(id); closed.push([id, claimed]); },
   };
-  const meter = listingMeter(book, 'dev03.example.com');
+  const meter = listingMeter(book, async () => ({ owner: 'root:dev03.example.com' }));
 
   // Two listings in a row that see it reachable are one stretch, not two: the
   // machine was up the whole time and is charged for the whole time.
@@ -235,8 +235,8 @@ it('charges the host for a machine a listing runtime found up and then gone', as
   expect(opened).toEqual(['ssh.dev02']);
   expect(closed).toEqual([]);
 
-  // The listing that finds it gone is what closes the stretch, and nobody here
-  // made the machine, so the host pays.
+  // The listing that finds it gone is what closes the stretch, charged to the
+  // owner the plugin reads for it: here a record that names the host.
   await meter.unreachable('ssh.dev02');
   expect(closed).toEqual([['ssh.dev02', { owner: 'root:dev03.example.com' }]]);
 

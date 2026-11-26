@@ -8,6 +8,7 @@ import { loadPlugins } from '../../server/src/plugins.js';
 import { registryOf } from '../src/parts.js';
 import { dockerAddressOf } from '../src/plugin.js';
 import { hostCall } from './support/calls.js';
+import { openServers } from './support/sshboxes.js';
 import { closeAll, keeping } from './support/closing.js';
 import type { Agent } from '../../sdk/src/types/agent.js';
 import type { HostOptions, HostTool } from '../../sdk/src/types/host.js';
@@ -120,13 +121,15 @@ const load = async (
         command: process.execPath,
         args: [DOCKER],
         env: { DOCKER_FAKE_STATE: at.local, SSH_FAKE_LOG: at.log, SSH_FAKE_CHECK: at.check, ...env },
-        ssh: { command: process.execPath, args: [SSH], machines: { dev02: { destination: 'dev02', ...box } } },
+        ssh: { command: process.execPath, args: [SSH] },
         profiles,
       },
     }],
     { base, configDir: join(at.dir, `state-${hostId}`), cwd: REPO, log: (line) => { lines.push(line); }, hostId },
   );
   keeping(result.options);
+  // The profiles' server, as a host login opened once the plugin is loaded.
+  openServers(result.options, { dev02: { destination: 'dev02', ...box } });
   const provider = result.options.resourceProviders?.computer as {
     write(uri: string, content: { data: string; encoding: string }, owner?: string): Promise<void>;
     list(uri: string): Promise<{ name: string }[]>;
@@ -144,23 +147,20 @@ it('spells a box as Docker\'s ssh address, with its port when it sets one', () =
   expect(dockerAddressOf({ destination: 'dev02', port: '2222' })).toBe('ssh://dev02:2222');
 });
 
-it('leaves out a profile whose box names an identity, saying to name the key in ssh\'s configuration', async () => {
+it('refuses a machine on a server whose login logs in with a key file, saying what to use instead', async () => {
   const at = files();
-  const { problems, lines } = await load(at, { far: { server: 'dev02' } }, { box: { identity: '/keys/dev02' } });
+  const { problems, provider } = await load(at, { far: { server: 'dev02' } }, { box: { identity: '/keys/dev02' } });
   expect(problems).toEqual([]);
-  expect(lines.some((line) => line.includes('profiles.far names the server dev02, whose identity Docker cannot be given; name the key for dev02 in ssh\'s own configuration instead, so the profile is left out'))).toBe(true);
+  await expect(provider.write('computer://box', said(JSON.stringify({ image: 'node:22', profile: 'far' })), 'user:ana'))
+    .rejects.toThrow(/the ssh login dev02 logs in with a key file, which ssh -J and Docker cannot be given; log it in with the ssh agent or a key in the vault/);
 });
 
-it('gives a box whose Docker is the plugin\'s own no runner of its own, and loads the rest', async () => {
+it('refuses a machine on a server whose login is not open, by the login\'s name', async () => {
   const at = files();
-  const { problems, lines, listed } = await load(
-    at,
-    { same: { server: 'dev02' } },
-    { env: { DOCKER_HOST: 'ssh://dev02' } },
-  );
+  const { problems, provider } = await load(at, { far: { server: 'nope' } });
   expect(problems).toEqual([]);
-  expect(lines.some((line) => line.includes('profiles.same names the server dev02, whose Docker is this plugin\'s own, so its machines are made on that one'))).toBe(true);
-  expect(await listed()).toEqual([]);
+  await expect(provider.write('computer://box', said(JSON.stringify({ image: 'node:22', profile: 'far' })), 'user:ana'))
+    .rejects.toThrow(/the ssh login nope is not open/);
 });
 
 it('makes a profile\'s machine on its box\'s Docker, lists it by that runner and meters it to its owner', async () => {

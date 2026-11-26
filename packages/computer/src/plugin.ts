@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { isAbsolute, join, posix, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ComputerPort, ContainerPort, MachineNeed, MachineSource, Owner, Plugin, PluginSpec, SecretRef, SecretWork, SpawnOptions } from '@ahpd/sdk';
-import { AGENT_RECORD_VARIABLE, resolveNeeds, secretRef, strings } from '@ahpd/sdk';
+import { AGENT_RECORD_VARIABLE, resolveNeeds, sameOwnerOrHost, secretRef, strings } from '@ahpd/sdk';
 import { cliOf, devContainer, hasDefinition, idLabels } from './devcontainer.js';
 import type { CliOptions } from './devcontainer.js';
 import { CATALOGUE_PASS_MS, COMPUTERS_SCHEME, computerCatalogue } from './catalogue.js';
@@ -21,17 +21,19 @@ import { SequencerByKey, adoptedDevContainer, disposableOf, dockerRuntime, hostO
 import type { ComputerRuntime, DockerOptions, Machine, MachineSpec } from './runtime.js';
 import { routed, parseMachineId, spellMachineId } from './router.js';
 import type { Routed } from './router.js';
-import { machinesOf, sshRuntime } from './ssh.js';
+import { sshReach, sshRuntime } from './ssh.js';
+import { sshLogins } from './login.js';
+import type { Login, VaultKey } from './login.js';
 import { libvirtRuntime } from './libvirt.js';
 import type { LibvirtOptions, LibvirtProfile } from './libvirt.js';
 import { proxmoxRuntime } from './proxmox.js';
 import type { ProxmoxOptions } from './proxmox.js';
 import type { VmProfile } from './vm.js';
 import { partsFromDocker } from './template.js';
-import type { SshMachine, SshOptions } from './ssh.js';
+import type { SshBox, SshMachine, SshOptions, SshProgram } from './ssh.js';
 import { serverGate } from './servercheck.js';
 import { NODE_RUNTIME, nodeRuntime } from './node.js';
-import { claimAdopted, claimOwned, forgetOwned, keepMadeNeeds, keepProbe, madeNeedsOf, ownedOf, probeOf } from './owners.js';
+import { claimAdopted, claimOwned, forgetOwned, keepMadeNeeds, keepProbe, keepSshBox, madeNeedsOf, ownedOf, probeOf, sshBoxesOf } from './owners.js';
 import { computerTools } from './tools.js';
 import {
   hostSandboxPlace, hostSandboxRefusal, isSandboxSupported, MACHINE_SANDBOX_CHECK, MACHINE_SANDBOX_START, sandboxConfiguration,
@@ -129,8 +131,7 @@ export const profilesOf = (value: unknown): Record<string, Profile> | undefined 
       // The OCI runtime Docker starts its machines under, `runsc` for gVisor:
       // how a container's kernel is isolated, which is the profile's to say.
       ...(text('ociRuntime') === undefined ? {} : { ociRuntime: text('ociRuntime') as string }),
-      // The box from `ssh.machines` its machines are made on, checked against
-      // that option once both are read.
+      // The ssh login of the host's that its machines are made through.
       ...(text('server') === undefined ? {} : { server: text('server') as string }),
       // And what makes them there: a container on its Docker, or a VM.
       ...(said.runtime === 'docker' || said.runtime === 'libvirt' || said.runtime === 'proxmox' ? { runtime: said.runtime } : {}),
@@ -186,37 +187,70 @@ export const profilesOf = (value: unknown): Record<string, Profile> | undefined 
   return Object.keys(held).length === 0 ? undefined : held;
 };
 
+/** What the `ssh` option says: how the `ssh` program is run, and how a vault key is handed to it. */
+export type SshSaid = Pick<SshOptions, 'command' | 'args' | 'connectTimeout' | 'pollSeconds'> & {
+  /** How a login's `vault` key is handed to `ssh`. */
+  vaultKey: VaultKey;
+};
+
 /**
- * The boxes an `ssh` option names, or nothing when it names none this host can use.
+ * The `ssh` option, with anything unusable dropped.
  *
- * The whole option rather than its map, because the other fields are read here
- * as well and the map is the only part of it that cannot be read twice. The
- * plugin's rule as everywhere else: a misspelled key costs its own setting
- * rather than the plugin, so a box written without a destination is not a box,
- * the rest still load, and the runtime is simply not built when none survives.
- * A `pollSeconds` that is not a whole number above zero is a setting this host
- * does not understand, and is left out rather than refused.
- *
- * An ssh runtime is not built without a box: `ssh` on its own is a program this
- * host would run for machines that do not exist, and the plugin's runtimes are
- * the machines it serves rather than the programs it knows.
+ * The plugin's rule as everywhere else: a misspelled key costs its own setting
+ * rather than the plugin. A `pollSeconds` that is not a whole number above zero
+ * is a setting this host does not understand, and is left out rather than
+ * refused. The boxes are not here: each is a computer made by a create, reached
+ * with an `ssh` connector.
  */
-export const sshOptionsOf = (value: unknown): SshOptions | undefined => {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
-  const said = value as Record<string, unknown>;
-  const machines = machinesOf(said.machines);
-  if (machines === undefined) return undefined;
+export const sshOptionsOf = (value: unknown): SshSaid => {
+  const said = typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
   const command = typeof said.command === 'string' && said.command.trim() !== '' ? said.command : undefined;
   const args = words(said.args);
   const connectTimeout = whole(said.connectTimeout, 0) || undefined;
   const pollSeconds = whole(said.pollSeconds, 0) || undefined;
   return {
-    machines,
+    vaultKey: said.vaultKey === 'file' ? 'file' : 'agent',
     ...(command === undefined ? {} : { command }),
     ...(args === undefined ? {} : { args }),
     ...(connectTimeout === undefined ? {} : { connectTimeout }),
     ...(pollSeconds === undefined ? {} : { pollSeconds }),
   };
+};
+
+/**
+ * One line for each box a configuration still names in `ssh.machines`, which
+ * this plugin no longer reads.
+ *
+ * Each line says the connector and the computer that take the entry's place,
+ * with every value but its key file: a path to a key is not a thing a log is
+ * the place for, and the connector's form asks for it again.
+ */
+export const retiredBoxLines = (value: unknown): string[] => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return [];
+  const machines = (value as Record<string, unknown>).machines;
+  if (typeof machines !== 'object' || machines === null || Array.isArray(machines)) return [];
+  return Object.entries(machines as Record<string, unknown>).map(([box, one]) => {
+    const said = typeof one === 'object' && one !== null && !Array.isArray(one) ? one as Record<string, unknown> : {};
+    const text = (key: string): string | undefined => {
+      const held = said[key];
+      if (typeof held === 'number') return String(held);
+      return typeof held === 'string' && held.trim() !== '' ? held : undefined;
+    };
+    const login = [
+      `destination ${text('destination') ?? '<missing>'}`,
+      ...(text('port') === undefined ? [] : [`port ${text('port') as string}`]),
+      `auth ${text('identity') === undefined ? 'agent' : 'file'}`,
+    ];
+    const computer = [
+      'runtime ssh',
+      `name ${box}`,
+      `connector ${box}`,
+      ...(text('workdir') === undefined ? [] : [`workdir ${text('workdir') as string}`]),
+      ...(words(said.host) === undefined ? [] : [`host ${JSON.stringify(words(said.host))}`]),
+      ...(words(said.agents) === undefined ? [] : [`agents ${JSON.stringify(words(said.agents))}`]),
+    ];
+    return `ssh.machines.${box} is no longer read. Make an ssh connector ${box} with ${login.join(', ')}; then create a computer with ${computer.join(', ')}`;
+  });
 };
 
 /** What the `libvirt` option says, without what the plugin gives every runtime. */
@@ -338,9 +372,9 @@ export interface StretchBook {
  * so a machine that is up between two listings is charged for the time between
  * them.
  *
- * Charged to the host, because a machine on a runtime that only lists is
- * nobody's: it was not made here, so no owner was recorded for it, read the
- * other way round.
+ * Charged to whoever its record names, and to the host where it names
+ * nobody: an ssh box is the person's who made it into a computer, and a node
+ * that dialled in is the host's.
  *
  * Two events rather than one call, because a listing is not the only thing that
  * knows: a runtime that learns a machine went down from a connection or a
@@ -348,10 +382,10 @@ export interface StretchBook {
  */
 export const listingMeter = (
   book: StretchBook,
-  hostName: string,
+  claimOf: (id: string) => Promise<Claim>,
 ): { reachable(id: string): void; unreachable(id: string): Promise<void> } => ({
   reachable: (id) => { book.open(id); },
-  unreachable: (id) => book.close(id, { owner: `root:${hostName}` }),
+  unreachable: async (id) => book.close(id, await claimOf(id)),
 });
 
 /**
@@ -462,14 +496,11 @@ export const apply: Plugin['apply'] = (host, options) => {
    */
   const profiles = profilesOf(options.profiles);
   /*
-   * The boxes this host reaches over ssh, which are listed rather than made.
-   *
-   * A box is on a machine somebody else set up, so it is an operator's line in
-   * the configuration rather than anything a session or a person may ask this
-   * host for: what it adds is a runtime that answers, and nothing it can be
-   * asked to make.
+   * How this host runs `ssh`. The boxes are computers made by a create, and
+   * the logins they are reached with are `ssh` connectors.
    */
   const ssh = sshOptionsOf(options.ssh);
+  for (const line of retiredBoxLines(options.ssh)) host.log.warn(`${name}: ${line}`);
   /*
    * Each profile's parts, against the versions file: an id the file does not
    * name is left out with a line naming it, and the profile keeps the rest. A
@@ -486,16 +517,6 @@ export const apply: Plugin['apply'] = (host, options) => {
       host.log.warn(`${name}: profiles.${key}.parts names ${id}, which the versions file does not, so its machines are made without it`);
     }
     one.parts = one.parts.filter((part) => partIds.has(part));
-  }
-  /*
-   * Each profile's `server`, against the boxes the ssh option names: a profile
-   * whose box is not there is left out with a line naming both, because a
-   * machine made from it would be made somewhere its operator did not mean.
-   */
-  for (const [key, one] of Object.entries(profiles ?? {})) {
-    if (one.server === undefined || ssh?.machines[one.server] !== undefined) continue;
-    host.log.warn(`${name}: profiles.${key} names the server ${one.server}, which ssh.machines does not, so the profile is left out`);
-    delete profiles?.[key];
   }
   /*
    * A `secretUnreadable`, `state`, `stateScope`, `gitGuard`, `sessionTree`,
@@ -669,24 +690,149 @@ export const apply: Plugin['apply'] = (host, options) => {
    * than anything a machine holds, and an operator who reaches two runtimes
    * through one proxy or one agent says so once.
    */
-  const sshed = ssh === undefined ? undefined : sshRuntime({ ...ssh, ...(env === undefined ? {} : { env }), log: noted });
+  const sshProgram: SshProgram = {
+    ...(ssh.command === undefined ? {} : { command: ssh.command }),
+    ...(ssh.args === undefined ? {} : { args: ssh.args }),
+    ...(ssh.connectTimeout === undefined ? {} : { connectTimeout: ssh.connectTimeout }),
+    ...(env === undefined ? {} : { env }),
+  };
+  /*
+   * The ssh logins, as connectors of this plugin's own adapter. Each keeps its
+   * box's host key, and a vault key's agent or file, in a folder of its own
+   * beside the configuration.
+   */
+  const { adapter: sshAdapter, logins } = sshLogins({
+    folder: join(host.configDir, 'computer-ssh', 'logins'),
+    vaultKey: ssh.vaultKey,
+    ...(host.hasUsers === true ? { hasUsers: true } : {}),
+    program: sshProgram,
+    log: noted,
+  });
+  host.registerAdapter(sshAdapter);
+
+  /** One open login, ready to reach, or the sentence that says why it cannot be used. */
+  const loginFor = async (id: string): Promise<Login | string> => {
+    const login = logins.get(id);
+    if (login === undefined) return `the ssh login ${id} is not open`;
+    try {
+      await login.ready;
+    }
+    catch (error) {
+      return `the ssh login ${id} is not usable: ${error instanceof Error ? error.message : String(error)}`;
+    }
+    return login;
+  };
 
   /*
-   * One Docker for each profile that names a box, reached through Docker's own
-   * `ssh://` transport, by the value its machines' ids are spelled with.
-   *
-   * A box with an `identity` is left out with its profile: Docker's transport
-   * takes no key, so the key is named in ssh's own configuration instead. A
-   * box whose address is the plugin's own Docker gets no second runner, since
-   * its machines would be listed twice; the profile makes them on that one.
+   * The boxes, as computers made by a create: their records in the file beside
+   * the configuration, under the id a listing spells them with, and each
+   * reached with the login its record names.
+   */
+  const SSH = 'ssh';
+  const sshed = sshRuntime({
+    ...sshProgram,
+    ...(ssh.pollSeconds === undefined ? {} : { pollSeconds: ssh.pollSeconds }),
+    log: noted,
+    boxes: {
+      records: () => {
+        const held: Record<string, SshBox> = {};
+        for (const [id, box] of Object.entries(sshBoxesOf(host.configDir, noted))) {
+          const { runtime: value, name: box_ } = parseMachineId(id);
+          if (value !== SSH) continue;
+          const owned = ownedOf(host.configDir, id, noted);
+          held[box_] = {
+            ...box,
+            ...(owned?.owner === undefined ? {} : { owner: owned.owner }),
+            ...(owned?.team === undefined ? {} : { team: owned.team }),
+            ...(owned?.project === undefined ? {} : { project: owned.project }),
+          };
+        }
+        return held;
+      },
+      login: async (connector) => {
+        const login = await loginFor(connector);
+        return typeof login === 'string' ? login : login.target;
+      },
+      /*
+       * A box is recorded once its login is one its maker may use and has
+       * reached the box: a computer that was never reachable is a record of a
+       * mistake.
+       */
+      add: async (box, record) => {
+        const login = logins.get(record.connector);
+        if (login === undefined) throw new Error(`the ssh login ${record.connector} is not open, so ${box} is not made`);
+        if (host.hasUsers === true && !sameOwnerOrHost(login.owner, record.owner)) {
+          throw new Error(`the ssh login ${record.connector} is ${login.owner}'s, so ${record.owner ?? 'nobody'} cannot make a computer with it`);
+        }
+        const ready = await loginFor(record.connector);
+        if (typeof ready === 'string') throw new Error(`${box} is not made: ${ready}`);
+        const reached = await sshReach(sshProgram, ready.target).reached();
+        if (!reached.up) throw new Error(`${box} is not made, because ${ready.target.destination} did not answer: ${reached.said}`);
+        const { owner, team, project, ...kept } = record;
+        keepSshBox(host.configDir, spellMachineId(SSH, box), kept, {
+          ...(owner === undefined ? {} : { owner }),
+          ...(team === undefined ? {} : { team }),
+          ...(project === undefined ? {} : { project }),
+        }, noted);
+      },
+      forget: (box) => { forgetOwned(host.configDir, spellMachineId(SSH, box), noted); },
+    },
+  });
+
+  /**
+   * The host's login a profile's machines are made through, or the sentence
+   * thrown when it cannot be one: not open, a person's rather than the host's,
+   * or a key file, which neither `ssh -J` nor Docker's transport can be given.
+   */
+  const serverLogin = (id: string): Login => {
+    const login = logins.get(id);
+    if (login === undefined) throw new Error(`the ssh login ${id} is not open, so the machines made through it cannot be reached`);
+    if (login.owner !== 'host') throw new Error(`the ssh login ${id} is ${login.owner}'s, and a profile makes machines only through one of the host's`);
+    if (login.auth === 'file') {
+      throw new Error(`the ssh login ${id} logs in with a key file, which ssh -J and Docker cannot be given; log it in with the ssh agent or a key in the vault`);
+    }
+    return login;
+  };
+
+  /*
+   * A profile server's box, read from its login each time a field is asked
+   * for: a login opens after the plugin loads and may change while it runs,
+   * and the runtimes built from a box read it when they call out.
+   */
+  const serverBox = (id: string): SshMachine => ({
+    get destination() { return serverLogin(id).target.destination; },
+    get port() { return serverLogin(id).target.port; },
+    get env() { return serverLogin(id).target.env; },
+  }) as SshMachine;
+
+  /*
+   * Variables read again on every spread, for a runtime that copies its `env`
+   * into each program it runs: a server's address and agent are its login's
+   * now, not the ones it had when the plugin loaded.
+   */
+  const liveEnv = (more: () => Record<string, string>): Record<string, string> => {
+    const now = (): Record<string, string> => ({ ...(env ?? {}), ...more() });
+    return new Proxy({}, {
+      ownKeys: () => Object.keys(now()),
+      getOwnPropertyDescriptor: (_target, key) => {
+        const held = now();
+        return typeof key === 'string' && key in held ? { value: held[key], enumerable: true, configurable: true, writable: false } : undefined;
+      },
+      get: (_target, key) => (typeof key === 'string' ? now()[key] : undefined),
+    });
+  };
+
+  /*
+   * One Docker for each profile that names a server, reached through Docker's
+   * own `ssh://` transport, by the value its machines' ids are spelled with.
+   * Its address and its agent are read from the server's login on every call.
    */
   const farValues: Record<string, string> = {};
   const farDockers: Record<string, ComputerRuntime> = {};
   /*
-   * And one libvirt for every profile that makes VMs, on whichever box each
-   * names. A VM is reached with this host's own key through its box, and `-J`
-   * gives the box the person's own ssh configuration, so a box with an
-   * `identity` is left out here as it is for Docker.
+   * And one libvirt for every profile that makes VMs, on whichever server
+   * each names. A VM is reached with this host's own key through its server,
+   * and `-J` reaches the server with its login's agent.
    */
   const vmProfiles: Record<string, LibvirtProfile> = {};
   /*
@@ -697,20 +843,10 @@ export const apply: Plugin['apply'] = (host, options) => {
   const proxmoxSaid = proxmoxOptionsOf(options.proxmox);
   const proxmoxProfiles: Record<string, VmProfile> = {};
   for (const [key, one] of Object.entries(profiles ?? {})) {
-    const box = one.server === undefined ? undefined : ssh?.machines[one.server];
+    const box = one.server === undefined ? undefined : serverBox(one.server);
     if (one.runtime === 'proxmox') {
       if (proxmoxSaid === undefined) {
         host.log.warn(`${name}: profiles.${key} makes Proxmox VMs, and the proxmox option does not name its url, tokenId, secret, node, storage and bridge, so the profile is left out`);
-        delete profiles?.[key];
-        continue;
-      }
-      if (one.server !== undefined && box === undefined) {
-        host.log.warn(`${name}: profiles.${key} reaches its VMs through ${one.server}, which is not in ssh.machines, so the profile is left out`);
-        delete profiles?.[key];
-        continue;
-      }
-      if (box?.identity !== undefined) {
-        host.log.warn(`${name}: profiles.${key} names the server ${one.server as string}, whose identity ssh -J cannot be given; name the key for ${box?.destination as string} in ssh's own configuration instead, so the profile is left out`);
         delete profiles?.[key];
         continue;
       }
@@ -723,11 +859,6 @@ export const apply: Plugin['apply'] = (host, options) => {
         delete profiles?.[key];
         continue;
       }
-      if (box.identity !== undefined) {
-        host.log.warn(`${name}: profiles.${key} names the server ${one.server}, whose identity ssh -J cannot be given; name the key for ${box.destination} in ssh's own configuration instead, so the profile is left out`);
-        delete profiles?.[key];
-        continue;
-      }
       vmProfiles[key] = { server: one.server, box, ...(one.host === undefined ? {} : { host: one.host }) };
       continue;
     }
@@ -737,21 +868,11 @@ export const apply: Plugin['apply'] = (host, options) => {
       delete profiles?.[key];
       continue;
     }
-    if (box.identity !== undefined) {
-      host.log.warn(`${name}: profiles.${key} names the server ${one.server}, whose identity Docker cannot be given; name the key for ${box.destination} in ssh's own configuration instead, so the profile is left out`);
-      delete profiles?.[key];
-      continue;
-    }
-    const address = dockerAddressOf(box);
-    if (address === (env?.DOCKER_HOST ?? '')) {
-      host.log(`${name}: profiles.${key} names the server ${one.server}, whose Docker is this plugin's own, so its machines are made on that one`);
-      continue;
-    }
     const value = `${dockered.kind}-${key}`;
     farValues[key] = value;
     farDockers[value] = dockerRuntime({
       ...dockeredOptions,
-      env: { ...env, DOCKER_HOST: address },
+      env: liveEnv(() => ({ DOCKER_HOST: dockerAddressOf(box), ...(box.env ?? {}) })),
       remote: true,
       profile: key,
       ...(host.hostId === undefined ? {} : { hostId: host.hostId }),
@@ -761,15 +882,10 @@ export const apply: Plugin['apply'] = (host, options) => {
    * How long a box's Docker is given for a question about its machines: as
    * long as `ssh` is given for one command to a box.
    */
-  const farTimeout = (ssh?.connectTimeout ?? 10) * 1000 + 10_000;
-  const libvirted = ssh === undefined || Object.keys(vmProfiles).length === 0 ? undefined : libvirtRuntime({
+  const farTimeout = (ssh.connectTimeout ?? 10) * 1000 + 10_000;
+  const libvirted = Object.keys(vmProfiles).length === 0 ? undefined : libvirtRuntime({
     ...libvirtOptionsOf(options.libvirt),
-    ssh: {
-      ...(ssh.command === undefined ? {} : { command: ssh.command }),
-      ...(ssh.args === undefined ? {} : { args: ssh.args }),
-      ...(ssh.connectTimeout === undefined ? {} : { connectTimeout: ssh.connectTimeout }),
-      ...(env === undefined ? {} : { env }),
-    },
+    ssh: sshProgram,
     ...(env === undefined ? {} : { env }),
     profiles: vmProfiles,
     label,
@@ -830,12 +946,7 @@ export const apply: Plugin['apply'] = (host, options) => {
     ...(proxmoxSaid.image === undefined ? {} : { image: proxmoxSaid.image }),
     ...(proxmoxSaid.user === undefined ? {} : { user: proxmoxSaid.user }),
     ...(proxmoxCa === undefined ? {} : { ca: proxmoxCa }),
-    ssh: {
-      ...(ssh?.command === undefined ? {} : { command: ssh.command }),
-      ...(ssh?.args === undefined ? {} : { args: ssh.args }),
-      ...(ssh?.connectTimeout === undefined ? {} : { connectTimeout: ssh.connectTimeout }),
-      ...(env === undefined ? {} : { env }),
-    },
+    ssh: sshProgram,
     profiles: proxmoxProfiles,
     label,
     configDir: host.configDir,
@@ -852,10 +963,10 @@ export const apply: Plugin['apply'] = (host, options) => {
    * The box a profile's machines are made on, checked for a Docker this
    * account can reach before each one is made. The report is kept a minute.
    */
-  const gate = sshed === undefined ? undefined : serverGate(async (server) => {
-    const report = await sshed.check?.(server);
-    if (report === undefined) throw new Error(`${server} is not a box this host reaches over ssh`);
-    return report;
+  const gate = serverGate(async (server) => {
+    const login = serverLogin(server);
+    await login.ready;
+    return sshReach(sshProgram, login.target).check(server);
   });
 
   /*
@@ -881,7 +992,7 @@ export const apply: Plugin['apply'] = (host, options) => {
    */
   const runtimes: Record<string, ComputerRuntime> = {
     [dockered.kind]: dockered,
-    ...(sshed === undefined ? {} : { [sshed.kind]: sshed }),
+    [sshed.kind]: sshed,
     ...(noded === undefined ? {} : { [noded.kind]: noded }),
     ...farDockers,
     ...(libvirted === undefined ? {} : { [libvirted.kind]: libvirted }),
@@ -901,6 +1012,8 @@ export const apply: Plugin['apply'] = (host, options) => {
       ...(proxmoxed === undefined ? [] : [proxmoxed.kind]),
     ].map((value) => [value, farTimeout])),
     makerFor: (spec) => {
+      // A box is made into a computer by the ssh runtime, whatever else is said.
+      if (spec.ssh !== undefined) return sshed.kind;
       const key = spec.disposable?.profile ?? spec.profile;
       return key === undefined ? undefined : farValues[key];
     },
@@ -1060,10 +1173,10 @@ export const apply: Plugin['apply'] = (host, options) => {
   /*
    * The same two ends, for a runtime that has no start and stop of its own.
    *
-   * A machine on such a runtime is charged to the host, because nobody here
-   * made it and so no owner was recorded for it.
+   * A machine on such a runtime is charged to whoever its record names, and
+   * to the host where nothing names anybody.
    */
-  const metered = listingMeter({ open, close }, host.hostName);
+  const metered = listingMeter({ open, close }, claimOf);
 
   /*
    * A node's own moments, which are the ones no listing has to be asked for.
@@ -1175,7 +1288,7 @@ export const apply: Plugin['apply'] = (host, options) => {
       const vm = key !== undefined && (vmProfiles[key] !== undefined || proxmoxProfiles[key] !== undefined);
       // A Proxmox profile's server is only the way to its VMs, and the node is not checked over ssh.
       const proxmox = key !== undefined && proxmoxProfiles[key] !== undefined;
-      if (!proxmox && server !== undefined && gate !== undefined) await gate.requireOn(server, vm ? ['kvm', 'libvirt', 'libvirtAccess'] : ['docker', 'dockerAccess']);
+      if (!proxmox && server !== undefined) await gate.requireOn(server, vm ? ['kvm', 'libvirt', 'libvirtAccess'] : ['docker', 'dockerAccess']);
       /*
        * The parts the machine asks for, loaded before it is made. One that will
        * not load is left out with a line naming it and the load's reason,
@@ -1392,7 +1505,7 @@ export const apply: Plugin['apply'] = (host, options) => {
    * up time is opened and closed by the start and the stop this host performs.
    */
   let polling: ReturnType<typeof setInterval> | undefined;
-  if (sshed !== undefined && ssh?.pollSeconds !== undefined) {
+  if (ssh.pollSeconds !== undefined) {
     const boxes = sshed.kind;
     polling = setInterval(() => {
       void sshed.list()

@@ -21,6 +21,7 @@ import {
   pluginCheck,
   runtimeCheck,
   serviceCheck,
+  undeclaredOptions,
   updateCheck,
   type Check,
   type DoctorFacts,
@@ -253,6 +254,38 @@ describe('the Plugins check', () => {
     expect(one.result).toBe('fail');
     expect(one.line).toContain('@ahpd/not-here');
     fixed(one);
+  });
+
+  it('says warn for an option the plugin\'s schema does not name, with its path', async () => {
+    const folder = join(root, 'demo-plugin');
+    mkdirSync(folder, { recursive: true });
+    writeFileSync(join(folder, 'package.json'), `${JSON.stringify({
+      name: 'demo-plugin',
+      version: '1.0.0',
+      ahpd: {
+        entry: './index.js',
+        optionsSchema: { type: 'object', properties: { ssh: { type: 'object', properties: { command: { type: 'string' } } } } },
+      },
+    })}\n`);
+    writeFileSync(join(folder, 'index.js'), 'export function apply() {}\n');
+    put({ plugins: [{ source: join(folder, 'index.js'), options: { ssh: { command: 'ssh', machines: { dev02: {} } } } }] });
+    const one = await pluginCheck(facts());
+    expect(one.result).toBe('warn');
+    expect(one.line).toBe('demo-plugin: ssh.machines is not an option');
+    expect(one.fix).toBe('remove it from the configuration');
+  });
+
+  it('walks a schema\'s open maps against their own schema, and takes any key where none is named', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        env: { type: 'object', additionalProperties: { type: 'string' } },
+        profiles: { type: 'object', additionalProperties: { type: 'object', properties: { image: { type: 'string' } } } },
+        free: { type: 'object' },
+      },
+    };
+    expect(undeclaredOptions({ env: { A: '1' }, free: { any: 1 }, profiles: { a: { image: 'x', imagee: 'y' } }, extra: 1 }, schema))
+      .toEqual(['profiles.a.imagee', 'extra']);
   });
 
   it('replaces the userinfo of a spec that carries one', async () => {
