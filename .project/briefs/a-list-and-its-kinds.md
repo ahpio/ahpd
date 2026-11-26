@@ -149,7 +149,7 @@ How a client draws a list, as a table, a board or a calendar, waits until the li
 | A quick operation keeps the row's status. An operation that says it is long answers with a run: its own channel with a lifecycle, progress, a log and cancel, as an automation run | Softov, 2026-11-25: "Run when long" |
 | A reader sees the rows of the instances they may use, by the connector's owner rule. A kind with no instance falls back to the channel's grant | Softov, 2026-11-25: "The instance's owner" |
 | Two declarations of one list join their filters | Softov, 2026-11-25: "Joined" |
-| An operation a plugin adds to a list reaches every kind in it, and its own `offered(row)` says which rows show it | Softov, 2026-11-25: "Rows it offers on" |
+| A plugin registers an operation onto kinds it names, and it reaches every record of those kinds. Its `offered(record)` may narrow it to some records | Softov, 2026-11-25: "a way to register operations onto kinds", and "all records of that kind" |
 | "Kind" keeps its meaning in `Operation.kind`, and an operation id stays `<kind>/<operation>` | Softov, 2026-11-25: "Drop it" |
 | The list of a machine's programs is `services` | Softov, 2026-11-25: "services" |
 | A service's deploy declaration is written under its own grant, which no default role holds | Softov, 2026-11-25: "Its own grant" |
@@ -335,6 +335,7 @@ beorn's deploy is one operation on every service with a deploy declaration, what
 // in the deploy plugin
 host.registerOperation({
   channel: 'x-ahpd-services',
+  kinds: ['process-compose', 'systemd'],
   operation: { id: 'deploy/deploy', label: 'Deploy', icon: 'rocket',
                input: { type: 'object', required: ['version'], properties: { version: { type: 'string', title: 'Version' } } },
                offered: (s) => s.deploy !== undefined },
@@ -342,7 +343,7 @@ host.registerOperation({
 });
 ```
 
-`registerOperation` is new, and is the open point 4 of this brief: an operation from a plugin that registers no kind of the list.
+`registerOperation` is new: an operation from a plugin onto kinds it did not register. It reaches every record of the kinds it names, and `offered` shows it only on a service with a deploy declaration.
 
 `build` and `check` are commands the host runs. beorn keeps them on the service's own record, so `deploy:deploy` alone chooses no command. Who may write the deploy declaration decides who may run code on the machine.
 
