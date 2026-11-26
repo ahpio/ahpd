@@ -25,7 +25,7 @@ import { absentResource, asFile, splitResource } from '../resources/records.js';
 import { INVALID_PARAMS, RpcError } from '../rpc.js';
 import { reason } from '../utils/values.js';
 import type { ChannelOperation, Operation, OperationStatus } from '../types/kinds.js';
-import type { ListQuery, ListRow, ServedList, ServedListKind, ServedListOperation } from '../types/lists.js';
+import type { ListQuery, ListRow, ProcessLifecycle, ServedList, ServedListKind, ServedListOperation } from '../types/lists.js';
 import type { PluginChannel, ServedChannel } from '../types/plugin.js';
 import type { Read, ResourceProvider } from '../types/resources.js';
 import type { Grant, Principal } from '../types/users.js';
@@ -35,6 +35,8 @@ export interface ServedRow extends ListRow {
   kind: string;
   operations: string[];
   operation?: { id: string; status: OperationStatus; error?: string };
+  /** For a row of a runtime kind, its current process and how it is going. */
+  process?: { uri: string; lifecycle?: ProcessLifecycle };
 }
 
 /** What `listChannel` builds: the channel the fold serves, the scheme of one row, and how a later fold hands it the list again. */
@@ -47,6 +49,8 @@ export interface ListServing {
    * that moves a resource scheme, and a subscriber keeps its view.
    */
   update(list: ServedList): void;
+  /** Stop each running row of a runtime kind, as the host closes. */
+  close(): Promise<void>;
 }
 
 /** The query a list URI asks, checked against what the list declares. */
@@ -72,6 +76,15 @@ const queryOf = (list: ServedList, uri: string): ListQuery => {
     query.filters[key] = value.split(',').filter((one) => one !== '');
   }
   return query;
+};
+
+/** The fields a kind's schema marks `x-ahpd-live`, which what runs sets and no form writes. */
+const liveFields = (kind: ServedListKind): string[] => {
+  const properties = kind.schema['properties'];
+  if (typeof properties !== 'object' || properties === null) return [];
+  return Object.entries(properties as Record<string, unknown>)
+    .filter(([, field]) => typeof field === 'object' && field !== null && (field as Record<string, unknown>)['x-ahpd-live'] === true)
+    .map(([name]) => name);
 };
 
 /** The schema of one field of a kind, or nothing when the kind has no such field. */
@@ -152,9 +165,31 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
   /** The operations other plugins added onto the list as a whole. */
   const addedOnList = (): ServedListOperation[] => (list.operations ?? []).filter((one) => one.kinds === undefined);
   /** A kind with the operations added onto it beside its own. */
+  /** The current process of each running row of a runtime kind, by `<kind> <row>`. */
+  const runs = new Map<string, string>();
+  const runKey = (kind: ServedListKind, id: string): string => `${kind.name} ${id}`;
+  /** Whether a row of a runtime kind runs now: it has a process that has not ended. */
+  const runsNow = (kind: ServedListKind, id: string): boolean => {
+    const uri = runs.get(runKey(kind, id));
+    const lifecycle = uri === undefined ? undefined : processes?.lifecycleOf(uri);
+    return lifecycle === 'pending' || lifecycle === 'running';
+  };
+  /** The start and stop a runtime kind offers, beside its own operations. */
+  const RUNTIME_OPERATIONS = [
+    { id: 'start', label: 'Start', icon: 'play' },
+    { id: 'stop', label: 'Stop', icon: 'debug-stop' },
+  ];
   const withAdded = (kind: ServedListKind): ServedListKind => {
     const added = addedOnto(kind);
-    return added.length === 0 ? kind : { ...kind, operations: [...(kind.operations ?? []), ...added.map((one) => one.operation)] };
+    const runtime = kind.class === 'runtime' ? RUNTIME_OPERATIONS : [];
+    return added.length === 0 && runtime.length === 0 ? kind : { ...kind, operations: [...runtime, ...(kind.operations ?? []), ...added.map((one) => one.operation)] };
+  };
+  /** The operations one row offers now: a runtime row offers start when it does not run, and stop when it does. */
+  const offersOf = (kind: ServedListKind, row: ListRow): string[] => {
+    const ids = kindOffers(withAdded(kind), row.record, true);
+    if (kind.class !== 'runtime') return ids;
+    const drop = `${kind.name}/${runsNow(kind, row.id) ? 'start' : 'stop'}`;
+    return ids.filter((one) => one !== drop);
   };
 
   const status = (id: string): { status: OperationStatus; error?: string } => listed.get(id) ?? { status: 'idle' };
@@ -197,8 +232,9 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
       kind: kind.name,
       ...(row.owner === undefined ? {} : { owner: row.owner }),
       record: row.record,
-      operations: kindOffers(withAdded(kind), row.record, true),
+      operations: offersOf(kind, row),
       ...(operation === undefined ? {} : { operation }),
+      ...(kind.class === 'runtime' && runs.has(runKey(kind, row.id)) ? { process: { uri: runs.get(runKey(kind, row.id))!, ...(processes?.lifecycleOf(runs.get(runKey(kind, row.id))!) === undefined ? {} : { lifecycle: processes!.lifecycleOf(runs.get(runKey(kind, row.id))!)! }) } } : {}),
     };
   };
 
@@ -377,7 +413,7 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
       operations: () => operations(),
       offers: async (target, operationId, reader) => {
         const found = await find(target, reader);
-        return found !== undefined && kindOffers(withAdded(found.kind), found.row.record, true).includes(operationId);
+        return found !== undefined && offersOf(found.kind, found.row).includes(operationId);
       },
       begin: (operationId, target) => {
         if (target === undefined) {
@@ -411,6 +447,28 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
           const after = await find(target, reader);
           return after === undefined ? {} : served(after.kind, after.row);
         }
+        // A runtime row starts as a process, and stops by its abort and the kind's stop.
+        if (kind!.class === 'runtime' && (name === 'start' || name === 'stop') && found !== undefined) {
+          const key = runKey(kind!, found.row.id);
+          if (name === 'start') {
+            if (processes === undefined) throw new RpcError(INVALID_PARAMS, `${list.name} cannot run processes on this host`);
+            const row = found.row;
+            const uri = processes.start(list, kind!.name, async (work) => { await kind!.start!(row, work); }, () => { void changed(row.id); });
+            runs.set(key, uri);
+            void changed(row.id);
+            return { process: uri };
+          }
+          const uri = runs.get(key);
+          if (uri !== undefined) processes?.abort(uri);
+          await kind!.stop!(found.row);
+          void changed(found.row.id);
+          return {};
+        }
+        // A field the kind says is live is the process's to set, never a form's.
+        if ((name === 'create' || name === 'update') && input !== undefined) {
+          const live = liveFields(kind!).filter((field) => field in input);
+          if (live.length > 0) throw new RpcError(INVALID_PARAMS, `${live.join(', ')} ${live.length === 1 ? 'is' : 'are'} live, set by what runs; a ${name} may not write ${live.length === 1 ? 'it' : 'them'}`);
+        }
         // A long call answers with its process at once; its work runs in it.
         if (kind!.operations?.find((one) => one.id === name)?.long === true && processes !== undefined) {
           const process = processes.start(list, kind!.name, async (work) => { await kind!.invoke(name, found?.row, input, work); });
@@ -443,7 +501,19 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
     wire();
   };
 
-  return { served: servedChannel, provider, update };
+  const close = async (): Promise<void> => {
+    for (const kind of kinds()) {
+      if (kind.class !== 'runtime') continue;
+      for (const [key, uri] of runs) {
+        if (!key.startsWith(`${kind.name} `) || !runsNow(kind, key.slice(kind.name.length + 1))) continue;
+        processes?.abort(uri);
+        const row = await find(key.slice(kind.name.length + 1), undefined);
+        if (row !== undefined) await Promise.resolve(kind.stop?.(row.row)).catch((error: unknown) => { warn(kind, `kind ${kind.name} could not stop ${row.row.id}: ${reason(error)}`); });
+      }
+    }
+  };
+
+  return { served: servedChannel, provider, update, close };
 }
 
 /** The lists served over one base, by name, kept from one fold to the next. */

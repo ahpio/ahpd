@@ -1,6 +1,6 @@
 ---
 title: A kind is runtime
-status: todo
+status: done
 depends: []
 layer: "sdk"
 ---
@@ -27,3 +27,5 @@ A kind registers with `class: 'runtime'`, `start` and `stop`, and its live field
 - The plugin host refuses a runtime kind without `stop`.
 
 ## Resume
+
+Built on 2026-11-26.

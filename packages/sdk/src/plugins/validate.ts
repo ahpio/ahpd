@@ -1234,7 +1234,7 @@ export const checkListOperation = (value: unknown, by: string): { channel: strin
 };
 
 /** The operations the host serves for every kind of a list, which a kind may not take for its own. */
-const LIST_KIND_OPERATIONS: readonly string[] = ['create', 'update', 'remove'];
+const LIST_KIND_OPERATIONS: readonly string[] = ['create', 'update', 'remove', 'start', 'stop'];
 
 /**
  * Check one `registerKind` value against `ListKind`, and answer its channel,
@@ -1256,8 +1256,14 @@ export const checkListKind = (value: unknown, by: string): { channel: string; na
       throw new Error(miss(by, method, member, 'a string, or nothing'));
     }
   }
-  if (object.class !== undefined && object.class !== 'data') {
-    throw new Error(miss(by, method, 'class', 'data or nothing: a runtime kind waits for a later step of lists, which builds its start and stop'));
+  if (object.class !== undefined && object.class !== 'data' && object.class !== 'runtime') {
+    throw new Error(miss(by, method, 'class', 'data, runtime or nothing'));
+  }
+  if (object.class === 'runtime') {
+    for (const member of ['start', 'stop']) {
+      if (typeof object[member] !== 'function') throw new Error(miss(by, method, member, 'a function the host calls, because the kind is runtime'));
+    }
+    if (object.processes === undefined) throw new Error(miss(by, method, 'processes', 'list and read, because a runtime kind runs each row as a process'));
   }
   if (!right(object.schema, 'object')) {
     throw new Error(miss(by, method, 'schema', 'an object, the JSON Schema a client draws the form from'));

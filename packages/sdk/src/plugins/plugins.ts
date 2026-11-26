@@ -689,6 +689,8 @@ export function foldHostOptions(base: HostOptions, contributions: Contribution[]
     return at < 0 ? -1 : at;
   };
   const lists: Record<string, ServedList> = { ...base.lists };
+  /** The closers of lists that hold runtime kinds. */
+  const listClosers: { by: string; close: () => Promise<void> }[] = [];
   for (const contribution of contributions) {
     for (const [name, declaration] of Object.entries(contribution.lists ?? {})) {
       const held = lists[name];
@@ -779,7 +781,7 @@ export function foldHostOptions(base: HostOptions, contributions: Contribution[]
       for (const name of added.kinds) {
         const kind = list.kinds[name];
         if (kind === undefined) continue;
-        if (['create', 'update', 'remove'].includes(added.operation.id) || (kind.operations ?? []).some((one) => one.id === added.operation.id)) {
+        if (['create', 'update', 'remove', 'start', 'stop'].includes(added.operation.id) || (kind.operations ?? []).some((one) => one.id === added.operation.id)) {
           problems.push(`plugin ${added.by} adds operation ${name}/${added.operation.id}, which kind ${name} of plugin ${kind.by} already has; the kind's own stays`);
           continue;
         }
@@ -809,7 +811,9 @@ export function foldHostOptions(base: HostOptions, contributions: Contribution[]
       delete lists[name];
       continue;
     }
-    const { served, provider } = servedList(base, list, undefined, servedProcesses(base));
+    const { served, provider, close } = servedList(base, list, undefined, servedProcesses(base));
+    // A runtime row the host started does not outlive the host.
+    if (Object.values(list.kinds).some((kind) => kind.class === 'runtime')) listClosers.push({ by: list.by, close });
     channels[list.channel] = served;
     schemes.set(name, list.by);
     resourceProviders[name] = provider as Schemes[string];
@@ -1086,6 +1090,7 @@ export function foldHostOptions(base: HostOptions, contributions: Contribution[]
    */
   const closers = [
     ...(base.closers ?? []),
+    ...listClosers,
     ...contributions.flatMap((contribution) => contribution.closers.map((close) => ({ by: contribution.by, close }))),
   ];
   if (closers.length > 0) options.closers = closers;

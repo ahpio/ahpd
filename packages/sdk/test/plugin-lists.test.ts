@@ -99,11 +99,12 @@ describe('registerKind', () => {
     expect(() => host.registerKind({} as never)).toThrow(/alpha.*registerKind.*channel/);
   });
 
-  it('refuses a kind with no rows or no invoke, and a runtime class', () => {
+  it('refuses a kind with no rows or no invoke, and a runtime kind with no start', () => {
     const { host } = pluginHost('alpha', context());
     expect(() => host.registerKind(todoKind({ rows: { list: () => [] } as never }))).toThrow(/registerKind.*rows\.read/);
     expect(() => host.registerKind(todoKind({ invoke: undefined as never }))).toThrow(/registerKind.*invoke/);
-    expect(() => host.registerKind(todoKind({ class: 'runtime' }))).toThrow(/registerKind.*class.*later step/);
+    // A runtime kind needs start, stop and processes, which this todo kind lacks.
+    expect(() => host.registerKind(todoKind({ class: 'runtime' }))).toThrow(/registerKind.*start/);
   });
 
   it('refuses an operation the host serves for every kind, and a relation with neither one nor many', () => {

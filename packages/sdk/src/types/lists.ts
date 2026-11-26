@@ -111,7 +111,12 @@ export interface ListKind {
   title: string;
   description?: string;
   icon?: string;
-  /** `data`, a record a person reads and changes. `runtime` is refused until the step that builds its hooks. */
+  /**
+   * `data`, a record a person reads and changes, or `runtime`, a record of
+   * something that runs, such as a service. A runtime kind gives `start` and
+   * `stop`, and a person starts and stops each row; the host never starts one
+   * by itself.
+   */
   class?: 'data' | 'runtime';
   /** The fields a row has, as JSON Schema with AHP's `enumLabels`. Create and update take it as their form. */
   schema: Record<string, unknown>;
@@ -144,6 +149,14 @@ export interface ListKind {
    * when an operation is `long`.
    */
   processes?: ListProcesses;
+  /**
+   * Run one row of a runtime kind, as a process: answer when what runs ends,
+   * such as when the service exits, and stop when `process.signal` aborts.
+   * The kind keeps the process under `process.id`.
+   */
+  start?(row: ListRow, process: ProcessWork): void | Promise<void>;
+  /** Bring one running row of a runtime kind down, such as `systemctl stop`. Called beside the abort of its process. */
+  stop?(row: ListRow): void | Promise<void>;
 }
 
 /** How a process is going: `running` is a resting state for a service and a passing one for a job. */
