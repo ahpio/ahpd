@@ -139,6 +139,12 @@ How a client draws a list, as a table, a board or a calendar, waits until the li
 | Filters are an array | Softov, 2026-11-25: "and not a array?" |
 | Views wait until the list and the kind are settled | Softov, 2026-11-25: "maybe view can be done one next steps. when structure is well defined?" |
 | A filter is `{ field, type }`, and free text is `search` | (defaulted: no `id` to repeat the field) |
+| A kind joins a list by its channel, `channel: 'x-ahpd-tickets'` | Softov, 2026-11-25: "list: 'ticket' instead channel" |
+| The instance in a row's URI is optional: a kind with no instances uses `<name>://<id>` | Softov, 2026-11-25: "the instance onto uri or not should be optional" |
+| Every kind in one list uses the same URI form, with or without an instance | (defaulted: in one list with both, `issue://a/b` could be instance `a` and id `b`, or id `a/b`) |
+| The host merges one page from every kind and every instance | Softov, 2026-11-25: "Merge then" |
+| A plugin may add operations to the kinds of a list it did not register, as deploy does to services | Softov, 2026-11-25: "a way to register operations onto kinds? its interesting to have something like that" |
+| A connector that cannot be reached: its rows are left out, and the alert goes on the connector | Softov, 2026-11-25: "rows out, alert onto the connector" |
 
 ## Example: brbyte Desk tickets from several connectors
 
@@ -245,9 +251,7 @@ A closed ticket lists no `answer`.
 
 ### Open points of this example
 
-1. **Paging across instances.** The default sort is by date across production and staging. Does the host ask each instance for a page and merge them, or does the list show one instance at a time?
-2. **A connector that fails.** An instance's Desk cannot be reached. Are its rows left out with an alert on the list, or is the whole page refused?
-3. **Who may read which instance.** A connector has an owner. Does a reader see only the instances of connectors they may use?
+1. **Who may read which instance.** The channel's grant, such as `ticket:get`, says who may read tickets at all. It does not know whose connector a row came from. Ana's own Desk connector would show her tickets to anyone with `ticket:get`. A rule per row or per instance is needed, as a records channel's `mayRead` and the CRM brief's "the owner by default" are.
 
 ## Example: a machine's services
 
@@ -436,9 +440,7 @@ The host finds the kind from the row, and hands the call to the mail plugin's `i
 
 ## Open points
 
-1. **A kind with one instance.** Does a host-kept todo still carry an instance in its URI, as `todo://local/t-1`? Or is the instance left out when a kind has only one?
-2. **Paging across sources.** One page of tickets sorted by date, from Desk and from GitHub, means merging two sources. Does the host merge, or does a client page per kind or per instance?
-3. **A list filter on a field some kinds lack.** Leaving those rows out, as *Step 2* says, or keeping them unfiltered?
-4. **An operation from another plugin.** beorn's deploy runs on every service, whatever its kind. Can a plugin add an operation to rows of kinds it does not register?
-5. **Long operations.** A deploy takes minutes. Is a status on the row enough, or does an operation become a run with its own lifecycle, as an automation run is?
-6. **The word "kind".** It also names `Operation.kind` in ahpd today, which is the same meaning, and `KindOperation`.
+1. **A list filter on a field some kinds lack.** A list declares a filter on `ticket`. The `email` kind has a `ticket` field and the `call` kind has none. With `?ticket=t-1042`, are the calls left out, as *Step 2* says, or shown unfiltered?
+2. **Long operations.** Today a row has `operation: { id, status }` while one runs: no progress, no cancel, no log. An automation run is its own channel, with a lifecycle, progress, a log and cancel. Proposed: a quick operation keeps the row status, and an operation that says it is long answers with a run, as a deploy would.
+3. **How a plugin adds operations to other kinds.** `registerOperation` in *Example: a machine's services* is one way. Which kinds it reaches, and who may add one, are not decided.
+4. **The word "kind".** `Operation.kind` names the tunnel kind that declared an operation, the same meaning as here, so an id stays `<kind>/<operation>`. This may not be an open point at all.
