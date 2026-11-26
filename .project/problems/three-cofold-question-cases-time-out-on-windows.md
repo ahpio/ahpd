@@ -22,8 +22,13 @@ On 2026-11-26 CI's `windows (3/4)` on #481, run 45739041674, failed `agent-cofol
 
 ## Cause
 
-Unknown. The same job timed out two plugin import cases at 20 s, so the runner was slow.
-Whether that is the whole cause is not checked.
+Each of the four waits that timed out comes after the shell call runs.
+The waits are at lines 93, 145 and 195 of the questions file, and at line 832 of the tools file.
+On Windows, cofold runs the call through a real `powershell.exe -NoProfile -NonInteractive -Command`, as `DEFAULT_SHELL` in `@cofold/tools` says.
+A PowerShell start on a busy Windows runner can take more than 15 s.
+The same job on #429 timed out two plugin import cases at 20 s, so that runner was slow.
+The question cases with a file tool or a fetch, in the same file, did not fail.
+`ToolsConfig.shell` in `@cofold/tools` 0.4.2 is a boolean, so ahpd cannot give cofold another shell.
 
 ## Impact
 
