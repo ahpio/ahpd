@@ -19,6 +19,7 @@
  */
 
 import { kindOffers, kindOperations } from '../kinds/operations.js';
+import { HOST_CATALOGS, translated, type Catalogs } from '../i18n.js';
 import type { ProcessesServing } from './processes.js';
 import { absentResource, asFile, splitResource } from '../resources/records.js';
 import { INVALID_PARAMS, RpcError } from '../rpc.js';
@@ -299,6 +300,39 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
   wire();
 
   /**
+   * One operation in a reader's locale. A kind's create is its title and
+   * description from its plugin's catalogs; update and remove are the host's
+   * words at `operations.list`, with the kind's title in the question; a
+   * kind's own operation and an added one are read at `operations.<id>` in
+   * the catalogs of the plugin that wrote it. A word no catalog has stays
+   * English.
+   */
+  const inLocale = (operation: Operation, locale: string | undefined, kind: ServedListKind | undefined, added: ServedListOperation | undefined): Operation => {
+    if (locale === undefined) return operation;
+    const name = operation.id.slice(operation.id.indexOf('/') + 1);
+    const words = (path: readonly string[], catalogs: readonly (Catalogs | undefined)[]): Operation => ({
+      ...operation,
+      ...(operation.label === undefined ? {} : { label: translated([...path, 'label'], operation.label, locale, ...catalogs) }),
+      ...(operation.description === undefined ? {} : { description: translated([...path, 'description'], operation.description, locale, ...catalogs) }),
+      ...(operation.confirmation === undefined ? {} : { confirmation: translated([...path, 'confirmation'], operation.confirmation, locale, ...catalogs) }),
+    });
+    if (added !== undefined) return words(['operations', added.operation.id], [added.catalogs]);
+    if (kind === undefined) return operation;
+    const title = translated(['kinds', kind.name, 'title'], kind.title, locale, kind.catalogs);
+    if (name === 'create') {
+      const description = kind.description === undefined ? undefined : translated(['kinds', kind.name, 'description'], kind.description, locale, kind.catalogs);
+      return { ...operation, label: title, ...(description === undefined ? {} : { description }) };
+    }
+    if (name === 'update' || name === 'remove') {
+      const said = words(['operations', 'list', name], [HOST_CATALOGS]);
+      if (name !== 'remove') return said;
+      const question = translated(['operations', 'list', 'remove', 'confirmation'], 'Remove this {kind}?', locale, HOST_CATALOGS);
+      return { ...said, confirmation: question.replace('{kind}', title.toLowerCase()) };
+    }
+    return words(['operations', name], [kind.catalogs]);
+  };
+
+  /**
    * What runs an operation id: a kind's own, an operation a plugin added onto
    * that kind, or one added onto the list, by the part before the slash.
    */
@@ -319,14 +353,20 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
   const channel: PluginChannel = {
     grant: `${list.name}:get` as Grant,
     describe: () => ({ title: list.title, ...(list.description === undefined ? {} : { description: list.description }) }),
-    listOperations: () => addedOnList().map(listOperation).map(({ status: _status, error: _error, kind: _kind, offered: _offered, ...rest }) => rest),
-    kinds: () => Object.fromEntries(kinds().map((kind) => [kind.name, {
-      title: kind.title,
-      ...(kind.description === undefined ? {} : { description: kind.description }),
-      ...(kind.icon === undefined ? {} : { icon: kind.icon }),
-      schema: kind.schema,
-      operations: operations().filter((one) => one.kind === kind.name).map(({ status: _status, error: _error, kind: _kind, offered: _offered, ...rest }) => rest),
-    }])),
+    listOperations: (locale) => addedOnList().map((added) => inLocale(listOperation(added), locale, undefined, added))
+      .map(({ status: _status, error: _error, kind: _kind, offered: _offered, ...rest }) => rest),
+    kinds: (locale) => Object.fromEntries(kinds().map((kind) => {
+      const description = kind.description === undefined ? undefined : translated(['kinds', kind.name, 'description'], kind.description, locale, kind.catalogs);
+      return [kind.name, {
+        title: translated(['kinds', kind.name, 'title'], kind.title, locale, kind.catalogs),
+        ...(description === undefined ? {} : { description }),
+        ...(kind.icon === undefined ? {} : { icon: kind.icon }),
+        schema: kind.schema,
+        operations: operations().filter((one) => one.kind === kind.name)
+          .map((one) => inLocale(one, locale, kind, addedOnto(kind).find((added) => `${kind.name}/${added.operation.id}` === one.id)))
+          .map(({ status: _status, error: _error, kind: _kind, offered: _offered, ...rest }) => rest),
+      }];
+    })),
     snapshot: async (uri, reader) => {
       const query = queryOf(list, uri);
       const records = await rowsOf(query, reader);

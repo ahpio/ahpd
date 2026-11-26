@@ -11,6 +11,7 @@
  * instances and no paging, and kinds of class `data`.
  */
 
+import type { Catalogs } from '../i18n.js';
 import type { KindOperation } from './kinds.js';
 import type { Principal } from './users.js';
 
@@ -242,6 +243,8 @@ export interface ServedListOperation extends ListOperation {
   onto?: string[];
   /** A warning on the plugin's row. */
   problem?: (line: string) => void;
+  /** The catalogs of that plugin, where the operation's words are translated. */
+  catalogs?: Catalogs;
   /** Set by the host: how a `processChanged` reaches the channel of processes. */
   processChanged?: (id: string) => void;
 }
@@ -260,6 +263,8 @@ export interface ServedListKind extends ListKind {
   processChanged?: (id: string) => void;
   /** A warning on the row of the plugin that registered it, for a kind that failed to answer. */
   problem?: (line: string) => void;
+  /** The catalogs of that plugin, where the kind's words and its own operations are translated. */
+  catalogs?: Catalogs;
 }
 
 /** One list as the fold joins it: the first declaration's words, every declaration's filters and sorts, and its kinds by name. */

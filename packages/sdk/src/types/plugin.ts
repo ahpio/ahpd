@@ -361,13 +361,14 @@ export interface PluginChannel {
   /** What a client shows for the channel, read when the host advertises it. */
   describe?(): { title: string; description?: string };
   /**
-   * The kinds the channel holds, by name, read when the host advertises it:
+   * The kinds the channel holds, by name, read when the host advertises it,
+   * in the reader's `locale`:
    * each kind's title, description, schema and every operation in full. A
    * channel that holds no kinds leaves it out.
    */
-  kinds?(): Record<string, unknown>;
+  kinds?(locale?: string): Record<string, unknown>;
   /** The operations on the channel as a whole that no kind holds, each in full, read when the host advertises it. */
-  listOperations?(): unknown[];
+  listOperations?(locale?: string): unknown[];
   /**
    * The operations this channel offers to `x-ahpd/invokeOperation`, which
    * serves them at `<scheme>://` beside the daemon's own channels. Only that

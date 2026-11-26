@@ -955,6 +955,8 @@ A process is something a list's record runs: a service, a deploy, a CI job. A ki
 
 A plugin may add an operation onto kinds that other plugins registered, with `registerOperation({ channel, kinds, operation, invoke, processes? })`. It lands on each named kind under that kind's id, such as `systemd/deploy`, and reaches every row of the kind; its `offered` narrows it to some rows. With no `kinds` it is on the list as a whole, as `<plugin>/<id>`, and `ahpd.channels` lists it in the list's `operations`. `invoke(row, input, process?)` is the adding plugin's. A long one keeps its processes in its own `processes`, at `x-ahpd-processes://<list>/<plugin>/<id>`, and the handle's `processChanged(id)` says one changed. An id a kind already has is reported, and the kind's own stays. The contract key is `operations`.
 
+A list reaches each reader in their language. A kind's title and description are read at `kinds.<name>` in its plugin's catalogs, and its own operations at `operations.<id>`, as a tunnel kind's are. An added operation is read in the catalogs of the plugin that added it. The host translates update and remove, and names the kind in the remove question. A word no catalog has stays English.
+
 ### An engine of your own
 
 A plugin may register an engine: the form a person fills in, the fields only

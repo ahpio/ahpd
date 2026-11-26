@@ -636,7 +636,7 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
           ...(advertisedSchemes() === undefined ? {} : { 'ahpd.resourceProviders': advertisedSchemes() }),
           // The channels plugins serve, so a client can offer one before it
           // has a URI to subscribe to.
-          ...(advertisedChannels() === undefined ? {} : { 'ahpd.channels': advertisedChannels() }),
+          ...(advertisedChannels(connection.locale) === undefined ? {} : { 'ahpd.channels': advertisedChannels(connection.locale) }),
           // The `x-` commands the daemon and plugins serve, so a client
           // can offer one before it sends it.
           ...(advertisedMethods() === undefined ? {} : { 'ahpd.methods': advertisedMethods() }),
