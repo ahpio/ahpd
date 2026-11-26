@@ -40,6 +40,7 @@ host.registerList({
   title: 'Tickets',
   description: 'Requests people make for help.',
   icon: 'issues',
+  instances: true,
   filters: [
     { field: 'status', type: 'enum' },
     { field: 'createdAt', type: 'range' },
@@ -54,13 +55,14 @@ host.registerList({
 
 | Part | What it is |
 | --- | --- |
-| `name` | One row is `<name>://<instance>/<id>`. |
-| `channel` | The list's channel scheme, such as `x-ahpd-tickets`, so the list is `x-ahpd-tickets://`. Required. A declaration with the same `name` and another `channel` is a warning on its plugin's row. |
+| `name` | The scheme of one row, and the subject of the list's grants. |
+| `instances` | Whether a row's URI carries an instance. With it, a row is `<name>://<instance>/<id>`. Without it, a row is `<name>://<id>`, and a kind that adds an instance is refused. Every kind in the list follows the list, and a declaration with another `instances` is a warning on its plugin's row. |
+| `channel` | The list's channel scheme, such as `x-ahpd-tickets`, so the list is `x-ahpd-tickets://`. Required. Any plugin may name an `x-ahpd-*` scheme. A declaration with the same `name` and another `channel` is a warning on its plugin's row, and a list on a scheme a `registerChannel` already took, or the other way round, is refused. |
 | `title`, `description`, `icon` | What a client shows for the list. The first declaration loaded gives them, and one that differs is a warning on its plugin's row. |
-| `filters` | An array of filters, in the order a client draws them. A filter is `{ field, type }`, and the field is its name in a query. A filter type is `enum`, `range`, `uri` or `boolean`. The schema is not changed. |
+| `filters` | An array of filters, in the order a client draws them. A filter is `{ field, type }`, and the field is its name in a query. A filter type is `enum`, `range`, `uri` or `boolean`. A `uri` filter also names the `channel` its picker lists. The schema is not changed. |
 | `search` | The fields a free-text search reads, as `?search=`. |
 | `sorts`, `defaultSort` | The fields a client may sort by, and the order with none asked. `-` is descending. |
-| `page` | The page size. A list with no `page` sends every row on subscribe, as a records channel does today. |
+| `page` | The page size. A page answers one cursor for the next, which the client sends back as it got it. A list with no `page` sends every row on subscribe, as a records channel does today. |
 
 The grants are the list's: `<name>:get`, `<name>:put` and `<name>:delete`, as the tunnels' are. An operation may name its own grant.
 
@@ -72,6 +74,17 @@ x-ahpd-tickets://?status=1,2&client=client://desk-production/5120&sort=-createdA
 
 The host refuses a filter or a sort the list does not declare.
 
+A kind takes part in a filter when its field has the filter's type, read from the kind's schema:
+
+| Filter type | A field that matches |
+| --- | --- |
+| `enum` | has `enum` |
+| `range` | is a `number` or an `integer`, or a `string` with `format: date-time` |
+| `uri` | is a `string` with `format: uri`, and the kind's relation for it names the filter's `channel` |
+| `boolean` | is a `boolean` |
+
+One page merges the rows of every kind and every instance. The cursor is the host's: it holds where each kind and each instance stopped, and a client reads nothing in it.
+
 ## Step 2: `registerKind`
 
 A kind is one type of record in a list, from any plugin.
@@ -82,7 +95,6 @@ const tickets = host.registerKind({
   name: 'desk-ticket',
   title: 'Desk ticket',
   class: 'data',
-  source: 'kind',
   schema,
   operations,
   relations: {
@@ -93,33 +105,40 @@ const tickets = host.registerKind({
   invoke: (operation, row, report, input) => ...,
 });
 tickets.addInstance({ id: 'desk-production', title: 'Desk' });
+tickets.changed('desk-production', '18432');
 ```
 
 | Part | What it is |
 | --- | --- |
 | `channel` | The channel of the list it joins, such as `x-ahpd-tickets`. |
-| `name`, `title` | Its name, unique in the list. An operation id is `<kind>/<operation>`, as `devtunnel/create` is today. |
-| `class` | `data`: a record a person reads and changes. `runtime`: a process with a state, as a tunnel is. |
-| `source` | `host`: the host keeps the rows, as for tunnels and todos. `kind`: the rows are the kind's to answer, from `rows`, as Desk's tickets are Desk's. |
+| `name`, `title`, `description`, `icon` | Its name, unique in the list, and what a client shows for it. An operation id is `<kind>/<operation>`, as `devtunnel/create` is today. |
+| `class` | `data`: a record a person reads and changes. `runtime`: a process with a state, as a tunnel is. The host calls its `start` and `stop` hooks, as it calls a tunnel kind's. |
 | `schema` | The fields a row has, as JSON Schema with AHP's `enumLabels`. Filters and sorts name these fields and do not change them. |
-| `operations` | The kind's own verbs, as `KindOperation` is today, run by `x-ahpd/invokeOperation`. |
-| `relations` | Which fields hold the URI of a row of another list, one or many. A form draws a picker from that list. |
+| `operations` | The kind's own verbs, as `KindOperation` is today, run by `x-ahpd/invokeOperation`. An operation with `long: true` answers with a run, and a client knows before it invokes it. |
+| `invoke` | Runs one of the kind's operations on a row, as a tunnel kind's `invoke` does. |
+| `rows` | Where the kind's rows are: `list` answers one page for one instance, filtered and sorted, and `read` answers one row. |
+| `relations` | Which fields hold the URI of a row of another list, one or many. The key is the field on this row. The value after `one` or `many` is the field on the other list that points back: `many: 'ticket'` is the `ticket` field of each interaction. A form draws a picker from that list. |
 | instances | Where a row comes from: a connector, a machine, an account. `addInstance` and `removeInstance` change them at run time, and the list's subscribers are told. |
+| `changed` | On the handle: `changed(instance, id)` says a row changed, such as after an operation, or when a webhook or a poll heard of a change outside ahpd, and the host reads it again and tells the list's subscribers. |
 
-A list filter names a field. A kind that lacks the field, or has it with another type, takes no part in that filter. Its rows are left out while the filter is set.
+Who keeps the rows follows who controls the list. The host keeps the rows of the channels it controls, such as `x-ahpd-tunnels://`, and a tunnel kind keeps none. The rows of a list a plugin registers are its kinds' to keep and answer, through `rows`: the host keeps the list's structure, its declaration and its kinds, and no row.
+
+A list filter names a field. A kind that lacks the field, or has it with another type, takes no part in that filter. Its rows are left out while the filter is set. A sort works the same way: a kind that cannot sort by the field asked has its rows left out while that sort is set.
 
 ## What the host does
 
 - It serves the list's `channel` with the rows of every kind and every instance, filtered, sorted and paged as the list declares.
-- For a `host` kind, it keeps the rows and serves create, update and remove with the kind's schema as their form.
-- For a `kind` kind, it asks the kind's `rows` for each page and each read, and keeps no copy.
-- It serves one row at `<name>://<instance>/<id>`, read with `resourceRead`.
+- It asks each kind's `rows` for each page and each read, and keeps no copy.
+- It serves create, update and remove with the kind's schema as their form, and hands each to the kind's `invoke`.
+- It serves one row at `<name>://<instance>/<id>`, or `<name>://<id>` in a list with no `instances`, read with `resourceRead`.
+- For a `runtime` kind, it calls `start` and `stop` as it does for a tunnel kind.
 - It lists the list in `ahpd.channels`, with `kinds`, one entry per kind, as [a-todo-app-is-the-first-agent-app.md](a-todo-app-is-the-first-agent-app.md) says.
 
 ## Who writes
 
 - **No open branch of `ahpio/ahpd`** changes tunnels, `invokeOperation` or the records channel. Nothing here is built.
 - **beorn's fork** serves services and deploy on their own channels, `x-hh-services://` and `x-hh-deploys://`. *Example: a machine's services* is what they would become.
+- **Tunnels** move onto `registerList` and `registerKind` once runtime kinds exist, not before.
 - **ahpw** draws tunnels, agents and connectors with code for each. A list drawn from this shape needs none.
 - **The todo and CRM briefs** keep their app and their CRM. Where they say how a list is declared, filtered or named, this brief replaces them.
 
@@ -139,9 +158,9 @@ How a client draws a list, as a table, a board or a calendar, waits until the li
 | Filters are an array | Softov, 2026-11-25: "and not a array?" |
 | Views wait until the list and the kind are settled | Softov, 2026-11-25: "maybe view can be done one next steps. when structure is well defined?" |
 | A filter is `{ field, type }`, and free text is `search` | (defaulted: no `id` to repeat the field) |
-| A kind joins a list by its channel, `channel: 'x-ahpd-tickets'` | Softov, 2026-11-25: "list: 'ticket' instead channel" |
+| A kind joins a list by its channel, `channel: 'x-ahpd-tickets'` | Softov, 2026-11-25: "list: 'ticket' instead channel", and asked again, chose `channel` |
 | The instance in a row's URI is optional: a kind with no instances uses `<name>://<id>` | Softov, 2026-11-25: "the instance onto uri or not should be optional" |
-| Every kind in one list uses the same URI form, with or without an instance | (defaulted: in one list with both, `issue://a/b` could be instance `a` and id `b`, or id `a/b`) |
+| The list says with `instances` whether its URIs carry an instance, and every kind in it follows. | Softov, 2026-11-25, chose "Per list" (in one list with both forms, `issue://a/b` could be instance `a` and id `b`, or id `a/b`) |
 | The host merges one page from every kind and every instance | Softov, 2026-11-25: "Merge then" |
 | A plugin may add operations to the kinds of a list it did not register, as deploy does to services | Softov, 2026-11-25: "a way to register operations onto kinds? its interesting to have something like that" |
 | A connector that cannot be reached: its rows are left out, and the alert goes on the connector | Softov, 2026-11-25: "rows out, alert onto the connector" |
@@ -153,6 +172,19 @@ How a client draws a list, as a table, a board or a calendar, waits until the li
 | "Kind" keeps its meaning in `Operation.kind`, and an operation id stays `<kind>/<operation>` | Softov, 2026-11-25: "Drop it" |
 | The list of a machine's programs is `services` | Softov, 2026-11-25: "services" |
 | A service's deploy declaration is written under its own grant, which no default role holds | Softov, 2026-11-25: "Its own grant" |
+| Any plugin may name an `x-ahpd-*` scheme | Softov, 2026-11-25, chose "Any plugin" |
+| A `registerChannel` and a `registerList` on the same scheme: the second is refused | Softov, 2026-11-25, chose "Refused" |
+| `class: 'runtime'` gets `start` and `stop` hooks from the host | Softov, 2026-11-25, chose "Runtime gets hooks" |
+| A kind says a row changed with `changed(instance, id)` on its handle | Softov, 2026-11-25, chose "Handle method" |
+| A merged page answers one cursor, which only the host reads | Softov, 2026-11-25, chose "One opaque cursor" |
+| A kind that cannot sort by the field asked has its rows left out, as for a filter | Softov, 2026-11-25, chose "Left out" |
+| A field takes part in a filter by a fixed mapping from its schema type to the filter's type | Softov, 2026-11-25, chose "Fixed mapping" |
+| In a relation, the value after `one` or `many` is the field on the other list that points back | Softov, 2026-11-25, chose "Field on the other side" |
+| A long operation says so with `long: true` on its declaration | Softov, 2026-11-25, chose "long: true on it" |
+| A `uri` filter keeps its `channel`, and a kind whose relation names another channel takes no part in it | Softov, 2026-11-25, chose "Keep both" |
+| Tunnels move onto lists after runtime kinds exist | Softov, 2026-11-25, chose "After runtime kinds" |
+| The host hands create, update and remove on a plugin's list to the kind's `invoke`, after checking the input against the kind's schema | Softov, 2026-11-25, chose "Through invoke" |
+| Who keeps the rows follows who controls the list: the host for its own channels, such as tunnels, and the kinds for a list a plugin registers. `registerKind` has no `source` | Softov, 2026-11-25: "the host keep the rows for the channels it control. like tunnels", and "Imagine 1M tickets and the host keeping it" |
 
 ## Example: brbyte Desk tickets from several connectors
 
@@ -166,7 +198,7 @@ The `desk` plugin declares the list, so it works with no other plugin. A GitHub 
 
 ```ts
 host.registerList({
-  name: 'ticket', channel: 'x-ahpd-tickets', title: 'Tickets',
+  name: 'ticket', channel: 'x-ahpd-tickets', title: 'Tickets', instances: true,
   filters: [
     { field: 'status', type: 'enum' },
     { field: 'client', type: 'uri', channel: 'x-ahpd-clients' },
@@ -188,7 +220,7 @@ The plugin registers the kind when it loads, with no instance. Each Desk connect
 ```ts
 const tickets = host.registerKind({
   channel: 'x-ahpd-tickets', name: 'desk-ticket', title: 'Desk ticket',
-  class: 'data', source: 'kind',
+  class: 'data',
   schema: deskTicketSchema,               // every field readOnly: a ticket changes by an operation only
   operations: [answer, setStatus, assign],
   relations: {
@@ -267,7 +299,7 @@ beorn proposed it on #474, from their `services` and `deploy` plugins for proces
 
 ```ts
 host.registerList({
-  name: 'service', channel: 'x-ahpd-services', title: 'Services',
+  name: 'service', channel: 'x-ahpd-services', title: 'Services', instances: true,
   description: 'The programs this machine runs.',
   filters: [
     { field: 'status', type: 'enum' },
@@ -288,7 +320,8 @@ process-compose and systemd are two kinds from two plugins. Each has its own for
 // in the process-compose plugin
 const compose = host.registerKind({
   channel: 'x-ahpd-services', name: 'process-compose', title: 'process-compose',
-  class: 'runtime', source: 'host',
+  class: 'runtime',
+  rows: processCompose.rows,
   schema: {
     type: 'object', required: ['name', 'command'],
     properties: {
@@ -306,19 +339,21 @@ const compose = host.registerKind({
     { id: 'stop', label: 'Stop', icon: 'debug-stop', offered: (s) => s.status === 'running' },
     { id: 'restart', label: 'Restart', icon: 'debug-restart', offered: (s) => s.status === 'running' },
   ],
+  start: (row, report) => processCompose.up(row, report),
+  stop: (row) => processCompose.down(row),
   invoke: (operation, row, report) => processCompose.control(row, operation),
 });
 compose.addInstance({ id: hostname(), title: hostname() });
 
 // in a systemd plugin: the same list, another kind and another form
-host.registerKind({ channel: 'x-ahpd-services', name: 'systemd', title: 'systemd unit', class: 'runtime', source: 'host', schema: unitSchema, operations: unitOperations, invoke: systemd });
+host.registerKind({ channel: 'x-ahpd-services', name: 'systemd', title: 'systemd unit', class: 'runtime', schema: unitSchema, operations: unitOperations, rows: units, start, stop, invoke: systemd });
 ```
 
 A `live` field is set by the process and stored nowhere. A client draws it as state, never in a form, and a write to it is refused. The mark is on the schema because it says what the field is, not how a list uses it.
 
 ### How the instance is correlated
 
-Each ahpd host keeps its own machine's services, so a kind has one instance: the machine.
+Each ahpd host serves its own machine's services, so a kind has one instance: the machine.
 
 | Where | Value |
 | --- | --- |
@@ -336,14 +371,14 @@ beorn's deploy is one operation on every service with a deploy declaration, what
 host.registerOperation({
   channel: 'x-ahpd-services',
   kinds: ['process-compose', 'systemd'],
-  operation: { id: 'deploy/deploy', label: 'Deploy', icon: 'rocket',
+  operation: { id: 'deploy/deploy', label: 'Deploy', icon: 'rocket', long: true,
                input: { type: 'object', required: ['version'], properties: { version: { type: 'string', title: 'Version' } } },
                offered: (s) => s.deploy !== undefined },
   invoke: (row, report, input) => deploy(row, input.version, report),
 });
 ```
 
-`registerOperation` is new: an operation from a plugin onto kinds it did not register. It reaches every record of the kinds it names, and `offered` shows it only on a service with a deploy declaration.
+`registerOperation` is new: an operation from a plugin onto kinds it did not register. It reaches every record of the kinds it names, and `offered` shows it only on a service with a deploy declaration. Its id, `deploy/deploy` here, is open point 1.
 
 `build` and `check` are commands the host runs. beorn keeps them on the service's own record, so `deploy:deploy` alone chooses no command. Who may write the deploy declaration decides who may run code on the machine.
 
@@ -356,7 +391,7 @@ host.registerOperation({
 
 ## Example: a CRM with kinds from several plugins
 
-A `crm` plugin keeps clients, tickets and interactions on the host. A mail plugin adds emails to the interactions, and a phone plugin adds calls. No plugin owns the interactions list. This is the case for several plugins in one list, rows the host keeps, and links between lists.
+A `crm` plugin keeps clients, tickets and interactions in its own store. A mail plugin adds emails to the interactions, and a phone plugin adds calls. No plugin owns the interactions list. This is the case for several plugins in one list, each keeping its own kind's rows, and links between lists.
 
 It is [a-crm-is-the-second-example-kind.md](a-crm-is-the-second-example-kind.md), written with the list's filters and sorts.
 
@@ -385,7 +420,7 @@ Every kind in `interactions` has the fields the list filters and sorts on: `tick
 
 ```ts
 // in @local/crm
-host.registerKind({ channel: 'x-ahpd-interactions', name: 'note', title: 'Note', class: 'data', source: 'host',
+host.registerKind({ channel: 'x-ahpd-interactions', name: 'note', title: 'Note', class: 'data', rows: notes,
   schema: { type: 'object', required: ['client', 'summary'], properties: {
     client:  { type: 'string', format: 'uri', title: 'Client' },
     ticket:  { type: ['string', 'null'], format: 'uri', title: 'Ticket' },
@@ -394,17 +429,17 @@ host.registerKind({ channel: 'x-ahpd-interactions', name: 'note', title: 'Note',
   relations: { client: { channel: 'x-ahpd-clients', one: 'client' }, ticket: { channel: 'x-ahpd-tickets', one: 'ticket' } } });
 
 // in @local/mail
-host.registerKind({ channel: 'x-ahpd-interactions', name: 'email', title: 'Email', class: 'data', source: 'host',
+host.registerKind({ channel: 'x-ahpd-interactions', name: 'email', title: 'Email', class: 'data', rows: emails,
   schema: emailSchema,                 // client, ticket, at, summary, plus to, subject, body, state
   operations: [{ id: 'send', label: 'Send', icon: 'send', offered: (email) => email.state === 'draft' }],
   relations: { client: { channel: 'x-ahpd-clients', one: 'client' }, ticket: { channel: 'x-ahpd-tickets', one: 'ticket' } },
   invoke: (operation, row, report) => mail.send(row, report) });
 
 // in @local/phone
-host.registerKind({ channel: 'x-ahpd-interactions', name: 'call', title: 'Call', class: 'data', source: 'host', schema: callSchema, relations });
+host.registerKind({ channel: 'x-ahpd-interactions', name: 'call', title: 'Call', class: 'data', rows: calls, schema: callSchema, relations });
 ```
 
-A host-kept kind has one instance, the host. Its rows are `interaction://local/i-88`, or `interaction://i-88` if the instance is left out, which is the open point 1 of this brief.
+The interactions list declares no `instances`, so a row is `interaction://i-88`. The tickets list declares `instances` for Desk's connectors, so the CRM's ticket kind adds an instance of its own, `local`: `ticket://local/t-1042`.
 
 ### Links between lists
 
@@ -420,7 +455,7 @@ A ticket's interactions are read as `x-ahpd-interactions://?ticket=ticket://loca
 
 ```jsonc
 { "jsonrpc": "2.0", "id": 9, "method": "x-ahpd/invokeOperation",
-  "params": { "channel": "x-ahpd-interactions://", "operationId": "email/send", "target": { "id": "interaction://local/i-88" } } }
+  "params": { "channel": "x-ahpd-interactions://", "operationId": "email/send", "target": { "id": "interaction://i-88" } } }
 ```
 
 The host finds the kind from the row, and hands the call to the mail plugin's `invoke`. While the mail server answers, the row's `operation` is `{ "id": "email/send", "status": "running" }`. Later the mail plugin learns the email bounced and changes the row itself, and every reader of the list hears it.
@@ -434,7 +469,19 @@ The host finds the kind from the row, and hands the call to the mail plugin's `i
 
 ## Open points
 
-None of the points the drafts raised is open. *Not covered yet* lists what the brief does not say.
+1. **The id of an operation a plugin registers onto kinds it did not register.** An operation id is `<kind>/<operation>`, but deploy's is `deploy/deploy`, where `deploy` is the plugin and no kind. Deploy alone is one case, so these are written to settle it from more than one:
+
+   | Plugin | Operation | Onto | What it shows |
+   | --- | --- | --- | --- |
+   | deploy | Deploy a version | `process-compose` and `systemd` in `services` | long, and on some records only, by `offered` |
+   | crm | Link to a ticket | `email` and `call` in `interactions`, kinds of the mail and phone plugins | onto kinds of two other plugins, with a ticket picker as input |
+   | a translation plugin | Translate | any `data` kind with text fields, in any list | onto kinds of several lists |
+   | an agent plugin | Send to an agent | `desk-ticket` and a GitHub kind in `tickets` | onto rows kept outside ahpd |
+   | a backup plugin | Export | every kind of a list | on the list as a whole, `list` scope, no row |
+
+2. **Desk and the CRM on the same lists.** Desk's tickets relate to `client://desk-production/5120` and to interactions, so the `desk` plugin declares `clients` and `interactions` with `instances`. The CRM declares both without. With both plugins loaded, the first declaration gives the form, and the other plugin's rows do not fit it.
+
+*Not covered yet* lists what the brief does not say.
 
 ## Not covered yet
 
