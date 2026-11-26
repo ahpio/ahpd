@@ -26,7 +26,8 @@ The host keeps the list's structure and no row: each snapshot and each read asks
 
 - New tests: `kind-operations` (3), `plugin-lists` (19), `list-channel` (8) and `lists` (3).
 - The sdk suite runs 5399 cases, the server suite 2006 and the devtunnel suite 101, with no failure.
-- `pnpm typecheck` and `pnpm build` pass.
+- `pnpm typecheck`, `pnpm build` and `pnpm docs:build` pass.
+- [A list of your own](../../../../docs/plugins/PLUGINS.md#a-list-of-your-own) documents the two registrations, at Softov's ask on 2026-11-26.
 
 ## Departures from the plan
 
@@ -41,4 +42,4 @@ The host keeps the list's structure and no row: each snapshot and each read asks
 ## Left for later
 
 - The operations of a list are sent in English: a list has no catalogs yet.
-- No user docs or release note: no task named them. The brief's later steps add instances, paging, the other filters, relations and runtime kinds.
+- The brief's later steps add instances, paging, the other filters, relations and runtime kinds.
