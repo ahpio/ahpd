@@ -203,7 +203,8 @@ Each plan here has every task `implemented`, and closes as `built` on Softov's w
 ## Next
 
 - Planned on 2026-11-25 with Softov, before the bump to rc.1: [a default agent is chosen](../plans/host/20261125-2148-a-default-agent-is-chosen/plan.md), then [a bot's agent changes and its fields clear](../plans/bots/20261125-2148-a-bots-agent-changes-and-clears/plan.md). Both are merged: #481 and #482. Both plans stay `active` until Softov's review says built. His daemon needs a restart to load them.
-- #480 from beorn is merged, with commits 02dcf48c0 and 3dea6d552 on top: a refused plugin move keeps what moved, and the Windows helper logs the move and its refusal.
+- #480 from beorn is merged, with commits 02dcf48c0 and 3dea6d552 on top. A refused plugin move keeps what moved, and the Windows helper logs it.
+- The ahpw bot form is built: ahpw #148 holds its plan and #149 the form. Both merge when green.
 - The bot talk is merged: #321, then #322 for a host with no users. What was fixed and why is in the plans' Resume states and implemented records.
   - Found on main: [the chats of a bot talk share one log](../plans/bots/20261123-0945-each-bot-chat-keeps-its-own-log/plan.md).
   - A Back chat is titled `@main/<bot>/<person>`, with `main` fixed for now (Softov, 2026-11-13). The host name in `root:<host>` is `os.hostname()`, and nothing sets it yet; see [briefs/the-root-owner-has-a-fixed-host-name.md](../briefs/the-root-owner-has-a-fixed-host-name.md).
