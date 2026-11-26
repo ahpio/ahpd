@@ -43,7 +43,7 @@ host.registerList({
   filters: [
     { field: 'status', type: 'enum' },
     { field: 'createdAt', type: 'range' },
-    { field: 'client', type: 'uri', list: 'clients' },
+    { field: 'client', type: 'uri', channel: 'x-ahpd-clients' },
   ],
   search: ['title'],
   sorts: ['createdAt', 'updatedAt', 'status'],
@@ -78,7 +78,7 @@ A kind is one type of record in a list, from any plugin.
 
 ```ts
 const tickets = host.registerKind({
-  list: 'ticket',
+  channel: 'x-ahpd-tickets',
   name: 'desk-ticket',
   title: 'Desk ticket',
   class: 'data',
@@ -86,8 +86,8 @@ const tickets = host.registerKind({
   schema,
   operations,
   relations: {
-    client:       { list: 'clients', one: 'client' },
-    interactions: { list: 'interactions', many: 'ticket' },
+    client:       { channel: 'x-ahpd-clients', one: 'client' },
+    interactions: { channel: 'x-ahpd-interactions', many: 'ticket' },
   },
   rows: { list: (query, instance, reader) => ..., read: (id, instance, reader) => ... },
   invoke: (operation, row, report, input) => ...,
@@ -97,7 +97,7 @@ tickets.addInstance({ id: 'desk-production', title: 'Desk' });
 
 | Part | What it is |
 | --- | --- |
-| `list` | The list it joins. |
+| `channel` | The channel of the list it joins, such as `x-ahpd-tickets`. |
 | `name`, `title` | Its name, unique in the list. An operation id is `<kind>/<operation>`, as `devtunnel/create` is today. |
 | `class` | `data`: a record a person reads and changes. `runtime`: a process with a state, as a tunnel is. |
 | `source` | `host`: the host keeps the rows, as for tunnels and todos. `kind`: the rows are the kind's to answer, from `rows`, as Desk's tickets are Desk's. |
@@ -155,8 +155,8 @@ host.registerList({
   name: 'ticket', channel: 'x-ahpd-tickets', title: 'Tickets',
   filters: [
     { field: 'status', type: 'enum' },
-    { field: 'client', type: 'uri', list: 'clients' },
-    { field: 'consultant', type: 'uri', list: 'clients' },
+    { field: 'client', type: 'uri', channel: 'x-ahpd-clients' },
+    { field: 'consultant', type: 'uri', channel: 'x-ahpd-clients' },
     { field: 'createdAt', type: 'range' },
     { field: 'updatedAt', type: 'range' },
   ],
@@ -173,14 +173,14 @@ The plugin registers the kind when it loads, with no instance. Each Desk connect
 
 ```ts
 const tickets = host.registerKind({
-  list: 'ticket', name: 'desk-ticket', title: 'Desk ticket',
+  channel: 'x-ahpd-tickets', name: 'desk-ticket', title: 'Desk ticket',
   class: 'data', source: 'kind',
   schema: deskTicketSchema,               // every field readOnly: a ticket changes by an operation only
   operations: [answer, setStatus, assign],
   relations: {
-    client:       { list: 'clients', one: 'client' },
-    consultant:   { list: 'clients', one: 'consultant' },
-    interactions: { list: 'interactions', many: 'ticket' },
+    client:       { channel: 'x-ahpd-clients', one: 'client' },
+    consultant:   { channel: 'x-ahpd-clients', one: 'consultant' },
+    interactions: { channel: 'x-ahpd-interactions', many: 'ticket' },
   },
   rows: {
     list: (query, instance, reader) => desk(instance).tickets(query),   // one page, filtered and sorted by Desk
@@ -279,7 +279,7 @@ process-compose and systemd are two kinds from two plugins. Each has its own for
 ```ts
 // in the process-compose plugin
 const compose = host.registerKind({
-  list: 'service', name: 'process-compose', title: 'process-compose',
+  channel: 'x-ahpd-services', name: 'process-compose', title: 'process-compose',
   class: 'runtime', source: 'host',
   schema: {
     type: 'object', required: ['name', 'command'],
@@ -303,7 +303,7 @@ const compose = host.registerKind({
 compose.addInstance({ id: hostname(), title: hostname() });
 
 // in a systemd plugin: the same list, another kind and another form
-host.registerKind({ list: 'service', name: 'systemd', title: 'systemd unit', class: 'runtime', source: 'host', schema: unitSchema, operations: unitOperations, invoke: systemd });
+host.registerKind({ channel: 'x-ahpd-services', name: 'systemd', title: 'systemd unit', class: 'runtime', source: 'host', schema: unitSchema, operations: unitOperations, invoke: systemd });
 ```
 
 A `live` field is set by the process and stored nowhere. A client draws it as state, never in a form, and a write to it is refused. The mark is on the schema because it says what the field is, not how a list uses it.
@@ -326,7 +326,7 @@ beorn's deploy is one operation on every service with a deploy declaration, what
 ```ts
 // in the deploy plugin
 host.registerOperation({
-  list: 'service',
+  channel: 'x-ahpd-services',
   operation: { id: 'deploy/deploy', label: 'Deploy', icon: 'rocket',
                input: { type: 'object', required: ['version'], properties: { version: { type: 'string', title: 'Version' } } },
                offered: (s) => s.deploy !== undefined },
@@ -367,8 +367,8 @@ host.registerList({ name: 'client', channel: 'x-ahpd-clients', title: 'Clients',
 
 host.registerList({ name: 'interaction', channel: 'x-ahpd-interactions', title: 'Interactions',
   filters: [
-    { field: 'ticket', type: 'uri', list: 'tickets' },
-    { field: 'client', type: 'uri', list: 'clients' },
+    { field: 'ticket', type: 'uri', channel: 'x-ahpd-tickets' },
+    { field: 'client', type: 'uri', channel: 'x-ahpd-clients' },
     { field: 'at', type: 'range' },
   ],
   sorts: ['at'], defaultSort: '-at', page: { size: 50 } });
@@ -382,23 +382,23 @@ Every kind in `interactions` has the fields the list filters and sorts on: `tick
 
 ```ts
 // in @local/crm
-host.registerKind({ list: 'interaction', name: 'note', title: 'Note', class: 'data', source: 'host',
+host.registerKind({ channel: 'x-ahpd-interactions', name: 'note', title: 'Note', class: 'data', source: 'host',
   schema: { type: 'object', required: ['client', 'summary'], properties: {
     client:  { type: 'string', format: 'uri', title: 'Client' },
     ticket:  { type: ['string', 'null'], format: 'uri', title: 'Ticket' },
     at:      { type: 'string', format: 'date-time', title: 'When', readOnly: true },
     summary: { type: 'string', title: 'Note', format: 'textarea' } } },
-  relations: { client: { list: 'clients', one: 'client' }, ticket: { list: 'tickets', one: 'ticket' } } });
+  relations: { client: { channel: 'x-ahpd-clients', one: 'client' }, ticket: { channel: 'x-ahpd-tickets', one: 'ticket' } } });
 
 // in @local/mail
-host.registerKind({ list: 'interaction', name: 'email', title: 'Email', class: 'data', source: 'host',
+host.registerKind({ channel: 'x-ahpd-interactions', name: 'email', title: 'Email', class: 'data', source: 'host',
   schema: emailSchema,                 // client, ticket, at, summary, plus to, subject, body, state
   operations: [{ id: 'send', label: 'Send', icon: 'send', offered: (email) => email.state === 'draft' }],
-  relations: { client: { list: 'clients', one: 'client' }, ticket: { list: 'tickets', one: 'ticket' } },
+  relations: { client: { channel: 'x-ahpd-clients', one: 'client' }, ticket: { channel: 'x-ahpd-tickets', one: 'ticket' } },
   invoke: (operation, row, report) => mail.send(row, report) });
 
 // in @local/phone
-host.registerKind({ list: 'interaction', name: 'call', title: 'Call', class: 'data', source: 'host', schema: callSchema, relations });
+host.registerKind({ channel: 'x-ahpd-interactions', name: 'call', title: 'Call', class: 'data', source: 'host', schema: callSchema, relations });
 ```
 
 A host-kept kind has one instance, the host. Its rows are `interaction://local/i-88`, or `interaction://i-88` if the instance is left out, which is the open point 1 of this brief.

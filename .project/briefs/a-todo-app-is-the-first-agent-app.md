@@ -108,7 +108,7 @@ The kind has the shape of `TunnelKind`. The kind declares its `schema` once. The
 
 ```js
 host.registerKind({
-  list: 'todo',
+  channel: 'x-ahpd-todos',
   name: 'todo',
   title: 'Todo',
   description: 'One thing to do.',
