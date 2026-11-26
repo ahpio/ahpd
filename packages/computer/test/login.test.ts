@@ -1,8 +1,9 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, expect, it } from 'vitest';
+import { clearFolder } from '../../../tools/holders.ts';
 import { posix } from '../../../tools/posix.ts';
 import { aliasOf, fingerprintOf, resultOf, sshLogins } from '../src/login.js';
 import type { LoginOptions } from '../src/login.js';
@@ -32,7 +33,7 @@ afterEach(() => {
   for (const stop of stops.splice(0)) stop();
   delete process.env.SSH_AGENT_FAKE_LOG;
   delete process.env.SSH_ADD_FAKE_FAIL;
-  if (dir !== undefined) rmSync(dir, { recursive: true, force: true });
+  if (dir !== undefined) clearFolder(dir);
   dir = undefined;
 });
 
