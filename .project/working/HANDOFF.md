@@ -4,7 +4,7 @@ title: "Handoff: where ahpd stands, and what is pending"
 
 # Handoff: where `ahpd` stands, and what is pending
 
-Current progress and pending items only, as of 2026-11-25. *Outside this repository* was last checked on 2026-11-04.
+Current progress and pending items only, as of 2026-11-26. *Outside this repository* was last checked on 2026-11-04.
 `node ~/.claude/skills/do-spec/scripts/plans.mjs` lists the backlog, and each plan's Resume state is its detail. What merged is in `git log`, and what was released is in [docs/updates/](../../docs/updates/).
 
 ## Main
@@ -205,7 +205,8 @@ Each plan here has every task `implemented`, and closes as `built` on Softov's w
 - Planned on 2026-11-25 with Softov, before the bump to rc.1: [a default agent is chosen](../plans/host/20261125-2148-a-default-agent-is-chosen/plan.md), then [a bot's agent changes and its fields clear](../plans/bots/20261125-2148-a-bots-agent-changes-and-clears/plan.md). Both are merged: #481 and #482. Both plans stay `active` until Softov's review says built. His daemon needs a restart to load them.
 - #480 from beorn is merged, with commits 02dcf48c0 and 3dea6d552 on top. A refused plugin move keeps what moved, and the Windows helper logs it.
 - The ahpw bot form is merged: ahpw #148 and #149. Its plan stays `active` until Softov's review says built.
-- Lists: step 1 is #485, [processes](../plans/plugin/20261126-0538-a-process-is-what-ahpd-runs/plan.md) #486 and #489, [operations onto kinds](../plans/plugin/20261126-0538-a-plugin-adds-operations-to-kinds/plan.md) #487, [translated operations](../plans/plugin/20261126-0538-a-lists-operations-are-translated/plan.md) #488 and [runtime kinds](../plans/plugin/20261126-0538-a-list-holds-runtime-kinds/plan.md) #490, all merged. [Instances](../plans/plugin/20261126-0538-a-list-has-instances/plan.md) is #491, to merge when green. Each plan stays `active` until Softov's review says built. The brief still leaves paging, `range` and `uri` filters, and tunnels onto lists.
+- Lists: step 1 is #485, [processes](../plans/plugin/20261126-0538-a-process-is-what-ahpd-runs/plan.md) #486 and #489, [operations onto kinds](../plans/plugin/20261126-0538-a-plugin-adds-operations-to-kinds/plan.md) #487, [translated operations](../plans/plugin/20261126-0538-a-lists-operations-are-translated/plan.md) #488 and [runtime kinds](../plans/plugin/20261126-0538-a-list-holds-runtime-kinds/plan.md) #490, all merged. [Instances](../plans/plugin/20261126-0538-a-list-has-instances/plan.md) is #491, merged. Each plan stays `active` until Softov's review says built. The brief still leaves paging, `range` and `uri` filters, and tunnels onto lists, for later (Softov, 2026-11-26).
+- Next on Softov's word of 2026-11-26: the cases that fail at random, then the 0.16 release. [The teardown fix](../plans/host/20261126-0743-a-teardown-ends-holders-and-retries/plan.md) is #492, to merge when green. Then the cofold clock waits and the dev container's late `docker` call. His dev daemon takes #484 to #491 at its next restart.
 - Planned on 2026-11-26: [a new bot never takes a used folder](../plans/bots/20261126-0335-a-new-bot-never-takes-a-used-folder/plan.md), from the problem a test host made on Softov's `goo`. Merged as #484; the plan stays `active` until Softov's review says built.
 - The bot talk is merged: #321, then #322 for a host with no users. What was fixed and why is in the plans' Resume states and implemented records.
   - Found on main: [the chats of a bot talk share one log](../plans/bots/20261123-0945-each-bot-chat-keeps-its-own-log/plan.md).
