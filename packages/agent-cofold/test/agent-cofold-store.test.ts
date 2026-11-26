@@ -13,6 +13,7 @@ import { bag, uriOf } from '@ahpd/sdk';
 import type { Agent, Bag, BoundTool, Listed, MessageAttachment, Start } from '@ahpd/sdk';
 import { DEFAULT_CLIENT_TOOL_TIMEOUT_MS } from '../../sdk/src/tools/clientcalls.js';
 import { startedNow } from '../../sdk/test/support/started.js';
+import { FAST_SHELL } from './support/shell.js';
 import { cofoldAgent, turnsOf } from '../src/index.js';
 
 /**
@@ -105,7 +106,7 @@ const place = (): { root: string; sweep: string } => {
 
 /** One backend over a file store, with a model scripted and the policy the test wants. */
 const backendOf = (make: typeof cofoldAgent, root: string, model: ModelAdapter, policy?: Partial<Policy>): Agent =>
-  make({ adapter: model, store: root, ...(policy !== undefined ? { policy } : {}) });
+  make({ adapter: model, store: root, shell: FAST_SHELL, ...(policy !== undefined ? { policy } : {}) });
 
 const backend = (root: string, model: ModelAdapter, policy?: Partial<Policy>): Agent =>
   backendOf(cofoldAgent, root, model, policy);

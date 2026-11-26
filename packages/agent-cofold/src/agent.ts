@@ -21,7 +21,7 @@ import { getReasoningEffortDescription, getReasoningEffortLabel, ReasoningEffort
 import type { Agent, Bag, Listed, MachineNeed, Offered, Session, Start } from '@ahpd/sdk';
 import { harnessConfig, harnessConfigPath } from './config.js';
 import type { HarnessConfig } from './config.js';
-import type { ToolsConfig } from './capabilities.js';
+import type { ShellSpec, ToolsConfig } from './capabilities.js';
 import { cofoldSession, sessionIdOf, takeRecord } from './session.js';
 import { turnsOf, writeImportedHistory } from './transcript.js';
 import { AGENT_ID, commandsOf } from './turnagent.js';
@@ -89,6 +89,13 @@ export interface CofoldOptions {
    * machine the daemon runs on.
    */
   tools?: ToolsConfig;
+  /**
+   * The program a shell call runs through; cofold's `DEFAULT_SHELL` when absent.
+   *
+   * For a test or an embedder: the plugin drops a `shell` its options name. The
+   * language a question names and the syntax of `env` follow the program.
+   */
+  shell?: ShellSpec;
   /**
    * Whether the host's own tools reach this backend's sessions.
    *

@@ -16,26 +16,53 @@
  */
 
 import type { Capability } from '@cofold/agents';
-import { standardCapabilities } from '@cofold/tools';
-import type { SearchConfig, ToolsConfig } from '@cofold/tools';
+import { basename } from 'node:path';
+import { DEFAULT_SHELL, shell, standardCapabilities } from '@cofold/tools';
+import type { SearchConfig, ShellSpec, ToolsConfig } from '@cofold/tools';
 import { bag, isRecord } from '@ahpd/sdk';
 
-export type { SearchConfig, ToolsConfig } from '@cofold/tools';
+export type { SearchConfig, ShellSpec, ToolsConfig } from '@cofold/tools';
 
 /** All four on, which is what a session whose options name no `tools` gets. */
 export const DEFAULT_TOOLS: ToolsConfig = { files: true, shell: true, web: true, memory: true };
 
+/** The syntax a shell program reads: its assignments, and the language a question names. */
+export type ShellFamily = 'powershell' | 'bash' | 'cmd';
+
 /**
- * The assignments that set `env` before a command in the shell cofold runs.
+ * The family of the program a shell call runs through, by its base name.
+ *
+ * `undefined` for a program this package does not know, whose language a
+ * question then leaves out.
+ */
+export const shellFamilyOf = (spec: ShellSpec = DEFAULT_SHELL): ShellFamily | undefined => {
+  const name = basename(spec.command.replace(/\\/gu, '/')).replace(/\.exe$/iu, '').toLowerCase();
+  if (name === 'powershell' || name === 'pwsh') return 'powershell';
+  if (name === 'sh' || name === 'bash' || name === 'dash' || name === 'zsh') return 'bash';
+  if (name === 'cmd') return 'cmd';
+  return undefined;
+};
+
+/** The language a question names for a shell call, which the SDK knows for two families. */
+export const shellLanguageOf = (spec?: ShellSpec): 'powershell' | 'bash' | undefined => {
+  const family = shellFamilyOf(spec);
+  return family === 'cmd' ? undefined : family;
+};
+
+/**
+ * The assignments that set `env` before a command, in the syntax of the shell
+ * that runs it.
  *
  * cofold's shell takes no environment of its own, so the variables go in the
- * command the shell is given. The default shell is `sh -c` on POSIX and
- * PowerShell elsewhere, and each is given its own assignment syntax.
+ * command the shell is given. A program of no known family is given the POSIX
+ * syntax.
  */
-const assignmentsFor = (env: Record<string, string>): string => Object.entries(env)
-  .map(([name, value]) => (process.platform === 'win32'
-    ? `$env:${name}='${value.replace(/'/gu, "''")}';`
-    : `export ${name}='${value.replace(/'/gu, "'\\''")}';`))
+export const assignmentsFor = (env: Record<string, string>, family: ShellFamily | undefined): string => Object.entries(env)
+  .map(([name, value]) => {
+    if (family === 'powershell') return `$env:${name}='${value.replace(/'/gu, "''")}';`;
+    if (family === 'cmd') return `set "${name}=${value}" &&`;
+    return `export ${name}='${value.replace(/'/gu, "'\\''")}';`;
+  })
   .join(' ');
 
 /**
@@ -46,7 +73,7 @@ const assignmentsFor = (env: Record<string, string>): string => Object.entries(e
  * name, words and `subject` - the command a permission rule matches is still
  * the one the model wrote.
  */
-const withShellEnv = (capability: Capability, env: Record<string, string>): Capability => {
+const withShellEnv = (capability: Capability, env: Record<string, string>, family: ShellFamily | undefined): Capability => {
   const tools = capability.tools;
   if (capability.id !== 'shell' || tools === undefined) return capability;
   return {
@@ -56,7 +83,7 @@ const withShellEnv = (capability: Capability, env: Record<string, string>): Capa
       execute: (input: unknown, ctx: Parameters<typeof tool.execute>[1]) => {
         const command = (input as { command?: unknown } | undefined)?.command;
         if (typeof command !== 'string' || command === '') return tool.execute(input, ctx);
-        return tool.execute({ ...(input as Record<string, unknown>), command: `${assignmentsFor(env)} ${command}` }, ctx);
+        return tool.execute({ ...(input as Record<string, unknown>), command: `${assignmentsFor(env, family)} ${command}` }, ctx);
       },
     })),
   };
@@ -76,20 +103,26 @@ const withShellEnv = (capability: Capability, env: Record<string, string>): Capa
  * `write_file` still gets the capability's other four.
  *
  * `env` is the environment a shell command runs with, set before each command
- * it is given; cofold's shell has no seam of its own for one.
+ * it is given; cofold's shell has no seam of its own for one. `shell` is the
+ * program a shell call runs through, cofold's `DEFAULT_SHELL` when absent.
  */
 export function capabilitiesOf(
   tools: ToolsConfig,
-  args: { workspace: string; memoryDir?: string; env?: Record<string, string> },
+  args: { workspace: string; memoryDir?: string; env?: Record<string, string>; shell?: ShellSpec },
   taken: Iterable<string> = [],
 ): Capability[] {
-  const built = standardCapabilities(tools, {
+  const standard = standardCapabilities(tools, {
     workspace: args.workspace,
     ...(args.memoryDir === undefined ? {} : { memoryDir: args.memoryDir }),
   });
+  const spec = args.shell;
+  const built = spec === undefined
+    ? standard
+    : standard.map((capability) => (capability.id === 'shell' ? shell({ shell: spec }) : capability));
+  const family = shellFamilyOf(spec);
   const withEnv = args.env === undefined || Object.keys(args.env).length === 0
     ? built
-    : built.map((capability) => withShellEnv(capability, args.env as Record<string, string>));
+    : built.map((capability) => withShellEnv(capability, args.env as Record<string, string>, family));
   const names = [...taken];
   return names.length === 0 ? withEnv : withEnv.map((capability) => ({ ...capability, exclude: names }));
 }

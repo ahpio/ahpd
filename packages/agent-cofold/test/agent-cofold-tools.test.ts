@@ -16,6 +16,7 @@ import {
 } from '../src/index.js';
 import type { CofoldOptions, ToolsConfig } from '../src/index.js';
 import { startedNow } from '../../sdk/test/support/started.js';
+import { FAST_SHELL } from './support/shell.js';
 import { WAIT_MS } from '../../../tools/wait.ts';
 
 /*
@@ -125,6 +126,7 @@ async function open(args: {
   const model = createFakeModel({ script: args.script, stream: true });
   const options: CofoldOptions = {
     adapter: model,
+    shell: FAST_SHELL,
     ...(args.store === undefined ? { memory: true } : { store: args.store }),
     ...(args.tools === undefined ? {} : { tools: args.tools }),
   };
@@ -1103,7 +1105,7 @@ it.skipIf(!posix)('kills a cancelled shell command and the child it started', as
 it('keeps the tools for a session with no working directory', async () => {
   const dir = place();
   const { model, session, v } = await open({
-    script: [{ toolCalls: [call('shell_exec', { command: 'pwd' })] }, { text: 'done' }],
+    script: [{ toolCalls: [call('shell_exec', { command: process.platform === 'win32' ? 'cd' : 'pwd' })] }, { text: 'done' }],
     workspace: undefined,
     store: dir,
     settings: { permissionMode: 'bypassPermissions' },
@@ -1218,7 +1220,7 @@ const ROWS: Row[] = [
   },
   {
     what: 'a shell command',
-    call: () => call('shell_exec', { command: 'true' }),
+    call: () => call('shell_exec', { command: 'echo hi' }),
     expect: { default: 'ask', acceptEdits: 'ask', plan: 'deny', auto: 'ask', bypassPermissions: 'run', dontAsk: 'deny' },
   },
   {
