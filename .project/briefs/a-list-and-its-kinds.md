@@ -145,6 +145,10 @@ How a client draws a list, as a table, a board or a calendar, waits until the li
 | The host merges one page from every kind and every instance | Softov, 2026-11-25: "Merge then" |
 | A plugin may add operations to the kinds of a list it did not register, as deploy does to services | Softov, 2026-11-25: "a way to register operations onto kinds? its interesting to have something like that" |
 | A connector that cannot be reached: its rows are left out, and the alert goes on the connector | Softov, 2026-11-25: "rows out, alert onto the connector" |
+| A filter on a field a kind lacks leaves that kind's rows out | Softov, 2026-11-25: "Left out" |
+| A quick operation keeps the row's status. An operation that says it is long answers with a run: its own channel with a lifecycle, progress, a log and cancel, as an automation run | Softov, 2026-11-25: "Run when long" |
+| A reader sees the rows of the instances they may use, by the connector's owner rule. A kind with no instance falls back to the channel's grant | Softov, 2026-11-25: "The instance's owner" |
+| Two declarations of one list join their filters | Softov, 2026-11-25: "Joined" |
 
 ## Example: brbyte Desk tickets from several connectors
 
@@ -249,10 +253,6 @@ A closed ticket lists no `answer`.
 - **Filters and sorts that Desk serves.** The kind turns the list's query into Desk's own.
 - **Relations across lists of the same plugin.** `clients` and `interactions` are lists the `desk` plugin also declares.
 
-### Open points of this example
-
-1. **Who may read which instance.** The channel's grant, such as `ticket:get`, says who may read tickets at all. It does not know whose connector a row came from. Ana's own Desk connector would show her tickets to anyone with `ticket:get`. A rule per row or per instance is needed, as a records channel's `mayRead` and the CRM brief's "the owner by default" are.
-
 ## Example: a machine's services
 
 A person sees the programs a machine runs, starts, stops and restarts them, and deploys a new version of one. The rows are processes with a state that nobody stores. This is the case for runtime rows, instances per machine, and a long operation.
@@ -352,8 +352,7 @@ host.registerOperation({
 ### Open points of this example
 
 1. **The word.** `ahpd service` already names the daemon as the machine's own service. Does the list keep the name "services"?
-2. **Deploy's state.** A status on the row, or a run with its own lifecycle and log, as an automation run has?
-3. **Who may write a deploy declaration.**
+2. **Who may write a deploy declaration.**
 
 ## Example: a CRM with kinds from several plugins
 
@@ -433,14 +432,7 @@ The host finds the kind from the row, and hands the call to the mail plugin's `i
 - **Relations across lists**, both one and many, with the many side read through a filter.
 - **A kind that changes its own rows** after an operation has answered.
 
-### Open points of this example
-
-1. **Two declarations that differ in filters.** The CRM declares a filter the mail plugin's declaration lacks. Are the filters joined, or does the first one win as the title does?
-2. **A kind that lacks a list field.** A phone call with no ticket: `ticket` is null, which a filter on `ticket` can still read. A kind with no `ticket` field at all is left out of that filter.
-
 ## Open points
 
-1. **A list filter on a field some kinds lack.** A list declares a filter on `ticket`. The `email` kind has a `ticket` field and the `call` kind has none. With `?ticket=t-1042`, are the calls left out, as *Step 2* says, or shown unfiltered?
-2. **Long operations.** Today a row has `operation: { id, status }` while one runs: no progress, no cancel, no log. An automation run is its own channel, with a lifecycle, progress, a log and cancel. Proposed: a quick operation keeps the row status, and an operation that says it is long answers with a run, as a deploy would.
-3. **How a plugin adds operations to other kinds.** `registerOperation` in *Example: a machine's services* is one way. Which kinds it reaches, and who may add one, are not decided.
-4. **The word "kind".** `Operation.kind` names the tunnel kind that declared an operation, the same meaning as here, so an id stays `<kind>/<operation>`. This may not be an open point at all.
+1. **How a plugin adds operations to other kinds.** `registerOperation` in *Example: a machine's services* is one way. Which kinds it reaches, and who may add one, are not decided.
+2. **The word "kind".** `Operation.kind` names the tunnel kind that declared an operation, the same meaning as here, so an id stays `<kind>/<operation>`. This may not be an open point at all.
