@@ -1,6 +1,6 @@
 ---
 title: An ssh box is made by create
-status: todo
+status: done
 depends:
   - task-01-an-ssh-login-is-a-connector.md
 layer: "computer"

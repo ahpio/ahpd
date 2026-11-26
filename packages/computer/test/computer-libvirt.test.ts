@@ -7,6 +7,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { fileResources } from '../../sdk/src/resources/resources.js';
 import { loadPlugins } from '../../server/src/plugins.js';
 import { closeAll, keeping } from './support/closing.js';
+import { openServers } from './support/sshboxes.js';
 import type { HostOptions } from '../../sdk/src/types/host.js';
 import type { Usage, UsageEntry, UsageTotal } from '../../sdk/src/types/usage.js';
 import { addressFrom, domainsFrom, labelsFrom, libvirtRuntime, metadataOf, userDataOf, VM_HOST, volumesFrom } from '../src/libvirt.js';
@@ -156,6 +157,15 @@ it.skipIf(!posix)('starts a nested host from where the template puts ahpd', asyn
   expect(how?.args).toEqual(expect.arrayContaining(['-J', 'ops@kvm1:2222', 'ahpd@192.168.122.10']));
   expect(how?.args.at(-1)).toContain('/opt/ahpd/ahpd/bin/ahpd');
   expect(how?.args.at(-1)).toContain('--stdio');
+});
+
+it.skipIf(!posix)('reaches a VM through a server whose login holds its key in an agent, with that agent', async () => {
+  const vms = runtime({ profiles: { vm: { server: 'kvm1', box: { destination: 'ops@kvm1', port: '2222', env: { SSH_AUTH_SOCK: '/run/ahpd-ssh/agent.sock' } } } } });
+  await vms.run(spec());
+  const how = await vms.how?.('vm-1', { command: 'true' });
+  // The jump is the server, so the reach through it carries the server's agent.
+  expect(how?.env).toEqual({ SSH_AUTH_SOCK: '/run/ahpd-ssh/agent.sock' });
+  expect(how?.args).toEqual(expect.arrayContaining(['-J', 'ops@kvm1:2222']));
 });
 
 /*
@@ -422,7 +432,7 @@ const load = async (profiles: Record<string, unknown>, kvm = 'yes', usage?: Usag
           VIRSH_FAKE_LOG: virshLog(),
           PATH: `${cloudInit()}${delimiter}${process.env.PATH ?? ''}`,
         },
-        ssh: { command: process.execPath, args: [SSH], machines: { dev02: { destination: 'dev02' } } },
+        ssh: { command: process.execPath, args: [SSH] },
         libvirt: { template: TEMPLATE, virsh: [process.execPath, VIRSH, 'virsh'], virtInstall: [process.execPath, VIRSH, 'virt-install'] },
         profiles,
       },
@@ -430,6 +440,7 @@ const load = async (profiles: Record<string, unknown>, kvm = 'yes', usage?: Usag
     { base, configDir: join(dir(), 'state'), cwd: join(import.meta.dirname, '../../..'), log: (line) => { lines.push(line); }, hostId: 'host-a' },
   );
   keeping(result.options);
+  openServers(result.options, { dev02: { destination: 'dev02' } });
   const provider = result.options.resourceProviders?.computer as {
     write(uri: string, content: { data: string; encoding: string }, owner?: string): Promise<void>;
     read(uri: string): Promise<{ data: string }>;

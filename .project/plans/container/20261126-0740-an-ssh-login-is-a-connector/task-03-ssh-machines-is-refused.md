@@ -1,6 +1,6 @@
 ---
 title: ssh.machines is refused with its steps
-status: todo
+status: done
 depends:
   - task-02-an-ssh-box-is-made-by-create.md
 layer: "computer, server"

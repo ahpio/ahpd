@@ -1,6 +1,6 @@
 ---
 title: Docs and spec
-status: todo
+status: done
 depends:
   - task-03-ssh-machines-is-refused.md
 layer: "docs"

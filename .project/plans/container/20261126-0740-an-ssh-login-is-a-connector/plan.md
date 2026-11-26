@@ -1,7 +1,7 @@
 ---
 title: An ssh login is a connector, and an ssh box is a computer made by create
 domain: container
-status: planned
+status: built
 priority: high
 created: 2026-11-26
 revalidated: 2026-11-26
@@ -109,10 +109,10 @@ profile { server: <connector id> } -> the VMs or the Docker reached through that
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - an ssh login is a connector](task-01-an-ssh-login-is-a-connector.md) | todo | - |
-| [02 - an ssh box is made by create](task-02-an-ssh-box-is-made-by-create.md) | todo | 01 |
-| [03 - ssh.machines is refused with its steps](task-03-ssh-machines-is-refused.md) | todo | 02 |
-| [04 - docs and spec](task-04-docs-and-spec.md) | todo | 03 |
+| [01 - an ssh login is a connector](task-01-an-ssh-login-is-a-connector.md) | done | - |
+| [02 - an ssh box is made by create](task-02-an-ssh-box-is-made-by-create.md) | done | 01 |
+| [03 - ssh.machines is refused with its steps](task-03-ssh-machines-is-refused.md) | done | 02 |
+| [04 - docs and spec](task-04-docs-and-spec.md) | done | 03 |
 
 ## Risks and tradeoffs
 
@@ -123,8 +123,8 @@ profile { server: <connector id> } -> the VMs or the Docker reached through that
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-an-ssh-login-is-a-connector.md](task-01-an-ssh-login-is-a-connector.md).
+- **Done so far:** tasks 01 to 04, 2026-11-26; see [implemented.md](implemented.md).
+- **Next action:** the checks by hand on dev02, in [deferred.md](deferred.md).
 - **Open questions:** none.
 - **Watch out for:** only the plugin that registers an adapter sees its connectors. So the logins stay inside `@ahpd/computer`, with no SDK port for them. A connector's secret reaches `open` and `check` as the value, never as a reference.
 

@@ -53,7 +53,7 @@ export interface Profile {
    */
   ociRuntime?: string;
   /**
-   * The box its machines are made on, by its name in `ssh.machines`.
+   * The box its machines are made on, by the id of the host's ssh login that reaches it.
    *
    * The box is checked before the first machine is made there, so a box that
    * lacks what the profile needs is refused with the commands that fix it
@@ -412,6 +412,8 @@ export type FolderAnswer = string | { refusal: string };
 export const MANIFEST_SCHEMA = (
   options: {
     runtime: string;
+    /** Every runtime this host serves; `ssh` among them adds the fields a box is made with. */
+    runtimes?: string[];
     image: string;
     profiles?: Record<string, Profile>;
     bodyMounts?: boolean;
@@ -458,14 +460,48 @@ export const MANIFEST_SCHEMA = (
         enumDescriptions: names.map((name) => (options.profiles ?? {})[name]?.description ?? ''),
       },
     }),
-    // Shown and not changeable, which the spec says with `readOnly`.
-    runtime: {
-      type: 'string',
-      title: 'Runtime',
-      description: 'What makes the machine. This host runs one.',
-      default: options.runtime,
-      readOnly: true,
-    },
+    /*
+     * Shown and not changeable where this host makes machines on one runtime,
+     * which the spec says with `readOnly`. Where it also makes boxes into
+     * computers over ssh, a choice between the two, and the fields a box is
+     * made with beside it.
+     */
+    ...(options.runtimes?.includes(SSH_RUNTIME) === true ? {
+      runtime: {
+        type: 'string',
+        title: 'Runtime',
+        description: 'What the computer is: a machine this host makes, or a box it reaches over ssh.',
+        enum: [options.runtime, SSH_RUNTIME],
+        enumLabels: [options.runtime === 'docker' ? 'Docker' : options.runtime, 'ssh box'],
+        default: options.runtime,
+      },
+      connector: {
+        type: 'string',
+        title: 'ssh login',
+        description: 'The ssh connector the box is reached with, for an ssh box.',
+        'x-ahpd-connector': 'ssh',
+      },
+      host: {
+        type: 'array',
+        items: { type: 'string' },
+        title: 'Host command',
+        description: 'The command that starts ahpd on the box, for an ssh box. Empty installs ahpd there.',
+      },
+      agents: {
+        type: 'array',
+        items: { type: 'string' },
+        title: 'Agents',
+        description: 'The agents the box is prepared for, for an ssh box. Empty allows every agent.',
+      },
+    } : {
+      runtime: {
+        type: 'string',
+        title: 'Runtime',
+        description: 'What makes the machine. This host runs one.',
+        default: options.runtime,
+        readOnly: true,
+      },
+    }),
     /*
      * The two recipes, as a choice and the two fields beside it, both always
      * drawn. Which of them is read is the host's answer and not the form's.
@@ -589,6 +625,51 @@ const MOUNT = /^(?:[A-Za-z]:)?[^:\s]+:[^:\s]+(?::ro)?$/;
 const said = (held: Record<string, unknown>, key: string): string | undefined => {
   const value = held[key];
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
+};
+
+/** The runtime value a box reached over ssh is made into a computer on. */
+export const SSH_RUNTIME = 'ssh';
+
+/** One list of words, or nothing when the body said none; a list with anything but words is refused. */
+const wordsSaid = (held: Record<string, unknown>, key: string): string[] | undefined => {
+  const value = held[key];
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || !value.every((one) => typeof one === 'string')) {
+    throw new RpcError(-32602, `${key} is a list of words`);
+  }
+  return value.length === 0 ? undefined : value as string[];
+};
+
+/**
+ * A body for a box reached over ssh, as the record a create keeps.
+ *
+ * The connector is required, because a box is reached with nothing else. The
+ * `workdir` is a path on the box, so it is checked to be absolute and never
+ * resolved here.
+ */
+const sshManifestOf = (name: string, held: Record<string, unknown>, defaults: ManifestDefaults): Omit<MachineSpec, 'label'> => {
+  const connector = said(held, 'connector');
+  if (connector === undefined) {
+    throw new RpcError(-32602, 'A computer on ssh names the ssh connector its box is reached with, in connector');
+  }
+  const workdir = said(held, 'workdir');
+  if (workdir !== undefined && !workdir.startsWith('/')) {
+    throw new RpcError(-32602, `workdir is an absolute path on the box, and ${workdir} is not one`);
+  }
+  const host = wordsSaid(held, 'host');
+  const agents = wordsSaid(held, 'agents');
+  return {
+    name,
+    ssh: {
+      connector,
+      ...(workdir === undefined ? {} : { workdir }),
+      ...(host === undefined ? {} : { host }),
+      ...(agents === undefined ? {} : { agents }),
+    },
+    ...(defaults.owner === undefined ? {} : { owner: defaults.owner }),
+    ...(defaults.team === undefined ? {} : { team: defaults.team }),
+    ...(defaults.project === undefined ? {} : { project: defaults.project }),
+  };
 };
 
 /**
@@ -856,16 +937,23 @@ export const manifestOf = (name: string, content: Write, defaults: ManifestDefau
 
   /*
    * A body's `runtime` is the value a create goes to, so what it may name is
-   * what this host makes machines on. Any other value this host serves is a
-   * runtime that only lists - a box somebody set up by hand, which a body made
-   * here would be a second, empty version of - and a value this host does not
-   * serve at all is named with the ones it does.
+   * what this host makes machines on, or `ssh`, which records a box somebody
+   * already has. Any other value this host serves is a runtime that only
+   * lists - a joined node, which a body made here would be a second, empty
+   * version of - and a value this host does not serve at all is named with
+   * the ones it does.
    */
   const served = defaults.runtimes ?? [defaults.runtime];
   const runtime = said(held, 'runtime') ?? defaults.runtime;
   if (!served.includes(runtime)) {
     throw new RpcError(-32602, `${runtime} is not a runtime this host serves; it serves ${served.join(', ')}`);
   }
+  /*
+   * A box somebody already has is made into a computer with the connector it
+   * is reached with and what it is for, and nothing else in a body applies:
+   * nothing is made on the box.
+   */
+  if (runtime === SSH_RUNTIME) return sshManifestOf(name, held, defaults);
   if (runtime !== defaults.runtime) {
     throw new RpcError(-32602, `A machine is not made on ${runtime} here; this host makes machines on ${defaults.runtime}, and ${runtime} is one it only lists`);
   }

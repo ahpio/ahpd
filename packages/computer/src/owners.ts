@@ -57,6 +57,25 @@ export interface MadeNeed {
   providers?: string[];
 }
 
+/**
+ * One box a person made into a computer: the ssh login it is reached with and
+ * what the box is for.
+ *
+ * The login is a connector's id and nothing of the connector itself, so a key,
+ * a destination or a host key changed on the connector is what every reach
+ * after it uses.
+ */
+export interface SshBoxRecord {
+  /** The id of the `ssh` connector the box is reached with. */
+  connector: string;
+  /** Where a command and a session start on the box, when not the login directory. */
+  workdir?: string;
+  /** The command that starts a nested host there, run as written. */
+  host?: string[];
+  /** The agents the box is prepared for. */
+  agents?: string[];
+}
+
 /** What one machine's entry holds, any part of which may be absent. */
 interface Entry {
   owner?: Owner;
@@ -65,7 +84,27 @@ interface Entry {
   probe?: Probe;
   adopted?: true;
   needs?: MadeNeed[];
+  box?: SshBoxRecord;
 }
+
+/** A list of strings, or nothing when the value is not one. */
+const texts = (value: unknown): string[] | undefined =>
+  (Array.isArray(value) && value.every((one) => typeof one === 'string') ? value as string[] : undefined);
+
+/** One box's record, or nothing when it names no connector. */
+const boxOf = (said: unknown): SshBoxRecord | undefined => {
+  if (typeof said !== 'object' || said === null || Array.isArray(said)) return undefined;
+  const one = said as Record<string, unknown>;
+  if (typeof one.connector !== 'string' || one.connector === '') return undefined;
+  const host = texts(one.host);
+  const agents = texts(one.agents);
+  return {
+    connector: one.connector,
+    ...(typeof one.workdir === 'string' && one.workdir !== '' ? { workdir: one.workdir } : {}),
+    ...(host === undefined ? {} : { host }),
+    ...(agents === undefined ? {} : { agents }),
+  };
+};
 
 /** One line, for a file that could not be read or written. */
 const complain = (log: (line: string, level?: LogLevel) => void, what: string, why: unknown): void =>
@@ -110,7 +149,8 @@ const entry = (said: unknown): Entry | undefined => {
         : [];
     })
     : undefined;
-  if (owner === undefined && probe === undefined && !adopted && needs === undefined) return undefined;
+  const box = boxOf(one.box);
+  if (owner === undefined && probe === undefined && !adopted && needs === undefined && box === undefined) return undefined;
   return {
     ...(owner === undefined ? {} : { owner }),
     ...(typeof team === 'string' && team !== '' ? { team } : {}),
@@ -118,6 +158,7 @@ const entry = (said: unknown): Entry | undefined => {
     ...(probe === undefined ? {} : { probe }),
     ...(adopted ? { adopted } : {}),
     ...(needs === undefined ? {} : { needs }),
+    ...(box === undefined ? {} : { box }),
   };
 };
 
@@ -315,4 +356,29 @@ export const forgetOwned = (configDir: string, id: string, log: (line: string, l
   const rest = { ...held };
   delete rest[id];
   write(configDir, rest, log);
+};
+
+/** Every ssh box this file holds, by machine id. */
+export const sshBoxesOf = (configDir: string, log: (line: string, level?: LogLevel) => void): Record<string, SshBoxRecord> =>
+  Object.fromEntries(Object.entries(read(configDir, log) ?? {})
+    .flatMap(([id, held]) => (held.box === undefined ? [] : [[id, held.box] as const])));
+
+/**
+ * Record one ssh box and who made it, in place of whatever the file held for
+ * that id.
+ *
+ * Thrown rather than said when the file cannot be read or written: a box whose
+ * record was not kept is not a computer, and the create that asked for it is
+ * the one that has to say so.
+ */
+export const keepSshBox = (
+  configDir: string,
+  id: string,
+  box: SshBoxRecord,
+  owned: Partial<Owned>,
+  log: (line: string, level?: LogLevel) => void,
+): void => {
+  const held = read(configDir, log);
+  if (held === undefined) throw new Error(`${at(configDir)} could not be read, so ${id} is not recorded`);
+  writeJsonAtomic(at(configDir), { ...held, [id]: { ...owned, box } }, { mode: 0o600 });
 };

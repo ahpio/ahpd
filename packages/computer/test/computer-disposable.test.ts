@@ -17,6 +17,7 @@ import { gitWorktrees } from '../../sdk/src/repo/worktrees.js';
 import { loadPlugins } from '../../server/src/plugins.js';
 import { echo } from '../../../examples/echo/agent.js';
 import { hostCall } from './support/calls.js';
+import { openServers } from './support/sshboxes.js';
 import { closeAll, keeping } from './support/closing.js';
 import type { Agent } from '../../sdk/src/types/agent.js';
 import type { HostOptions } from '../../sdk/src/types/host.js';
@@ -2752,11 +2753,13 @@ const withFarRepository = async (
     'os_id=debian', 'arch=x86_64', 'cpus=6', 'memory_kb=11718656', 'home_free_kb=52428800',
     'varlib_free_kb=20971520', 'docker=26.1.5+dfsg1', 'docker_access=yes', 'user=softov',
   ].join('\n'));
-  return (await load(options(state, {
+  const loaded = (await load(options(state, {
     env: { DOCKER_FAKE_STATE: state, SSH_FAKE_LOG: `${state}.ssh.jsonl`, SSH_FAKE_CHECK: check },
-    ssh: { command: process.execPath, args: [SSH], machines: { dev02: { destination: 'dev02' } } },
+    ssh: { command: process.execPath, args: [SSH] },
     profiles,
   }), [agentWith()], (line) => { lines.push(line); }, { worktrees: gitWorktrees() }, undefined, dirname(state))).options;
+  openServers(loaded, { dev02: { destination: 'dev02' } });
+  return loaded;
 };
 
 it('seeds a machine on another box\'s Docker from a bundle copied in, with no path of this host\'s mounted', async () => {

@@ -1,6 +1,6 @@
 ---
 title: An ssh login is a connector
-status: todo
+status: done
 depends: []
 layer: "computer"
 refs:

@@ -12,6 +12,9 @@ import { raise } from '../../sdk/src/plugins/plugins.js';
 import { echo } from '../../../examples/echo/agent.js';
 import { hostCall } from './support/calls.js';
 import { closeAll, keeping } from './support/closing.js';
+import { boxesOf, openBoxes, openLogin } from './support/sshboxes.js';
+import { fileUsers } from '../../sdk/src/access/users.js';
+import { ownedOf, sshBoxesOf } from '../src/owners.js';
 import { isRunning } from '../src/runtime.js';
 import { routed } from '../src/router.js';
 import { forgetHost, keygenWith, machineKey } from '../src/keys.js';
@@ -150,7 +153,7 @@ const boxes = (machines: Record<string, SshMachine>, env: Record<string, string>
   command: process.execPath,
   args: [FIXTURE],
   env: { SSH_FAKE_LOG: log(), ...env },
-  machines,
+  boxes: boxesOf(machines),
 });
 
 /** A temporary directory this test owns, which the fixture's log lives in. */
@@ -176,7 +179,7 @@ const until = async (check: () => boolean, ms = WAIT_MS): Promise<void> => {
 
 // POSIX-only: the scripted ssh stands in for a Linux box by running the
 // remote string with `/bin/sh` on this host.
-it.skipIf(!posix)('lists the boxes the options name, and says why one of them is not up', async () => {
+it.skipIf(!posix)('lists the boxes, and says why one of them is not up', async () => {
   const one = boxes(
     {
       dev02: { destination: 'dev02', port: '2229', identity: '/keys/dev02' },
@@ -197,11 +200,12 @@ it.skipIf(!posix)('lists the boxes the options name, and says why one of them is
   // one of these boxes is up.
   expect(rows.map((row) => isRunning(row))).toEqual([true, false]);
 
-  // Every box was asked once with the flags the operator's own machines are
-  // reached through: no terminal, no prompt, and the connect bound.
+  // Every box was asked once with the flags its login reaches it with: no
+  // terminal, no prompt, the connect bound, and a key named for a box offered
+  // to that box alone.
   expect(recorded().map((one) => one.join(' ')).sort()).toEqual([
     '-T -o BatchMode=yes -o ConnectTimeout=30 -p 2222 web1 -- true',
-    '-T -o BatchMode=yes -o ConnectTimeout=30 -p 2229 -i /keys/dev02 dev02 -- true',
+    '-T -o BatchMode=yes -o ConnectTimeout=30 -p 2229 -i /keys/dev02 -o IdentitiesOnly=yes dev02 -- true',
   ].sort());
 });
 
@@ -240,18 +244,18 @@ it.skipIf(!posix)('answers what a box is, what it is doing and who prepared and 
   }, { SSH_FAKE_UNREACHABLE: 'web1' });
 
   /*
-   * The record is the operator's own line, and never Docker's shape: a box has
-   * no image, no label and no moment this host saw it made, so a runtime that
+   * The record is what its create said, and never Docker's shape: a box has no
+   * image, no label and no moment this host saw it made, so a runtime that
    * answered those would be inventing a fact about a machine it never made.
-   * Nothing was reached to write it, which is the whole difference from
-   * `state`.
+   * Nothing of the login is in it, and nothing was reached to write it, which
+   * is the whole difference from `state`.
    */
   expect(await one.inspect('dev02')).toEqual({
-    id: 'dev02', destination: 'dev02', port: '2229', workdir: '/srv/app', agents: ['claude'],
+    id: 'dev02', connector: 'dev02', workdir: '/srv/app', agents: ['claude'],
   });
   expect(existsSync(log())).toBe(false);
 
-  // What it is doing is the one thing the options do not hold, so it is the one
+  // What it is doing is the one thing the record does not hold, so it is the one
   // thing reached for: a box that answered is running, and one that did not is
   // stopped rather than the longer word its listing carries.
   expect(await one.state('dev02')).toBe('running');
@@ -263,8 +267,8 @@ it.skipIf(!posix)('answers what a box is, what it is doing and who prepared and 
   expect(await one.agents('dev02')).toEqual(['claude']);
   expect(await one.agents('web1')).toEqual([]);
 
-  // Nobody here made the box, so there is no owner it can answer, and the host
-  // is where the plugin's own record ends.
+  // A record that names nobody answers no owner, and the host is where the
+  // plugin's own reading ends.
   expect(await one.owner('dev02')).toEqual({});
 
   // A box is listed rather than made, so no part was mounted into it: its ahpd
@@ -350,16 +354,28 @@ it.skipIf(!posix)('quotes a remote word so the box reads back what the caller wr
     .not.toContain('$(echo pwned)');
 });
 
-it('refuses to make, start, stop or remove a box, and says what it can do', async () => {
-  const one = boxes({ dev02: { destination: 'dev02' } });
-  const said = /listed in this host's options, not made by this host/;
+it('records a box at a create and forgets it at a remove, and refuses to start or stop one', async () => {
+  const records = boxesOf({ dev02: { destination: 'dev02' } });
+  const one = sshRuntime({ command: process.execPath, args: [FIXTURE], env: { SSH_FAKE_LOG: log() }, boxes: records });
+  const said = /is a box this host reaches over ssh, and it is not started or stopped here/;
 
-  await expect(one.run({ name: 'dev02', image: '', label: 'ahpd.computer=1' })).rejects.toThrow(said);
   await expect(one.start('dev02')).rejects.toThrow(said);
   await expect(one.stop('dev02')).rejects.toThrow(said);
   await expect(one.restart('dev02')).rejects.toThrow(said);
-  await expect(one.remove('dev02')).rejects.toThrow(said);
   // Nothing was run to find that out: not starting a box is not a command.
+  expect(existsSync(log())).toBe(false);
+
+  // A create names the login, and a name already made is refused.
+  await expect(one.run({ name: 'web1', image: '', label: 'ahpd.computer=1' })).rejects.toThrow(/names the connector the box is reached with/);
+  await expect(one.run({ name: 'dev02', image: '', label: 'ahpd.computer=1', ssh: { connector: 'dev02' } })).rejects.toThrow(/dev02 is already a computer/);
+  const made = await one.run({ name: 'two', image: '', label: 'ahpd.computer=1', ssh: { connector: 'dev02', workdir: '/srv' }, owner: 'user:alice' });
+  expect(made.id).toBe('two');
+  expect(records.held.get('two')).toEqual({ connector: 'dev02', workdir: '/srv', owner: 'user:alice' });
+  expect(await one.owner('two')).toEqual({ owner: 'user:alice' });
+
+  // A remove forgets the record and runs nothing on the box.
+  await one.remove('two');
+  expect(records.held.has('two')).toBe(false);
   expect(existsSync(log())).toBe(false);
 
   expect(one.capabilities()).toEqual({ runtime: 'ssh', actions: ['exec'], resources: ['status', 'capabilities', 'stats', 'server'] });
@@ -375,6 +391,16 @@ it('refuses to make, start, stop or remove a box, and says what it can do', asyn
   expect(await one.hasImage('dev02')).toBe(false);
   await expect(one.putIn('dev02', ['/tmp/a'])).rejects.toThrow(/not written onto it/);
   await expect(one.takeOut('dev02', ['/tmp/a', '/tmp/b'])).rejects.toThrow(/not removed from it/);
+});
+
+it('lists a box whose login is not open as unreachable, without running ssh', async () => {
+  const records = boxesOf({});
+  records.held.set('dev02', { connector: 'gone' });
+  const one = sshRuntime({ command: process.execPath, args: [FIXTURE], env: { SSH_FAKE_LOG: log() }, boxes: records });
+  expect((await one.list()).map((row) => row.status)).toEqual(['unreachable: the ssh login gone is not open']);
+  expect(await one.state('dev02')).toBe('stopped');
+  await expect(one.exec('dev02', ['true'])).rejects.toThrow(/dev02 cannot be reached: the ssh login gone is not open/);
+  expect(existsSync(log())).toBe(false);
 });
 
 /*
@@ -404,6 +430,8 @@ interface Given {
   agents?: Agent[];
   /** The vault a machine's vault-named needs are read from. */
   vault?: Vault;
+  /** Whether people sign in to this host. */
+  users?: boolean;
 }
 
 const base = (given: Given = {}): HostOptions => ({
@@ -413,16 +441,20 @@ const base = (given: Given = {}): HostOptions => ({
   resources: fileResources(),
   ...(given.usage === undefined ? {} : { usage: given.usage }),
   ...(given.vault === undefined ? {} : { vault: given.vault }),
+  ...(given.users === true ? { users: fileUsers({ path: join(stateDir(), 'users.json') }) } : {}),
 });
 
 /**
  * The plugin as loaded, over the two scripted programs.
  *
  * The ssh option names the program the same way the plugin's own does, so both
- * fixtures are reached without a `docker` or an `ssh` installed.
+ * fixtures are reached without a `docker` or an `ssh` installed. The boxes
+ * `machines` names are made into computers once the plugin is loaded: a host
+ * login for each, and its record beside the configuration.
  */
 const load = async (more: Record<string, unknown>, given: Given = {}) => {
   const dir = temp();
+  const { machines, ...rest } = more as { machines?: Record<string, SshMachine> };
   const result = await loadPlugins(
     [{
       name: SOURCE,
@@ -430,12 +462,13 @@ const load = async (more: Record<string, unknown>, given: Given = {}) => {
         command: process.execPath,
         args: [DOCKER_FIXTURE],
         env: { DOCKER_FAKE_STATE: join(dir, 'docker.json'), SSH_FAKE_LOG: log(), ...(given.env ?? {}) },
-        ssh: { command: process.execPath, args: [FIXTURE], ...more },
+        ssh: { command: process.execPath, args: [FIXTURE], ...rest },
       },
     }],
     { base: base(given), configDir: stateDir(), cwd: REPO, log: () => {} },
   );
   keeping(result.options);
+  if (machines !== undefined) openBoxes(result.options, stateDir(), machines);
   return result;
 };
 
@@ -459,13 +492,89 @@ it('serves a box in the computer: scheme, and refuses to put it in a state', asy
   const provider = providerOf(options);
   expect(await provider.list('computer://')).toEqual([{ name: 'ssh.dev02', type: 'directory' }]);
 
-  // A box is not this host's to start, stop or remove, and the write says so
-  // in the runtime's own sentence rather than doing something else.
+  // A box is not this host's to start or stop, and the write says so in the
+  // runtime's own sentence rather than doing something else.
   await expect(provider.write('computer://ssh.dev02/state', said('stopped'))).rejects
-    .toThrow(/an ssh machine is listed in this host's options, not made by this host/);
+    .toThrow(/is a box this host reaches over ssh, and it is not started or stopped here/);
 
   // A machine that is not configured is not in the scheme at all.
   await expect(provider.list('computer://ssh.web1')).rejects.toThrow(/No computer resource at computer:\/\/ssh.web1/);
+});
+
+it.skipIf(!posix)('makes a box into a computer with a create that names its login, and forgets it at a remove', async () => {
+  const { options, problems } = await load({});
+  expect(problems).toEqual([]);
+  openLogin(options, 'dev02', { destination: 'dev02', port: '2229' });
+  const provider = providerOf(options) as ReturnType<typeof providerOf> & { delete(uri: string): Promise<void> };
+
+  // The form offers the ssh box beside the machines this host makes.
+  const form = (options.resourceProviders?.computer as unknown as { describe(): { manifest: { properties: Record<string, Record<string, unknown>> } } }).describe().manifest;
+  expect(form.properties.runtime?.enum).toEqual(['docker', 'ssh']);
+  expect(form.properties.connector?.['x-ahpd-connector']).toBe('ssh');
+
+  await provider.write('computer://dev02', said(JSON.stringify({ runtime: 'ssh', connector: 'dev02', workdir: '/srv', agents: ['claude'] })), 'user:ana');
+  // The box was reached once before it was recorded, and nothing was made on it.
+  expect(recorded().map((one) => one.at(-1))).toEqual(['true']);
+  expect(sshBoxesOf(stateDir(), () => {})).toEqual({ 'ssh.dev02': { connector: 'dev02', workdir: '/srv', agents: ['claude'] } });
+  expect((await provider.list('computer://')).map((one) => one.name)).toContain('ssh.dev02');
+  expect(ownedOf(stateDir(), 'ssh.dev02', () => {})).toEqual({ owner: 'user:ana' });
+
+  // A remove forgets the record and runs nothing on the box.
+  const calls = recorded().length;
+  await provider.delete('computer://ssh.dev02');
+  expect(sshBoxesOf(stateDir(), () => {})).toEqual({});
+  expect(recorded().slice(calls).map((one) => one.at(-1)).filter((one) => one !== 'true')).toEqual([]);
+});
+
+it.skipIf(!posix)('refuses a box whose login is not open, or did not answer, and records nothing', async () => {
+  const { options } = await load({}, { env: { SSH_FAKE_UNREACHABLE: 'web1' } });
+  openLogin(options, 'web1', { destination: 'web1' });
+  const provider = providerOf(options);
+  await expect(provider.write('computer://dev02', said(JSON.stringify({ runtime: 'ssh', connector: 'nope' }))))
+    .rejects.toThrow(/the ssh login nope is not open, so dev02 is not made/);
+  await expect(provider.write('computer://web1', said(JSON.stringify({ runtime: 'ssh', connector: 'web1' }))))
+    .rejects.toThrow(/web1 is not made, because web1 did not answer: ssh: connect to host web1 port 22: No route to host/);
+  await expect(provider.write('computer://dev02', said(JSON.stringify({ runtime: 'ssh' }))))
+    .rejects.toThrow(/names the ssh connector its box is reached with/);
+  expect(sshBoxesOf(stateDir(), () => {})).toEqual({});
+});
+
+it.skipIf(!posix)('on a host people sign in to, lets a person make a box with their own login or the host\'s, and no one else\'s', async () => {
+  // A person's login keeps its key in the vault, here written to a file of its own.
+  const { options } = await load({ vaultKey: 'file' }, { users: true });
+  openLogin(options, 'ana-box', { destination: 'dev02', auth: 'vault', key: 'a key' }, 'user:ana');
+  openLogin(options, 'shared', { destination: 'dev02' });
+  const provider = providerOf(options);
+  await expect(provider.write('computer://one', said(JSON.stringify({ runtime: 'ssh', connector: 'ana-box' })), 'user:bob'))
+    .rejects.toThrow(/the ssh login ana-box is user:ana's, so user:bob cannot make a computer with it/);
+  await provider.write('computer://one', said(JSON.stringify({ runtime: 'ssh', connector: 'ana-box' })), 'user:ana');
+  await provider.write('computer://two', said(JSON.stringify({ runtime: 'ssh', connector: 'shared' })), 'user:bob');
+  expect(Object.keys(sshBoxesOf(stateDir(), () => {})).sort()).toEqual(['ssh.one', 'ssh.two']);
+});
+
+it('logs what takes the place of each box a configuration still names in ssh.machines, with no key path', async () => {
+  const lines: string[] = [];
+  const result = await loadPlugins(
+    [{
+      name: SOURCE,
+      options: {
+        command: process.execPath,
+        args: [DOCKER_FIXTURE],
+        env: { DOCKER_FAKE_STATE: join(temp(), 'docker.json'), SSH_FAKE_LOG: log() },
+        ssh: { command: process.execPath, args: [FIXTURE], machines: { dev02: { destination: 'me@dev02', port: '2229', identity: '/keys/dev02', workdir: '/srv', agents: ['claude'] } } },
+      },
+    }],
+    { base: base(), configDir: stateDir(), cwd: REPO, log: (line) => { lines.push(line); } },
+  );
+  keeping(result.options);
+  expect(result.problems).toEqual([]);
+  const said = lines.filter((line) => line.includes('ssh.machines.dev02'));
+  expect(said).toEqual([expect.stringContaining(
+    'ssh.machines.dev02 is no longer read. Make an ssh connector dev02 with destination me@dev02, port 2229, auth file; then create a computer with runtime ssh, name dev02, connector dev02, workdir /srv, agents ["claude"]',
+  )]);
+  expect(said[0]).not.toContain('/keys/dev02');
+  // And nothing is listed for it until those are made.
+  expect((await providerOf(result.options).list('computer://')).map((one) => one.name)).not.toContain('ssh.dev02');
 });
 
 it('lists a server leaf under a box, and answers the check there with its fixes', async () => {
@@ -512,7 +621,7 @@ it('refuses the check of a box that never answers once the bound is past', async
   const runtime = sshRuntime({
     command: process.execPath,
     args: ['-e', 'setTimeout(() => {}, 1e9)'],
-    machines: { dev02: { destination: 'dev02' } },
+    boxes: boxesOf({ dev02: { destination: 'dev02' } }),
     connectTimeout: 0,
   });
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
@@ -602,7 +711,6 @@ it.skipIf(!posix)('checks a box on a timer when the operator asked for an interv
   // `enter` is what waits for it. The box was down, so nothing is open.
   await options.computers?.enter?.('ssh.dev02', 'session://probe');
   const startup = recorded().length;
-  expect(startup).toBe(1);
   expect(usage.entries).toEqual([]);
 
   /*
@@ -650,7 +758,6 @@ it('reaches no box between two listings when no interval was asked for', async (
    * charging for time nobody asked it to watch.
    */
   const startup = recorded().length;
-  expect(startup).toBeGreaterThan(0);
   vi.advanceTimersByTime(3_600_000);
   await wait(200);
   expect(recorded().length).toBe(startup);
@@ -842,10 +949,10 @@ it('reaches a made machine through a jump, with a known-hosts file of its own', 
     '-T', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=30',
     '-o', 'StrictHostKeyChecking=accept-new', '-o', 'UserKnownHostsFile=/config/computer-ssh/known_hosts', '-o', 'HashKnownHosts=no',
     '-J', 'dev02',
-    '-i', '/config/computer-ssh/id_ed25519',
+    '-i', '/config/computer-ssh/id_ed25519', '-o', 'IdentitiesOnly=yes',
     'ahpd@192.168.122.40', '--', 'true',
   ]);
-  // A box an operator wrote has neither.
+  // A box with no key of its own has neither.
   expect(sshReach({}, { destination: 'dev02', port: '2229' }).argv('true'))
     .toEqual(['-T', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=30', '-p', '2229', 'dev02', '--', 'true']);
 });

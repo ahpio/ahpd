@@ -10,6 +10,7 @@ import { afterAll, afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { fileResources } from '../../sdk/src/resources/resources.js';
 import { loadPlugins } from '../../server/src/plugins.js';
 import { closeAll, keeping } from './support/closing.js';
+import { openServers } from './support/sshboxes.js';
 import type { HostOptions } from '../../sdk/src/types/host.js';
 import type { Vault } from '../../sdk/src/types/vault.js';
 import { agentAddressOf, labelsOfNotes, proxmoxRuntime } from '../src/proxmox.js';
@@ -370,7 +371,7 @@ const load = async (vault: Vault) => {
         command: process.execPath,
         args: [fileURLToPath(new URL('./fixtures/docker.mjs', import.meta.url))],
         env: { DOCKER_FAKE_STATE: join(dir(), 'docker.json'), SSH_FAKE_LOG: sshLog(), PATH: `${cloudInit()}${delimiter}${process.env.PATH ?? ''}` },
-        ssh: { command: process.execPath, args: [SSH], machines: { jump: { destination: 'ops@jump' } } },
+        ssh: { command: process.execPath, args: [SSH] },
         proxmox: { url, tokenId: TOKEN, secret: { $secret: 'host:proxmox' }, node: NODE, storage: 'local-lvm', bridge: 'vmbr0', template: TEMPLATE, ca: caFile },
         profiles: { pve: { runtime: 'proxmox', server: 'jump' } },
       },
@@ -378,6 +379,7 @@ const load = async (vault: Vault) => {
     { base, configDir: join(dir(), 'state'), cwd: join(import.meta.dirname, '../../..'), log: (line) => { logged.push(line); }, hostId: 'host-a' },
   );
   keeping(result.options);
+  openServers(result.options, { jump: { destination: 'ops@jump' } });
   const provider = result.options.resourceProviders?.computer as {
     write(uri: string, content: { data: string; encoding: string }, owner?: string): Promise<void>;
     list(uri: string): Promise<{ name: string }[]>;

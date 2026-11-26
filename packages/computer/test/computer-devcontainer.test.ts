@@ -1028,7 +1028,7 @@ it('switches every route off when devcontainer is false', async () => {
     describe(): { manifest?: { properties?: Record<string, unknown> } };
   };
   expect(Object.keys(schema.describe().manifest?.properties ?? {}))
-    .toEqual(['runtime', 'image', 'cpus', 'memory', 'workdir']);
+    .toEqual(['runtime', 'connector', 'host', 'agents', 'image', 'cpus', 'memory', 'workdir']);
   await expect(provider.write('computer://box', {
     data: JSON.stringify({ devcontainer: { folder } }),
     encoding: 'utf-8',

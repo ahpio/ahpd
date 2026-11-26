@@ -4,6 +4,7 @@ import { createWriteStream, existsSync, lstatSync, mkdtempSync, readdirSync, rea
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join, posix, resolve } from 'node:path';
 import { hostPathOf, machinePathOf, ownerOf, partTarget } from '@ahpd/sdk';
+import type { SshBoxRecord } from './owners.js';
 import type { BroughtBack, Owner, ResolvedSeed, Spawn, SpawnOptions } from '@ahpd/sdk';
 import { parse as parseJsonc } from 'jsonc-parser';
 import type { ParseError } from 'jsonc-parser';
@@ -313,6 +314,11 @@ export interface MachineSpec {
    * features, the mounts or the user in there.
    */
   devcontainer?: string;
+  /**
+   * The box this machine is, when a create on `ssh` makes it: the connector it
+   * is reached with and what it is for. Nothing is made on the box.
+   */
+  ssh?: SshBoxRecord;
   /** The label every machine this provider made carries. */
   label: string;
   cpus?: string;

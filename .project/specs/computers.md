@@ -37,7 +37,7 @@ refs:
 ---
 
 A computer is a machine that a session can run in, named `computer://<id>`.
-One plugin, `@ahpd/computer`, serves the `computer:` scheme, and its `runtime` option says what makes the machines: `docker` or `ssh`.
+One plugin, `@ahpd/computer`, serves the `computer:` scheme, and its `runtime` option says what a create that names no runtime makes: `docker` or `ssh`.
 A person makes, starts, stops and destroys a computer as a resource, and a session names one in its `computer` setting.
 
 A backend reaches the machine through the `computers` port.
@@ -68,9 +68,12 @@ The same acts are also commands, such as `x-ahpd/computers/start`.
 
 WHEN the plugin loads with `runtime: "docker"`
 THEN it makes machines with `docker run` and the default image `debian:bookworm-slim`.
-WHEN the plugin loads with `runtime: "ssh"`
-THEN it lists the boxes in `ssh.machines` and makes none
+WHEN a person writes `computer://<name>` with `"runtime": "ssh"` and the `connector` of an `ssh` login
+THEN the plugin reaches the box once through that login and records it in `computers.json` as `ssh.<name>`
+AND it makes nothing on the box, and a delete forgets the record and runs nothing there
 AND each of these machines is off this host, so every session in one runs in a [nested host](nested-hosts.md).
+An `ssh` login is a connector of the plugin's own adapter.
+A person may make a box with a login of their own, of their team or of the host.
 gVisor is not a runtime: a Docker profile sets `ociRuntime: "runsc"`, and the plugin passes it as `--runtime=runsc`.
 
 ### An agent says what its machine needs
@@ -243,7 +246,7 @@ WHEN a machine starts, or a relay connects to one
 THEN the plugin opens an up-time stretch for it
 AND it writes the stretch as `computer` usage when the machine stops, goes or the daemon stops.
 The owner is whoever made the machine, read from its labels or from `computers.json`, and `root:<host name>` when neither says.
-A runtime that only lists, such as ssh, is metered from its listings and charged to the host.
+A runtime that only lists, such as ssh, is metered from its listings and charged to the owner its record names, or to the host.
 
 ## Known gaps
 
