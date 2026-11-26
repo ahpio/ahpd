@@ -379,23 +379,17 @@ describe('the install and the restart', () => {
     });
   });
 
-  /*
-   * #38616: the daemon's own install runs first, so a plugin move that refuses
-   * leaves the new binary on disk. The update must still ask for the restart
-   * and say what did not move, instead of ending on npm's error with a daemon
-   * nobody restarted.
-   */
-  it('still restarts, and says what did not move, when the plugin move refuses', async () => {
+  // The daemon's install runs first, so a refused plugin move still restarts, and the answer keeps what did move.
+  it('still restarts, and says what moved and what did not, when npm refuses one plugin of the move', async () => {
     const configDir = plugins(
-      { '@ahpd/agent-acp': '^1.0.0', '@ahpd/sdk': '0.12.0' },
-      { '@ahpd/agent-acp': '1.0.0', '@ahpd/sdk': '0.12.0' },
+      { '@ahpd/agent-acp': '^1.0.0', '@ahpd/agent-pi': '^1.0.0', '@ahpd/sdk': '0.12.0' },
+      { '@ahpd/agent-acp': '1.0.0', '@ahpd/agent-pi': '1.0.0', '@ahpd/sdk': '0.12.0' },
     );
-    // The daemon installs; the plugin install beside it is the one npm refuses.
-    const npm = fakeNpm((argv) => argv[0] === 'install' && argv.includes('--legacy-peer-deps')
+    const npm = fakeNpm((argv) => argv.includes('@ahpd/agent-acp@2.0.0')
       ? { code: 1, stdout: '', stderr: 'npm ERR! 400 Bad Request - the manifest is refused' }
       : { code: 0, stdout: '', stderr: '' });
-    // The plugin fits the new sdk, so the check before the install passes and the refusal comes from the move.
-    const fetch = pluginRegistry({ '@ahpd/agent-acp': [['2.0.0', '^99.0.0']] });
+    // Both plugins fit the new sdk, so the check before the install passes and the refusal comes from the move.
+    const fetch = pluginRegistry({ '@ahpd/agent-acp': [['2.0.0', '^99.0.0']], '@ahpd/agent-pi': [['2.0.0', '^99.0.0']] });
     const restarted: boolean[] = [];
     const answer = await update(
       { version: LATEST },
@@ -406,13 +400,14 @@ describe('the install and the restart', () => {
       from: CURRENT,
       to: LATEST,
       restarting: true,
-      plugins: [],
+      plugins: expect.arrayContaining([{ name: '@ahpd/agent-pi', from: '1.0.0', to: '2.0.0' }]),
       pluginsError: expect.stringContaining('manifest is refused'),
     });
-    // The operator is told both halves: the plugins stayed, the daemon still restarts.
+    expect((answer?.data as { plugins: { name: string }[] }).plugins.map((one) => one.name)).not.toContain('@ahpd/agent-acp');
     const plain = typeof answer?.plain === 'function' ? answer.plain() : answer?.plain;
     expect(plain).toContain('the plugins were not moved');
     expect(plain).toContain('restarting the daemon');
+    expect(plain?.split('manifest is refused')).toHaveLength(2);
     expect(restarted).toHaveLength(1);
   });
 

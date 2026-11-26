@@ -20,8 +20,8 @@ import type { PluginMethod } from '@ahpd/sdk';
 import { configDir, daemonLog } from '../config.js';
 import { running, stop as stopDaemon } from '../daemon.js';
 import type { Running } from '../daemon.js';
-import { oneAtATime, run as npm } from '../install.js';
-import type { Moved, Runner } from '../install.js';
+import { movedBefore, oneAtATime, run as npm } from '../install.js';
+import type { Runner } from '../install.js';
 import { checkPlugins, handOffToHelper, installServer, movePlugins, planUpdate, targetSdk } from '../selfupdate.js';
 import type { HelperOptions, PlaceFacts } from '../selfupdate.js';
 import type { Fetch } from '../update.js';
@@ -199,20 +199,16 @@ export async function runUpdate(ask: UpdateAsk, served?: ServedFacts, facts: Upd
     say: (line) => { said.push(line); },
   });
   /*
-   * #38616: the install above has already replaced the daemon's binary on
-   * disk, so a refused plugin move must not end the update before the restart
-   * runs: the daemon would be left as the new binary with the plugins that
-   * were already there, and the caller would see npm's error alone. The
-   * refusal is reported, the restart still runs, and the answer names what did
-   * not move, so the operator is never told the update failed while it partly
-   * succeeded.
+   * The binary is already replaced, so a refused plugin move does not end the
+   * update: the refusal is said, the plugins that moved before it are kept in
+   * the answer, and the restart still runs.
    */
   let pluginsError: string | undefined;
   const moved = await movePlugins({ configDir: where, sdk, run, fetch, force: ask.force, marketplaces, say: (line) => { said.push(line); } })
     .catch((error: unknown) => {
       pluginsError = words(error);
       said.push(`The plugins were not moved: ${pluginsError}`);
-      return [] as Moved[];
+      return movedBefore(error);
     });
   /*
    * A terminal's restart is a signal another process answers, so the new
@@ -234,9 +230,8 @@ export async function runUpdate(ask: UpdateAsk, served?: ServedFacts, facts: Upd
    * the next turn of the loop, after this answer has been printed, and says a
    * park when the daemon answers with one.
    */
-  // #38616: a plugin move that refused still restarts, and the answer says what did not move rather than ending on the
-  // move's error with the new binary already installed.
-  const unmoved = pluginsError === undefined ? '' : `; the plugins were not moved (${pluginsError})`;
+  // npm's words for a refused move are said on their own line, so the last line only names it.
+  const unmoved = pluginsError === undefined ? '' : '; the plugins were not moved';
   const before = `${said.length === 0 ? '' : `${said.join('\n')}\n`}${plan.current} to ${plan.latest}${unmoved}`;
   const kept = {
     from: plan.current,
