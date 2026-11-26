@@ -1,7 +1,7 @@
 ---
 title: A list holds runtime kinds
 domain: plugin
-status: planned
+status: active
 priority: high
 created: 2026-11-26
 revalidated: 2026-11-26
@@ -35,14 +35,17 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 | `start` runs in a process, and the row has `process`, the URI of its current process | Softov, 2026-11-26, chose "One processes channel" | 02 |
 | The row's live state, such as `status` and `url`, is read from its current process and added to the row | (defaulted: a service is a record, and what runs is its process) | 02 |
 | A live field is marked `x-ahpd-live: true` in the schema, and a create or update that writes one is refused | the brief's *Two kinds* | 01 |
+| `start(row, process)` runs for as long as what runs, and ends when the process's signal aborts; `stop(row)` brings it down beside the abort | (defaulted: a service is a process that stays running) | 02 |
+| A runtime kind needs `processes`, as a long operation does | (defaulted: each start is a process the kind keeps) | 01 |
+| `start` and `stop` are names the host owns for every kind, as create, update and remove are | (defaulted: one list of reserved ids) | 01 |
 | The host calls `stop` on each running row when it closes | (defaulted: a process the host started does not outlive it) | 02 |
 
 ## Tasks
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a-kind-is-runtime](task-01-a-kind-is-runtime.md) | todo | - |
-| [02 - the-host-runs-a-runtime-row](task-02-the-host-runs-a-runtime-row.md) | todo | 01 |
+| [01 - a-kind-is-runtime](task-01-a-kind-is-runtime.md) | done | - |
+| [02 - the-host-runs-a-runtime-row](task-02-the-host-runs-a-runtime-row.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -50,13 +53,13 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ## Resume state
 
-- **Done so far:** the plan.
-- **Next action:** task 01.
+- **Done so far:** both tasks, on 2026-11-26. [implemented.md](implemented.md) holds the checks.
+- **Next action:** Softov's review.
 - **Open questions:** none.
 - **Watch out for:** the host keeps no row of a plugin's list.
 
 ## Final verification checklist
 
-- [ ] A runtime row starts and stops by its operations, and its live fields reach the subscribers.
-- [ ] No row starts by itself.
-- [ ] `pnpm typecheck`, the sdk and server suites, and `pnpm docs:build` pass.
+- [x] A runtime row starts and stops by its operations, and its live fields reach the subscribers.
+- [x] No row starts by itself.
+- [x] `pnpm typecheck`, the sdk and server suites, and `pnpm docs:build` pass.

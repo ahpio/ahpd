@@ -1,6 +1,6 @@
 ---
 title: The host runs a runtime row
-status: todo
+status: done
 depends: 
   - task-01-a-kind-is-runtime.md
 layer: "sdk"
@@ -35,3 +35,5 @@ The list channel serves start and stop, keeps the live fields, and stops every r
 - A close stops each running row.
 
 ## Resume
+
+Built on 2026-11-26.

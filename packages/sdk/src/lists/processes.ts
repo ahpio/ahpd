@@ -19,7 +19,7 @@
 import { randomUUID } from 'node:crypto';
 import { INVALID_PARAMS, RpcError } from '../rpc.js';
 import { reason } from '../utils/values.js';
-import type { ListProcess, ListProcesses, ProcessReport, ProcessWork, ServedList } from '../types/lists.js';
+import type { ListProcess, ListProcesses, ProcessLifecycle, ProcessReport, ProcessWork, ServedList } from '../types/lists.js';
 import type { PluginChannel, PluginMethod, ServedChannel, ServedMethod } from '../types/plugin.js';
 import type { Grant, Principal } from '../types/users.js';
 
@@ -47,7 +47,13 @@ export interface ProcessesServing {
   update(lists: Record<string, ServedList>): void;
   /** Run `work` as a new process of a kind, and answer its URI at once. */
   /** `source` is the kind, or the plugin that added the operation, whose processes it is. */
-  start(list: ServedList, source: string, work: (process: ProcessWork) => Promise<void>): string;
+  start(list: ServedList, source: string, work: (process: ProcessWork) => Promise<void>, onReport?: () => void): string;
+  /** How a process the host runs is going, by its last report, or nothing for one it does not run. */
+  lifecycleOf(uri: string): ProcessLifecycle | undefined;
+  /** Abort one process the host runs. */
+  abort(uri: string): void;
+  /** Abort every process the host runs, as it closes. */
+  abortAll(): void;
   /** Read a process again and tell its subscribers. */
   changed(channel: string, kind: string, id: string): void;
 }
@@ -71,6 +77,8 @@ export function processesChannel(onProblem: (message: string) => void = () => {}
   let lists: Record<string, ServedList> = {};
   /** The abort of each process the host runs now, by URI. */
   const running = new Map<string, AbortController>();
+  /** The last lifecycle each process the host started reported, by URI. */
+  const lifecycles = new Map<string, ProcessLifecycle>();
 
   /** What keeps the processes a path names: a kind of the list, or a plugin that added an operation onto it. */
   interface Source { name: string; by: string; processes: ListProcesses; operations: readonly { id: string; grant?: string }[]; problem?: (line: string) => void }
@@ -186,12 +194,16 @@ export function processesChannel(onProblem: (message: string) => void = () => {}
     },
   };
 
-  const start: ProcessesServing['start'] = (list, source, work) => {
+  const start: ProcessesServing['start'] = (list, source, work, onReport) => {
     const id = randomUUID();
     const uri = processUri(list.channel, source, id);
     const abort = new AbortController();
     running.set(uri, abort);
-    const report = (said: ProcessReport): void => { send(uri, { type: `${PROCESSES_SCHEME}/reported`, ...said }, list.channel); };
+    const report = (said: ProcessReport): void => {
+      if (said.lifecycle !== undefined) lifecycles.set(uri, said.lifecycle);
+      send(uri, { type: `${PROCESSES_SCHEME}/reported`, ...said }, list.channel);
+      onReport?.();
+    };
     report({ lifecycle: 'running' });
     void work({ id, report, signal: abort.signal })
       .then(() => { report({ lifecycle: abort.signal.aborted ? 'stopped' : 'completed' }); })
@@ -220,6 +232,9 @@ export function processesChannel(onProblem: (message: string) => void = () => {}
     update: (next) => { lists = next; },
     start,
     changed,
+    lifecycleOf: (uri) => lifecycles.get(uri),
+    abort: (uri) => { running.get(uri)?.abort(); },
+    abortAll: () => { for (const one of running.values()) one.abort(); },
   };
 }
 
