@@ -149,8 +149,10 @@ AND it gets the channel's `snapshot` for that reader as the state.
 WHEN a client dispatches an action to a plugin channel
 THEN the host refuses it, because the plugin is the only writer.
 
-WHEN two plugins register the same channel
+WHEN two plugins register the same channel with `registerChannel`
 THEN the second registration is a problem line.
+
+This holds for a channel one plugin serves. A list that several plugins add to is a different registration, in [briefs/a-todo-app-is-the-first-agent-app.md](../briefs/a-todo-app-is-the-first-agent-app.md).
 
 WHEN the channel has `operations`
 THEN `x-ahpd/invokeOperation` serves them at `<scheme>://`, and at no other URI of the scheme
