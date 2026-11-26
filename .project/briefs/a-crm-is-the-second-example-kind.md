@@ -28,6 +28,8 @@ Softov wants a second example beside the todo app, so the host parts are not sha
 
 ## The plugin
 
+[a-list-and-its-kinds.md](a-list-and-its-kinds.md) is the shape of a list and its kinds now, and writes this CRM as one of its examples. Where this brief differs, that brief holds.
+
 The plugin `@local/crm` registers three lists:
 
 ```js

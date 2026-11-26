@@ -86,6 +86,8 @@ With the kind, the host keeps the record, its kind and its owner, as *The row* s
 
 ### The list and its kind
 
+[a-list-and-its-kinds.md](a-list-and-its-kinds.md) is the shape of a list and its kinds now, with instances, filters, sorts, paging and relations. Where this section differs, that brief holds.
+
 New. A list is kept by the host, and a kind is one type of record in it. Softov, 2026-11-23: "A thing and its kinds". Softov renamed the thing a list on 2026-11-25: "registerList replacing the registerThing". A thing is something else, as [ideas/a-thing-has-an-id-and-a-tree-of-values.md](../ideas/a-thing-has-an-id-and-a-tree-of-values.md) says.
 
 - No plugin owns a list. Any plugin may declare it, and a declaration with the same name joins the list. Softov, 2026-11-23: "Any plugin declares it, same name joins".
