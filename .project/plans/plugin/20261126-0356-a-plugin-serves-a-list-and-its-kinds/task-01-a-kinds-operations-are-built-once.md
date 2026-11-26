@@ -1,6 +1,6 @@
 ---
 title: A kind's operations are built once
-status: todo
+status: done
 depends: []
 layer: "sdk kinds"
 refs:
@@ -40,3 +40,6 @@ The tunnels channel uses it, and the list channel of task 04 uses it too.
 - It compares them with the todo brief's `ahpd.channels` example.
 
 ## Resume
+
+Built on 2026-11-26. The shared function takes the words of update and remove as a parameter.
+The tunnels say "Deletes this tunnel.", and a list says what the todo brief's example says.

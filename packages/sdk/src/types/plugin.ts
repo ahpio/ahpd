@@ -28,6 +28,7 @@ import type { MachineNeed } from './machine.js';
 import type { CollectionOptions, RecordCollection } from './records.js';
 import type { ResourceProvider } from './resources.js';
 import type { TunnelKind, ServedTunnelKind } from './tunnels.js';
+import type { ListDeclaration, ListKind, ListKindHandle, ServedListDeclaration, ServedListKind } from './lists.js';
 import type { Owner, UsageEntry } from './usage.js';
 import type { Grant, Principal } from './users.js';
 import type { SecretWork } from './vault.js';
@@ -359,6 +360,12 @@ export interface PluginChannel {
   left?(client: string): void;
   /** What a client shows for the channel, read when the host advertises it. */
   describe?(): { title: string; description?: string };
+  /**
+   * The kinds the channel holds, by name, read when the host advertises it:
+   * each kind's title, description, schema and every operation in full. A
+   * channel that holds no kinds leaves it out.
+   */
+  kinds?(): Record<string, unknown>;
   /**
    * The operations this channel offers to `x-ahpd/invokeOperation`, which
    * serves them at `<scheme>://` beside the daemon's own channels. Only that
@@ -1704,6 +1711,24 @@ export interface PluginHost extends PluginContext {
    */
   registerTunnelKind(kind: TunnelKind): void;
   /**
+   * Declare a list the host serves and no plugin owns.
+   *
+   * Every plugin's declaration of one `name` joins: the first loaded gives the
+   * channel and the words, and the filters and sorts of each are joined. A
+   * name this plugin already declared is refused here. The host keeps the
+   * list's structure and asks its kinds for the rows.
+   */
+  registerList(list: ListDeclaration): void;
+  /**
+   * Add one kind of record to the list whose `channel` it names.
+   *
+   * The kind keeps its own rows and answers them through `rows`; the host
+   * serves create, update and remove with its schema as their form and hands
+   * each to `invoke`. The handle's `changed` tells the list's subscribers a
+   * row changed.
+   */
+  registerKind(kind: ListKind): ListKindHandle;
+  /**
    * Subscribe to one of the host's own moments.
    *
    * The one method not named `register*`, because it contributes nothing to
@@ -1727,7 +1752,7 @@ export interface PluginLink {
  *
  * A key is the plural of the register method of that kind - `agents`, `tools`,
  * `channels`, `methods`, `routes`, `triggerTypes`, `adapters`, `engines`,
- * `tunnelKinds` - and its entries are the names the method may be called with.
+ * `tunnelKinds`, `lists`, `kinds` - and its entries are the names the method may be called with.
  * `ports` holds the singleton ports a plugin sets, such as `vault`. A
  * registration its contracts do not list is refused.
  */
@@ -1955,6 +1980,10 @@ export interface Contribution {
    * registered none.
    */
   tunnelKinds?: Record<string, ServedTunnelKind>;
+  /** The lists this plugin declared, keyed by name. Absent when it declared none. */
+  lists?: Record<string, ServedListDeclaration>;
+  /** The kinds this plugin added to lists, keyed by `<channel> <name>`. Absent when it added none. */
+  kinds?: Record<string, ServedListKind>;
   /** The commands this plugin serves, keyed by name. */
   methods: Record<string, ServedMethod>;
   /**

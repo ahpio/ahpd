@@ -1,6 +1,6 @@
 ---
 title: A list is served as a channel
-status: todo
+status: done
 depends: ["task-01-a-kinds-operations-are-built-once.md", "task-03-the-fold-joins-a-lists-declarations.md"]
 layer: "sdk lists"
 refs:
@@ -54,3 +54,10 @@ The host asks the kinds for every row and keeps none.
 - `npx vitest run packages/sdk/test/list-channel.test.ts packages/sdk/test/plugin-channel-operations.test.ts` passes.
 
 ## Resume
+
+Built on 2026-11-26.
+- Step 10: `x-ahpd/invokeOperation` already checks the input against the operation's schema, so `run` does not check it again.
+- Step 6: a kind that throws raises a warning on its plugin's row through the plugin host's `problem`.
+- A `changed` reads the row with no reader: with no instances, the channel's grant decides who reads, as the brief says.
+- A kind that lacks the field of `defaultSort` keeps its rows, which go last. Only a sort the query names leaves a kind out.
+- The operations are sent in English. A list has no catalogs yet.

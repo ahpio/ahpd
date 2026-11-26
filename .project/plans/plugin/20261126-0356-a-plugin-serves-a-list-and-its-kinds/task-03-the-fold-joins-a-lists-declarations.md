@@ -1,6 +1,6 @@
 ---
 title: The fold joins a list's declarations
-status: todo
+status: done
 depends: ["task-02-a-plugin-declares-a-list-and-kinds.md"]
 layer: "sdk plugins"
 refs:
@@ -41,3 +41,5 @@ What differs or clashes is a warning on the plugin's row.
 - `npx vitest run packages/sdk/test/plugin-lists.test.ts` passes.
 
 ## Resume
+
+Built on 2026-11-26. Between a list and a channel on one scheme, the one whose plugin loaded second is refused.
