@@ -1,6 +1,6 @@
 ---
 title: The list serves added operations
-status: todo
+status: done
 depends: 
   - task-01-a-plugin-registers-an-operation.md
 layer: "sdk"
@@ -38,3 +38,5 @@ The fold attaches each added operation to its kinds or its list, and the list ch
 - An id that clashes is a problem line, and the kind's own stays.
 
 ## Resume
+
+Built on 2026-11-26.

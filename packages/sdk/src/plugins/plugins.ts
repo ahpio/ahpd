@@ -24,7 +24,7 @@ import type { SessionStore } from '../types/sessions.js';
 import { servedList } from '../lists/channel.js';
 import { PROCESS_STOP, PROCESSES_SCHEME, servedProcesses } from '../lists/processes.js';
 import type { ServedTunnelKind } from '../types/tunnels.js';
-import type { ServedList, ServedListKind } from '../types/lists.js';
+import type { ServedList, ServedListKind, ServedListOperation } from '../types/lists.js';
 import type { Usage } from '../types/usage.js';
 import type { Grant, Principal } from '../types/users.js';
 import type { Vault } from '../types/vault.js';
@@ -39,7 +39,7 @@ import { isRecordPath, isRecordSlug, RECORD_PATH, RECORD_SLUG } from '../resourc
 import type { Pair } from '../utils/pair.js';
 import { reason } from '../utils/values.js';
 import { readSecret } from '../access/vault.js';
-import { checkAdapter, checkAgent, checkEngine, checkChannel, checkChatRequest, checkGrants, checkMethod, checkPort, checkResourceProvider, checkRoute, checkScheme, checkSessionRequest, checkTool, listedOperations, checkTriggerType, checkTunnelKind, checkList, checkListKind, declared, miss, reservedName, type CheckedSchema } from './validate.js';
+import { checkAdapter, checkAgent, checkEngine, checkChannel, checkChatRequest, checkGrants, checkMethod, checkPort, checkResourceProvider, checkRoute, checkScheme, checkSessionRequest, checkTool, listedOperations, checkTriggerType, checkTunnelKind, checkList, checkListKind, checkListOperation, declared, miss, reservedName, type CheckedSchema } from './validate.js';
 import { checkView, VIEW_SURFACES } from './view.js';
 import { gapLine, schemaGaps } from './schemagaps.js';
 
@@ -750,6 +750,51 @@ export function foldHostOptions(base: HostOptions, contributions: Contribution[]
     }
   }
   /*
+   * The operations plugins add onto lists. One onto kinds lands on each named
+   * kind under `<kind>/<id>`; an id the kind already has, or one the host
+   * serves for every kind, is reported and that kind left out. A kind not
+   * loaded yet is skipped, and the operation lands on it at a later fold. One
+   * onto the list is `<plugin>/<id>`, and a plugin name that is a kind of the
+   * list is reported, because the two would share their ids.
+   */
+  for (const contribution of contributions) {
+    for (const added of Object.values(contribution.listOperations ?? {})) {
+      const list = listOn.get(added.channel);
+      if (list === undefined) {
+        problems.push(`plugin ${added.by} adds operation ${added.operation.id} to ${added.channel}, which no plugin declared as a list; it is left out`);
+        continue;
+      }
+      if (added.kinds === undefined) {
+        if (list.kinds[added.owner] !== undefined) {
+          problems.push(`plugin ${added.by} adds operation ${added.owner}/${added.operation.id} to list ${list.name}, which has a kind called ${added.owner}; it is left out`);
+          continue;
+        }
+        (list.operations ??= []).push(added);
+        continue;
+      }
+      const onto: string[] = [];
+      for (const name of added.kinds) {
+        const kind = list.kinds[name];
+        if (kind === undefined) continue;
+        if (['create', 'update', 'remove'].includes(added.operation.id) || (kind.operations ?? []).some((one) => one.id === added.operation.id)) {
+          problems.push(`plugin ${added.by} adds operation ${name}/${added.operation.id}, which kind ${name} of plugin ${kind.by} already has; the kind's own stays`);
+          continue;
+        }
+        if ((list.operations ?? []).some((one) => one.onto?.includes(name) && one.operation.id === added.operation.id)) {
+          problems.push(`plugin ${added.by} adds operation ${name}/${added.operation.id}, which another plugin already added; the first stays`);
+          continue;
+        }
+        onto.push(name);
+      }
+      if (added.processes !== undefined && list.kinds[added.owner] !== undefined) {
+        problems.push(`plugin ${added.by} adds operation ${added.operation.id} with processes to list ${list.name}, which has a kind called ${added.owner}; it is left out`);
+        continue;
+      }
+      added.onto = onto;
+      (list.operations ??= []).push(added);
+    }
+  }
+  /*
    * Each list is one channel and one scheme of rows. A row scheme another
    * plugin or the daemon serves is a clash: the list is reported and not
    * served, as a second provider of one scheme is.
@@ -783,7 +828,8 @@ export function foldHostOptions(base: HostOptions, contributions: Contribution[]
    * of processes, its stop command and the grants they name. A plugin that
    * took the scheme or the command first keeps it, and is reported.
    */
-  if (Object.values(lists).some((list) => Object.values(list.kinds).some((kind) => kind.processes !== undefined))) {
+  if (Object.values(lists).some((list) => Object.values(list.kinds).some((kind) => kind.processes !== undefined)
+    || (list.operations ?? []).some((one) => one.processes !== undefined))) {
     const processes = servedProcesses(base);
     processes.update(lists);
     const heldChannel = channels[PROCESSES_SCHEME];
@@ -2287,6 +2333,33 @@ export function pluginHost(by: string, given: LoaderContext, options: HostRecord
      * reaches whichever list channel a host built over it, and one made before
      * any host did is told rather than dropped, as a channel's publish is.
      */
+    registerOperation(added) {
+      open();
+      const { channel, id, checked } = checkListOperation(added, by);
+      declared(by, options.contracts, 'operations', id);
+      const held = contribution.listOperations ??= {};
+      const key = `${channel} ${id}`;
+      if (held[key] !== undefined) {
+        throw new Error(miss(by, 'registerOperation', id, `an id no other operation of this plugin on ${channel} uses`));
+      }
+      reportGaps(checked);
+      const served: ServedListOperation = {
+        ...added,
+        channel,
+        by,
+        owner: by.slice(by.lastIndexOf('/') + 1),
+        problem: (line) => { options.alert?.({ level: 'warning', text: line }); },
+      };
+      held[key] = served;
+      return {
+        processChanged: (process) => {
+          if (typeof process !== 'string' || process === '') throw new Error(miss(by, 'processChanged', 'the id', 'a process id'));
+          const changed = served.processChanged;
+          if (changed === undefined) throw new Error(miss(by, 'processChanged', process, 'said once a host is built over this plugin'));
+          changed(process);
+        },
+      };
+    },
     registerKind(kind) {
       open();
       const { channel, name: named, checked } = checkListKind(kind, by);

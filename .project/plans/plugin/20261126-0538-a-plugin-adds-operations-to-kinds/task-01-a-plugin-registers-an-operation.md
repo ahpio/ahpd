@@ -1,6 +1,6 @@
 ---
 title: A plugin registers an operation
-status: todo
+status: done
 depends: []
 layer: "sdk"
 ---
@@ -30,3 +30,5 @@ A plugin registers an operation onto kinds of a list, or onto the list, and the 
 - The plugin host refuses an id of create, update or remove.
 
 ## Resume
+
+Built on 2026-11-26.
