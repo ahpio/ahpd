@@ -54,9 +54,10 @@ describe('registerList', () => {
     expect(() => host.registerList({} as never)).toThrow(/alpha.*registerList.*name/);
   });
 
-  it('refuses instances and a page, naming the step that builds each', () => {
+  it('refuses instances that are not a boolean, and a page, naming the step that builds it', () => {
     const { host } = pluginHost('alpha', context());
-    expect(() => host.registerList(todoList({ instances: true }))).toThrow(/registerList.*instances.*later step/);
+    expect(() => host.registerList(todoList({ instances: 'yes' as never }))).toThrow(/registerList.*instances/);
+    expect(() => host.registerList(todoList({ name: 'todo-i', instances: true }))).not.toThrow();
     expect(() => host.registerList(todoList({ page: { size: 50 } }))).toThrow(/registerList.*page.*merged cursor/);
   });
 

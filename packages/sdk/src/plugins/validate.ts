@@ -1171,8 +1171,8 @@ export const checkList = (value: unknown, by: string): string => {
       throw new Error(miss(by, method, member, 'a string, or nothing'));
     }
   }
-  if (object.instances !== undefined && object.instances !== false) {
-    throw new Error(miss(by, method, 'instances', 'false or nothing: instances wait for a later step of lists, which builds them'));
+  if (object.instances !== undefined && typeof object.instances !== 'boolean') {
+    throw new Error(miss(by, method, 'instances', 'true, false or nothing'));
   }
   if (object.page !== undefined) {
     throw new Error(miss(by, method, 'page', 'nothing: paging waits for a later step of lists, which builds the merged cursor'));

@@ -1,6 +1,6 @@
 ---
 title: The channel serves each instance
-status: todo
+status: done
 depends: 
   - task-01-an-instance-comes-and-goes.md
 layer: "sdk"
@@ -37,3 +37,5 @@ The list channel asks each instance of each kind, names each row by its instance
 - A removed instance sends `removed` for each of its rows.
 
 ## Resume
+
+Built on 2026-11-26.

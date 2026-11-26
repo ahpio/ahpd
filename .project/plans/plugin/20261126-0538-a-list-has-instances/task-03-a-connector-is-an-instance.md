@@ -1,6 +1,6 @@
 ---
 title: A connector is an instance
-status: todo
+status: done
 depends: 
   - task-02-the-channel-serves-each-instance.md
 layer: "sdk"
@@ -28,3 +28,5 @@ A test plugin adds each of its adapter's connectors as an instance, so the Desk 
 - The list's subscribers get an action for each change.
 
 ## Resume
+
+Built on 2026-11-26.

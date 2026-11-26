@@ -43,7 +43,11 @@ export interface ListDeclaration {
   title: string;
   description?: string;
   icon?: string;
-  /** Whether a row's URI carries an instance. Refused until the step that builds instances. */
+  /**
+   * Whether a row comes from one of several instances of its kind, such as
+   * one Desk connector each. A row is then `<name>://<instance>/<id>`, and a
+   * reader sees the rows of the instances whose owner lets them in.
+   */
   instances?: boolean;
   /** The filters a query may set, in the order a client draws them. */
   filters?: ListFilter[];
@@ -64,6 +68,8 @@ export interface ListDeclaration {
  */
 export interface ListQuery {
   filters: Record<string, string[]>;
+  /** In an instance list, the instances asked for; the host asks each kind once per instance, so a kind may leave this unread. */
+  instances?: string[];
   search?: string;
   sort?: string;
 }
@@ -76,6 +82,18 @@ export interface ListRow {
   owner?: string;
   /** The fields of the kind's schema, and only those. */
   record: Record<string, unknown>;
+  /** In an instance list, the instance it comes from. The host sets it on the row it hands `invoke`, `start` and `stop`. */
+  instance?: string;
+}
+
+/** One instance of a kind: a connector, a machine, an account. */
+export interface ListInstance {
+  /** Its id, with no slash: the part of a row's URI before the row's own id. */
+  id: string;
+  /** What a client shows for it. */
+  title: string;
+  /** Whose it is: `host`, `team:<team>` or `user:<id>`. Absent, a reader of the list reads it. */
+  owner?: string;
 }
 
 /**
@@ -133,7 +151,8 @@ export interface ListKind {
    * `row` is the row it was pointed at, read with `rows.read`, and undefined
    * for an operation on the list as a whole, such as `create`. `input` is what
    * the host checked against the schema. A create answers the id of the row it
-   * made, so the host can answer the caller with it. A throw fails the call
+   * made, so the host can answer the caller with it: in a list with instances,
+   * `<instance>/<id>`. A throw fails the call
    * with its message. A row that changed is said with the handle's `changed`.
    */
   invoke(
@@ -222,6 +241,10 @@ export interface ListKindHandle {
   changed(instance: string | undefined, id: string): void;
   /** Say one process changed, started or ended. The host reads it again with `processes.read` and tells its subscribers. */
   processChanged(id: string): void;
+  /** Add an instance of the kind, in a list with `instances`, or change one already added. */
+  addInstance(instance: ListInstance): void;
+  /** Remove an instance of the kind; its rows leave the list. */
+  removeInstance(id: string): void;
 }
 
 /**
@@ -274,6 +297,12 @@ export interface ServedListKind extends ListKind {
   changed?: (instance: string | undefined, id: string) => void;
   /** Set by the list channel once a host serves it: how a `processChanged` reaches it. */
   processChanged?: (id: string) => void;
+  /** The instances the kind added, by id. */
+  instances?: Map<string, ListInstance>;
+  /** Set by the list channel: whether its list takes instances. */
+  acceptsInstances?: boolean;
+  /** Set by the list channel: how an instance that came or went reaches it. */
+  instancesChanged?: (id: string, present: boolean) => void;
   /** A warning on the row of the plugin that registered it, for a kind that failed to answer. */
   problem?: (line: string) => void;
   /** The catalogs of that plugin, where the kind's words and its own operations are translated. */
