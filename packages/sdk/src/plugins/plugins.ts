@@ -21,6 +21,7 @@ import type { HostOptions, HostTool, NodeRegistry } from '../types/host.js';
 import type { ChannelHandle, Contribution, GrantEntry, LoaderContext, Alert, InstallAnswer, PluginConnects, PluginContext, PluginContracts, PluginHost, PluginStarts, PluginView, SessionMetaKey, ServedBindings, ServedCanvases, ServedChannel, ServedMethod, ServedPlan, ServedSessionMeta, PluginTriggers, PortContribution, PortKey, PortOf, Route, TriggerTypeDefinition, ViewSurface } from '../types/plugin.js';
 import type { CollectionOptions, RecordCollection, RecordStore } from '../types/records.js';
 import type { SessionStore } from '../types/sessions.js';
+import { listChannel } from '../lists/channel.js';
 import type { ServedTunnelKind } from '../types/tunnels.js';
 import type { ServedList, ServedListKind } from '../types/lists.js';
 import type { Usage } from '../types/usage.js';
@@ -746,6 +747,23 @@ export function foldHostOptions(base: HostOptions, contributions: Contribution[]
       }
       list.kinds[kind.name] = kind;
     }
+  }
+  /*
+   * Each list is one channel and one scheme of rows. A row scheme another
+   * plugin or the daemon serves is a clash: the list is reported and not
+   * served, as a second provider of one scheme is.
+   */
+  for (const [name, list] of Object.entries(lists)) {
+    const held = schemes.get(name);
+    if (held !== undefined) {
+      problems.push(`plugin ${list.by} declares list ${name}, whose rows are ${name}://, which ${held === 'the daemon' ? 'the daemon' : `plugin ${held}`} already serves; the list is refused`);
+      delete lists[name];
+      continue;
+    }
+    const { served, provider } = listChannel(list);
+    channels[list.channel] = served;
+    schemes.set(name, list.by);
+    resourceProviders[name] = provider as Schemes[string];
   }
   for (const list of Object.values(lists)) {
     // The list's grants join the table as a plugin's own subject does.
@@ -2257,7 +2275,7 @@ export function pluginHost(by: string, given: LoaderContext, options: HostRecord
         throw new Error(miss(by, 'registerKind', named, `a name no other kind of ${channel} in this plugin uses`));
       }
       reportGaps(checked);
-      const served: ServedListKind = { ...kind, channel, by };
+      const served: ServedListKind = { ...kind, channel, by, problem: (line) => { options.alert?.({ level: 'warning', text: line }); } };
       held[key] = served;
       return {
         changed: (instance, id) => {

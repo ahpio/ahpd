@@ -153,6 +153,8 @@ export interface ServedListKind extends ListKind {
   by: string;
   /** Set by the list channel once a host serves it: how a `changed` reaches it. */
   changed?: (instance: string | undefined, id: string) => void;
+  /** A warning on the row of the plugin that registered it, for a kind that failed to answer. */
+  problem?: (line: string) => void;
 }
 
 /** One list as the fold joins it: the first declaration's words, every declaration's filters and sorts, and its kinds by name. */

@@ -99,6 +99,7 @@ plugin apply -> registerList, registerKind -> fold joins lists, attaches kinds
 | A kind with `class: 'runtime'` is refused until the step that builds its hooks | (defaulted: as `instances` and `page` are refused) | 02 |
 | `relations` is checked and kept, and served by a later step | (defaulted: step 1 builds no `uri` filter) | 02 |
 | `invoke` gets no row for an operation on the list as a whole, such as create | (defaulted: such an operation has no target) | 04 |
+| A change reaches a subscriber of a filtered URI: the host reads the row once and tests it against each watched query, by the declared rules | Softov, 2026-11-26, chose "The host tests the row" | 04 |
 | `ahpd.channels` lists each list with `kinds`, one entry per kind, each with every operation in full | the todo brief's *How a client finds the kind* | 05 |
 | The tests are fixtures in `packages/sdk/test`: a todo plugin that keeps its rows in memory, and a second plugin that adds a kind | (defaulted: a real `@ahpd/todo` package is the todo brief's own plan) | 05 |
 
@@ -117,7 +118,7 @@ plugin apply -> registerList, registerKind -> fold joins lists, attaches kinds
 | [01 - a-kinds-operations-are-built-once](task-01-a-kinds-operations-are-built-once.md) | done | - |
 | [02 - a-plugin-declares-a-list-and-kinds](task-02-a-plugin-declares-a-list-and-kinds.md) | done | - |
 | [03 - the-fold-joins-a-lists-declarations](task-03-the-fold-joins-a-lists-declarations.md) | done | 02 |
-| [04 - a-list-is-served-as-a-channel](task-04-a-list-is-served-as-a-channel.md) | todo | 01, 03 |
+| [04 - a-list-is-served-as-a-channel](task-04-a-list-is-served-as-a-channel.md) | done | 01, 03 |
 | [05 - ahpd-channels-lists-the-kinds](task-05-ahpd-channels-lists-the-kinds.md) | todo | 04 |
 
 ## Risks and tradeoffs
@@ -129,8 +130,8 @@ plugin apply -> registerList, registerKind -> fold joins lists, attaches kinds
 
 ## Resume state
 
-- **Done so far:** task 01, the shared operations. Task 02, `registerList` and `registerKind` with their checks. Task 03, the fold into `options.lists` and the grants.
-- **Next action:** [task-04-a-list-is-served-as-a-channel.md](task-04-a-list-is-served-as-a-channel.md).
+- **Done so far:** task 01, the shared operations. Task 02, `registerList` and `registerKind` with their checks. Task 03, the fold into `options.lists` and the grants. Task 04, the list channel and the row scheme.
+- **Next action:** [task-05-ahpd-channels-lists-the-kinds.md](task-05-ahpd-channels-lists-the-kinds.md).
 - **Open questions:** none.
 - **Watch out for:** the host keeps no row of a plugin's list; do not reach for `RecordsChannel` or a record collection. The tunnels channel stays in the server and keeps its rows.
 

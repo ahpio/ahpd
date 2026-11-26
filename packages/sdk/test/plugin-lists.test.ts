@@ -179,7 +179,9 @@ describe('the fold of lists', () => {
     const second = fold(plugin('alpha', (host) => host.registerList(todoList())), channel('beta'));
     expect(second.problems).toEqual(['plugin beta registers channel x-ahpd-todos, which plugin alpha already declared as list todo; the channel is refused']);
     expect(second.options.lists?.['todo']).toBeDefined();
-    expect(second.options.channels?.['x-ahpd-todos']).toBeUndefined();
+    // The scheme is the list's own channel now, and beta's is gone.
+    expect(second.options.channels?.['x-ahpd-todos']?.by).toBe('alpha');
+    expect(second.options.channels?.['x-ahpd-todos']?.channel.grant).toBe('todo:get');
   });
 
   it('attaches each kind to the list its channel names, from any plugin', () => {
