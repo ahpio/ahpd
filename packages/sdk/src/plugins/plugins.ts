@@ -2397,6 +2397,20 @@ export function pluginHost(by: string, given: LoaderContext, options: HostRecord
           }
           changed(id);
         },
+        addInstance: (instance) => {
+          const id = instance?.id;
+          if (typeof id !== 'string' || id === '' || id.includes('/')) throw new Error(miss(by, 'addInstance', 'the id', 'a non-empty id with no slash'));
+          if (typeof instance.title !== 'string') throw new Error(miss(by, 'addInstance', 'the title', 'a string'));
+          if (instance.owner !== undefined && !/^(?:host|team:[^/]+|user:[^/]+)$/u.test(instance.owner)) {
+            throw new Error(miss(by, 'addInstance', 'the owner', 'host, team:<team> or user:<id>, or nothing'));
+          }
+          if (served.acceptsInstances === false) throw new Error(miss(by, 'addInstance', id, `a list with instances, and ${channel} has none`));
+          (served.instances ??= new Map()).set(id, { id, title: instance.title, ...(instance.owner === undefined ? {} : { owner: instance.owner }) });
+          served.instancesChanged?.(id, true);
+        },
+        removeInstance: (id) => {
+          if (served.instances?.delete(id) === true) served.instancesChanged?.(id, false);
+        },
       };
     },
     on(event, handle) {

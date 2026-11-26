@@ -1,6 +1,6 @@
 ---
 title: An instance comes and goes
-status: todo
+status: done
 depends: []
 layer: "sdk"
 ---
@@ -30,3 +30,5 @@ A kind of an instance list adds and removes instances at run time, and the host 
 - An `addInstance` on a list with no `instances` throws.
 
 ## Resume
+
+Built on 2026-11-26.

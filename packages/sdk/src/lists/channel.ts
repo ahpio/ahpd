@@ -21,11 +21,12 @@
 import { kindOffers, kindOperations } from '../kinds/operations.js';
 import { HOST_CATALOGS, translated, type Catalogs } from '../i18n.js';
 import type { ProcessesServing } from './processes.js';
-import { absentResource, asFile, splitResource } from '../resources/records.js';
+import { absentResource, asFile } from '../resources/records.js';
 import { INVALID_PARAMS, RpcError } from '../rpc.js';
 import { reason } from '../utils/values.js';
 import type { ChannelOperation, Operation, OperationStatus } from '../types/kinds.js';
-import type { ListQuery, ListRow, ProcessLifecycle, ServedList, ServedListKind, ServedListOperation } from '../types/lists.js';
+import type { ListInstance, ListQuery, ListRow, ProcessLifecycle, ServedList, ServedListKind, ServedListOperation } from '../types/lists.js';
+import { onTeam } from '../channels/owners.js';
 import type { PluginChannel, ServedChannel } from '../types/plugin.js';
 import type { Read, ResourceProvider } from '../types/resources.js';
 import type { Grant, Principal } from '../types/users.js';
@@ -63,6 +64,11 @@ const queryOf = (list: ServedList, uri: string): ListQuery => {
       const field = value.startsWith('-') ? value.slice(1) : value;
       if (!(list.sorts ?? []).includes(field)) throw new RpcError(INVALID_PARAMS, `${list.channel}:// sorts by ${(list.sorts ?? []).join(', ') || 'nothing'}, not ${field}`);
       query.sort = value;
+      continue;
+    }
+    if (key === 'instance') {
+      if (list.instances !== true) throw new RpcError(INVALID_PARAMS, `${list.channel}:// has no instances`);
+      query.instances = value.split(',').filter((one) => one !== '');
       continue;
     }
     if (key === 'search') {
@@ -111,6 +117,7 @@ const takesPart = (list: ServedList, kind: ServedListKind, query: ListQuery): bo
 
 /** Whether one row of a kind that takes part matches a query: each filter's values, and the search as text. */
 const matches = (list: ServedList, row: ListRow, query: ListQuery): boolean => {
+  if (query.instances !== undefined && query.instances.length > 0 && !query.instances.includes(row.instance ?? '')) return false;
   for (const [field, values] of Object.entries(query.filters)) {
     if (values.length === 0) continue;
     if (!values.includes(String(row.record[field]))) return false;
@@ -153,6 +160,32 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
     onProblem(`plugin ${kind.by}: ${line}`);
   };
 
+  /** How a row is named in this list: `<instance>/<id>` in a list with instances, else its id. */
+  const keyOf = (row: ListRow): string => (row.instance === undefined ? row.id : `${row.instance}/${row.id}`);
+  /** The instance and the id a key names. */
+  const partsOf = (key: string): { instance: string | undefined; id: string } => {
+    if (list.instances !== true) return { instance: undefined, id: key };
+    const at = key.indexOf('/');
+    return at < 0 ? { instance: '', id: key } : { instance: key.slice(0, at), id: key.slice(at + 1) };
+  };
+  /**
+   * Whether a reader may read an instance, by the rule connectors are read by:
+   * their own, their teams', and the host's to anyone who reads the list. An
+   * instance with no owner is read by whoever reads the list.
+   */
+  const mayRead = (instance: ListInstance | undefined, reader: Principal | undefined): boolean => {
+    if (reader === undefined || instance?.owner === undefined || instance.owner === 'host') return true;
+    if (instance.owner.startsWith('user:')) return reader.plugin === undefined && reader.id === instance.owner.slice('user:'.length);
+    return onTeam(reader, instance.owner.slice('team:'.length));
+  };
+  /** The instances of a kind a reader may read, among those a query asks for; one entry with no instance in a list without them. */
+  const instancesOf = (kind: ServedListKind, reader: Principal | undefined, asked?: string[]): (ListInstance | undefined)[] => {
+    if (list.instances !== true) return [undefined];
+    return [...(kind.instances?.values() ?? [])]
+      .filter((one) => mayRead(one, reader))
+      .filter((one) => asked === undefined || asked.length === 0 || asked.includes(one.id));
+  };
+
   /** How the last call of an operation on the list as a whole went, by its id. */
   const listed = new Map<string, { status: OperationStatus; error?: string }>();
   /** The call running on a row, or the last one that ran, by the row's id. */
@@ -164,7 +197,6 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
   const addedOnto = (kind: ServedListKind): ServedListOperation[] => (list.operations ?? []).filter((one) => one.onto?.includes(kind.name) === true);
   /** The operations other plugins added onto the list as a whole. */
   const addedOnList = (): ServedListOperation[] => (list.operations ?? []).filter((one) => one.kinds === undefined);
-  /** A kind with the operations added onto it beside its own. */
   /** The current process of each running row of a runtime kind, by `<kind> <row>`. */
   const runs = new Map<string, string>();
   const runKey = (kind: ServedListKind, id: string): string => `${kind.name} ${id}`;
@@ -179,6 +211,7 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
     { id: 'start', label: 'Start', icon: 'play' },
     { id: 'stop', label: 'Stop', icon: 'debug-stop' },
   ];
+  /** A kind with the operations added onto it beside its own. */
   const withAdded = (kind: ServedListKind): ServedListKind => {
     const added = addedOnto(kind);
     const runtime = kind.class === 'runtime' ? RUNTIME_OPERATIONS : [];
@@ -188,7 +221,7 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
   const offersOf = (kind: ServedListKind, row: ListRow): string[] => {
     const ids = kindOffers(withAdded(kind), row.record, true);
     if (kind.class !== 'runtime') return ids;
-    const drop = `${kind.name}/${runsNow(kind, row.id) ? 'start' : 'stop'}`;
+    const drop = `${kind.name}/${runsNow(kind, keyOf(row)) ? 'start' : 'stop'}`;
     return ids.filter((one) => one !== drop);
   };
 
@@ -226,26 +259,33 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
 
   /** One row as a client reads it. */
   const served = (kind: ServedListKind, row: ListRow): ServedRow => {
-    const operation = running.get(row.id);
+    const key = keyOf(row);
+    const operation = running.get(key);
+    const run = runs.get(runKey(kind, key));
+    const lifecycle = run === undefined ? undefined : processes?.lifecycleOf(run);
     return {
       id: row.id,
+      ...(row.instance === undefined ? {} : { instance: row.instance }),
       kind: kind.name,
       ...(row.owner === undefined ? {} : { owner: row.owner }),
       record: row.record,
       operations: offersOf(kind, row),
       ...(operation === undefined ? {} : { operation }),
-      ...(kind.class === 'runtime' && runs.has(runKey(kind, row.id)) ? { process: { uri: runs.get(runKey(kind, row.id))!, ...(processes?.lifecycleOf(runs.get(runKey(kind, row.id))!) === undefined ? {} : { lifecycle: processes!.lifecycleOf(runs.get(runKey(kind, row.id))!)! }) } } : {}),
+      ...(kind.class === 'runtime' && run !== undefined ? { process: { uri: run, ...(lifecycle === undefined ? {} : { lifecycle }) } } : {}),
     };
   };
 
   /** Every row a query asks for, from each kind that takes part, merged in the order asked. */
   const rowsOf = async (query: ListQuery, reader: Principal | undefined): Promise<ServedRow[]> => {
-    const answers = await Promise.all(kinds().filter((kind) => takesPart(list, kind, query)).map(async (kind) => {
+    const asked = kinds().filter((kind) => takesPart(list, kind, query))
+      .flatMap((kind) => instancesOf(kind, reader, query.instances).map((instance) => ({ kind, instance })));
+    const answers = await Promise.all(asked.map(async ({ kind, instance }) => {
       try {
-        return (await kind.rows.list(query, undefined, reader)).map((row) => served(kind, row));
+        return (await kind.rows.list(query, instance?.id, reader))
+          .map((row) => served(kind, instance === undefined ? row : { ...row, instance: instance.id }));
       }
       catch (error) {
-        warn(kind, `kind ${kind.name} could not list its rows of ${list.name}: ${reason(error)}`);
+        warn(kind, `kind ${kind.name} could not list its rows of ${list.name}${instance === undefined ? '' : ` in ${instance.id}`}: ${reason(error)}`);
         return [];
       }
     }));
@@ -257,16 +297,23 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
     return rows.sort((left, right) => way * compare(left.record[field], right.record[field]));
   };
 
-  /** The kind that holds a row, and the row, asked of each kind in turn; nothing when none does. */
-  const find = async (id: string, reader: Principal | undefined): Promise<{ kind: ServedListKind; row: ListRow } | undefined> => {
+  /**
+   * The kind that holds a row, and the row with its instance, by the row's
+   * key, asked of each kind in turn; nothing when none does, or when the
+   * reader may not read its instance.
+   */
+  const find = async (key: string, reader: Principal | undefined): Promise<{ kind: ServedListKind; row: ListRow } | undefined> => {
+    const { instance, id } = partsOf(key);
     for (const kind of kinds()) {
+      const held = instance === undefined ? undefined : kind.instances?.get(instance);
+      if (instance !== undefined && (held === undefined || !mayRead(held, reader))) continue;
       let row: ListRow | undefined;
-      try { row = await kind.rows.read(id, undefined, reader); }
+      try { row = await kind.rows.read(id, instance, reader); }
       catch (error) {
-        warn(kind, `kind ${kind.name} could not read ${list.name} ${id}: ${reason(error)}`);
+        warn(kind, `kind ${kind.name} could not read ${list.name} ${key}: ${reason(error)}`);
         continue;
       }
-      if (row !== undefined) return { kind, row };
+      if (row !== undefined) return { kind, row: instance === undefined ? row : { ...row, instance } };
     }
     return undefined;
   };
@@ -277,9 +324,9 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
     channel: undefined as unknown as PluginChannel,
   };
 
-  /** Send one action to every subscriber of one URI. */
-  const send = (uri: string, action: { type: string } & Record<string, unknown>): void => {
-    servedChannel.publish?.(uri, action, {});
+  /** Send one action to every subscriber of one URI, or to those who may read its instance. */
+  const send = (uri: string, action: { type: string } & Record<string, unknown>, instance?: ListInstance): void => {
+    servedChannel.publish?.(uri, action, instance === undefined ? {} : { visible: (reader) => mayRead(instance, reader) });
   };
 
   /** The URIs a subscriber is on now; one nobody watches any more is forgotten. */
@@ -295,8 +342,10 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
    * where it now belongs and was not sent, `changed` where it was, `removed`
    * where it was sent and no longer belongs or is gone.
    */
-  const changed = async (id: string): Promise<void> => {
-    const found = await find(id, undefined);
+  const changed = async (key: string): Promise<void> => {
+    const found = await find(key, undefined);
+    const { instance, id } = partsOf(key);
+    const held = instance === undefined ? undefined : found?.kind.instances?.get(instance);
     for (const uri of watched()) {
       const ids = shown.get(uri)!;
       let query: ListQuery;
@@ -304,13 +353,57 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
       catch { continue; }
       const belongs = found !== undefined && takesPart(list, found.kind, query) && matches(list, found.row, query);
       if (belongs) {
-        const type = ids.has(id) ? 'changed' : 'added';
-        ids.add(id);
-        send(uri, { type: `${scheme}/${type}`, ...served(found.kind, found.row) });
+        const type = ids.has(key) ? 'changed' : 'added';
+        ids.add(key);
+        send(uri, { type: `${scheme}/${type}`, ...served(found.kind, found.row) }, held);
       }
-      else if (ids.has(id)) {
-        ids.delete(id);
-        send(uri, { type: `${scheme}/removed`, id });
+      else if (ids.has(key)) {
+        ids.delete(key);
+        send(uri, { type: `${scheme}/removed`, id, ...(instance === undefined ? {} : { instance }) }, held);
+      }
+    }
+  };
+
+  /** The instances a reader may read, of every kind, as a snapshot lists them. */
+  const instancesFor = (reader: Principal | undefined): { id: string; title: string; kind: string; owner?: string }[] =>
+    list.instances !== true ? [] : kinds().flatMap((kind) => instancesOf(kind, reader).map((one) => ({ ...one!, kind: kind.name })));
+
+  /**
+   * An instance came or went: each watched URI is told the instances, and is
+   * sent `added` for each row of an instance that came and belongs there, or
+   * `removed` for each row it was sent of an instance that went.
+   */
+  const instanceMoved = async (kind: ServedListKind, id: string, present: boolean): Promise<void> => {
+    const instance = kind.instances?.get(id);
+    for (const uri of watched()) {
+      const ids = shown.get(uri)!;
+      // Each subscriber is told the instances they may read.
+      for (const one of servedChannel.subscribers?.(uri) ?? []) {
+        servedChannel.publish?.(uri, { type: `${scheme}/instances`, instances: instancesFor(one.reader) }, { to: one.client, visible: (reader) => reader?.id === one.reader?.id });
+      }
+      if (!present) {
+        for (const key of [...ids]) {
+          if (!key.startsWith(`${id}/`)) continue;
+          ids.delete(key);
+          send(uri, { type: `${scheme}/removed`, id: key.slice(id.length + 1), instance: id });
+        }
+        continue;
+      }
+      let query: ListQuery;
+      try { query = queryOf(list, uri); }
+      catch { continue; }
+      if (instance === undefined || !takesPart(list, kind, query)) continue;
+      if (query.instances !== undefined && query.instances.length > 0 && !query.instances.includes(id)) continue;
+      let rows: ListRow[];
+      try { rows = await kind.rows.list(query, id, undefined); }
+      catch (error) {
+        warn(kind, `kind ${kind.name} could not list its rows of ${list.name} in ${id}: ${reason(error)}`);
+        continue;
+      }
+      for (const row of rows) {
+        const key = `${id}/${row.id}`;
+        ids.add(key);
+        send(uri, { type: `${scheme}/added`, ...served(kind, { ...row, instance: id }) }, instance);
       }
     }
   };
@@ -324,8 +417,13 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
   /** Point each kind's `changed` at this channel. */
   const wire = (): void => {
     for (const kind of kinds()) {
-      kind.changed = (_instance, id) => {
-        void changed(id).catch((error: unknown) => { onProblem(`list ${list.name} could not send ${id}: ${reason(error)}`); });
+      kind.changed = (instance, id) => {
+        const key = list.instances === true && instance !== undefined ? `${instance}/${id}` : id;
+        void changed(key).catch((error: unknown) => { onProblem(`list ${list.name} could not send ${key}: ${reason(error)}`); });
+      };
+      kind.acceptsInstances = list.instances === true;
+      kind.instancesChanged = (id, present) => {
+        void instanceMoved(kind, id, present).catch((error: unknown) => { onProblem(`list ${list.name} could not send instance ${id}: ${reason(error)}`); });
       };
       kind.processChanged = (id) => { processes?.changed(list.channel, kind.name, id); };
     }
@@ -406,8 +504,8 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
     snapshot: async (uri, reader) => {
       const query = queryOf(list, uri);
       const records = await rowsOf(query, reader);
-      shown.set(uri, new Set(records.map((one) => one.id)));
-      return { records, operations: operations().filter((one) => one.scopes.includes('list')).map(({ id, status, error }) => ({ id, status, ...(error === undefined ? {} : { error }) })) };
+      shown.set(uri, new Set(records.map((one) => keyOf(one))));
+      return { records, ...(list.instances === true ? { instances: instancesFor(reader) } : {}), operations: operations().filter((one) => one.scopes.includes('list')).map(({ id, status, error }) => ({ id, status, ...(error === undefined ? {} : { error }) })) };
     },
     operations: {
       operations: () => operations(),
@@ -449,19 +547,20 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
         }
         // A runtime row starts as a process, and stops by its abort and the kind's stop.
         if (kind!.class === 'runtime' && (name === 'start' || name === 'stop') && found !== undefined) {
-          const key = runKey(kind!, found.row.id);
+          const rowKey = keyOf(found.row);
+          const key = runKey(kind!, rowKey);
           if (name === 'start') {
             if (processes === undefined) throw new RpcError(INVALID_PARAMS, `${list.name} cannot run processes on this host`);
             const row = found.row;
-            const uri = processes.start(list, kind!.name, async (work) => { await kind!.start!(row, work); }, () => { void changed(row.id); });
+            const uri = processes.start(list, kind!.name, async (work) => { await kind!.start!(row, work); }, () => { void changed(rowKey); });
             runs.set(key, uri);
-            void changed(row.id);
+            void changed(rowKey);
             return { process: uri };
           }
           const uri = runs.get(key);
           if (uri !== undefined) processes?.abort(uri);
           await kind!.stop!(found.row);
-          void changed(found.row.id);
+          void changed(rowKey);
           return {};
         }
         // A field the kind says is live is the process's to set, never a form's.
@@ -475,6 +574,7 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
           return { process };
         }
         const made = await kind!.invoke(name, found?.row, input);
+        // In an instance list a create answers its row as `<instance>/<id>`, as the row is named.
         const id = typeof made === 'string' && made !== '' ? made : target;
         if (id === undefined) return {};
         const after = await find(id, reader);
@@ -487,9 +587,9 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
   const provider: ResourceProvider = {
     describe: () => ({ title: list.title, ...(list.description === undefined ? {} : { description: list.description }) }),
     read: async (uri: string, _wanted?: string, reader?: Principal): Promise<Read> => {
-      const at = splitResource(uri, list.name);
-      if (at.id === '' || at.leaf !== '') throw absentResource(list.name, uri);
-      const found = await find(at.id, reader);
+      const key = uri.slice(`${list.name}://`.length).replace(/^\/+/, '');
+      if (key === '' || (list.instances !== true && key.includes('/'))) throw absentResource(list.name, uri);
+      const found = await find(key, reader);
       if (found === undefined) throw absentResource(list.name, uri);
       return asFile(JSON.stringify(served(found.kind, found.row), null, 2));
     },

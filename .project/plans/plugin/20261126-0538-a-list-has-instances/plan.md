@@ -1,7 +1,7 @@
 ---
 title: A list has instances
 domain: plugin
-status: planned
+status: active
 priority: high
 created: 2026-11-26
 revalidated: 2026-11-26
@@ -35,19 +35,21 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 | The host shows an instance's rows by the owner rule connectors are read by: the reader's own, their teams', and the host's to anyone with `<name>:get` | Softov, 2026-11-26, chose "Host applies the owner rule" | 02 |
 | An instance with no owner falls back to the list's grant | (defaulted: the brief's "A kind with no instance falls back to the channel's grant") | 02 |
 | `x-ahpd/invokeOperation` names a row with `target.id` set to `<instance>/<id>` | Softov, 2026-11-26, chose "target.id is <instance>/<id>" | 02 |
-| An id with a slash in an instance list is refused | (defaulted: it would read as an instance) | 02 |
+| An instance id may not hold a slash, so a row id may, and a key splits at its first slash | (defaulted: simpler than refusing row ids) | 01 |
 | A query may set `instance`, and it takes several values | the brief's *How the instance is correlated* | 02 |
 | A plugin adds a connector as an instance from its adapter's `open`, and removes it in the close that `open` answers | (defaulted: the brief's `host.onConnector` is that hook) | 03 |
 | The snapshot lists the instances, and each watched URI gets `<scheme>/instances`, with the rows of an instance that came or went | (defaulted: a client draws the instance filter from it) | 02 |
+| In an instance list, a create answers its row as `<instance>/<id>` | (defaulted: as the row is named) | 02 |
+| Each subscriber is sent the instances it may read | (defaulted: the owner rule holds for the instance list too) | 02 |
 | A list with no `instances` refuses an `addInstance` | the brief's *Step 1* | 01 |
 
 ## Tasks
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - an-instance-comes-and-goes](task-01-an-instance-comes-and-goes.md) | todo | - |
-| [02 - the-channel-serves-each-instance](task-02-the-channel-serves-each-instance.md) | todo | 01 |
-| [03 - a-connector-is-an-instance](task-03-a-connector-is-an-instance.md) | todo | 02 |
+| [01 - an-instance-comes-and-goes](task-01-an-instance-comes-and-goes.md) | done | - |
+| [02 - the-channel-serves-each-instance](task-02-the-channel-serves-each-instance.md) | done | 01 |
+| [03 - a-connector-is-an-instance](task-03-a-connector-is-an-instance.md) | done | 02 |
 
 ## Risks and tradeoffs
 
@@ -56,14 +58,14 @@ The files read and the patterns to reuse are the `refs` in the frontmatter, each
 
 ## Resume state
 
-- **Done so far:** the plan.
-- **Next action:** task 01.
+- **Done so far:** all three tasks, on 2026-11-26. [implemented.md](implemented.md) holds the checks.
+- **Next action:** Softov's review.
 - **Open questions:** none.
 - **Watch out for:** the host keeps no row of a plugin's list.
 
 ## Final verification checklist
 
-- [ ] A list with two instances answers both, each row named by its instance.
-- [ ] A reader sees only the instances their owner rule lets in.
-- [ ] A connector that comes and goes adds and removes an instance.
-- [ ] `pnpm typecheck`, the sdk and server suites, and `pnpm docs:build` pass.
+- [x] A list with two instances answers both, each row named by its instance.
+- [x] A reader sees only the instances their owner rule lets in.
+- [x] A connector that comes and goes adds and removes an instance.
+- [x] `pnpm typecheck`, the sdk and server suites, and `pnpm docs:build` pass.
