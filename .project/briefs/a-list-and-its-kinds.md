@@ -149,6 +149,10 @@ How a client draws a list, as a table, a board or a calendar, waits until the li
 | A quick operation keeps the row's status. An operation that says it is long answers with a run: its own channel with a lifecycle, progress, a log and cancel, as an automation run | Softov, 2026-11-25: "Run when long" |
 | A reader sees the rows of the instances they may use, by the connector's owner rule. A kind with no instance falls back to the channel's grant | Softov, 2026-11-25: "The instance's owner" |
 | Two declarations of one list join their filters | Softov, 2026-11-25: "Joined" |
+| An operation a plugin adds to a list reaches every kind in it, and its own `offered(row)` says which rows show it | Softov, 2026-11-25: "Rows it offers on" |
+| "Kind" keeps its meaning in `Operation.kind`, and an operation id stays `<kind>/<operation>` | Softov, 2026-11-25: "Drop it" |
+| The list of a machine's programs is `services` | Softov, 2026-11-25: "services" |
+| A service's deploy declaration is written under its own grant, which no default role holds | Softov, 2026-11-25: "Its own grant" |
 
 ## Example: brbyte Desk tickets from several connectors
 
@@ -349,11 +353,6 @@ host.registerOperation({
 - **An operation from another plugin**, on rows of every kind.
 - **A long operation**, with a state a person can follow for minutes, and a log.
 
-### Open points of this example
-
-1. **The word.** `ahpd service` already names the daemon as the machine's own service. Does the list keep the name "services"?
-2. **Who may write a deploy declaration.**
-
 ## Example: a CRM with kinds from several plugins
 
 A `crm` plugin keeps clients, tickets and interactions on the host. A mail plugin adds emails to the interactions, and a phone plugin adds calls. No plugin owns the interactions list. This is the case for several plugins in one list, rows the host keeps, and links between lists.
@@ -434,5 +433,16 @@ The host finds the kind from the row, and hands the call to the mail plugin's `i
 
 ## Open points
 
-1. **How a plugin adds operations to other kinds.** `registerOperation` in *Example: a machine's services* is one way. Which kinds it reaches, and who may add one, are not decided.
-2. **The word "kind".** `Operation.kind` names the tunnel kind that declared an operation, the same meaning as here, so an id stays `<kind>/<operation>`. This may not be an open point at all.
+None of the points the drafts raised is open. *Not covered yet* lists what the brief does not say.
+
+## Not covered yet
+
+- **A kind on a plugin's own channel.** `registerKind` joins a list. Joining a `registerChannel` channel needs the channel's state to hold the kinds' rows, its operations to reach the kinds, and its owner to allow it.
+- **What beorn's services plugin also has:**
+  - alerts on a row and on the list;
+  - a resource per row, such as its logs;
+  - editing a row against a version;
+  - secrets in a kind's schema;
+  - rows that cannot be read.
+- **A better first example.** Issues from GitHub and GitLab show instances better than Desk's production and staging.
+- **The row's scheme.** `name` is now only a row's scheme and its grants' subject.
