@@ -1,6 +1,6 @@
 {
   "name": "@ahpd/sdk",
-  "version": "0.15.0",
+  "version": "0.16.0-rc.1",
   "type": "module",
   "description": "The library behind ahpd. Build your own host with the sessions, chats and clients ahpd serves.",
   "keywords": [
