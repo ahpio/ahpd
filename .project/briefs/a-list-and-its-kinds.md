@@ -20,7 +20,7 @@ It takes from two earlier tries, and replaces neither yet:
 
 | Try | Kept | Not kept |
 | --- | --- | --- |
-| The todo and CRM briefs (`registerList`, #479) | A list no plugin owns, which a declaration with the same name joins. The channel `x-ahpd-<plural>://`. | Nothing says where a row comes from, how a list is filtered, sorted or paged, how rows relate, or how they are drawn. |
+| The todo and CRM briefs (`registerList`, #479) | A list no plugin owns, which a declaration with the same name joins. A channel named after the list, such as `x-ahpd-tickets://`. | Nothing says where a row comes from, how a list is filtered, sorted or paged, how rows relate, or how they are drawn. |
 | `resource-kinds`, in ahp-review | Instances, relations, rows kept outside ahpd, runtime rows, paging. Its views wait, as *Views come later* says. | `x-ahpd-kind://<kind>`, and one kind as one list from one plugin. |
 
 It is defined in two steps: `registerList`, then `registerKind` for each kind in it. Three examples follow one case each:
@@ -36,7 +36,7 @@ The list is what every row in it shares, whatever its kind.
 ```ts
 host.registerList({
   name: 'ticket',
-  plural: 'tickets',
+  channel: 'x-ahpd-tickets',
   title: 'Tickets',
   description: 'Requests people make for help.',
   icon: 'issues',
@@ -54,7 +54,8 @@ host.registerList({
 
 | Part | What it is |
 | --- | --- |
-| `name`, `plural` | The channel is `x-ahpd-<plural>://`, and one row is `<name>://<instance>/<id>`. |
+| `name` | One row is `<name>://<instance>/<id>`. |
+| `channel` | The list's channel scheme, such as `x-ahpd-tickets`, so the list is `x-ahpd-tickets://`. Required. A declaration with the same `name` and another `channel` is a warning on its plugin's row. |
 | `title`, `description`, `icon` | What a client shows for the list. The first declaration loaded gives them, and one that differs is a warning on its plugin's row. |
 | `filters` | An array of filters, in the order a client draws them. A filter is `{ field, type }`, and the field is its name in a query. A filter type is `enum`, `range`, `uri` or `boolean`. The schema is not changed. |
 | `search` | The fields a free-text search reads, as `?search=`. |
@@ -109,7 +110,7 @@ A list filter names a field. A kind that lacks the field, or has it with another
 
 ## What the host does
 
-- It serves `x-ahpd-<plural>://` with the rows of every kind and every instance, filtered, sorted and paged as the list declares.
+- It serves the list's `channel` with the rows of every kind and every instance, filtered, sorted and paged as the list declares.
 - For a `host` kind, it keeps the rows and serves create, update and remove with the kind's schema as their form.
 - For a `kind` kind, it asks the kind's `rows` for each page and each read, and keeps no copy.
 - It serves one row at `<name>://<instance>/<id>`, read with `resourceRead`.
@@ -131,7 +132,8 @@ How a client draws a list, as a table, a board or a calendar, waits until the li
 | What | Source |
 | --- | --- |
 | Neither the todo and CRM briefs nor `resource-kinds` is enough alone; this brief takes from both | Softov, 2026-11-25: "neither one is right in my point of view" |
-| A list's channel is named after the list, `x-ahpd-<plural>://` | Softov, 2026-11-25: "`x-ahpd-customer://`", not `x-ahpd-kind://customer` |
+| A list's channel is named after the list, not `x-ahpd-kind://customer` | Softov, 2026-11-25: "`x-ahpd-customer://`" |
+| The declaration names its channel as a whole scheme, `channel: 'x-ahpd-tickets'`, in place of `plural` | Softov, 2026-11-25: "channel: 'x-ahpd-tickets'" |
 | Filters and sorts are their own keys on the list, and do not change a kind's schema | Softov, 2026-11-25: "filters and sorts separated. so it does not affect the schema definition" |
 | `registerList` first, then `registerKind` | Softov, 2026-11-25: "registerList and registerKind" |
 | Filters are an array | Softov, 2026-11-25: "and not a array?" |
@@ -150,7 +152,7 @@ The `desk` plugin declares the list, so it works with no other plugin. A GitHub 
 
 ```ts
 host.registerList({
-  name: 'ticket', plural: 'tickets', title: 'Tickets',
+  name: 'ticket', channel: 'x-ahpd-tickets', title: 'Tickets',
   filters: [
     { field: 'status', type: 'enum' },
     { field: 'client', type: 'uri', list: 'clients' },
@@ -257,7 +259,7 @@ beorn proposed it on #474, from their `services` and `deploy` plugins for proces
 
 ```ts
 host.registerList({
-  name: 'service', plural: 'services', title: 'Services',
+  name: 'service', channel: 'x-ahpd-services', title: 'Services',
   description: 'The programs this machine runs.',
   filters: [
     { field: 'status', type: 'enum' },
@@ -359,11 +361,11 @@ It is [a-crm-is-the-second-example-kind.md](a-crm-is-the-second-example-kind.md)
 
 ```ts
 // in @local/crm
-host.registerList({ name: 'client', plural: 'clients', title: 'Clients',
+host.registerList({ name: 'client', channel: 'x-ahpd-clients', title: 'Clients',
   search: ['name', 'email'],
   sorts: ['name'], defaultSort: 'name' });
 
-host.registerList({ name: 'interaction', plural: 'interactions', title: 'Interactions',
+host.registerList({ name: 'interaction', channel: 'x-ahpd-interactions', title: 'Interactions',
   filters: [
     { field: 'ticket', type: 'uri', list: 'tickets' },
     { field: 'client', type: 'uri', list: 'clients' },

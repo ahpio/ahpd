@@ -95,13 +95,13 @@ New. A list is kept by the host, and a kind is one type of record in it. Softov,
 - The first declaration loaded gives the list's title and description. A declaration that differs is a warning on its plugin's row.
 - The list lives while a plugin declares it or holds a kind of it. A plugin that unloads takes its kinds, and the list keeps the others.
 - The grants are the list's, as the tunnels' are: `<name>:get` to read, `<name>:put` to create, change and run an operation, and `<name>:delete` to remove. An operation may name its own grant, as `KindOperation.grant` does today. A record operation's scope is the list's name (defaulted).
-- The channel and the row scheme are the list's, not a plugin's: `x-ahpd-<plural>://` lists the rows, and `<name>://<id>` is one row. Softov, 2026-11-23: "x-ahpd-<plural>://, <name>://<id>". This is the form of `x-ahpd-users://` and `user://<id>`, and of `x-ahpd-tunnels://`.
-- A declaration may name the plural. Without one, the host adds an `s` to the name (defaulted). [a-crm-is-the-second-example-kind.md](a-crm-is-the-second-example-kind.md) checks this against a list with many kinds.
+- The channel and the row scheme are the list's, not a plugin's: the channel the declaration names, such as `x-ahpd-todos://`, lists the rows, and `<name>://<id>` is one row. Softov, 2026-11-23: "x-ahpd-<plural>://, <name>://<id>". This is the form of `x-ahpd-users://` and `user://<id>`, and of `x-ahpd-tunnels://`.
+- A declaration names its channel as a whole scheme, such as `channel: 'x-ahpd-todos'`. Softov, 2026-11-25: "channel: 'x-ahpd-tickets'". It replaces the plural and the `s` the host added.
 
 The todo app registers the list `todo`, and one kind in it, also named `todo`:
 
 ```js
-host.registerList({ name: 'todo', plural: 'todos', title: 'Todos', description: 'A shared todo list.' });
+host.registerList({ name: 'todo', channel: 'x-ahpd-todos', title: 'Todos', description: 'A shared todo list.' });
 ```
 
 The kind has the shape of `TunnelKind`. The kind declares its `schema` once. The host keeps the list, serves create, update and remove with that schema as their form, and lists the records on a channel. A client draws the forms with no code for todos.
