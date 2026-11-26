@@ -208,7 +208,7 @@ export interface Root {
   /** Whether a key the root's config holds is the daemon's to show, a plugin removed while the daemon runs among them. */
   daemonHeld(key: string): boolean;
   advertisedSchemes(): Record<string, unknown> | undefined;
-  advertisedChannels(): { scheme: string; title: string; description?: string; grant: string; kinds?: Record<string, unknown> }[] | undefined;
+  advertisedChannels(): { scheme: string; title: string; description?: string; grant: string; kinds?: Record<string, unknown>; operations?: unknown[] }[] | undefined;
   advertisedMethods(): { method: string; title: string; description?: string; grant: string }[] | undefined;
   advertisedGrants(): Record<string, unknown>;
   /** The daemon's own config values, as its port answers them now, or none on a host with no daemon keys. */
@@ -666,18 +666,20 @@ export function createRoot(ctx: HostContext): Root {
    * The title is the scheme where the channel does not describe itself.
    * Absent when no plugin serves one, as `ahpd.resourceProviders` is.
    */
-  const advertisedChannels = (): { scheme: string; title: string; description?: string; grant: string; kinds?: Record<string, unknown> }[] | undefined => {
+  const advertisedChannels = (): { scheme: string; title: string; description?: string; grant: string; kinds?: Record<string, unknown>; operations?: unknown[] }[] | undefined => {
     const served = Object.values(options.channels ?? {});
     if (served.length === 0) return undefined;
     return served.map(({ scheme, channel }) => {
       const said = typeof channel.describe === 'function' ? channel.describe() : undefined;
       const kinds = typeof channel.kinds === 'function' ? channel.kinds() : undefined;
+      const operations = typeof channel.listOperations === 'function' ? channel.listOperations() : undefined;
       return {
         scheme,
         title: said?.title ?? scheme,
         ...(said?.description === undefined ? {} : { description: said.description }),
         grant: channel.grant,
         ...(kinds === undefined ? {} : { kinds }),
+        ...(operations === undefined || operations.length === 0 ? {} : { operations }),
       };
     });
   };

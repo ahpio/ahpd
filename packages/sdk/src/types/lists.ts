@@ -210,6 +210,42 @@ export interface ListKindHandle {
   processChanged(id: string): void;
 }
 
+/**
+ * What `registerOperation` is given: an operation a plugin adds onto kinds of
+ * a list that other plugins registered, or onto the list as a whole.
+ */
+export interface ListOperation {
+  /** The channel of the list, such as `x-ahpd-services`. */
+  channel: string;
+  /** The kinds it lands on, each under its own id `<kind>/<operation>`. Absent, it is on the list as a whole, as `<plugin>/<operation>`. */
+  kinds?: string[];
+  /** The operation, as a kind's own is declared. Its `offered` narrows it to some rows. */
+  operation: KindOperation;
+  /** Run it on the row it was pointed at, or on the list when it has none. A long one gets its process. */
+  invoke(row: ListRow | undefined, input?: Record<string, unknown>, process?: ProcessWork): void | Promise<void>;
+  /** The processes it ran, which this plugin keeps. Required when the operation is long. */
+  processes?: ListProcesses;
+}
+
+/** What `registerOperation` answers: how the plugin tells the host one of its processes changed. */
+export interface ListOperationHandle {
+  processChanged(id: string): void;
+}
+
+/** One added operation as the fold keeps it. */
+export interface ServedListOperation extends ListOperation {
+  /** The plugin that added it. */
+  by: string;
+  /** The plugin's name without its scope, which names a list operation and the plugin's processes. */
+  owner: string;
+  /** The kinds it landed on, after the fold left out a kind whose own id it takes. */
+  onto?: string[];
+  /** A warning on the plugin's row. */
+  problem?: (line: string) => void;
+  /** Set by the host: how a `processChanged` reaches the channel of processes. */
+  processChanged?: (id: string) => void;
+}
+
 /** One `registerList` as the fold keeps it, with the plugin that declared it. */
 export interface ServedListDeclaration extends ListDeclaration {
   by: string;
@@ -234,4 +270,6 @@ export interface ServedList extends ListDeclaration {
   declaredBy: string[];
   /** The kinds in it, by name. */
   kinds: Record<string, ServedListKind>;
+  /** The operations other plugins added onto its kinds or onto it. */
+  operations?: ServedListOperation[];
 }

@@ -24,7 +24,7 @@ import { absentResource, asFile, splitResource } from '../resources/records.js';
 import { INVALID_PARAMS, RpcError } from '../rpc.js';
 import { reason } from '../utils/values.js';
 import type { ChannelOperation, Operation, OperationStatus } from '../types/kinds.js';
-import type { ListQuery, ListRow, ServedList, ServedListKind } from '../types/lists.js';
+import type { ListQuery, ListRow, ServedList, ServedListKind, ServedListOperation } from '../types/lists.js';
 import type { PluginChannel, ServedChannel } from '../types/plugin.js';
 import type { Read, ResourceProvider } from '../types/resources.js';
 import type { Grant, Principal } from '../types/users.js';
@@ -146,13 +146,47 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
   /** The ids last sent to each URI a subscriber was answered at. */
   const shown = new Map<string, Set<string>>();
 
-  const operations = (): Operation[] => kinds().flatMap((kind) => kindOperations(kind, {
-    subject: list.name,
-    scope: list.name,
-    status: (id) => listed.get(id) ?? { status: 'idle' },
-    update: true,
-    words: { confirmation: `Remove this ${kind.title.toLowerCase()}?` },
-  }));
+  /** The operations other plugins added onto a kind. */
+  const addedOnto = (kind: ServedListKind): ServedListOperation[] => (list.operations ?? []).filter((one) => one.onto?.includes(kind.name) === true);
+  /** The operations other plugins added onto the list as a whole. */
+  const addedOnList = (): ServedListOperation[] => (list.operations ?? []).filter((one) => one.kinds === undefined);
+  /** A kind with the operations added onto it beside its own. */
+  const withAdded = (kind: ServedListKind): ServedListKind => {
+    const added = addedOnto(kind);
+    return added.length === 0 ? kind : { ...kind, operations: [...(kind.operations ?? []), ...added.map((one) => one.operation)] };
+  };
+
+  const status = (id: string): { status: OperationStatus; error?: string } => listed.get(id) ?? { status: 'idle' };
+
+  /** One operation added onto the list, as the list lists it. */
+  const listOperation = (added: ServedListOperation): Operation => {
+    const { operation } = added;
+    const id = `${added.owner}/${operation.id}`;
+    return {
+      id,
+      kind: added.owner,
+      label: operation.label ?? operation.id,
+      ...(operation.description === undefined ? {} : { description: operation.description }),
+      ...(operation.icon === undefined ? {} : { icon: operation.icon }),
+      ...(operation.input === undefined ? {} : { input: operation.input }),
+      ...(operation.confirmation === undefined ? {} : { confirmation: operation.confirmation }),
+      ...(operation.long === true ? { long: true } : {}),
+      scopes: ['list'],
+      grant: operation.grant ?? `${list.name}:put`,
+      ...status(id),
+    };
+  };
+
+  const operations = (): Operation[] => [
+    ...kinds().flatMap((kind) => kindOperations(withAdded(kind), {
+      subject: list.name,
+      scope: list.name,
+      status,
+      update: true,
+      words: { confirmation: `Remove this ${kind.title.toLowerCase()}?` },
+    })),
+    ...addedOnList().map(listOperation),
+  ];
 
   /** One row as a client reads it. */
   const served = (kind: ServedListKind, row: ListRow): ServedRow => {
@@ -162,7 +196,7 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
       kind: kind.name,
       ...(row.owner === undefined ? {} : { owner: row.owner }),
       record: row.record,
-      operations: kindOffers(kind, row.record, true),
+      operations: kindOffers(withAdded(kind), row.record, true),
       ...(operation === undefined ? {} : { operation }),
     };
   };
@@ -258,20 +292,34 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
       };
       kind.processChanged = (id) => { processes?.changed(list.name, kind.name, id); };
     }
+    for (const added of list.operations ?? []) {
+      added.processChanged = (id) => { processes?.changed(list.name, added.owner, id); };
+    }
   };
   wire();
 
-  /** The kind an operation id names, and the operation after its slash. */
-  const operationOf = (operation: ChannelOperation): { kind: ServedListKind; name: string } => {
+  /**
+   * What runs an operation id: a kind's own, an operation a plugin added onto
+   * that kind, or one added onto the list, by the part before the slash.
+   */
+  const operationOf = (operation: ChannelOperation): { kind?: ServedListKind; added?: ServedListOperation; name: string } => {
     const at = operation.id.indexOf('/');
-    const kind = list.kinds[operation.id.slice(0, at)];
-    if (kind === undefined) throw new RpcError(INVALID_PARAMS, `No kind ${operation.id.slice(0, at)} in list ${list.name}`);
-    return { kind, name: operation.id.slice(at + 1) };
+    const prefix = operation.id.slice(0, at);
+    const name = operation.id.slice(at + 1);
+    const kind = list.kinds[prefix];
+    if (kind !== undefined) {
+      const added = addedOnto(kind).find((one) => one.operation.id === name);
+      return added === undefined ? { kind, name } : { kind, added, name };
+    }
+    const added = addedOnList().find((one) => one.owner === prefix && one.operation.id === name);
+    if (added === undefined) throw new RpcError(INVALID_PARAMS, `No kind ${prefix} in list ${list.name}`);
+    return { added, name };
   };
 
   const channel: PluginChannel = {
     grant: `${list.name}:get` as Grant,
     describe: () => ({ title: list.title, ...(list.description === undefined ? {} : { description: list.description }) }),
+    listOperations: () => addedOnList().map(listOperation).map(({ status: _status, error: _error, kind: _kind, offered: _offered, ...rest }) => rest),
     kinds: () => Object.fromEntries(kinds().map((kind) => [kind.name, {
       title: kind.title,
       ...(kind.description === undefined ? {} : { description: kind.description }),
@@ -289,7 +337,7 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
       operations: () => operations(),
       offers: async (target, operationId, reader) => {
         const found = await find(target, reader);
-        return found !== undefined && kindOffers(found.kind, found.row.record, true).includes(operationId);
+        return found !== undefined && kindOffers(withAdded(found.kind), found.row.record, true).includes(operationId);
       },
       begin: (operationId, target) => {
         if (target === undefined) {
@@ -310,15 +358,25 @@ export function listChannel(initial: ServedList, onProblem: (message: string) =>
         void changed(target);
       },
       run: async (operation, target, input, reader) => {
-        const { kind, name } = operationOf(operation);
+        const { kind, added, name } = operationOf(operation);
         const found = target === undefined ? undefined : await find(target, reader);
         if (target !== undefined && found === undefined) throw absentResource(list.name, `${list.name}://${target}`);
+        // An added operation runs the adding plugin's invoke, and its processes are that plugin's.
+        if (added !== undefined) {
+          if (added.operation.long === true && processes !== undefined) {
+            return { process: processes.start(list, added.owner, async (work) => { await added.invoke(found?.row, input, work); }) };
+          }
+          await added.invoke(found?.row, input);
+          if (target === undefined) return {};
+          const after = await find(target, reader);
+          return after === undefined ? {} : served(after.kind, after.row);
+        }
         // A long call answers with its process at once; its work runs in it.
-        if (kind.operations?.find((one) => one.id === name)?.long === true && processes !== undefined) {
-          const process = processes.start(list, kind, async (work) => { await kind.invoke(name, found?.row, input, work); });
+        if (kind!.operations?.find((one) => one.id === name)?.long === true && processes !== undefined) {
+          const process = processes.start(list, kind!.name, async (work) => { await kind!.invoke(name, found?.row, input, work); });
           return { process };
         }
-        const made = await kind.invoke(name, found?.row, input);
+        const made = await kind!.invoke(name, found?.row, input);
         const id = typeof made === 'string' && made !== '' ? made : target;
         if (id === undefined) return {};
         const after = await find(id, reader);

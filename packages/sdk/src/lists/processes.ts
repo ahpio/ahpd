@@ -18,7 +18,7 @@
 import { randomUUID } from 'node:crypto';
 import { INVALID_PARAMS, RpcError } from '../rpc.js';
 import { reason } from '../utils/values.js';
-import type { ListProcess, ProcessReport, ProcessWork, ServedList, ServedListKind } from '../types/lists.js';
+import type { ListProcess, ListProcesses, ProcessReport, ProcessWork, ServedList } from '../types/lists.js';
 import type { PluginChannel, PluginMethod, ServedChannel, ServedMethod } from '../types/plugin.js';
 import type { Grant, Principal } from '../types/users.js';
 
@@ -45,7 +45,8 @@ export interface ProcessesServing {
   /** Serve the lists a fold joined. */
   update(lists: Record<string, ServedList>): void;
   /** Run `work` as a new process of a kind, and answer its URI at once. */
-  start(list: ServedList, kind: ServedListKind, work: (process: ProcessWork) => Promise<void>): string;
+  /** `source` is the kind, or the plugin that added the operation, whose processes it is. */
+  start(list: ServedList, source: string, work: (process: ProcessWork) => Promise<void>): string;
   /** Read a process again and tell its subscribers. */
   changed(list: string, kind: string, id: string): void;
 }
@@ -70,10 +71,20 @@ export function processesChannel(onProblem: (message: string) => void = () => {}
   /** The abort of each process the host runs now, by URI. */
   const running = new Map<string, AbortController>();
 
-  const kindOf = (list: string, kind: string): { list: ServedList; kind: ServedListKind } => {
+  /** What keeps the processes a path names: a kind of the list, or a plugin that added an operation onto it. */
+  interface Source { name: string; by: string; processes: ListProcesses; operations: readonly { id: string; grant?: string }[]; problem?: (line: string) => void }
+  const sourcesOf = (list: ServedList): Source[] => [
+    ...Object.values(list.kinds).flatMap((kind): Source[] => (kind.processes === undefined ? [] : [{
+      name: kind.name, by: kind.by, processes: kind.processes, operations: kind.operations ?? [], ...(kind.problem === undefined ? {} : { problem: kind.problem }),
+    }])),
+    ...(list.operations ?? []).flatMap((added): Source[] => (added.processes === undefined ? [] : [{
+      name: added.owner, by: added.by, processes: added.processes, operations: [added.operation], ...(added.problem === undefined ? {} : { problem: added.problem }),
+    }])),
+  ];
+  const kindOf = (list: string, name: string): { list: ServedList; kind: Source } => {
     const held = lists[list];
-    const found = held?.kinds[kind];
-    if (held === undefined || found?.processes === undefined) throw new RpcError(NOT_FOUND, `No processes of ${list} ${kind}`);
+    const found = held === undefined ? undefined : sourcesOf(held).find((one) => one.name === name);
+    if (held === undefined || found === undefined) throw new RpcError(NOT_FOUND, `No processes of ${list} ${name}`);
     return { list: held, kind: found };
   };
 
@@ -85,7 +96,7 @@ export function processesChannel(onProblem: (message: string) => void = () => {}
     const parts = partsOf(uri);
     if (parts === undefined) throw new RpcError(INVALID_PARAMS, `${uri} is the list of processes`);
     const { kind } = kindOf(parts.list, parts.kind);
-    const process = await kind.processes!.read(parts.id, reader);
+    const process = await kind.processes.read(parts.id, reader);
     if (process === undefined) throw new RpcError(NOT_FOUND, `No process at ${uri}`);
     return served(parts.list, parts.kind, process);
   };
@@ -95,8 +106,7 @@ export function processesChannel(onProblem: (message: string) => void = () => {}
     const asked: Promise<ServedProcess[]>[] = [];
     for (const list of Object.values(lists)) {
       if (!mayRead(list.name, reader)) continue;
-      for (const kind of Object.values(list.kinds)) {
-        if (kind.processes === undefined) continue;
+      for (const kind of sourcesOf(list)) {
         asked.push(Promise.resolve(kind.processes.list(reader))
           .then((processes) => processes.map((one) => served(list.name, kind.name, one)))
           .catch((error: unknown) => {
@@ -139,7 +149,7 @@ export function processesChannel(onProblem: (message: string) => void = () => {}
   const stopGrant = async (uri: string, reader: Principal | undefined): Promise<Grant> => {
     const process = await read(uri, reader);
     const { list, kind } = kindOf(process.list, process.kind);
-    const operation = kind.operations?.find((one) => one.id === process.origin?.operation);
+    const operation = kind.operations.find((one) => one.id === process.origin?.operation);
     return (operation?.grant ?? `${list.name}:put`) as Grant;
   };
 
@@ -162,15 +172,15 @@ export function processesChannel(onProblem: (message: string) => void = () => {}
       }
       const parts = partsOf(uri)!;
       const { kind } = kindOf(parts.list, parts.kind);
-      if (kind.processes?.stop === undefined) throw new RpcError(INVALID_PARAMS, `${uri} is not running on this host, and its kind cannot stop it`);
+      if (kind.processes.stop === undefined) throw new RpcError(INVALID_PARAMS, `${uri} is not running on this host, and its kind cannot stop it`);
       await kind.processes.stop(parts.id);
       return {};
     },
   };
 
-  const start: ProcessesServing['start'] = (list, kind, work) => {
+  const start: ProcessesServing['start'] = (list, source, work) => {
     const id = randomUUID();
-    const uri = processUri(list.name, kind.name, id);
+    const uri = processUri(list.name, source, id);
     const abort = new AbortController();
     running.set(uri, abort);
     const report = (said: ProcessReport): void => { send(uri, { type: `${PROCESSES_SCHEME}/reported`, ...said }, list.name); };

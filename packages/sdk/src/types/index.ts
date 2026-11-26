@@ -70,9 +70,9 @@ export type {
 } from './connectors.js';
 export type { ChannelOperation, KindOperation, Operation, OperationScope, OperationStatus } from './kinds.js';
 export type {
-  ListDeclaration, ListFilter, ListFilterType, ListKind, ListKindHandle, ListProcess, ListProcesses, ListQuery, ListRelation, ListRow, ListRows,
+  ListDeclaration, ListFilter, ListFilterType, ListKind, ListKindHandle, ListOperation, ListOperationHandle, ListProcess, ListProcesses, ListQuery, ListRelation, ListRow, ListRows,
   ProcessLifecycle, ProcessReport, ProcessWork,
-  ServedList, ServedListDeclaration, ServedListKind,
+  ServedList, ServedListDeclaration, ServedListKind, ServedListOperation,
 } from './lists.js';
 export type {
   ReportTunnel, ServedTunnelKind, Tunnel, TunnelKind, TunnelPurpose, TunnelReport, TunnelStatus, TunnelSystemContext,

@@ -1207,6 +1207,32 @@ export const checkList = (value: unknown, by: string): string => {
   return name;
 };
 
+/**
+ * Check one `registerOperation` value, and answer its channel, its id and its
+ * schemas' gaps. The operation is checked as a kind's own, and a long one
+ * needs `processes`.
+ */
+export const checkListOperation = (value: unknown, by: string): { channel: string; id: string; checked: CheckedSchema[] } => {
+  const method = 'registerOperation';
+  const object = asObject(value, by, method, 'operation');
+  stringy(object, 'channel', by, method);
+  const channel = checkScheme(object.channel, by, method).toLowerCase();
+  if (object.kinds !== undefined && (!Array.isArray(object.kinds) || object.kinds.length === 0 || object.kinds.some((one) => typeof one !== 'string' || one === ''))) {
+    throw new Error(miss(by, method, 'kinds', 'a list of kind names, or nothing for the list as a whole'));
+  }
+  if (typeof object.invoke !== 'function') throw new Error(miss(by, method, 'invoke', 'a function the host calls'));
+  const checked: CheckedSchema[] = [];
+  checkKindOperations([object.operation], LIST_KIND_OPERATIONS, `operation on ${channel}`, by, method, checked);
+  const operation = object.operation as Record<string, unknown>;
+  if (operation.long === true) {
+    const processes = object.processes === undefined ? undefined : asObject(object.processes, by, method, 'processes');
+    if (processes === undefined || typeof processes.list !== 'function' || typeof processes.read !== 'function') {
+      throw new Error(miss(by, method, 'processes', 'list and read, because a long operation answers with a process'));
+    }
+  }
+  return { channel, id: operation.id as string, checked };
+};
+
 /** The operations the host serves for every kind of a list, which a kind may not take for its own. */
 const LIST_KIND_OPERATIONS: readonly string[] = ['create', 'update', 'remove'];
 

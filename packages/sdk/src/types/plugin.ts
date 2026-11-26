@@ -28,7 +28,7 @@ import type { MachineNeed } from './machine.js';
 import type { CollectionOptions, RecordCollection } from './records.js';
 import type { ResourceProvider } from './resources.js';
 import type { TunnelKind, ServedTunnelKind } from './tunnels.js';
-import type { ListDeclaration, ListKind, ListKindHandle, ServedListDeclaration, ServedListKind } from './lists.js';
+import type { ListDeclaration, ListKind, ListKindHandle, ListOperation, ListOperationHandle, ServedListDeclaration, ServedListKind, ServedListOperation } from './lists.js';
 import type { Owner, UsageEntry } from './usage.js';
 import type { Grant, Principal } from './users.js';
 import type { SecretWork } from './vault.js';
@@ -366,6 +366,8 @@ export interface PluginChannel {
    * channel that holds no kinds leaves it out.
    */
   kinds?(): Record<string, unknown>;
+  /** The operations on the channel as a whole that no kind holds, each in full, read when the host advertises it. */
+  listOperations?(): unknown[];
   /**
    * The operations this channel offers to `x-ahpd/invokeOperation`, which
    * serves them at `<scheme>://` beside the daemon's own channels. Only that
@@ -1729,6 +1731,13 @@ export interface PluginHost extends PluginContext {
    */
   registerKind(kind: ListKind): ListKindHandle;
   /**
+   * Add an operation onto kinds of a list that other plugins registered, or
+   * onto the list as a whole. It reaches every row of those kinds, and its
+   * `offered` may narrow it. A long one answers with a process this plugin
+   * keeps.
+   */
+  registerOperation(operation: ListOperation): ListOperationHandle;
+  /**
    * Subscribe to one of the host's own moments.
    *
    * The one method not named `register*`, because it contributes nothing to
@@ -1752,7 +1761,7 @@ export interface PluginLink {
  *
  * A key is the plural of the register method of that kind - `agents`, `tools`,
  * `channels`, `methods`, `routes`, `triggerTypes`, `adapters`, `engines`,
- * `tunnelKinds`, `lists`, `kinds` - and its entries are the names the method may be called with.
+ * `tunnelKinds`, `lists`, `kinds`, `operations` - and its entries are the names the method may be called with.
  * `ports` holds the singleton ports a plugin sets, such as `vault`. A
  * registration its contracts do not list is refused.
  */
@@ -1984,6 +1993,8 @@ export interface Contribution {
   lists?: Record<string, ServedListDeclaration>;
   /** The kinds this plugin added to lists, keyed by `<channel> <name>`. Absent when it added none. */
   kinds?: Record<string, ServedListKind>;
+  /** The operations this plugin added onto lists, keyed by `<channel> <id>`. Absent when it added none. */
+  listOperations?: Record<string, ServedListOperation>;
   /** The commands this plugin serves, keyed by name. */
   methods: Record<string, ServedMethod>;
   /**
