@@ -1,6 +1,6 @@
 ---
 title: A plugin declares a list and kinds
-status: todo
+status: done
 depends: []
 layer: "sdk plugins"
 refs:
@@ -47,3 +47,5 @@ refs:
 - `npx vitest run packages/sdk/test/plugin-lists.test.ts` passes.
 
 ## Resume
+
+Built on 2026-11-26. `checkKindOperations` is shared with `checkTunnelKind`, and also checks that `offered` is a function.

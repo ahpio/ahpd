@@ -94,6 +94,11 @@ plugin apply -> registerList, registerKind -> fold joins lists, attaches kinds
 | A kind that lacks a filter's field, or cannot sort by the field asked, has its rows left out while it is set | Softov, 2026-11-25: "Left out", and chose "Left out" | 04 |
 | The kind filters and sorts its own rows; the host merges the kinds' answers in the order asked | (defaulted: the kinds keep the rows, so only they can filter them) | 04 |
 | A row is `{ id, kind, owner?, record, operations }`: the kind answers `id`, `owner` and `record`, and the host adds `kind` and `operations` | the todo brief's *The row* | 04 |
+| A list kind's `invoke` takes `(operation, row, input)`, with no `report` | Softov, 2026-11-26, chose "No report: (operation, row, input)" | 02 |
+| A create's `invoke` answers the id of the row it made, and the host answers the caller with that row | Softov, 2026-11-26, chose "invoke answers the id" | 04 |
+| A kind with `class: 'runtime'` is refused until the step that builds its hooks | (defaulted: as `instances` and `page` are refused) | 02 |
+| `relations` is checked and kept, and served by a later step | (defaulted: step 1 builds no `uri` filter) | 02 |
+| `invoke` gets no row for an operation on the list as a whole, such as create | (defaulted: such an operation has no target) | 04 |
 | `ahpd.channels` lists each list with `kinds`, one entry per kind, each with every operation in full | the todo brief's *How a client finds the kind* | 05 |
 | The tests are fixtures in `packages/sdk/test`: a todo plugin that keeps its rows in memory, and a second plugin that adds a kind | (defaulted: a real `@ahpd/todo` package is the todo brief's own plan) | 05 |
 
@@ -110,7 +115,7 @@ plugin apply -> registerList, registerKind -> fold joins lists, attaches kinds
 | Task | Status | Depends on |
 | --- | --- | --- |
 | [01 - a-kinds-operations-are-built-once](task-01-a-kinds-operations-are-built-once.md) | done | - |
-| [02 - a-plugin-declares-a-list-and-kinds](task-02-a-plugin-declares-a-list-and-kinds.md) | todo | - |
+| [02 - a-plugin-declares-a-list-and-kinds](task-02-a-plugin-declares-a-list-and-kinds.md) | done | - |
 | [03 - the-fold-joins-a-lists-declarations](task-03-the-fold-joins-a-lists-declarations.md) | todo | 02 |
 | [04 - a-list-is-served-as-a-channel](task-04-a-list-is-served-as-a-channel.md) | todo | 01, 03 |
 | [05 - ahpd-channels-lists-the-kinds](task-05-ahpd-channels-lists-the-kinds.md) | todo | 04 |
@@ -124,8 +129,8 @@ plugin apply -> registerList, registerKind -> fold joins lists, attaches kinds
 
 ## Resume state
 
-- **Done so far:** task 01: `kindOperations` and `kindOffers` in `kinds/operations.ts`, used by the tunnels channel.
-- **Next action:** [task-02-a-plugin-declares-a-list-and-kinds.md](task-02-a-plugin-declares-a-list-and-kinds.md).
+- **Done so far:** task 01, the shared operations. Task 02, `registerList` and `registerKind` with their checks.
+- **Next action:** [task-03-the-fold-joins-a-lists-declarations.md](task-03-the-fold-joins-a-lists-declarations.md).
 - **Open questions:** none.
 - **Watch out for:** the host keeps no row of a plugin's list; do not reach for `RecordsChannel` or a record collection. The tunnels channel stays in the server and keeps its rows.
 

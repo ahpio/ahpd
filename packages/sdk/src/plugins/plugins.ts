@@ -22,6 +22,7 @@ import type { ChannelHandle, Contribution, GrantEntry, LoaderContext, Alert, Ins
 import type { CollectionOptions, RecordCollection, RecordStore } from '../types/records.js';
 import type { SessionStore } from '../types/sessions.js';
 import type { ServedTunnelKind } from '../types/tunnels.js';
+import type { ServedListKind } from '../types/lists.js';
 import type { Usage } from '../types/usage.js';
 import type { Grant, Principal } from '../types/users.js';
 import type { Vault } from '../types/vault.js';
@@ -36,7 +37,7 @@ import { isRecordPath, isRecordSlug, RECORD_PATH, RECORD_SLUG } from '../resourc
 import type { Pair } from '../utils/pair.js';
 import { reason } from '../utils/values.js';
 import { readSecret } from '../access/vault.js';
-import { checkAdapter, checkAgent, checkEngine, checkChannel, checkChatRequest, checkGrants, checkMethod, checkPort, checkResourceProvider, checkRoute, checkScheme, checkSessionRequest, checkTool, listedOperations, checkTriggerType, checkTunnelKind, declared, miss, reservedName, type CheckedSchema } from './validate.js';
+import { checkAdapter, checkAgent, checkEngine, checkChannel, checkChatRequest, checkGrants, checkMethod, checkPort, checkResourceProvider, checkRoute, checkScheme, checkSessionRequest, checkTool, listedOperations, checkTriggerType, checkTunnelKind, checkList, checkListKind, declared, miss, reservedName, type CheckedSchema } from './validate.js';
 import { checkView, VIEW_SURFACES } from './view.js';
 import { gapLine, schemaGaps } from './schemagaps.js';
 
@@ -2140,6 +2141,44 @@ export function pluginHost(by: string, given: LoaderContext, options: HostRecord
       }
       reportGaps(checked);
       held[named] = { ...kind, by };
+    },
+    registerList(list) {
+      open();
+      const named = checkList(list, by);
+      declared(by, options.contracts, 'lists', named);
+      const held = contribution.lists ??= {};
+      if (held[named] !== undefined) {
+        throw new Error(miss(by, 'registerList', named, 'a name no other list in this plugin uses'));
+      }
+      held[named] = { ...list, channel: list.channel.toLowerCase(), by };
+    },
+    /*
+     * The handle is a closure over the entry the fold carries, so a `changed`
+     * reaches whichever list channel a host built over it, and one made before
+     * any host did is told rather than dropped, as a channel's publish is.
+     */
+    registerKind(kind) {
+      open();
+      const { channel, name: named, checked } = checkListKind(kind, by);
+      declared(by, options.contracts, 'kinds', named);
+      const held = contribution.kinds ??= {};
+      const key = `${channel} ${named}`;
+      if (held[key] !== undefined) {
+        throw new Error(miss(by, 'registerKind', named, `a name no other kind of ${channel} in this plugin uses`));
+      }
+      reportGaps(checked);
+      const served: ServedListKind = { ...kind, channel, by };
+      held[key] = served;
+      return {
+        changed: (instance, id) => {
+          if (typeof id !== 'string' || id === '') throw new Error(miss(by, 'changed', 'the id', 'a row id'));
+          const changed = served.changed;
+          if (changed === undefined) {
+            throw new Error(miss(by, 'changed', id, 'said once a host is built over this plugin'));
+          }
+          changed(instance, id);
+        },
+      };
     },
     on(event, handle) {
       // The context is captured, not rebuilt when the event fires: it is the
