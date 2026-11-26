@@ -1,7 +1,7 @@
 ---
 title: A new bot never takes a used folder
 domain: bots
-status: planned
+status: active
 priority: high
 created: 2026-11-26
 revalidated: 2026-11-26
@@ -52,7 +52,7 @@ x-ahpd/bots/put (make) -> workspaceFor -> the make names the folder -> the file 
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - A make refuses a folder with files](task-01-a-make-refuses-a-folder-with-files.md) | todo | - |
+| [01 - A make refuses a folder with files](task-01-a-make-refuses-a-folder-with-files.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -61,8 +61,8 @@ x-ahpd/bots/put (make) -> workspaceFor -> the make names the folder -> the file 
 
 ## Resume state
 
-- **Done so far:** the plan.
-- **Next action:** task 01.
+- **Done so far:** task 01, on 2026-11-26. [implemented.md](implemented.md) holds the checks.
+- **Next action:** Softov's review.
 - **Open questions:** none.
 - **Watch out for:** the refusal must come before the file is read or written, so a refused make leaves the folder as it was.
 
@@ -71,4 +71,4 @@ x-ahpd/bots/put (make) -> workspaceFor -> the make names the folder -> the file 
 - [ ] Two hosts share one root. A make on the second with a slug of the first is refused.
 - [ ] The first bot's `AGENTS.md` is unchanged.
 - [ ] ahpw makes the bot under the next slug.
-- [ ] `pnpm typecheck` and the bot and webhook suites pass.
+- [x] `pnpm typecheck` and the bot and webhook suites pass.

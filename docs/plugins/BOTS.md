@@ -100,7 +100,7 @@ A part the file does not have reads empty. A bot that removed its Instructions s
 
 `CLAUDE.md` sits beside it with the one line `@AGENTS.md`, because Claude reads that name and not `AGENTS.md`; the import makes the two names one document.
 
-A make fills the bot's template into the file: the `templates` record it names, or the default `AGENTS.md` template at `<configDir>/templates/bots/AGENTS.md`, which the daemon writes at load where it is absent and a person may edit. The filled text is copied into the bot's folder, once; an edit to the template reaches the next bot made and no bot that exists. A folder that already has an `AGENTS.md` keeps the file, because it is the bot's from its first moment: the make writes the bot's parts into it as an edit does, and the rest of what it says stays.
+A make fills the bot's template into the file: the `templates` record it names, or the default `AGENTS.md` template at `<configDir>/templates/bots/AGENTS.md`, which the daemon writes at load where it is absent and a person may edit. The filled text is copied into the bot's folder, once; an edit to the template reaches the next bot made and no bot that exists. A make that names its folder takes a file that is there: it writes the bot's parts into it as an edit does, and the rest of what it says stays. A make that names no folder is refused where the folder has files - [The folder](#the-folder).
 
 A folder with no `AGENTS.md` - one whose make failed to write it, or one a person emptied - gets the same text at the first wake of a Back chat. The file is the bot's rules: every harness reads it, and a wake never writes over a file that is there.
 
@@ -114,7 +114,7 @@ A slug is fixed when the bot is made and an edit cannot move it. A deleted slug 
 
 ## The folder
 
-A bot works in a folder of its own, `<root>/<slug>` unless the body named one, where `root` is the plugin's option and starts at `~/.bots`. No two bots share a folder and an edit never moves one: two bots in one tree would be two of them working over each other, so a body naming a folder another bot has is refused `-32602`. A folder a body names outside `root` is refused `-32009`, `Permission denied: <folder>`, as the protocol answers a path outside the allowed set. The folder is made when the bot is made, so a bot has one whether or not anybody has talked to it yet.
+A bot works in a folder of its own, `<root>/<slug>` unless the body named one, where `root` is the plugin's option and starts at `~/.bots`. No two bots share a folder and an edit never moves one: two bots in one tree would be two of them working over each other, so a body naming a folder another bot has is refused `-32602`. A folder a body names outside `root` is refused `-32009`, `Permission denied: <folder>`, as the protocol answers a path outside the allowed set. A make that names no folder is refused `-32010` where `<root>/<slug>` already has files, because every host of one user shares the root and the files may be another host's bot. Name the folder in the make to take it. A client tries the next slug. The folder is made when the bot is made, so a bot has one whether or not anybody has talked to it yet.
 
 Its `AGENTS.md` is in that folder, with `CLAUDE.md` beside it - [The persona](#the-persona). A delete removes the daemon's own data for the bot, `<configDir>/bots/<slug>/`, and leaves the work folder and its `AGENTS.md` where they are: what a bot worked on is the person's to keep.
 

@@ -1,6 +1,6 @@
 ---
 title: A make refuses a folder with files
-status: todo
+status: done
 depends: []
 layer: "bot"
 refs:
@@ -38,3 +38,5 @@ A make that names no folder is refused when its default folder has files. A make
 - `pnpm typecheck` and the bot and webhook suites pass.
 
 ## Resume
+
+Built on 2026-11-26, as [implemented.md](implemented.md) says.
