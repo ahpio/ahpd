@@ -560,6 +560,23 @@ it('answers a read from the bot\'s own file, so its own edit shows on the next r
   });
 });
 
+it('empties the instructions an edit blanks, and keeps the rest of the file', async () => {
+  const { host, bots } = made({ soft: ['bot:*', 'session:create'] });
+  const soft = await as(host, 'soft');
+  await write(soft, 'bot://motion', { name: 'Motion', description: 'One line', instructions: 'Say less.' }, { createOnly: true });
+  const file = join(bots, 'motion', 'AGENTS.md');
+  writeFileSync(file, `${readFileSync(file, 'utf8')}\n## Mine\n\nThe bot wrote this.\n`);
+
+  got(await write(soft, 'bot://motion', { instructions: '', description: '' }));
+
+  const read = await record(soft, 'bot://motion');
+  expect(read).not.toHaveProperty('instructions');
+  expect(read).not.toHaveProperty('description');
+  expect(read).toMatchObject({ name: 'Motion' });
+  expect(readFileSync(file, 'utf8')).toContain('## Mine\n\nThe bot wrote this.');
+  expect(readFileSync(file, 'utf8')).not.toContain('Say less.');
+});
+
 /** An older record, as a daemon before the file was the one copy wrote it. */
 const olderRecord = (folder: string) => ({
   id: 'older',

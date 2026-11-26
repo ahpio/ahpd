@@ -1,7 +1,7 @@
 ---
 title: A bot's agent changes and its fields clear
 domain: bots
-status: planned
+status: active
 priority: high
 created: 2026-11-25
 revalidated: 2026-11-25
@@ -67,8 +67,8 @@ message in the Front -> backOf -> the Back row of this Front, compared with the 
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a blank clears a field](task-01-a-blank-clears-a-field.md) | todo | - |
-| [02 - a changed agent gets a new Back](task-02-a-changed-agent-gets-a-new-back.md) | todo | - |
+| [01 - a blank clears a field](task-01-a-blank-clears-a-field.md) | done | - |
+| [02 - a changed agent gets a new Back](task-02-a-changed-agent-gets-a-new-back.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -77,8 +77,8 @@ message in the Front -> backOf -> the Back row of this Front, compared with the 
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-blank-clears-a-field.md](task-01-a-blank-clears-a-field.md).
+- **Done so far:** both tasks, on 2026-11-25. [implemented.md](implemented.md) holds the checks.
+- **Next action:** Softov's review.
 - **Open questions:** none.
 - **Watch out for:** two Backs of one Front have the same origin kind, so `backChat` cannot tell the current one by itself.
 
