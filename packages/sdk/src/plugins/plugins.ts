@@ -21,7 +21,7 @@ import type { HostOptions, HostTool, NodeRegistry } from '../types/host.js';
 import type { ChannelHandle, Contribution, GrantEntry, LoaderContext, Alert, InstallAnswer, PluginConnects, PluginContext, PluginContracts, PluginHost, PluginStarts, PluginView, SessionMetaKey, ServedBindings, ServedCanvases, ServedChannel, ServedMethod, ServedPlan, ServedSessionMeta, PluginTriggers, PortContribution, PortKey, PortOf, Route, TriggerTypeDefinition, ViewSurface } from '../types/plugin.js';
 import type { CollectionOptions, RecordCollection, RecordStore } from '../types/records.js';
 import type { SessionStore } from '../types/sessions.js';
-import { listChannel } from '../lists/channel.js';
+import { servedList } from '../lists/channel.js';
 import type { ServedTunnelKind } from '../types/tunnels.js';
 import type { ServedList, ServedListKind } from '../types/lists.js';
 import type { Usage } from '../types/usage.js';
@@ -760,7 +760,7 @@ export function foldHostOptions(base: HostOptions, contributions: Contribution[]
       delete lists[name];
       continue;
     }
-    const { served, provider } = listChannel(list);
+    const { served, provider } = servedList(base, list);
     channels[list.channel] = served;
     schemes.set(name, list.by);
     resourceProviders[name] = provider as Schemes[string];

@@ -154,7 +154,7 @@ export { clientsChannel, countFrame } from './clients/channel.js';
 export type { ClientCounts, ClientsChannel, ClientsChannelOptions } from './clients/channel.js';
 export { invokeOperation, kindOffers, kindOperations, OPERATION_COMMAND, OPERATION_GRANT, pluginOperationChannels } from './kinds/operations.js';
 export type { InvokeOperationOptions, KindOperationsOptions, KindShape, OperationChannel } from './kinds/operations.js';
-export { listChannel } from './lists/channel.js';
+export { listChannel, servedList } from './lists/channel.js';
 export type { ListServing, ServedRow } from './lists/channel.js';
 export { BINDINGS_KEY, BINDINGS_SCHEME, bindingTarget, bindingsOf, checkBindings } from './connectors/bindings.js';
 export type { Binding } from './connectors/bindings.js';

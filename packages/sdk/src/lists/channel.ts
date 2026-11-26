@@ -35,10 +35,16 @@ export interface ServedRow extends ListRow {
   operation?: { id: string; status: OperationStatus; error?: string };
 }
 
-/** What `listChannel` builds: the channel the fold serves, and the scheme of one row. */
+/** What `listChannel` builds: the channel the fold serves, the scheme of one row, and how a later fold hands it the list again. */
 export interface ListServing {
   served: ServedChannel;
   provider: ResourceProvider;
+  /**
+   * Serve the list as a later fold joined it, keeping the channel, the
+   * provider and what each watched URI was sent: a host refuses a live fold
+   * that moves a resource scheme, and a subscriber keeps its view.
+   */
+  update(list: ServedList): void;
 }
 
 /** The query a list URI asks, checked against what the list declares. */
@@ -120,7 +126,8 @@ const compare = (left: unknown, right: unknown): number => {
  * `onProblem` is told of a kind that throws while it answers rows, with the
  * plugin that registered it; its rows are left out and the others answered.
  */
-export function listChannel(list: ServedList, onProblem: (message: string) => void = () => {}): ListServing {
+export function listChannel(initial: ServedList, onProblem: (message: string) => void = () => {}): ListServing {
+  let list = initial;
   const scheme = list.channel;
   const root = `${scheme}://`;
   const kinds = (): ServedListKind[] => Object.values(list.kinds);
@@ -242,11 +249,15 @@ export function listChannel(list: ServedList, onProblem: (message: string) => vo
     for (const uri of watched()) send(uri, action);
   };
 
-  for (const kind of kinds()) {
-    kind.changed = (_instance, id) => {
-      void changed(id).catch((error: unknown) => { onProblem(`list ${list.name} could not send ${id}: ${reason(error)}`); });
-    };
-  }
+  /** Point each kind's `changed` at this channel. */
+  const wire = (): void => {
+    for (const kind of kinds()) {
+      kind.changed = (_instance, id) => {
+        void changed(id).catch((error: unknown) => { onProblem(`list ${list.name} could not send ${id}: ${reason(error)}`); });
+      };
+    }
+  };
+  wire();
 
   /** The kind an operation id names, and the operation after its slash. */
   const operationOf = (operation: ChannelOperation): { kind: ServedListKind; name: string } => {
@@ -259,6 +270,13 @@ export function listChannel(list: ServedList, onProblem: (message: string) => vo
   const channel: PluginChannel = {
     grant: `${list.name}:get` as Grant,
     describe: () => ({ title: list.title, ...(list.description === undefined ? {} : { description: list.description }) }),
+    kinds: () => Object.fromEntries(kinds().map((kind) => [kind.name, {
+      title: kind.title,
+      ...(kind.description === undefined ? {} : { description: kind.description }),
+      ...(kind.icon === undefined ? {} : { icon: kind.icon }),
+      schema: kind.schema,
+      operations: operations().filter((one) => one.kind === kind.name).map(({ status: _status, error: _error, kind: _kind, offered: _offered, ...rest }) => rest),
+    }])),
     snapshot: async (uri, reader) => {
       const query = queryOf(list, uri);
       const records = await rowsOf(query, reader);
@@ -314,5 +332,35 @@ export function listChannel(list: ServedList, onProblem: (message: string) => vo
     },
   };
 
-  return { served: servedChannel, provider };
+  const update = (next: ServedList): void => {
+    list = next;
+    servedChannel.by = next.by;
+    wire();
+  };
+
+  return { served: servedChannel, provider, update };
+}
+
+/** The lists served over one base, by name, kept from one fold to the next. */
+const servings = new WeakMap<object, Map<string, ListServing>>();
+
+/**
+ * The list served for `list.name` over `base`: the one an earlier fold over
+ * the same base built, handed the list again, or a new one. A list that moved
+ * to another channel is a new one.
+ */
+export function servedList(base: object, list: ServedList, onProblem?: (message: string) => void): ListServing {
+  let held = servings.get(base);
+  if (held === undefined) {
+    held = new Map();
+    servings.set(base, held);
+  }
+  const before = held.get(list.name);
+  if (before !== undefined && before.served.scheme === list.channel) {
+    before.update(list);
+    return before;
+  }
+  const made = listChannel(list, onProblem);
+  held.set(list.name, made);
+  return made;
 }

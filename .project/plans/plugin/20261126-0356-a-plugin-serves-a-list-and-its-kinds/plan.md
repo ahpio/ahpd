@@ -119,7 +119,7 @@ plugin apply -> registerList, registerKind -> fold joins lists, attaches kinds
 | [02 - a-plugin-declares-a-list-and-kinds](task-02-a-plugin-declares-a-list-and-kinds.md) | done | - |
 | [03 - the-fold-joins-a-lists-declarations](task-03-the-fold-joins-a-lists-declarations.md) | done | 02 |
 | [04 - a-list-is-served-as-a-channel](task-04-a-list-is-served-as-a-channel.md) | done | 01, 03 |
-| [05 - ahpd-channels-lists-the-kinds](task-05-ahpd-channels-lists-the-kinds.md) | todo | 04 |
+| [05 - ahpd-channels-lists-the-kinds](task-05-ahpd-channels-lists-the-kinds.md) | done | 04 |
 
 ## Risks and tradeoffs
 
@@ -130,18 +130,18 @@ plugin apply -> registerList, registerKind -> fold joins lists, attaches kinds
 
 ## Resume state
 
-- **Done so far:** task 01, the shared operations. Task 02, `registerList` and `registerKind` with their checks. Task 03, the fold into `options.lists` and the grants. Task 04, the list channel and the row scheme.
-- **Next action:** [task-05-ahpd-channels-lists-the-kinds.md](task-05-ahpd-channels-lists-the-kinds.md).
+- **Done so far:** all five tasks, on 2026-11-26. [implemented.md](implemented.md) holds the checks and the departures.
+- **Next action:** Softov's review.
 - **Open questions:** none.
 - **Watch out for:** the host keeps no row of a plugin's list; do not reach for `RecordsChannel` or a record collection. The tunnels channel stays in the server and keeps its rows.
 
 ## Final verification checklist
 
-- [ ] A todo plugin's list subscribes, creates, completes and removes a todo, and every subscriber gets each action.
-- [ ] A second plugin's kind shows its rows in the same snapshot.
-- [ ] A filter on a field that kind lacks leaves its rows out.
-- [ ] `resourceRead` of `todo://<id>` answers the row.
-- [ ] `ahpd.channels` lists the list with both kinds and every operation.
-- [ ] A list with `instances: true` or `page` is refused, and so is a list on a `registerChannel` scheme.
-- [ ] The tunnel tests pass unchanged.
-- [ ] `npm test` in `packages/sdk` passes, and `npm run build` passes.
+- [x] A todo plugin's list subscribes, creates, completes and removes a todo, and every subscriber gets each action.
+- [x] A second plugin's kind shows its rows in the same snapshot.
+- [x] A filter on a field that kind lacks leaves its rows out.
+- [x] `resourceRead` of `todo://<id>` answers the row.
+- [x] `ahpd.channels` lists the list with both kinds and every operation.
+- [x] A list with `instances: true` or `page` is refused, and so is a list on a `registerChannel` scheme.
+- [x] The tunnel tests pass unchanged.
+- [x] `npm test` in `packages/sdk` passes, and `npm run build` passes.

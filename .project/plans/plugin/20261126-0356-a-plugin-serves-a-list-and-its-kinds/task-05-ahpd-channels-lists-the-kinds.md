@@ -1,6 +1,6 @@
 ---
 title: ahpd.channels lists the kinds
-status: todo
+status: done
 depends: ["task-04-a-list-is-served-as-a-channel.md"]
 layer: "sdk host"
 refs:
@@ -37,3 +37,5 @@ A todo plugin and a second plugin's kind work end to end through `createHost`.
 - `npm test` in `packages/sdk` passes, and `npm run build` passes.
 
 ## Resume
+
+Built on 2026-11-26. The end-to-end test serves `x-ahpd/invokeOperation` as a base method, as the daemon does.
