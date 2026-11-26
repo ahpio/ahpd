@@ -22,7 +22,7 @@ import type { ChannelHandle, Contribution, GrantEntry, LoaderContext, Alert, Ins
 import type { CollectionOptions, RecordCollection, RecordStore } from '../types/records.js';
 import type { SessionStore } from '../types/sessions.js';
 import type { ServedTunnelKind } from '../types/tunnels.js';
-import type { ServedListKind } from '../types/lists.js';
+import type { ServedList, ServedListKind } from '../types/lists.js';
 import type { Usage } from '../types/usage.js';
 import type { Grant, Principal } from '../types/users.js';
 import type { Vault } from '../types/vault.js';
@@ -670,6 +670,96 @@ export function foldHostOptions(base: HostOptions, contributions: Contribution[]
     }
   }
   if (Object.keys(tunnelKinds).length > 0) options.tunnelKinds = tunnelKinds;
+
+  /*
+   * The lists, joined by name across every plugin that declared one.
+   *
+   * The first declaration loaded gives the channel and the words, and the
+   * filters, the search fields and the sorts of every declaration join, each
+   * field once. A later one whose channel or words differ is reported and
+   * keeps its filters. A list and a `registerChannel` on one scheme are one
+   * channel too many: the one loaded second is refused. Each kind joins the
+   * list its `channel` names, and a kind on a list nobody declared, or a
+   * second kind of one name in a list, is reported and left out.
+   */
+  const order = (by: string): number => {
+    const at = contributions.findIndex((one) => one.by === by);
+    return at < 0 ? -1 : at;
+  };
+  const lists: Record<string, ServedList> = { ...base.lists };
+  for (const contribution of contributions) {
+    for (const [name, declaration] of Object.entries(contribution.lists ?? {})) {
+      const held = lists[name];
+      if (held === undefined) {
+        const { by, ...rest } = declaration;
+        lists[name] = {
+          ...rest,
+          by,
+          declaredBy: [by],
+          filters: [...(declaration.filters ?? [])],
+          search: [...(declaration.search ?? [])],
+          sorts: [...(declaration.sorts ?? [])],
+          kinds: {},
+        };
+        continue;
+      }
+      held.declaredBy.push(contribution.by);
+      if (declaration.channel !== held.channel) {
+        problems.push(`plugin ${contribution.by} declares list ${name} on ${declaration.channel}, and plugin ${held.by} declared it on ${held.channel}; ${held.channel} stays`);
+      }
+      for (const member of ['title', 'description', 'icon'] as const) {
+        if (declaration[member] !== undefined && declaration[member] !== held[member]) {
+          problems.push(`plugin ${contribution.by} declares list ${name} with another ${member}; plugin ${held.by}'s stays`);
+        }
+      }
+      for (const filter of declaration.filters ?? []) {
+        if (!held.filters!.some((one) => one.field === filter.field)) held.filters!.push(filter);
+      }
+      for (const field of declaration.search ?? []) if (!held.search!.includes(field)) held.search!.push(field);
+      for (const field of declaration.sorts ?? []) if (!held.sorts!.includes(field)) held.sorts!.push(field);
+    }
+  }
+  for (const [name, list] of Object.entries(lists)) {
+    const channel = channels[list.channel];
+    if (channel === undefined) continue;
+    if (order(channel.by) <= order(list.by)) {
+      problems.push(`plugin ${list.by} declares list ${name} on ${list.channel}, which plugin ${channel.by} already registered as a channel; the list is refused`);
+      delete lists[name];
+    }
+    else {
+      problems.push(`plugin ${channel.by} registers channel ${list.channel}, which plugin ${list.by} already declared as list ${name}; the channel is refused`);
+      delete channels[list.channel];
+    }
+  }
+  const listOn = new Map(Object.values(lists).map((list) => [list.channel, list]));
+  for (const contribution of contributions) {
+    for (const kind of Object.values(contribution.kinds ?? {})) {
+      const list = listOn.get(kind.channel);
+      if (list === undefined) {
+        problems.push(`plugin ${kind.by} adds kind ${kind.name} to ${kind.channel}, which no plugin declared as a list; the kind is left out`);
+        continue;
+      }
+      const held = list.kinds[kind.name];
+      if (held !== undefined) {
+        problems.push(`plugin ${kind.by} adds kind ${kind.name} to list ${list.name}, which plugin ${held.by} already added; the first stays`);
+        continue;
+      }
+      list.kinds[kind.name] = kind;
+    }
+  }
+  for (const list of Object.values(lists)) {
+    // The list's grants join the table as a plugin's own subject does.
+    const before = grants[list.name];
+    const joined = [...(before?.operations ?? [])];
+    for (const one of ['get', 'put', 'delete']) if (!joined.includes(one)) joined.push(one);
+    const description = before?.description ?? list.description;
+    grants[list.name] = {
+      title: before?.title ?? list.title,
+      ...(description === undefined ? {} : { description }),
+      operations: joined,
+    };
+  }
+  if (Object.keys(lists).length > 0) options.lists = lists;
   if (Object.keys(grants).length > 0) options.grants = grants;
 
   /*

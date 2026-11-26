@@ -116,7 +116,7 @@ plugin apply -> registerList, registerKind -> fold joins lists, attaches kinds
 | --- | --- | --- |
 | [01 - a-kinds-operations-are-built-once](task-01-a-kinds-operations-are-built-once.md) | done | - |
 | [02 - a-plugin-declares-a-list-and-kinds](task-02-a-plugin-declares-a-list-and-kinds.md) | done | - |
-| [03 - the-fold-joins-a-lists-declarations](task-03-the-fold-joins-a-lists-declarations.md) | todo | 02 |
+| [03 - the-fold-joins-a-lists-declarations](task-03-the-fold-joins-a-lists-declarations.md) | done | 02 |
 | [04 - a-list-is-served-as-a-channel](task-04-a-list-is-served-as-a-channel.md) | todo | 01, 03 |
 | [05 - ahpd-channels-lists-the-kinds](task-05-ahpd-channels-lists-the-kinds.md) | todo | 04 |
 
@@ -129,8 +129,8 @@ plugin apply -> registerList, registerKind -> fold joins lists, attaches kinds
 
 ## Resume state
 
-- **Done so far:** task 01, the shared operations. Task 02, `registerList` and `registerKind` with their checks.
-- **Next action:** [task-03-the-fold-joins-a-lists-declarations.md](task-03-the-fold-joins-a-lists-declarations.md).
+- **Done so far:** task 01, the shared operations. Task 02, `registerList` and `registerKind` with their checks. Task 03, the fold into `options.lists` and the grants.
+- **Next action:** [task-04-a-list-is-served-as-a-channel.md](task-04-a-list-is-served-as-a-channel.md).
 - **Open questions:** none.
 - **Watch out for:** the host keeps no row of a plugin's list; do not reach for `RecordsChannel` or a record collection. The tunnels channel stays in the server and keeps its rows.
 
