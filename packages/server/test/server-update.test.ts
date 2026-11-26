@@ -379,6 +379,43 @@ describe('the install and the restart', () => {
     });
   });
 
+  /*
+   * #38616: the daemon's own install runs first, so a plugin move that refuses
+   * leaves the new binary on disk. The update must still ask for the restart
+   * and say what did not move, instead of ending on npm's error with a daemon
+   * nobody restarted.
+   */
+  it('still restarts, and says what did not move, when the plugin move refuses', async () => {
+    const configDir = plugins(
+      { '@ahpd/agent-acp': '^1.0.0', '@ahpd/sdk': '0.12.0' },
+      { '@ahpd/agent-acp': '1.0.0', '@ahpd/sdk': '0.12.0' },
+    );
+    // The daemon installs; the plugin install beside it is the one npm refuses.
+    const npm = fakeNpm((argv) => argv[0] === 'install' && argv.includes('--legacy-peer-deps')
+      ? { code: 1, stdout: '', stderr: 'npm ERR! 400 Bad Request - the manifest is refused' }
+      : { code: 0, stdout: '', stderr: '' });
+    // The plugin fits the new sdk, so the check before the install passes and the refusal comes from the move.
+    const fetch = pluginRegistry({ '@ahpd/agent-acp': [['2.0.0', '^99.0.0']] });
+    const restarted: boolean[] = [];
+    const answer = await update(
+      { version: LATEST },
+      { configDir, run: npm.runner, fetch, restart: (wanted) => { restarted.push(wanted); } },
+    );
+    await tick();
+    expect(answer?.data).toMatchObject({
+      from: CURRENT,
+      to: LATEST,
+      restarting: true,
+      plugins: [],
+      pluginsError: expect.stringContaining('manifest is refused'),
+    });
+    // The operator is told both halves: the plugins stayed, the daemon still restarts.
+    const plain = typeof answer?.plain === 'function' ? answer.plain() : answer?.plain;
+    expect(plain).toContain('the plugins were not moved');
+    expect(plain).toContain('restarting the daemon');
+    expect(restarted).toHaveLength(1);
+  });
+
   it('checks and moves the plugins against the sdk the target ships, not its own version', async () => {
     const configDir = plugins(
       { '@ahpd/agent-acp': '^1.0.0', '@ahpd/sdk': '0.12.0' },
