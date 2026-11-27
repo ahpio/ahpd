@@ -1,6 +1,6 @@
 ---
 title: A busy folder is tried again
-status: todo
+status: done
 depends: []
 layer: "tools"
 ---
@@ -31,3 +31,5 @@ layer: "tools"
 - `teardown-clear.test.ts` and `teardown-check.test.ts` pass.
 
 ## Resume
+
+Built on 2026-11-27. `pause` moved above `removeFolder`, which calls it now.

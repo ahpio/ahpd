@@ -70,44 +70,78 @@ export const endHolders = async (folders: readonly string[], ms = 5_000): Promis
   }
 };
 
+/** Wait `ms` without yielding, so a synchronous teardown can wait too. */
+const pause = (ms: number): void => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); };
+
+/** The errors of a folder another process still has open, which a later try can get past. */
+const BUSY = new Set(['EBUSY', 'EPERM', 'ENOTEMPTY']);
+
+/** Remove a folder and all it holds, once. */
+const removeOnce = (folder: string): void => { rmSync(folder, { recursive: true, force: true }); };
+
 /**
- * Remove `folder` and all it holds, trying again while Windows still finishes
- * an earlier delete.
+ * Remove `folder` and all it holds, trying again while another process still
+ * lets go of it.
  *
- * A removal that still fails names what is left in the folder, how long ago
- * each file was last written, and the holders still seen, so a failure on a
- * runner says which file and which process held it. `about` adds what a caller
- * knows of a file it left, such as the last calls a fake CLI recorded there.
+ * Windows refuses to remove a folder that a process has open with `EBUSY`, and
+ * Node's synchronous `rm` throws that at once whatever `maxRetries` says. So an
+ * `EBUSY`, `EPERM` or `ENOTEMPTY` is tried again here, after a pause that starts
+ * at 50 ms and doubles, until `ms` has passed. The pause does not yield: a
+ * handle this process holds cannot close during it, and only another process's
+ * is waited out.
+ *
+ * A removal that still fails names the tries and the time waited, what is left
+ * in the folder, how long ago each file was last written, and the holders still
+ * seen, so a failure on a runner says which file and which process held it.
+ * `about` adds what a caller knows of a file it left, such as the last calls a
+ * fake CLI recorded there. `remove` is the removal itself, for a case.
  */
-export const removeFolder = (folder: string, about?: (path: string) => string | undefined): void => {
-  try {
-    rmSync(folder, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
-  }
-  catch (error) {
-    let left: string[] = [];
-    try { left = readdirSync(folder, { recursive: true }).map(String); }
-    catch { /* the folder is gone after all */ }
-    const described = left.map((one) => {
-      const path = join(folder, one);
-      let age = '';
-      try { age = ` written ${String(Math.round(Date.now() - statSync(path).mtimeMs))}ms ago`; }
-      catch { /* gone since the listing */ }
-      let more: string | undefined;
-      try { more = about?.(path); }
-      catch { /* nothing to add */ }
-      return `${one}${age}${more === undefined ? '' : ` (${more})`}`;
-    });
-    const shown = described.length > 20 ? [...described.slice(0, 20), `and ${String(described.length - 20)} more`] : described;
-    const seen = holders([folder]);
-    throw new Error(
-      `${error instanceof Error ? error.message : String(error)}. Still in it: ${shown.join(', ') || 'nothing'}. Holders: ${seen.join(', ') || 'none'}.`,
-      { cause: error },
-    );
+export const removeFolder = (
+  folder: string,
+  about?: (path: string) => string | undefined,
+  { remove = removeOnce, ms = 5_000 }: { remove?: (folder: string) => void; ms?: number } = {},
+): void => {
+  const began = Date.now();
+  let tries = 0;
+  let wait = 50;
+  for (;;) {
+    tries += 1;
+    try {
+      remove(folder);
+      return;
+    }
+    catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      const left = ms - (Date.now() - began);
+      if (code !== undefined && BUSY.has(code) && left > 0) {
+        pause(Math.min(wait, left));
+        wait *= 2;
+        continue;
+      }
+      let rest: string[] = [];
+      try { rest = readdirSync(folder, { recursive: true }).map(String); }
+      catch { /* the folder is gone after all */ }
+      const described = rest.map((one) => {
+        const path = join(folder, one);
+        let age = '';
+        try { age = ` written ${String(Math.round(Date.now() - statSync(path).mtimeMs))}ms ago`; }
+        catch { /* gone since the listing */ }
+        let more: string | undefined;
+        try { more = about?.(path); }
+        catch { /* nothing to add */ }
+        return `${one}${age}${more === undefined ? '' : ` (${more})`}`;
+      });
+      const shown = described.length > 20 ? [...described.slice(0, 20), `and ${String(described.length - 20)} more`] : described;
+      const seen = holders([folder]);
+      const tried = `${String(tries)} ${tries === 1 ? 'try' : 'tries'} in ${String(Date.now() - began)}ms`;
+      throw new Error(
+        `${error instanceof Error ? error.message : String(error)}, after ${tried}. Still in it: ${shown.join(', ') || 'nothing'}. Holders: ${seen.join(', ') || 'none'}.`,
+        { cause: error },
+      );
+    }
   }
 };
 
-/** Wait `ms` without yielding, so a synchronous teardown can wait too. */
-const pause = (ms: number): void => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); };
 
 /** `SIGKILL` every holder of `folders`, until none is left or `ms` has passed, without yielding. */
 export const endHoldersNow = (folders: readonly string[], ms = 5_000): void => {

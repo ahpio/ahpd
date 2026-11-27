@@ -1,7 +1,7 @@
 ---
 title: A teardown waits out a busy folder
 domain: host
-status: planned
+status: active
 priority: high
 created: 2026-11-27
 revalidated: 2026-11-27
@@ -40,7 +40,7 @@ A teardown on Windows never fails on `EBUSY` while another process still lets go
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a-busy-folder-is-tried-again](task-01-a-busy-folder-is-tried-again.md) | todo | - |
+| [01 - a-busy-folder-is-tried-again](task-01-a-busy-folder-is-tried-again.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -49,12 +49,12 @@ A teardown on Windows never fails on `EBUSY` while another process still lets go
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** task 01.
+- **Done so far:** task 01, on 2026-11-27. [implemented.md](implemented.md) holds the checks.
+- **Next action:** Softov's review, and `check-windows` over more runs.
 - **Open questions:** none.
 - **Watch out for:** a case in the middle of a test still calls `rmSync`, and keeps it.
 
 ## Final verification checklist
 
-- [ ] `teardown-clear.test.ts` passes, with the new cases.
+- [x] `teardown-clear.test.ts` passes, with the new cases.
 - [ ] `check-windows` passes.
