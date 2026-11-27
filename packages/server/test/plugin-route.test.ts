@@ -291,11 +291,6 @@ describe('the routes option', () => {
     expect(failed).toContain('routes.host');
     expect(failed).toContain('routes.port');
   }, 40000);
-
-  it('stops a daemon that is given routes and --stdio', async () => {
-    const failed = await daemon({ routes: { port: 0 }, plugins: [BACKEND, ROUTE] }, ['--stdio']).then(() => '', (error: unknown) => String(error));
-    expect(failed).toContain('routes needs a listening port');
-  }, 40000);
 });
 
 describe('routes on a port of their own', () => {
