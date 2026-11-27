@@ -54,6 +54,9 @@ THEN `tags` holds the tags of the connector that served the call.
 A record copies the tags when it is written, so an edit to a tag changes no record already kept.
 A record with no tag has no `tags` field.
 A tag is a label only, and charges no pool.
+WHEN a client connects
+THEN the root `_meta` of the `initialize` answer and of the root state holds `'ahpd.tags': {}`
+AND a client offers tags only on a host whose `_meta` has the key.
 
 ### The pools a record is charged to
 
@@ -169,7 +172,8 @@ WHEN a client reads `usage://groups?by=user,team,project` with a range
 THEN the host sums each record once by the keys asked, with the team and project names beside the keys
 AND it counts a record only when the reader may read at least one of its pools.
 WHEN the client asks `by=tag`
-THEN a record is in one row for each of its tags, and a record with no tag is in none.
+THEN a record is in one row for each of its tags
+AND a record with no tag is in one row with no `tag` key.
 WHEN the client names `tag=<a>,<b>`
 THEN the host sums only the records that hold every tag named.
 The host sums the records, because a client that reads 200 records at a time cannot sum a busy month.

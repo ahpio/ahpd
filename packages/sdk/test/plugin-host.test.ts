@@ -554,6 +554,24 @@ it('advertises every scheme it serves on the handshake and on the root state', a
   }
 });
 
+/*
+ * A host says it has tags on the handshake and on the root state, so a client
+ * offers tags on agents and connectors, and groups usage by them, only there.
+ */
+it('says it has tags on the handshake and on the root state', async () => {
+  const host = createHost(base());
+  const client = host.accept(peer());
+  const ready = await client.handle({
+    method: 'initialize',
+    params: { clientId: 'probe', protocolVersions: ['0.9.0'], initialSubscriptions: ['ahp-root://'] },
+  }) as {
+    _meta?: Record<string, unknown>;
+    snapshots: { resource: string; state: { _meta?: Record<string, unknown> } }[];
+  };
+  expect(ready._meta?.['ahpd.tags']).toEqual({});
+  expect(ready.snapshots[0]?.state._meta?.['ahpd.tags']).toEqual({});
+});
+
 /** One entry of `ahpd.grants`, as this file reads it. */
 interface Grants {
   [scheme: string]: {

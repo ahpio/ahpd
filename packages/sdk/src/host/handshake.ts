@@ -637,6 +637,10 @@ export function createHandshake(ctx: HostContext, conn: ConnectionContext): Hand
           // The channels plugins serve, so a client can offer one before it
           // has a URI to subscribe to.
           ...(advertisedChannels(connection.locale) === undefined ? {} : { 'ahpd.channels': advertisedChannels(connection.locale) }),
+          // That this host has tags on agents, connectors and usage records,
+          // so a client offers tags only where the key is. An object, so it
+          // can carry the tags channel's template later.
+          'ahpd.tags': {},
           // The `x-` commands the daemon and plugins serve, so a client
           // can offer one before it sends it.
           ...(advertisedMethods() === undefined ? {} : { 'ahpd.methods': advertisedMethods() }),
