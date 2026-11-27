@@ -14,6 +14,7 @@ refs:
 On 2026-11-22 on Softov's machine, `computer-git-fetch.test.ts` failed `answers nothing to bring back where the machine has committed nothing`.
 It said `expected [ 'ahpd-bringback-kQpvFS' ] to deeply equal []`, at the check that no scratch folder is left.
 The run was the computer suite on `test/git-runs-no-background-maintenance`, with real Docker.
+On 2026-11-27 it failed the same way once more in a full computer run on Softov's machine, on `host/20261127-0530-a-teardown-waits-out-a-busy-folder`. The error text was not kept. The file passed alone three times, and the next full run passed.
 
 ## Cause
 
