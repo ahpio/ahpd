@@ -98,6 +98,23 @@ it('leaves no container when Docker refuses the run, and throws what Docker said
   expect(lines.filter((one) => one.includes(`the volume ${gitVolumeOf('one')} was not removed`))).toHaveLength(1);
 });
 
+/*
+ * A run Docker refuses because the name is taken made nothing, and the
+ * container of that name is another create's machine: it stays.
+ */
+it('leaves the machine that has the name when Docker refuses the run for it', async () => {
+  const dir = temp();
+  const path = state(dir, { machines: [{ name: 'one', image: IMAGE }] });
+  const docker = runtime(path);
+
+  await expect(docker.run({ name: 'one', image: IMAGE, label: LABEL }))
+    .rejects.toThrow('Conflict. The container name "/one" is already in use');
+
+  const after = held(path);
+  expect(after.machines.map((one) => one.name)).toEqual(['one']);
+  expect(after.calls).not.toContainEqual(['rm', '-f', 'one']);
+});
+
 it('removes the container and its git volume when the seed fails, and throws the seed\'s error', async () => {
   const dir = temp();
   const path = state(dir, { failCommands: ['git init'] });

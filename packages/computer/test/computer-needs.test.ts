@@ -173,9 +173,10 @@ it('turns resolved needs into flags, a copy, a label and a same-path folder', as
 
   // A copy-in needs the container to exist and not be running, so the machine
   // is created, then copied into, then started. The inspect and the list before
-  // them are the create's own checks.
-  expect(held.calls.slice(-3).map((one) => one[0])).toEqual(['create', 'cp', 'start']);
-  expect(held.calls.slice(-2)[0]).toEqual(['cp', cli, 'box:/usr/local/bin/claude']);
+  // them are the create's own checks, and the inspect after them reads the
+  // machine back before the create answers.
+  expect(held.calls.slice(-4).map((one) => one[0])).toEqual(['create', 'cp', 'start', 'inspect']);
+  expect(held.calls.slice(-3)[0]).toEqual(['cp', cli, 'box:/usr/local/bin/claude']);
 
   // The port reads the same label back, which is what the host checks a
   // session against before it lets one enter.

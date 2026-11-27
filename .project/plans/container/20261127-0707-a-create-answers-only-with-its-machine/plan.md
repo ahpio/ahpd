@@ -1,7 +1,7 @@
 ---
 title: A create answers only with its machine
 domain: container
-status: planned
+status: active
 priority: medium
 created: 2026-11-27
 revalidated: 2026-11-27
@@ -37,8 +37,8 @@ A create that answers done has made its machine. On 2026-11-27, the first create
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a-create-checks-its-machine](task-01-a-create-checks-its-machine.md) | todo | - |
-| [02 - the-first-create-makes-its-machine](task-02-the-first-create-makes-its-machine.md) | todo | 01 |
+| [01 - a-create-checks-its-machine](task-01-a-create-checks-its-machine.md) | done | - |
+| [02 - the-first-create-makes-its-machine](task-02-the-first-create-makes-its-machine.md) | done | 01 |
 
 ## Risks and tradeoffs
 
@@ -47,13 +47,13 @@ A create that answers done has made its machine. On 2026-11-27, the first create
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** task 01.
+- **Done so far:** both tasks, on 2026-11-27. [implemented.md](implemented.md) holds the checks.
+- **Next action:** Softov's review.
 - **Open questions:** none.
 - **Watch out for:** Softov's daemon shares this Docker. Remove only the images, volumes and machines this run made, or run the repro on a Docker of its own.
 
 ## Final verification checklist
 
-- [ ] A create whose container does not stay fails, with what Docker says of it.
-- [ ] A first create on a Docker with no part image makes its machine.
+- [x] A create whose container does not stay fails, with what Docker says of it.
+- [x] A first create on a Docker with no part image makes its machine.
 - [ ] The computer suite passes, and `check-windows` passes.
