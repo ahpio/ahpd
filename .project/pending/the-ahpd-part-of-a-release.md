@@ -27,3 +27,8 @@ Run it after the next rc tag, once every package of it is approved. Replace `0.1
 
 2. On a host that runs the rc, start a cofold session on an ssh box. Pass: the log says `ahpd 0.16.0-rc.1 was installed on <box>`. Fail: another version, or a refusal.
 3. On the same host, start a cofold session in a container machine. Run `docker image ls 'ahpd-part/ahpd'`. Pass: a tag that starts with `0.16.0-rc.1-`. Fail: no such tag.
+
+## Results
+
+- Step 1 passed on 2026-11-27 for `0.16.0-rc.1`: five `PASS` lines, for `@ahpd/sdk`, `@ahpd/server`, `@ahpd/agent-cofold`, `@ahpd/agent-pi` and `@ahpd/sdk` again.
+- Steps 2 and 3 wait for a host that runs the rc, with an ssh box and Docker.
