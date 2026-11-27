@@ -1,7 +1,7 @@
 ---
 title: A stdio host leaves out its listeners
 domain: daemon
-status: planned
+status: active
 priority: high
 created: 2026-11-27
 revalidated: 2026-11-27
@@ -38,7 +38,7 @@ A box whose own ahpd serves the HTTP API takes a session from another host. On 2
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - the-listener-keys-are-left-out](task-01-the-listener-keys-are-left-out.md) | todo | - |
+| [01 - the-listener-keys-are-left-out](task-01-the-listener-keys-are-left-out.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -46,12 +46,12 @@ A box whose own ahpd serves the HTTP API takes a session from another host. On 2
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** task 01.
+- **Done so far:** task 01, on 2026-11-27. [implemented.md](implemented.md) holds the checks.
+- **Next action:** Softov's review.
 - **Open questions:** none.
 - **Watch out for:** `mcpTools` needs `httpApi`, so check that nothing stops a `--stdio` host for `mcpTools` once `httpApi` is left out.
 
 ## Final verification checklist
 
-- [ ] A `--stdio` host with `httpApi`, `modelApi` and `routes` in its file starts, and logs a line for each.
+- [x] A `--stdio` host with `httpApi`, `modelApi` and `routes` in its file starts, and logs a line for each.
 - [ ] The server suite passes, and `check-windows` passes.

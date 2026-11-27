@@ -1,6 +1,6 @@
 ---
 title: The listener keys are left out
-status: todo
+status: done
 depends: []
 layer: "server"
 ---
@@ -33,3 +33,5 @@ A host started with `--stdio` starts when its file sets `httpApi`, `modelApi` or
 - `pnpm typecheck` passes.
 
 ## Resume
+
+Built on 2026-11-27. The `routes` case of `plugin-route.test.ts` is removed, and `stdio-listeners.test.ts` holds it beside the other two keys.

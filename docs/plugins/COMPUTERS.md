@@ -401,7 +401,7 @@ The plugin's `ssh` option says how `ssh` is run:
 ### What the box needs
 
 - What the install below downloads with: Linux on x86_64 or aarch64, `curl`, `tar`, `xz` and `sha256sum`, and a route to nodejs.org and the npm registry, or none: the host then sends the files, and `curl` is not needed. A box without them names in `host` the command that starts an ahpd of its own, by its full path where the `PATH` of a non-interactive login does not hold it, as it does not hold a Node installed by nvm.
-- The plugins of the agents it serves beyond cofold and pi, which the install brings, in the box's configuration folder, where `ahpd plugin install` run there puts them, each configured in the box's own `config.json`. The host on the box loads a plugin with the options its own file gives it, and serves the agent records in its own `agents` folder, so cofold's `model` lives in the file and an ACP agent's in its record.
+- The plugins of the agents it serves beyond cofold and pi, which the install brings, in the box's configuration folder, where `ahpd plugin install` run there puts them, each configured in the box's own `config.json`. The host on the box loads a plugin with the options its own file gives it, and serves the agent records in its own `agents` folder, so cofold's `model` lives in the file and an ACP agent's in its record. It runs with `--stdio`, so it leaves out the `httpApi`, `modelApi` and `routes` of that file, which a daemon of the box's own may serve.
 - Its own model credentials. Nothing is sent from this host: `host` above sources a file on the box, because a non-interactive ssh reads no profile.
 - The login's key in `authorized_keys`. Every call passes `BatchMode=yes`, so a password prompt fails with ssh's own sentence.
 

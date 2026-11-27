@@ -478,9 +478,19 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
    * `listen` as its request handler and a port of its own has to be bound
    * before the announcement names it.
    */
-  for (const key of ['httpApi', 'modelApi'] as const) {
-    if (options[key] !== undefined && options.stdio) {
-      stop(`${key} needs a listening port, and --stdio serves one connection on this process's own pipes.`);
+  /*
+   * A host on `--stdio` has no port, so it leaves out the keys that open one.
+   *
+   * They come from the configuration file only, and a box's host started by
+   * another host reads the box's own file, which may serve the box's own
+   * daemon. So the host starts without them, and says so once for each.
+   */
+  if (options.stdio) {
+    for (const key of ['httpApi', 'modelApi', 'routes'] as const) {
+      if (options[key] === undefined) continue;
+      stamp(`${key} is left out: --stdio serves one connection on this process's own pipes, and no port.`);
+      const { [key]: _left, ...rest } = options;
+      options = rest;
     }
   }
   /*
@@ -494,9 +504,6 @@ export async function runForeground(options: Options, typed: Readonly<Record<str
     if (options[key] !== undefined && token === undefined && users === undefined) {
       stop(`${key} needs a credential: pass --connection-token, --connection-token-file or --users.`);
     }
-  }
-  if (options.routes !== undefined && options.stdio) {
-    stop('routes needs a listening port, and --stdio serves one connection on this process\'s own pipes.');
   }
   const ownPort = options.httpApi?.port;
   /** The port of the routes' own listener, when `routes.port` gives them one. */
