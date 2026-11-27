@@ -31,6 +31,6 @@ Run it after the next rc tag, once every package of it is approved. Replace `0.1
 ## Results
 
 - Step 1 passed on 2026-11-27 for `0.16.0-rc.1`: five `PASS` lines, for `@ahpd/sdk`, `@ahpd/server`, `@ahpd/agent-cofold`, `@ahpd/agent-pi` and `@ahpd/sdk` again.
-- Step 2 passed on 2026-11-27: `computer: ahpd 0.16.0-rc.1 was installed on dev02 at /home/softov/.local/share/ahpd/server/0.16.0-rc.1-59e6a63c9977/bin/ahpd`. The session then failed, as [a box whose own ahpd has httpApi](../problems/a-box-whose-own-ahpd-has-httpapi-takes-no-session.md) says.
-- Step 3 passed on 2026-11-27: the tag `0.16.0-rc.1-298e35213dcb-a034c743b014`, and `cofold runs in computer://rc1box as cofold through @ahpd/agent-cofold`. The first create made no machine, as [a machine's first create](../problems/a-machines-first-create-makes-no-machine.md) says.
+- Step 2 passed on 2026-11-27: `computer: ahpd 0.16.0-rc.1 was installed on dev02 at /home/softov/.local/share/ahpd/server/0.16.0-rc.1-59e6a63c9977/bin/ahpd`. The session then failed, as [a box whose own ahpd has httpApi](../plans/daemon/20261127-0707-a-stdio-host-leaves-out-its-listeners/plan.md) says.
+- Step 3 passed on 2026-11-27: the tag `0.16.0-rc.1-298e35213dcb-a034c743b014`, and `cofold runs in computer://rc1box as cofold through @ahpd/agent-cofold`. The first create made no machine, as [a machine's first create](../plans/container/20261127-0707-a-create-answers-only-with-its-machine/plan.md) says.
 - The host was `@ahpd/server@0.16.0-rc.1` from npm, with its plugins put in by `ahpd plugin install`. A plugin named by a file path is told to the host in a machine by that path, which is not there.
