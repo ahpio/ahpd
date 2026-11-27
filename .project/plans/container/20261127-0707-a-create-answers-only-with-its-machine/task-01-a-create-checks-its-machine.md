@@ -1,6 +1,6 @@
 ---
 title: A create checks its machine
-status: todo
+status: done
 depends: []
 layer: "computer"
 ---
@@ -30,3 +30,5 @@ layer: "computer"
 - `pnpm typecheck` passes.
 
 ## Resume
+
+Built on 2026-11-27. A gone machine is read from `eventsOf`, the runtime's own log of events. A container that is gone has no state or log to read. The machine is read back by the id its run answered, which a router spells with its runtime.

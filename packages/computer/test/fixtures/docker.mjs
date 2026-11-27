@@ -760,6 +760,12 @@ if (verb === 'run' || verb === 'create') {
     process.exit(1);
   }
   const named = args.indexOf('--name');
+  // A name that is taken, refused in Docker's own words and with its exit code.
+  if (named !== -1 && held.machines.some((machine) => machine.name === args[named + 1])) {
+    keep();
+    process.stderr.write(`docker: Error response from daemon: Conflict. The container name "/${args[named + 1]}" is already in use.\n`);
+    process.exit(125);
+  }
   /*
    * The image is the first word that is not a flag or a flag's value, as Docker
    * reads it: a machine runs `<image> sleep infinity`, and a probe or a fill

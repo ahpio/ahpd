@@ -1,6 +1,6 @@
 ---
 title: The first create makes its machine
-status: todo
+status: done
 depends: [task-01-a-create-checks-its-machine.md]
 layer: "computer"
 ---
@@ -30,3 +30,5 @@ The first create of a Docker machine on a host with no part image makes its mach
 - The case for the cause passes, and the computer suite passes.
 
 ## Resume
+
+Built on 2026-11-27. The cause: `rpc.mjs` sent the create twice when the host's keep-alive `ping`, id 1, came during a create of over 10 s. Both copies passed the name check, which ran before the queue. The second `docker run` was refused with `Conflict`, and its guard ran `docker rm -f` on the first one's machine. A trace of each `docker rm` in a scratch install of the rc showed it. The name check is in the queue now, the guard leaves a name Docker refused as taken, and `rpc.mjs` answers a host request as unknown.

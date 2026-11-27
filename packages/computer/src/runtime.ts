@@ -733,6 +733,15 @@ export interface ComputerRuntime {
    * which machines those are.
    */
   suspend?(id: string): Promise<void>;
+  /**
+   * What the runtime's own log of events says of one machine since `since`,
+   * an ISO time, one line each, oldest first.
+   *
+   * Read for a machine that a create made and that is gone, where nothing else
+   * can be asked of it: Docker keeps the container's events after it is
+   * removed. Absent where a runtime keeps no such log.
+   */
+  eventsOf?(id: string, since: string): Promise<string[]>;
   /** Let one suspended machine run again from where it was held. */
   resume?(id: string): Promise<void>;
   /**
@@ -2369,6 +2378,10 @@ export function dockerRuntime(options: DockerOptions): ComputerRuntime {
    * said in the log and not thrown: the first error is the one that says why
    * the machine was not made, and it is the one the caller is answered with.
    */
+  /** Whether Docker refused a make because a container already has the name, in Docker's own words. */
+  const nameTaken = (error: unknown): boolean =>
+    /Conflict\. The container name "[^"]*" is already in use/u.test(error instanceof Error ? error.message : String(error));
+
   const cleanUpFailed = async (container: string, volume: string | undefined): Promise<void> => {
     const gone = await ran(options, ['rm', '-f', container]);
     if (gone.code !== 0) {
@@ -3563,7 +3576,12 @@ export function dockerRuntime(options: DockerOptions): ComputerRuntime {
         }
       }
       catch (error) {
-        await cleanUpFailed(spec.name, git !== undefined && guard === 'fetch' ? gitVolumeOf(spec.name) : undefined);
+        /*
+         * A run Docker refused because the name is taken made nothing: the
+         * container of that name is another create's machine, and is left as it
+         * is.
+         */
+        if (!nameTaken(error)) await cleanUpFailed(spec.name, git !== undefined && guard === 'fetch' ? gitVolumeOf(spec.name) : undefined);
         throw error;
       }
       return { id: spec.name, image, status: 'running', created: new Date().toISOString() };
@@ -3593,6 +3611,19 @@ export function dockerRuntime(options: DockerOptions): ComputerRuntime {
      * machine whose work cannot be read out is kept, with its volumes, and a
      * machine that is not up is started again for the commands that read it.
      */
+    /*
+     * The container's events, as `docker events` keeps them: what happened to
+     * it, with the exit code of a container that ended. Read by name, because a
+     * container that is gone is not there to locate.
+     */
+    eventsOf: async (id, since) => {
+      const held = await ran(options, [
+        'events', '--since', since, '--until', new Date().toISOString(), '--filter', `container=${id}`,
+        '--format', '{{.Action}}{{with index .Actor.Attributes "exitCode"}} exitCode={{.}}{{end}}',
+      ]);
+      return held.code === 0 ? held.stdout.split('\n').map((one) => one.trim()).filter((one) => one !== '') : [];
+    },
+
     remove: async (id) => {
       const held = await heldOrFail(id);
       const { at, record: found } = held;

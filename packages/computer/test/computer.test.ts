@@ -240,6 +240,73 @@ it('makes a machine with the configured limits, uses it and releases it', async 
   expect(calls).not.toContain('stop box');
 });
 
+/*
+ * A create answers only with its machine: a run that returned while the
+ * machine did not stay fails the write, with what the runtime's own log of
+ * events says of it, so the caller is never told done of a machine that is not
+ * there.
+ */
+it('fails a create whose machine is gone once its run returned, with what the runtime says of it', async () => {
+  const { runtime, held } = fake();
+  const run = runtime.run;
+  // The run answers, and the machine it made is gone before the create reads it back.
+  runtime.run = async (spec, progress) => {
+    const made = await run(spec, progress);
+    held.delete(spec.name);
+    return made;
+  };
+  const asked: string[] = [];
+  runtime.eventsOf = async (id, since) => {
+    asked.push(`${id} ${since}`);
+    return ['create', 'start', 'die exitCode=137', 'destroy'];
+  };
+  const provider = computerProvider(runtime, options);
+  const body = { data: JSON.stringify({ image: 'debian:bookworm-slim' }), encoding: 'utf-8' as const };
+
+  await expect(provider.write('computer://box', body)).rejects.toMatchObject({
+    code: -32603,
+    message: 'box was made and is gone: docker says create, start, die exitCode=137, destroy',
+  });
+  // Asked from the time the create began, which is before the run.
+  expect(asked).toHaveLength(1);
+  expect(asked[0]).toMatch(/^box \d{4}-\d{2}-\d{2}T/u);
+
+  // A runtime with nothing on it says so.
+  runtime.eventsOf = async () => [];
+  await expect(provider.write('computer://box', body)).rejects.toMatchObject({
+    message: 'box was made and is gone, and docker has nothing on it',
+  });
+  // And one that keeps no such log at all, the same.
+  delete runtime.eventsOf;
+  await expect(provider.write('computer://box', body)).rejects.toMatchObject({
+    message: 'box was made and is gone, and docker has nothing on it',
+  });
+});
+
+/*
+ * Two creates of one name sent together, as a client that sends its write
+ * again does: the first makes the machine, and the second is refused as taken
+ * once it reaches the queue, rather than run against the first one's machine.
+ */
+it('makes one machine for two creates of one name sent together, and refuses the second as taken', async () => {
+  const { runtime, held, calls } = fake();
+  const provider = computerProvider(runtime, options);
+  const body = { data: JSON.stringify({ image: 'debian:bookworm-slim' }), encoding: 'utf-8' as const };
+
+  const [first, second] = await Promise.allSettled([provider.write('computer://box', body), provider.write('computer://box', body)]);
+  expect(first.status).toBe('fulfilled');
+  expect(second).toMatchObject({ status: 'rejected', reason: { code: -32010 } });
+  expect(held.has('box')).toBe(true);
+  expect(calls.filter((one) => one.startsWith('run box'))).toHaveLength(1);
+});
+
+it('answers a create whose machine is there', async () => {
+  const { runtime, held } = fake();
+  const provider = computerProvider(runtime, options);
+  await provider.write('computer://box', { data: JSON.stringify({ image: 'debian:bookworm-slim' }), encoding: 'utf-8' });
+  expect(held.has('box')).toBe(true);
+});
+
 it('refuses past the maximum, a name already taken, and a machine it does not have', async () => {
   const { runtime } = fake();
   const tools = computerTools(runtime, { ...options, max: 1, label: 'ahpd.computer=1', prefix: 'ahpd-computer' });

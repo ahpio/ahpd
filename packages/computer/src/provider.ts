@@ -328,23 +328,40 @@ export function computerProvider(runtime: ComputerRuntime, options: ProviderOpti
       named: vaultNamed(own, values),
       ...(owner === undefined ? {} : { owner }),
     });
-    if (await runtime.inspect(name) !== undefined) {
-      throw new RpcError(-32010, `${name} is already a computer; destroy it or choose another name`);
-    }
     /*
      * One create at a time per runtime, as VS Code queues a source's dev
      * container operations. A client's write makes every machine it asks for,
      * as VS Code's host makes every container a client asks for: `max` caps
      * what the agent's tool makes.
+     *
+     * The name is checked inside the queue, so a second create of one name
+     * sent while the first is still making it is refused as taken, rather
+     * than run against the first one's machine.
      */
-    await queue(runtime, async () => {
+    const began = new Date().toISOString();
+    const made = await queue(runtime, async () => {
+      if (await runtime.inspect(name) !== undefined) {
+        throw new RpcError(-32010, `${name} is already a computer; destroy it or choose another name`);
+      }
       try {
-        await runtime.run({ ...spec, label: options.label });
+        return await runtime.run({ ...spec, label: options.label });
       }
       catch (error) {
         throw new RpcError(-32603, error instanceof Error ? error.message : String(error));
       }
     });
+    /*
+     * A create answers only with its machine, read back by the id its run
+     * answered, which a router spells with its runtime. A run that returned
+     * while its machine did not stay is a failure the caller must see, in what
+     * the runtime's own log says of it.
+     */
+    if (await runtime.inspect(made.id) === undefined) {
+      const said = await runtime.eventsOf?.(made.id, began).catch(() => []) ?? [];
+      throw new RpcError(-32603, said.length === 0
+        ? `${name} was made and is gone, and ${runtime.kind} has nothing on it`
+        : `${name} was made and is gone: ${runtime.kind} says ${said.join(', ')}`);
+    }
   };
 
   /**

@@ -23,6 +23,13 @@ const send = (message) => ws.send(JSON.stringify(message));
 ws.on('open', () => send({ id: 1, method: 'initialize', params: { clientId: 'pending-rpc', protocolVersions: ['0.9.0'], initialSubscriptions: [] } }));
 ws.on('message', (raw) => {
   const message = JSON.parse(String(raw));
+  // A request of the host's, such as its keep-alive `ping`, has a method and
+  // an id of its own; it is answered as a method this client does not serve.
+  if (message.method !== undefined) {
+    if (message.id !== undefined) send({ id: message.id, error: { code: -32601, message: `${message.method} is not served here` } });
+    if (process.env.ALL) console.log('NOTE', JSON.stringify(message));
+    return;
+  }
   if (message.id === 1) {
     if (message.error) { console.log('initialize failed', JSON.stringify(message.error)); process.exit(1); }
     send({ id: 2, method, params: JSON.parse(params) });

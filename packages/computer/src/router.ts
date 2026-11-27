@@ -267,6 +267,10 @@ export const routed = (
       if (runtime.resume === undefined) throw new Error(`${id} cannot be resumed: its runtime cannot hold a machine`);
       await runtime.resume(name);
     },
+    eventsOf: async (id, since) => {
+      const { runtime, name } = must(id);
+      return await runtime.eventsOf?.(name, since) ?? [];
+    },
     suspends: (id) => {
       const { runtime, name } = parseMachineId(id);
       return runtimes[runtime]?.suspends?.(name) ?? false;
