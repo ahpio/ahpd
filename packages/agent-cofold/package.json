@@ -1,6 +1,6 @@
 {
   "name": "@ahpd/agent-cofold",
-  "version": "0.15.0",
+  "version": "0.16.0-rc.1",
   "type": "module",
   "description": "Cofold agent runtime integration. A generic agent for OpenAI-compatible models, as an ahpd plugin or directly with @ahpd/sdk.",
   "keywords": [
@@ -60,7 +60,7 @@
     "test": "cd ../.. && vitest run packages/agent-cofold/test"
   },
   "peerDependencies": {
-    "@ahpd/sdk": ">=0.15.0 <0.16.0-0"
+    "@ahpd/sdk": ">=0.16.0-rc.1 <0.17.0-0"
   },
   "devDependencies": {
     "@ahpd/sdk": "workspace:*"

@@ -11,7 +11,7 @@ The file is fetched from GitHub at a tag, so it runs that tag's image and needs 
 
 ```bash
 mkdir work
-curl -fsSLO https://raw.githubusercontent.com/ahpio/ahpd/v0.15.0/docker/compose.yaml
+curl -fsSLO https://raw.githubusercontent.com/ahpio/ahpd/v0.16.0-rc.1/docker/compose.yaml
 docker compose up -d
 ```
 
@@ -53,7 +53,7 @@ docker run -d --name ahpd --restart unless-stopped \
 The image builds from a tag or a branch without a checkout:
 
 ```bash
-docker build -t ahpd:dev "https://github.com/ahpio/ahpd.git#v0.15.0"
+docker build -t ahpd:dev "https://github.com/ahpio/ahpd.git#v0.16.0-rc.1"
 docker build -t ahpd:dev "https://github.com/ahpio/ahpd.git#main"
 ```
 

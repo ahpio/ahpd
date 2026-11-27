@@ -1,6 +1,6 @@
 {
   "name": "@ahpd/tasks",
-  "version": "0.15.0",
+  "version": "0.16.0-rc.1",
   "type": "module",
   "description": "Tasks integration. Tasks and plans control the workflow of ahpd agents, allowing them to coordinate actions and track progress through host tools.",
   "keywords": [
@@ -57,7 +57,7 @@
     "test": "cd ../.. && vitest run packages/tasks/test"
   },
   "peerDependencies": {
-    "@ahpd/sdk": ">=0.15.0 <0.16.0-0"
+    "@ahpd/sdk": ">=0.16.0-rc.1 <0.17.0-0"
   },
   "devDependencies": {
     "@ahpd/sdk": "workspace:*",

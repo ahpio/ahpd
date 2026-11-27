@@ -1,6 +1,6 @@
 {
   "name": "@ahpd/server",
-  "version": "0.15.0",
+  "version": "0.16.0-rc.1",
   "type": "module",
   "description": "The ahpd daemon: a self-hosted, extensible agent host built on the Agent Host Protocol. Run Claude, Pi, Codex, Gemini, and other ACP-compatible agents, with scheduling, team management, usage tracking and a model gateway built in, and webhooks, isolated computers and more as plugins.",
   "keywords": [
