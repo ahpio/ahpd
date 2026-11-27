@@ -495,7 +495,8 @@ export function fileUsage(options: FileUsageOptions): Usage {
  * `user` is the owner, `team` is `team:<team>` and `project` is
  * `project:<team>:<project>`, the spellings `meter.ts` charges the record's
  * pools under. A key the record has none of is left out. Asked by `tag`, there
- * is one set for each of the record's tags, and none for a record with no tag.
+ * is one set for each of the record's tags, and one set with no `tag` for a
+ * record with no tag, so the rows by tag account for all the usage.
  */
 const keysOf = (entry: UsageEntry, by: readonly UsageKey[]): UsageGroup['keys'][] => {
   const keys: UsageGroup['keys'] = {};
@@ -506,8 +507,8 @@ const keysOf = (entry: UsageEntry, by: readonly UsageKey[]): UsageGroup['keys'][
     if (key === 'team' && team !== undefined) keys.team = `team:${team}`;
     if (key === 'project' && team !== undefined && project !== undefined) keys.project = `project:${team}:${project}`;
   }
-  if (!by.includes('tag')) return [keys];
-  return (entry.tags ?? []).map((tag) => ({ ...keys, tag }));
+  if (!by.includes('tag') || entry.tags === undefined || entry.tags.length === 0) return [keys];
+  return entry.tags.map((tag) => ({ ...keys, tag }));
 };
 
 /*

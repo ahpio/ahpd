@@ -612,15 +612,15 @@ it('takes the capability away the moment the credential is given back', async ()
  *
  * `ahpd.grants` is left out: it is the same map to everybody and says what a
  * role could hold, so it is not part of what one connection is told about
- * itself. `users-host.test.ts` asserts that key's own shape. The machine's
- * resources, whether the host takes a remote session, and the build are left out
- * for the same reason: every connection on one host is told the same of all
- * three, and none of them is about the person.
+ * itself. `users-host.test.ts` asserts that key's own shape. `ahpd.tags`, the
+ * machine's resources, whether the host takes a remote session, and the build
+ * are left out for the same reason: every connection on one host is told the
+ * same of all four, and none of them is about the person.
  */
 const rootMeta = async (client: ReturnType<ReturnType<typeof createHost>['accept']>): Promise<Bag> => {
   const snap = await client.handle({ method: 'subscribe', params: { channel: ROOT } }) as Bag;
   const {
-    'ahpd.grants': _grants, 'vscode.agentHost.resources': _machine, 'vscode.remoteSessions': _remote,
+    'ahpd.grants': _grants, 'ahpd.tags': _tags, 'vscode.agentHost.resources': _machine, 'vscode.remoteSessions': _remote,
     hostBuild: _build, ...rest
   } = (snap.snapshot?.state?._meta ?? {}) as Bag;
   return rest;

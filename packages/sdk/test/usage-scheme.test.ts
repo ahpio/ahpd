@@ -490,7 +490,7 @@ it('sums the records by user, team and project, each record once', async () => {
   expect(await provider.resolve('usage://groups?by=user')).toMatchObject({ type: 'file' });
 });
 
-it('sums the records by tag, a record in each of its tags, and keeps only the tags asked for', async () => {
+it('sums the records by tag, a record in each of its tags and one with none in a row with no tag, and keeps only the tags asked for', async () => {
   const usage = fileUsage({ folder });
   const tagged = (at: string, amount: number, tags?: string[]): ModelUse =>
     modelUse(at, ['user:soft'], { owner: 'user:soft', cost: { amount, currency: 'usd', from: 'harness' }, ...(tags === undefined ? {} : { tags }) });
@@ -505,10 +505,17 @@ it('sums the records by tag, a record in each of its tags, and keeps only the ta
 
   const byTag = await json(`usage://groups?by=tag&${october}`, undefined, provider);
   expect(byTag).toEqual([
+    // The record with no tag, in the row with no `tag`.
+    { keys: {}, names: {}, total: { usd: 8, providerUsd: 8, calls: 1 } },
     { keys: { tag: 'backup' }, names: { tag: 'backup' }, total: { usd: 4, providerUsd: 4, calls: 1 } },
     { keys: { tag: 'main' }, names: { tag: 'main' }, total: { usd: 1, providerUsd: 1, calls: 1 } },
     { keys: { tag: 'work' }, names: { tag: 'work' }, total: { usd: 3, providerUsd: 3, calls: 2 } },
   ]);
+
+  // By user and tag, the record with no tag is in its user's row with no `tag`.
+  const byUserTag = await json(`usage://groups?by=user,tag&${october}`, undefined, provider);
+  expect(byUserTag).toContainEqual({ keys: { user: 'user:soft' }, names: { user: 'soft' }, total: { usd: 8, providerUsd: 8, calls: 1 } });
+  expect(byUserTag).toHaveLength(4);
 
   // By user, the record with two tags counts once, and so does the one with none.
   expect(await json(`usage://groups?by=user&${october}`, undefined, provider))

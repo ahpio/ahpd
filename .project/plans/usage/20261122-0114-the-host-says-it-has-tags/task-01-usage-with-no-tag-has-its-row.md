@@ -1,6 +1,6 @@
 ---
 title: Usage with no tag has its row
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:
@@ -34,3 +34,5 @@ refs:
 - `pnpm typecheck` passes.
 
 ## Resume
+
+Built on 2026-11-27.

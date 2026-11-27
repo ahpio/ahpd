@@ -1,6 +1,6 @@
 ---
 title: The handshake says it has tags
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:
@@ -37,3 +37,5 @@ The root `_meta` of the `initialize` answer and of the root state carry `'ahpd.t
 - `pnpm typecheck` passes.
 
 ## Resume
+
+Built on 2026-11-27. The case builds a host with no plugin, so it reads the key alone.

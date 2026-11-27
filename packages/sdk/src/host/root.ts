@@ -921,6 +921,7 @@ export function createRoot(ctx: HostContext): Root {
       }),
       ...(schemes === undefined ? {} : { 'ahpd.resourceProviders': schemes }),
       ...(channels === undefined ? {} : { 'ahpd.channels': channels }),
+      'ahpd.tags': {},
       ...(methods === undefined ? {} : { 'ahpd.methods': methods }),
       'ahpd.grants': advertisedGrants(),
       /*

@@ -1,7 +1,7 @@
 ---
 title: The host says it has tags
 domain: usage
-status: planned
+status: active
 priority: medium
 created: 2026-11-22
 revalidated: 2026-11-27
@@ -71,8 +71,8 @@ usage://groups?by=tag -> keysOf -> one row per tag, and one with no tag -> ahpw 
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - Usage with no tag has its row](task-01-usage-with-no-tag-has-its-row.md) | todo | - |
-| [02 - The handshake says it has tags](task-02-the-handshake-says-it-has-tags.md) | todo | - |
+| [01 - Usage with no tag has its row](task-01-usage-with-no-tag-has-its-row.md) | done | - |
+| [02 - The handshake says it has tags](task-02-the-handshake-says-it-has-tags.md) | done | - |
 
 ## Risks and tradeoffs
 
@@ -80,14 +80,14 @@ usage://groups?by=tag -> keysOf -> one row per tag, and one with no tag -> ahpw 
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-usage-with-no-tag-has-its-row.md](task-01-usage-with-no-tag-has-its-row.md).
+- **Done so far:** both tasks, on 2026-11-27. [implemented.md](implemented.md) holds the checks.
+- **Next action:** Softov's review.
 - **Open questions:** none.
 - **Watch out for:** `tag=<a>` still keeps only the records that hold every tag named.
   A record with no tag is never in a filtered read.
 
 ## Final verification checklist
 
-- [ ] `usage://groups?by=tag` answers a row with no `tag` key for the usage with no tag.
-- [ ] The `initialize` answer and the root state both carry `'ahpd.tags': {}`.
+- [x] `usage://groups?by=tag` answers a row with no `tag` key for the usage with no tag.
+- [x] The `initialize` answer and the root state both carry `'ahpd.tags': {}`.
 - [ ] `pnpm typecheck` and the sdk suite pass.
