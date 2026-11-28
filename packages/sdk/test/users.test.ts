@@ -97,6 +97,12 @@ it('gives admin every area, member the two it works in, and guest only what it m
   expect(member?.can('trust:push')).toBe(true);
   expect(guest?.can('gateway:call')).toBe(false);
   expect(guest?.can('trust:push')).toBe(false);
+  // A member registers and removes their own push devices, with the push
+  // plugin's two commands.
+  expect(member?.can('push:put')).toBe(true);
+  expect(member?.can('push:delete')).toBe(true);
+  expect(guest?.can('push:put')).toBe(false);
+  expect(guest?.can('push:delete')).toBe(false);
 
   // The point of the verb: guest may look at the sessions and the automations
   // and may do nothing about either.

@@ -31,8 +31,9 @@ const BUILT_IN: Record<string, Grant[]> = {
   // a scheme-scoped grant was for.
   admin: ['*:*'],
   // Works on this machine: files, sessions, a shell, the models the proxy
-  // serves, and the trust a window answers a folder with. No automations.
-  member: ['file:read', 'file:write', 'session:read', 'session:write', 'terminal:read', 'terminal:write', 'gateway:read', 'gateway:write', 'mcp:call', 'trust:write'],
+  // serves, the trust a window answers a folder with, and their own push
+  // devices, which the push plugin keeps to their owner. No automations.
+  member: ['file:read', 'file:write', 'session:read', 'session:write', 'terminal:read', 'terminal:write', 'gateway:read', 'gateway:write', 'mcp:call', 'trust:write', 'push:write'],
   // Looks and does not touch: what the sessions and the automations are, and
   // neither a file nor a shell nor a session of their own, nor the tools at
   // `/mcp`.

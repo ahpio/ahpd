@@ -160,7 +160,7 @@ member of. Every other pool is refused until a role names the grant.
 | Role | Has |
 | --- | --- |
 | `admin` | `*:*` |
-| `member` | `file:read`, `file:write`, `session:read`, `session:write`, `terminal:read`, `terminal:write`, `gateway:read`, `gateway:write`, `mcp:call`, `trust:write` |
+| `member` | `file:read`, `file:write`, `session:read`, `session:write`, `terminal:read`, `terminal:write`, `gateway:read`, `gateway:write`, `mcp:call`, `trust:write`, `push:write` |
 | `guest` | `session:read`, `automation:read` |
 
 `guest` is the default for `ahpd user add` with no `--role`, and it is the one
