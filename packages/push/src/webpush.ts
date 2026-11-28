@@ -1,5 +1,6 @@
 import { createCipheriv, createECDH, createHash, hkdfSync, randomBytes, sign } from 'node:crypto';
 import { reason } from '@ahpd/sdk';
+import { RETRY_WAITS_MS, retrying, timer } from './retry.js';
 import type { Vapid } from './vapid.js';
 import type { LogLevel } from '@ahpd/sdk';
 
@@ -14,9 +15,10 @@ import type { LogLevel } from '@ahpd/sdk';
  * which is what tells the push service which host is sending.
  *
  * Everything here fails quietly, as the Expo sender does: a service that is
- * down or refuses a message is one line to the daemon's log. The one answer
- * worth acting on is 404 or 410, which says the subscription is gone and the
- * device with it.
+ * down or refuses a message is one line to the daemon's log. A request is
+ * retried as `retry.ts` says, as an Expo send is. The one answer worth acting
+ * on is 404 or 410, which says the subscription is gone and the device with it,
+ * and it is never retried.
  *
  * `node:crypto` alone is enough for both halves, which is why the package has
  * no runtime dependency: `createECDH`, `hkdfSync`, `aes-128-gcm` and an ES256
@@ -158,6 +160,10 @@ export interface WebSendOptions {
   contact?: string;
   /** The request function, which is `fetch` unless a test says otherwise. */
   request?: typeof fetch;
+  /** The waits before each retry of a request, in milliseconds. `retry.ts`'s default unless the plugin's option says otherwise. */
+  waits?: readonly number[];
+  /** Wait this long, which is a timer unless a test says otherwise. */
+  wait?: (ms: number) => Promise<void>;
   /** The clock, which a test may fix. */
   now?: () => Date;
   /** The salt of one message, which a test may fix. */
@@ -166,9 +172,13 @@ export interface WebSendOptions {
   pair?: () => { privateKey: Buffer; publicKey: Buffer };
 }
 
-/** Sends to browsers, one request each. */
+/** Sends to Web Push devices, one request each. */
 export interface WebSender {
-  send(messages: WebMessage[]): Promise<void>;
+  /**
+   * Send these messages. `due` is asked before each retry, and a retry is
+   * dropped when it answers false. Without it every retry is sent.
+   */
+  send(messages: WebMessage[], due?: () => boolean): Promise<void>;
 }
 
 /** The `Topic` header: the session's hash, cut to the 32 characters a topic holds. */
@@ -193,8 +203,10 @@ export const createWebSender = (options: WebSendOptions): WebSender => {
   const now = options.now ?? (() => new Date());
   const salt = options.salt ?? (() => randomBytes(16));
   const pair = options.pair ?? ephemeral;
+  const wait = options.wait ?? timer;
+  const waits = options.waits ?? RETRY_WAITS_MS;
 
-  const sendOne = async (message: WebMessage): Promise<void> => {
+  const sendOne = async (message: WebMessage, due: () => boolean): Promise<void> => {
     let aud: string;
     try {
       aud = new URL(message.endpoint).origin;
@@ -228,27 +240,29 @@ export const createWebSender = (options: WebSendOptions): WebSender => {
       return;
     }
 
-    let response: Response;
-    try {
-      response = await request(message.endpoint, {
-        method: 'POST',
-        // A redirect could lead to a host that `webPushHosts` does not allow.
-        redirect: 'error',
-        headers: {
-          authorization,
-          'content-encoding': CONTENT_ENCODING,
-          'content-type': 'application/octet-stream',
-          ttl: String(TTL),
-          urgency: message.urgency,
-          topic: topicOf(message.session),
-        },
-        body: sealed,
-      });
-    }
-    catch (error) {
-      options.log(`the push service could not be reached for ${message.id}: ${reason(error)}`, 'error');
+    const tried = await retrying(async () => await request(message.endpoint, {
+      method: 'POST',
+      // A redirect could lead to a host that `webPushHosts` does not allow.
+      redirect: 'error',
+      headers: {
+        authorization,
+        'content-encoding': CONTENT_ENCODING,
+        'content-type': 'application/octet-stream',
+        ttl: String(TTL),
+        urgency: message.urgency,
+        topic: topicOf(message.session),
+      },
+      body: sealed,
+    }), { waits, wait, due });
+    if (tried.kind === 'dropped') {
+      options.log(`a retry for ${message.id} was not sent, because its session moved on`);
       return;
     }
+    if (tried.kind === 'unreachable') {
+      options.log(`the push service could not be reached for ${message.id}: ${reason(tried.failure)}`, 'error');
+      return;
+    }
+    const response = tried.response;
 
     // RFC 8030 section 7.3: 404 and 410 say the subscription is gone.
     if (response.status === 404 || response.status === 410) {
@@ -260,8 +274,8 @@ export const createWebSender = (options: WebSendOptions): WebSender => {
   };
 
   return {
-    send: async (messages) => {
-      for (const message of messages) await sendOne(message);
+    send: async (messages, due = () => true) => {
+      for (const message of messages) await sendOne(message, due);
     },
   };
 };

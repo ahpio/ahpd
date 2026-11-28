@@ -1,6 +1,6 @@
 ---
 title: A dev relay opens each message
-status: todo
+status: done
 depends:
   - task-01-a-device-names-its-transport.md
   - task-03-relay-hosts-keep-the-browsers.md
@@ -51,3 +51,5 @@ The push README tells a relay author what a request carries and what to answer.
 - `pnpm docs:build` passes.
 
 ## Resume
+
+Done 2026-11-28. See [implemented.md](implemented.md).

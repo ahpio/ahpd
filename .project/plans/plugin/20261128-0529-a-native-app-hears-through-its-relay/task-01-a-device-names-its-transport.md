@@ -1,6 +1,6 @@
 ---
 title: A device names its transport
-status: todo
+status: done
 depends: []
 layer: push plugin
 refs:
@@ -46,3 +46,5 @@ A device record has an optional `transport`, `expo` or `webpush`, and the plugin
 - `pnpm vitest run packages/push` passes.
 
 ## Resume
+
+Done 2026-11-28. See [implemented.md](implemented.md).

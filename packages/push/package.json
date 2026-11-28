@@ -91,9 +91,21 @@
           "default": ["*.push.apple.com", "fcm.googleapis.com", "updates.push.services.mozilla.com", "*.notify.windows.com"],
           "description": "Hosts allowed as a browser's push endpoint. '*.<domain>' matches any host under that domain. Other hosts are refused."
         },
+        "relayHosts": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Hosts of Web Push relays allowed as an endpoint, such as a native app's. Added to webPushHosts, so the browser push services stay allowed. '*.<domain>' matches any host under that domain."
+        },
         "contact": {
           "type": "string",
           "description": "mailto: or https: URI sent as the VAPID 'sub' claim, so a push service can reach the operator. Not sent when unset."
+        },
+        "retryWaits": {
+          "type": "array",
+          "items": { "type": "number", "minimum": 0 },
+          "default": [1, 2],
+          "description": "Seconds to wait before each retry of a failed send, to Expo or by Web Push. One retry per entry. [] sends no retry."
         }
       }
     }

@@ -10,8 +10,14 @@
     "webPushHosts": {
       "description": "Hosts permitidos como endpoint push de um navegador. '*.<domain>' corresponde a qualquer host sob esse domínio. Os demais são recusados."
     },
+    "relayHosts": {
+      "description": "Hosts de relays Web Push permitidos como endpoint, como o de um app nativo. São somados a webPushHosts, então os serviços de push dos navegadores continuam permitidos. '*.<domain>' corresponde a qualquer host sob esse domínio."
+    },
     "contact": {
       "description": "URI mailto: ou https: enviada como claim 'sub' do VAPID, para que um serviço de push possa contatar o operador. Não é enviada quando não definida."
+    },
+    "retryWaits": {
+      "description": "Segundos de espera antes de cada nova tentativa de um envio que falhou, ao Expo ou por Web Push. Uma tentativa por item. [] não tenta de novo."
     }
   },
   "messages": {

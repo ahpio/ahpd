@@ -1,7 +1,7 @@
 ---
 title: A native app hears through its relay
 domain: plugin
-status: planned
+status: active
 priority: medium
 created: 2026-11-28
 revalidated: 2026-11-28
@@ -95,10 +95,10 @@ each failed request -> shared retry on retryWaits -> dropped when the session mo
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a device names its transport](task-01-a-device-names-its-transport.md) | todo | - |
-| [02 - push retries take a list of waits](task-02-push-retries-take-a-list-of-waits.md) | todo | 01 |
-| [03 - relay hosts keep the browsers](task-03-relay-hosts-keep-the-browsers.md) | todo | - |
-| [04 - a dev relay opens each message](task-04-a-dev-relay-opens-each-message.md) | todo | 01, 03 |
+| [01 - a device names its transport](task-01-a-device-names-its-transport.md) | done | - |
+| [02 - push retries take a list of waits](task-02-push-retries-take-a-list-of-waits.md) | done | 01 |
+| [03 - relay hosts keep the browsers](task-03-relay-hosts-keep-the-browsers.md) | done | - |
+| [04 - a dev relay opens each message](task-04-a-dev-relay-opens-each-message.md) | done | 01, 03 |
 
 ## Risks and tradeoffs
 
@@ -108,8 +108,8 @@ each failed request -> shared retry on retryWaits -> dropped when the session mo
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** [task-01-a-device-names-its-transport.md](task-01-a-device-names-its-transport.md).
+- **Done so far:** all four tasks, 2026-11-28. See [implemented.md](implemented.md).
+- **Next action:** the review.
 - **Open questions:** none.
 - **Watch out for:** ahpapp and ahpw send no `transport`, so the inference must keep every stored and new record of theirs on its sender today.
 

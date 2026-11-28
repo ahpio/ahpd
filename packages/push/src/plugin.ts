@@ -2,11 +2,12 @@ import { posix } from 'node:path';
 import { RpcError, Status, bag, idOf, reason, secretRef, str, translated } from '@ahpd/sdk';
 import { AhpErrorCodes, SUPPORTED_PROTOCOL_VERSIONS } from '@microsoft/agent-host-protocol';
 import { DEVICES_SCHEME, devicesChannel, pushMethods } from './channel.js';
-import { WEB_PUSH_HOSTS, deviceStore, pushProvider } from './provider.js';
+import { WEB_PUSH_HOSTS, deviceStore, isWebPush, pushProvider } from './provider.js';
+import { RETRY_WAITS, RETRY_WAITS_MS, waitsOf } from './retry.js';
 import { createSender } from './send.js';
 import { loadVapid } from './vapid.js';
 import { createWebSender } from './webpush.js';
-import type { Device, DeviceStore } from './provider.js';
+import type { Device, DeviceStore, ExpoDevice, WebDevice } from './provider.js';
 import type { PushMessage } from './send.js';
 import type { Bag, Plugin, PluginPeer } from '@ahpd/sdk';
 import type { LogLevel } from '@ahpd/sdk';
@@ -44,7 +45,13 @@ export const title = 'Push';
 /** What an option falls back to. */
 export const defaults = {
   webPushHosts: [...WEB_PUSH_HOSTS],
+  relayHosts: [],
+  retryWaits: [...RETRY_WAITS],
 } as const;
+
+/** A list of host patterns an option gives, its blanks and other values left out. */
+const hostsOf = (said: unknown): string[] | undefined =>
+  (Array.isArray(said) ? said.filter((one): one is string => typeof one === 'string' && one.trim() !== '') : undefined);
 
 /** The client this plugin's connection names itself at `initialize`. */
 const CLIENT = 'ahpd-push';
@@ -153,9 +160,9 @@ export const apply: Plugin['apply'] = (host, options) => {
   // https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentService.ts#L1298-L1299
   const store: DeviceStore = deviceStore(host.configDir, (line: string, level?: LogLevel) => { host.log(`${name}: ${line}`, level); });
   const vapid = loadVapid(host.configDir, (line: string, level?: LogLevel) => { host.log(`${name}: ${line}`, level); });
-  const webPushHosts = Array.isArray(options['webPushHosts'])
-    ? options['webPushHosts'].filter((one): one is string => typeof one === 'string' && one.trim() !== '')
-    : [...WEB_PUSH_HOSTS];
+  // A relay's host is added to the browser push services, which `webPushHosts`
+  // replaces when it is set (Softov 2026-11-28, "New relayHosts option").
+  const webPushHosts = [...(hostsOf(options['webPushHosts']) ?? WEB_PUSH_HOSTS), ...(hostsOf(options['relayHosts']) ?? [])];
   const devices = devicesChannel(store, (line) => { host.log(`${name}: ${line}`, 'warn'); });
   devices.bind(host.registerChannel(DEVICES_SCHEME, devices.channel));
   const provider = pushProvider({
@@ -178,6 +185,13 @@ export const apply: Plugin['apply'] = (host, options) => {
 
   const accessToken = options['accessToken'];
 
+  /** The waits before each retry of a send, in milliseconds, which both senders take. */
+  const waitsSaid = options['retryWaits'] === undefined ? undefined : waitsOf(options['retryWaits']);
+  if (options['retryWaits'] !== undefined && waitsSaid === undefined) {
+    host.log(`${name}: retryWaits is not a list of seconds of 0 or more, so the default of ${JSON.stringify(defaults.retryWaits)} is used`, 'warn');
+  }
+  const waits = waitsSaid ?? RETRY_WAITS_MS;
+
   /** The session list, as this plugin's connection keeps it. */
   const listed = new Map<string, Listed>();
   /** Whether the connection has been opened, which happens once. */
@@ -191,17 +205,19 @@ export const apply: Plugin['apply'] = (host, options) => {
   };
 
   const sender = createSender({
+    waits,
     log: (line: string, level?: LogLevel) => { host.log(`${name}: ${line}`, level); },
     gone: (token) => {
       for (const id of store.ids()) {
         const device = store.get(id);
-        if (device !== undefined && device.platform !== 'web' && device.token === token) store.remove(id);
+        if (device !== undefined && !isWebPush(device) && device.token === token) store.remove(id);
       }
     },
   });
 
   const contact = str(options['contact']);
   const webSender = vapid === undefined ? undefined : createWebSender({
+    waits,
     log: (line: string, level?: LogLevel) => { host.log(`${name}: ${line}`, level); },
     gone: (id) => { store.remove(id); },
     vapid,
@@ -286,9 +302,13 @@ export const apply: Plugin['apply'] = (host, options) => {
         : say(words.inKey, words.inEnglish, device.lang, workspace),
     });
     const data = { uri: session, kind: status === 'needsInput' ? 'needsInput' : 'idle' };
+    // A retry is worth sending while the session is still where it was told to be.
+    const due = (): boolean => listed.get(session)?.status === status;
 
-    const phones = reachable.flatMap((one) => (one.device.platform === 'web' ? [] : [one.device]));
-    if (phones.length > 0) {
+    // Each device goes by its transport, whatever its platform: a phone whose
+    // app has a Web Push relay is in the webpush group.
+    const expo = reachable.flatMap((one): ExpoDevice[] => (isWebPush(one.device) ? [] : [one.device]));
+    if (expo.length > 0) {
       let token: string | undefined;
       let sent = true;
       try {
@@ -299,16 +319,16 @@ export const apply: Plugin['apply'] = (host, options) => {
         sent = false;
       }
       if (sent) {
-        const messages: PushMessage[] = phones.map((device) => ({ to: device.token, ...shown(device), data }));
-        await sender.send(messages, token);
+        const messages: PushMessage[] = expo.map((device) => ({ to: device.token, ...shown(device), data }));
+        await sender.send(messages, token, due);
       }
     }
 
     // A host with no VAPID pair has already said so once, at load, and has no
-    // way to sign a request, so a browser is skipped.
-    const browsers = reachable.flatMap((one) => (one.device.platform === 'web' ? [{ id: one.id, device: one.device }] : []));
-    if (browsers.length > 0 && webSender !== undefined) {
-      await webSender.send(browsers.map((one) => ({
+    // way to sign a request, so a Web Push device is skipped.
+    const webpush = reachable.flatMap((one): { id: string; device: WebDevice }[] => (isWebPush(one.device) ? [{ id: one.id, device: one.device }] : []));
+    if (webpush.length > 0 && webSender !== undefined) {
+      await webSender.send(webpush.map((one) => ({
         id: one.id,
         endpoint: one.device.endpoint,
         keys: one.device.keys,
@@ -316,7 +336,7 @@ export const apply: Plugin['apply'] = (host, options) => {
         data,
         session,
         urgency: status === 'needsInput' ? 'high' : 'normal',
-      })));
+      })), due);
     }
   };
 

@@ -1,3 +1,4 @@
+import { createECDH } from 'node:crypto';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -5,7 +6,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { apply } from '../src/plugin.js';
 import { ENDPOINT } from '../src/send.js';
 import type { EventHandler, EventName, HostEventOf } from '../../sdk/src/types/events.js';
-import type { PluginHost } from '../../sdk/src/types/plugin.js';
+import type { PluginHost, PluginMethod } from '../../sdk/src/types/plugin.js';
 import type { Owner } from '../../sdk/src/types/usage.js';
 import { clearFolder } from '../../../tools/holders.ts';
 
@@ -34,10 +35,13 @@ interface Node {
   fire<K extends EventName>(event: HostEventOf<K>): Promise<void>;
   /** One notification the host sends the plugin's connection. */
   say(method: string, params: Record<string, unknown>): void;
+  /** The commands the plugin registered, by name. */
+  methods: Map<string, PluginMethod>;
 }
 
 const node = (configDir: string, owners: Map<string, Owner>, hasUsers: boolean): Node => {
   const handlers = new Map<EventName, EventHandler[]>();
+  const methods = new Map<string, PluginMethod>();
   let heard: ((message: Record<string, unknown>) => void) | undefined;
   const host = {
     path: configDir,
@@ -57,7 +61,7 @@ const node = (configDir: string, owners: Map<string, Owner>, hasUsers: boolean):
     },
     registerResourceProvider: () => {},
     registerChannel: () => ({ publish: () => {}, subscribers: () => [] }),
-    registerMethod: () => {},
+    registerMethod: (name: string, method: PluginMethod) => { methods.set(name, method); },
     registerClose: () => {},
     sessionOwner: async (uri: string) => owners.get(uri),
     connect: () => ({
@@ -74,14 +78,20 @@ const node = (configDir: string, owners: Map<string, Owner>, hasUsers: boolean):
       for (const handler of handlers.get(event.type) ?? []) await handler(event, host);
     },
     say: (method, params) => { heard?.({ jsonrpc: '2.0', method, params }); },
+    methods,
   };
 };
 
-/** A service that takes every message, and the tokens it was sent. */
+/** A service that takes every message: the Expo tokens it was sent, and the Web Push endpoints it was posted to. */
 const service = () => {
   const sent: { to: string }[] = [];
+  const pushed: string[] = [];
   const request = (async (input: unknown, init?: RequestInit) => {
     const url = String(input);
+    if (!url.startsWith('https://exp.host/')) {
+      pushed.push(url);
+      return new Response(null, { status: 201 });
+    }
     const body: unknown = JSON.parse(String(init?.body ?? 'null'));
     const answer = url === ENDPOINT
       ? { data: (body as unknown[]).map((_one, index) => ({ status: 'ok', id: `ticket-${index}` })) }
@@ -89,7 +99,7 @@ const service = () => {
     if (url === ENDPOINT) sent.push(...(body as { to: string }[]));
     return new Response(JSON.stringify(answer), { status: 200, headers: { 'content-type': 'application/json' } });
   }) as unknown as typeof fetch;
-  return { sent, request };
+  return { sent, pushed, request };
 };
 
 /** Let what the plugin started on a notification run its course. */
@@ -102,16 +112,17 @@ const up = async (
   said: Record<string, Record<string, unknown>>,
   owners: Map<string, Owner>,
   hasUsers: boolean,
-): Promise<Node & { sent: { to: string }[] }> => {
+  options: Record<string, unknown> = {},
+): Promise<Node & { sent: { to: string }[]; pushed: string[] }> => {
   const dir = (loose ??= mkdtempSync(join(tmpdir(), 'ahpd-push-audience-')));
   writeFileSync(join(dir, 'push-devices.json'), JSON.stringify(said, null, 2));
-  const { sent, request } = service();
+  const { sent, pushed, request } = service();
   vi.stubGlobal('fetch', request);
   const made = node(dir, owners, hasUsers);
-  apply(made.host, {});
+  apply(made.host, options);
   await made.fire({ type: 'listening', runtime: 'node', host: '127.0.0.1', port: 9187, guarded: false });
   await settle();
-  return { ...made, sent };
+  return { ...made, sent, pushed };
 };
 
 /** A session the root channel adds, then moves into needing input. */
@@ -191,4 +202,47 @@ it('on a host with no people, tells every device of every session', async () => 
   const world = await up(PHONES, new Map(), false);
   await waiting(world, 'echo:/one');
   expect(world.sent.map((one) => one.to)).toEqual(['ExponentPushToken[ana]', 'ExponentPushToken[bo]', 'ExponentPushToken[none]']);
+});
+
+/** A Web Push subscription's keys, which the sender seals a message with. */
+const KEYS = { p256dh: createECDH('prime256v1').generateKeys().toString('base64url'), auth: Buffer.alloc(16, 3).toString('base64url') };
+
+// Softov 2026-11-28, "transport": a device goes by how it is reached, not by what it is.
+it('sends a phone whose app has a relay by Web Push, and a phone with a token by Expo', async () => {
+  const world = await up({
+    'phone-relay': { transport: 'webpush', platform: 'android', endpoint: 'https://fcm.googleapis.com/wp/relay', keys: KEYS },
+    'phone-expo': { token: 'ExponentPushToken[expo]', platform: 'android' },
+  }, new Map(), false);
+  await waiting(world, 'echo:/one');
+  expect(world.sent.map((one) => one.to)).toEqual(['ExponentPushToken[expo]']);
+  expect(world.pushed).toEqual(['https://fcm.googleapis.com/wp/relay']);
+});
+
+/** Register one device through the plugin's own command, as a client does, on a host with no people. */
+const put = async (world: Node, id: string, record: Record<string, unknown>): Promise<unknown> => {
+  const method = world.methods.get('x-ahpd/push/put');
+  if (method === undefined) throw new Error('the plugin registered no x-ahpd/push/put');
+  return await method.handle({ id, record }, undefined, 'app', undefined);
+};
+
+// Softov 2026-11-28, "New relayHosts option": a relay is allowed beside the browsers.
+it('allows a relay host from relayHosts and keeps the browser push services', async () => {
+  const world = await up({}, new Map(), false, { relayHosts: ['push.relay.example'] });
+  await put(world, 'phone-relay', { transport: 'webpush', platform: 'android', endpoint: 'https://push.relay.example/d/1', keys: KEYS });
+  await put(world, 'browser', { platform: 'web', endpoint: 'https://fcm.googleapis.com/wp/one', keys: KEYS });
+  await expect(put(world, 'elsewhere', { platform: 'web', endpoint: 'https://push.other.example/d/1', keys: KEYS }))
+    .rejects.toMatchObject({ code: -32602 });
+});
+
+it('allows only the hosts webPushHosts names when relayHosts is not set, as before', async () => {
+  const world = await up({}, new Map(), false, { webPushHosts: ['a.example'] });
+  await put(world, 'one', { platform: 'web', endpoint: 'https://a.example/d/1', keys: KEYS });
+  await expect(put(world, 'two', { platform: 'web', endpoint: 'https://fcm.googleapis.com/wp/one', keys: KEYS }))
+    .rejects.toMatchObject({ code: -32602 });
+});
+
+it('adds relayHosts to the hosts webPushHosts names', async () => {
+  const world = await up({}, new Map(), false, { webPushHosts: ['a.example'], relayHosts: ['*.relay.example'] });
+  await put(world, 'one', { platform: 'web', endpoint: 'https://a.example/d/1', keys: KEYS });
+  await put(world, 'two', { transport: 'webpush', platform: 'ios', endpoint: 'https://eu.relay.example/d/2', keys: KEYS });
 });

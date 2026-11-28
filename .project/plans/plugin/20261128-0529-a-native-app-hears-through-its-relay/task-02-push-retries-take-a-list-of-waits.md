@@ -1,6 +1,6 @@
 ---
 title: Push retries take a list of waits
-status: todo
+status: done
 depends:
   - task-01-a-device-names-its-transport.md
 layer: push plugin
@@ -63,3 +63,5 @@ A retry is dropped when the session's status moved since the first try.
 - `pnpm vitest run packages/push` passes.
 
 ## Resume
+
+Done 2026-11-28. See [implemented.md](implemented.md).
