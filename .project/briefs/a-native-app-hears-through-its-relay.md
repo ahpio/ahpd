@@ -61,7 +61,10 @@ Every app keeps working beside the others on one host: Expo phones, browsers, Ho
 - A record with no `transport` is read as `expo` when it has a `token`, and `webpush` when it has an `endpoint`. Stored records need no migration.
 - A `webpush` record may have any of the three platforms. An `expo` record has `ios` or `android`.
 - The plugin picks the sender from `transport`, never from `platform`.
-- A Web Push send retries as the Expo sender does, with the same waits, on the network, a 429 or a 5xx. The rule is written once and shared by both senders.
+- A Web Push send retries as the Expo sender does, on the network, a 429 or a 5xx. The rule is written once and shared by both senders.
+- A plugin option, `retryWaits`, is the list of waits in seconds before each retry, for both senders. Its length is the number of retries, and `[]` means no retry.
+- The default of `retryWaits` is `[1, 2]`, the waits of `RETRY_WAITS_MS` today, so a host that sets nothing keeps today's Expo behaviour.
+- A later retry rule, such as jitter or `Retry-After`, takes an object form of the same option.
 - An operator allows a relay's host without removing the browser push services. This fixes [setting-web-push-hosts-removes-the-browser-services.md](../problems/setting-web-push-hosts-removes-the-browser-services.md).
 - The push README has a section for a relay author. It says what a request carries and what a relay answers. It says how to check the VAPID header against the key the app registered.
 - A dev script, `scripts/dev-relay.mjs`, is a test relay. It makes device keys, registers through `x-ahpd/push/put`, and serves its endpoint over HTTPS. It checks the VAPID header and opens each message. It answers 201, or 410 or 500 when a flag says so.
