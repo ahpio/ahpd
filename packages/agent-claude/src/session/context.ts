@@ -5,6 +5,7 @@ import type { OfferedModel } from '../models.js';
 import type { Asked, SpawnedProcess } from '../spawn.js';
 import type { Asking } from './asking.js';
 import type { ClientTools } from './clienttools.js';
+import type { Clis } from './clis.js';
 import type { Config } from './config.js';
 import type { ContextFigure } from './contextusage.js';
 import type { ParseYaml } from './disk.js';
@@ -87,14 +88,8 @@ export interface ClaudeSessionOptions extends SessionOptions {
    * plugin's own option rather than by building a session by hand.
    */
   handshakeTimeoutMs?: number;
-  /**
-   * The CLIs of this agent's closed sessions that are still exiting, by each
-   * conversation id one could write: a conversation starts under an id once
-   * the CLI that could write its transcript has exited, as VS Code's Claude
-   * shuts the live query down before it deletes a transcript.
-   * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/claude/claudeAgent.ts#L1148-L1160
-   */
-  exits?: Map<string, Promise<unknown>>;
+  /** The CLIs this agent's sessions run, by each conversation id one writes, until each has exited (`Clis`). */
+  clis?: Clis;
   /**
    * The plugin context's YAML reader, which a customization file's frontmatter
    * is read with. Absent where the session is built outside a plugin, and a

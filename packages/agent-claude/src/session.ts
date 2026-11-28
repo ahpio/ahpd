@@ -2,11 +2,12 @@ import { rmSync } from 'node:fs';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { withheldModesOf, withoutModes } from './managed.js';
 import { optionDefaults, storedSandbox } from './options.js';
-import { idOf, titleFrom, uriOf } from '@ahpd/sdk';
+import { titleFrom, uriOf } from '@ahpd/sdk';
 import type { Bag, BoundTool, Session } from '@ahpd/sdk';
 import { bag, list, str } from './session/common.js';
 import { createAsking } from './session/asking.js';
 import { createClientTools } from './session/clienttools.js';
+import { forgetCli, stopCli } from './session/clis.js';
 import { createConfig, listsOf } from './session/config.js';
 import type { ClaudeSessionOptions, PendingSdkMessage, SessionContext } from './session/context.js';
 import { createLogins } from './session/logins.js';
@@ -399,24 +400,13 @@ export function createSession(options: ClaudeSessionOptions): Session {
       /*
        * The query's cleanup, which `close` starts and does not return: it
        * settles once the CLI's process has exited, or after the SDK's own bound.
-       * A session whose first send never came has no CLI to wait for.
+       * The CLI stays kept under its conversation until then, so a session
+       * that starts on the same conversation waits for it (`startQuery`). A
+       * session whose first send never came has no CLI to wait for.
        */
-      const disposed = (ctx.query as unknown as { [Symbol.asyncDispose]?: () => Promise<void> } | undefined)?.[Symbol.asyncDispose]?.();
-      const exited = Promise.resolve(disposed).catch(() => undefined);
-      /*
-       * Kept under each conversation id this CLI could write until it has
-       * exited, so a session that starts a conversation under one of them
-       * waits for it first (`startQuery`).
-       */
-      const exits = options.exits;
-      if (exits !== undefined && ctx.query !== undefined) {
-        for (const id of new Set([ctx.sdkSessionId, options.chatId ?? idOf(options.uri)])) {
-          if (id === undefined) continue;
-          exits.set(id, exited);
-          void exited.then(() => { if (exits.get(id) === exited) exits.delete(id); });
-        }
-      }
-      return exited;
+      const running = ctx.query;
+      if (running === undefined) return Promise.resolve(undefined);
+      return stopCli(running).then(() => { forgetCli(options.clis, running); });
     },
   };
   ctx.self = self;

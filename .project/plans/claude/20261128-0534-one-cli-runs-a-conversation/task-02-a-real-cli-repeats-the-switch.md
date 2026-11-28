@@ -1,6 +1,6 @@
 ---
 title: A real CLI repeats the switch
-status: todo
+status: done
 depends: [task-01-a-start-waits-for-the-cli-before-it.md]
 layer: "agent-claude"
 refs:
@@ -31,3 +31,5 @@ A test daemon with a real CLI runs the 2026-11-21 sequence, and the conversation
 - The `cost-state` totals go up and never back.
 
 ## Resume
+
+Run on 2026-11-28 with a script that drives `createSession` over the real SDK, not a test daemon: the start paths are the session's own. Before the host spawned the CLI, the agent change ran two CLIs for 0.6 s. After it, three runs had one CLI throughout.

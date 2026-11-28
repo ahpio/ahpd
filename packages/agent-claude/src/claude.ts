@@ -19,6 +19,7 @@ import { homedir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 import { fromEnvRef, idOf, machineAsked, refuseComputer } from '@ahpd/sdk';
 import { spawnInside } from './spawn.js';
+import type { Clis } from './session/clis.js';
 import type { Asked, SpawnedProcess } from './spawn.js';
 import type { Agent, Bag, ImportedConversation, Listed, MachineNeed, Offered, Session, Start } from '@ahpd/sdk';
 import type { LogLevel } from '@ahpd/sdk';
@@ -239,8 +240,8 @@ export function claude(options: ClaudeOptions): Agent<Session> {
    * read of a conversation replaces what an earlier one named.
    */
   const readForkAnchorUuids = new Map<string, ReadonlyMap<string, string>>();
-  /** The CLIs of this agent's closed sessions still exiting, by the conversation each could write. */
-  const exits = new Map<string, Promise<unknown>>();
+  /** The CLIs this agent's sessions run, by the conversation each writes. */
+  const clis: Clis = new Map();
   /** The conversation each imported session was written as, by the session URI a start names. */
   const importedAs = new Map<string, string>();
   /**
@@ -800,7 +801,7 @@ export function claude(options: ClaudeOptions): Agent<Session> {
       return createSession({
       ...(options.log === undefined ? {} : { log: options.log }),
       ...(inside === undefined ? {} : { spawn: inside, spawnExecutable: executable, spawnConfigDir: configDir }),
-      exits,
+      clis,
       uri: start.uri,
       chatUri: start.chatUri,
       ...(start.chatId === undefined ? {} : { chatId: start.chatId }),
