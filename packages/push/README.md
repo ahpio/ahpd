@@ -87,13 +87,13 @@ A device is its person's. A write or a delete of a device another person registe
 
 Each runs the same write or delete as the resource call, with the same refusals. `record` is the body a write takes. Both answer `{}`.
 
-`x-ahpd-push://` lists the caller's own devices as `{ records }`, each `{ id, record }` with the record a read answers, then `x-ahpd-push/added`, `x-ahpd-push/changed` and `x-ahpd-push/removed`. Every signed-in person may subscribe without a grant, and a holder of `push:read` sees only their own devices too. `resourceWrite` and `resourceDelete` on `push://devices` keep working in 0.15.
+`x-ahpd-push://` lists the caller's own devices as `{ records }`, each `{ id, record }` with the record a read answers, then `x-ahpd-push/added`, `x-ahpd-push/changed` and `x-ahpd-push/removed`. Every signed-in person may subscribe without a grant, and a holder of `push:read` sees only their own devices too. `resourceWrite` and `resourceDelete` on `push://devices` are refused from 0.16, and the message names the command.
 
 ### `push://vapid`
 
 `push://vapid` is one read-only record, `{ "publicKey": "<base64url>" }`. It is the host's VAPID public key, which a browser passes as `applicationServerKey` when it subscribes. The key pair is made at the first load and kept in `push-vapid.json`, written `0600`. A host with no pair refuses the read `-32008`, and a write or delete against it is refused `-32009`.
 
-A registration is gated like any other write, so it needs `file:write`: a guest with read only cannot register. A client finds out whether a host can push from `_meta.ahpd.resourceProviders`, the same way it finds `computer`.
+A registration needs `push:put` and a removal `push:delete`, and `push:write` holds both. The built-in `member` role holds `push:write`, and `guest` does not, so a guest cannot register. A role of the host's own names `push:write` to let its people register. A client finds out whether a host can push from `_meta.ahpd.resourceProviders`, the same way it finds `computer`.
 
 ## What a notification says
 
