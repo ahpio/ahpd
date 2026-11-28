@@ -1,6 +1,6 @@
 ---
 title: A record keeps its attachments
-status: todo
+status: done
 depends: []
 layer: "sdk"
 refs:
@@ -18,7 +18,7 @@ A turn's record keeps the attachments of the message it began with. A turn read 
 - `UPDATE: packages/sdk/src/host/localturns.ts:561-570` - the read-back puts a record's attachments back on its turn's message.
 - `UPDATE: packages/sdk/src/host/spawn.ts:1676-1681` - the turn the chat began is recorded with its message's attachments.
 - `UPDATE: packages/sdk/src/host/spawn.ts:2034-2038` - the record under the backend's id keeps them too.
-- `UPDATE: packages/sdk/test/host-chats.test.ts` - the cases.
+- `UPDATE: packages/sdk/test/host-local-turns.test.ts` - the cases, beside the origin cases.
 
 ## Steps
 
@@ -33,8 +33,10 @@ A turn's record keeps the attachments of the message it began with. A turn read 
 
 ## Validation
 
-- The new cases in `host-chats.test.ts` pass.
+- The new cases in `host-local-turns.test.ts` pass.
 - The sdk suite passes.
 - `pnpm typecheck` passes.
 
 ## Resume
+
+Built on 2026-11-28. `turnRecordedAs` takes what of the message its record keeps, `Said`, which is the origin and the attachments; `turnOriginOf` became `turnSaidOf`. An attachment still embedded stays out of the record. The cases went in `host-local-turns.test.ts`, beside the origin cases, not in `host-chats.test.ts`.

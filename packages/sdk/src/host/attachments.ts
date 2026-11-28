@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, stat, writeFile } from 'node:fs/promises';
-import { extname, join, sep } from 'node:path';
+import { basename, extname, join, sep } from 'node:path';
 import { SNAPSHOT_TAG as TAG } from '../resources/attachments.js';
 import { localPath, uriOf } from '../resources/fileuri.js';
 import { ROOT } from './channels.js';
@@ -238,6 +238,15 @@ function tagged(one: Bag, path: string, contentType: string): Record<string, unk
     uri: uriOf(path),
     _meta: { ...meta, [TAG]: { isSnapshot: true, contentType } },
   };
+}
+
+/**
+ * A file this host wrote for a message, as the attachment that names it: what
+ * a message read back with no record of its attachments gets for the bytes it
+ * was sent with. The file's name is its label, as `put` wrote it.
+ */
+export function heldAttachment(path: string, contentType: string): Record<string, unknown> {
+  return tagged({ label: basename(path) }, path, contentType);
 }
 
 /**

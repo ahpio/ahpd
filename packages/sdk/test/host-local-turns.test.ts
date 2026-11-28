@@ -1,7 +1,9 @@
 import { WAIT_MS } from '../../../tools/wait.ts';
-import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs';
+import { createHash, randomUUID } from 'node:crypto';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Turn } from '@microsoft/agent-host-protocol';
 import {
@@ -324,6 +326,102 @@ describe('a host started again on the same store', () => {
     // began it, and the record is what a read after a restart goes by.
     expect(((await stateOf(client, chat)).turns as Bag[])[0]?.message).toMatchObject({ origin: { kind: 'automation' } });
     await host.close();
+  });
+
+  /*
+   * A transcript keeps a message's attachments as the model read them, or not
+   * at all: the record keeps them as this host wrote them, beside the origin,
+   * so a message reads back with the files it was sent with.
+   */
+  it('reads a turn back with the attachments it was sent with, as files this host wrote', async () => {
+    const picture = { type: 'embeddedResource', label: 'shot.png', contentType: 'image/png', data: Buffer.from('a picture').toString('base64') };
+    const { client, host, chat } = await restarted(async (c, p, ch) => {
+      void c.handle({
+        method: 'dispatchAction',
+        params: { channel: ch, action: { type: 'chat/turnStarted', turnId: 't1', message: { text: 'look', origin: { kind: 'user' }, attachments: [picture] } } },
+      });
+      await ended(p, ch, 't1');
+    }, [said('t1', 'look')]);
+    const sent = (((await stateOf(client, chat)).turns as Bag[])[0]?.message as Bag).attachments as Bag[];
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({ type: 'resource', label: 'shot.png' });
+    expect(readFileSync(fileURLToPath(String(sent[0]?.uri)), 'utf8')).toBe('a picture');
+    await host.close();
+  });
+
+  it('records no attachments for a message sent without any', async () => {
+    const dir = join(temp(), 'sessions');
+    const store = fileSessions({ dir });
+    const before = await opened(knobs(), store);
+    say(before.client, before.chat, 't1', 'hello there');
+    await ended(before.p, before.chat, 't1');
+    expect(recordsIn(store, 'live').map((one) => 'attachments' in one)).toEqual([false]);
+    await before.host.close();
+  });
+
+  /*
+   * A turn recorded before its record kept attachments: the transcript names
+   * the bytes it was sent with, and the session's file with the same bytes is
+   * put back. The key they were named under never reaches a client.
+   */
+  describe('a turn whose record keeps no attachments', () => {
+    const PICTURE = Buffer.from('a picture');
+    const named = (bytes: Buffer): Bag => ({
+      'ahpd.sentBytes': [{ sha256: createHash('sha256').update(bytes).digest('hex'), contentType: 'image/png' }],
+    });
+    const back = async (write: (folder: string) => void, sent: Bag[] = []) => {
+      const dir = join(temp(), 'sessions');
+      const store = fileSessions({ dir });
+      const before = await opened(knobs(), store);
+      void before.client.handle({
+        method: 'dispatchAction',
+        params: { channel: before.chat, action: { type: 'chat/turnStarted', turnId: 't1', message: { text: 'look', origin: { kind: 'user' }, ...(sent.length > 0 ? { attachments: sent } : {}) } } },
+      });
+      await ended(before.p, before.chat, 't1');
+      await before.host.close();
+      write(String(store.attachmentsDir?.('live')));
+      const second = knobs();
+      second.listed = [row('live')];
+      second.transcript = (id) => (id === 'live' ? [{ ...said('t1', 'look'), message: { text: 'look', origin: { kind: 'user' }, _meta: named(PICTURE) } }] : []);
+      const after = await hostAt(second, fileSessions({ dir }));
+      const message = ((await stateOf(after.client, before.chat)).turns as Bag[])[0]?.message as Bag;
+      await after.host.close();
+      return message;
+    };
+    const put = (folder: string, name: string, bytes: Buffer): void => {
+      const one = join(folder, randomUUID());
+      mkdirSync(one, { recursive: true });
+      writeFileSync(join(one, name), bytes);
+    };
+
+    it('gets back the file that holds the bytes it was sent with', async () => {
+      const message = await back((folder) => {
+        put(folder, 'other.png', Buffer.from('another picture'));
+        put(folder, 'shot.png', PICTURE);
+      });
+      const sent = message.attachments as Bag[];
+      expect(sent).toHaveLength(1);
+      expect(sent[0]).toMatchObject({ type: 'resource', label: 'shot.png' });
+      expect(readFileSync(fileURLToPath(String(sent[0]?.uri)), 'utf8')).toBe('a picture');
+      expect(message).not.toHaveProperty('_meta');
+    });
+
+    it('gets nothing for bytes no file of the session holds, nor from the host\'s own folders', async () => {
+      const message = await back((folder) => {
+        mkdirSync(join(folder, 'terminals'), { recursive: true });
+        writeFileSync(join(folder, 'terminals', 'shot.png'), PICTURE);
+      });
+      expect(message).not.toHaveProperty('attachments');
+      expect(message).not.toHaveProperty('_meta');
+    });
+
+    it('keeps the attachments its record has over a file the bytes match', async () => {
+      const recorded = { type: 'embeddedResource', label: 'kept.png', contentType: 'image/png', data: Buffer.from('the kept one').toString('base64') };
+      const message = await back((folder) => { put(folder, 'shot.png', PICTURE); }, [recorded]);
+      const sent = message.attachments as Bag[];
+      expect(sent.map((one) => one.label)).toEqual(['kept.png']);
+      expect(message).not.toHaveProperty('_meta');
+    });
   });
 
   it('reads a record written without an origin as its transcript says', async () => {

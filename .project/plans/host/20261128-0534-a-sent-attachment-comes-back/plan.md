@@ -1,7 +1,7 @@
 ---
 title: A sent attachment comes back
 domain: host
-status: planned
+status: active
 priority: high
 created: 2026-11-28
 revalidated: 2026-11-28
@@ -42,30 +42,32 @@ A message keeps its attachments after a restart, in every client. On 2026-11-23,
 | The Claude backend hands the host a hash of each block's bytes, never the bytes | (defaulted: a read-back stays light) | 02 |
 | The host hashes the files of a session's attachments folder once for each daemon run, and keeps the hashes in memory | (defaulted: one read per session, nothing new on disk) | 02 |
 | A block with no file of its bytes comes back with no attachment | (defaulted: no file means nothing a client can open) | 02 |
-| The `turns` and `recorded` folders are never matched | (defaulted: they hold the host's own records) | 02 |
+| Only the folders `put` names with a UUID are matched, and never `turns`, `recorded` or `terminals` | (defaulted: the other folders hold the host's own records) | 02 |
+| An attachment still embedded stays out of the record | (defaulted: its bytes never went to a file, and a record holds no bytes) | 01 |
+| Only pictures are matched: a document reaches the CLI as text, so the transcript holds no bytes of it | [`code://packages/agent-claude/src/session/attachments.ts`](../../../../packages/agent-claude/src/session/attachments.ts#L40) | 02 |
 
 ## Tasks
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a-record-keeps-its-attachments](task-01-a-record-keeps-its-attachments.md) | todo | - |
-| [02 - an-old-turn-finds-its-files-by-content](task-02-an-old-turn-finds-its-files-by-content.md) | todo | 01 |
+| [01 - a-record-keeps-its-attachments](task-01-a-record-keeps-its-attachments.md) | done | - |
+| [02 - an-old-turn-finds-its-files-by-content](task-02-an-old-turn-finds-its-files-by-content.md) | done | 01 |
 
 ## Risks and tradeoffs
 
 - A session with many attachments reads every file once at its first read-back after a restart. Softov's session `229a97fe` holds 126.
-- A match by content covers only what the transcript holds as bytes: pictures and documents sent as blocks.
+- A match by content covers only pictures, which are the only bytes a Claude transcript holds.
 - Two files with the same bytes match the same block, and either one is the right picture.
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** task 01.
+- **Done so far:** both tasks, on 2026-11-28. [implemented.md](implemented.md) holds the checks.
+- **Next action:** Softov's review, and `check-windows`.
 - **Open questions:** none.
 - **Watch out for:** `asSentAttachment` turns the host's file back into what the client sent, on the way out. A read-back attachment must take the same path.
 
 ## Final verification checklist
 
-- [ ] A message sent after the fix shows its attachments after a restart.
-- [ ] A Claude message sent before the fix shows its pictures after a restart.
+- [x] A message sent after the fix shows its attachments after a restart.
+- [x] A Claude message sent before the fix shows its pictures after a restart.
 - [ ] The sdk and agent-claude suites pass, and `check-windows` passes.
