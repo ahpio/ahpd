@@ -335,7 +335,7 @@ describe('a first-party plugin', { timeout: IMPORT_CASE_MS }, () => {
       'prefix', 'sessionSetting', 'sessionDefault', 'needs', 'mounts', 'profiles', 'bodyMounts', 'imageMounts',
       'images', 'devcontainer',
     ]],
-    ['push', ['accessToken', 'webPushHosts', 'contact']],
+    ['push', ['accessToken', 'webPushHosts', 'relayHosts', 'contact', 'retryWaits']],
     ['tasks', ['requireApproval', 'sweepAfterDays']],
     ['tunnel-devtunnel', ['connector', 'name', 'keep', 'anonymous', 'person', 'requireToken', 'allowAccountChange']],
     ['webhook', ['syncTimeoutSeconds', 'maxBodyBytes', 'threadSessions']],

@@ -528,6 +528,83 @@ it('sends again after one second and then two when the network or a 429 failed t
   sender.close();
 });
 
+it('retries on the waits it is given', async () => {
+  const answers: ReturnType<Answer>[] = [{ status: 503 }, { status: 503 }, { status: 503 }];
+  const { calls, request } = service((url, body) => answers.shift() ?? accepted(url, body));
+  const waits: number[] = [];
+  const sender = createSender({ log: () => {}, gone: () => {}, request, waits: [5, 7, 11], wait: async (ms) => { waits.push(ms); } });
+  await sender.send([toPhone('ExponentPushToken[phone]')]);
+  expect(calls.map((one) => one.url)).toEqual([ENDPOINT, ENDPOINT, ENDPOINT, ENDPOINT]);
+  expect(waits).toEqual([5, 7, 11]);
+  sender.close();
+});
+
+// Softov 2026-11-28, "One list of waits" and "One option for both".
+it('retries a send on the waits of retryWaits, in seconds', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  const world = up((url, body) => (url === ENDPOINT ? { status: 503 } : accepted(url, body)), phones({
+    'phone-1': 'ExponentPushToken[phone]',
+  }), { retryWaits: [2, 30] });
+  await listening(world);
+  await told(world, 'echo:/one');
+
+  await vi.advanceTimersByTimeAsync(1999);
+  await settle();
+  expect(world.sends()).toHaveLength(1);
+  await vi.advanceTimersByTimeAsync(1);
+  await settle();
+  expect(world.sends()).toHaveLength(2);
+  await vi.advanceTimersByTimeAsync(30_000);
+  await settle();
+  expect(world.sends()).toHaveLength(3);
+  await vi.advanceTimersByTimeAsync(60_000);
+  await settle();
+  expect(world.sends()).toHaveLength(3);
+});
+
+it('sends no retry when retryWaits is empty', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  const world = up((url, body) => (url === ENDPOINT ? { status: 503 } : accepted(url, body)), phones({
+    'phone-1': 'ExponentPushToken[phone]',
+  }), { retryWaits: [] });
+  await listening(world);
+  await told(world, 'echo:/one');
+  await vi.advanceTimersByTimeAsync(10_000);
+  await settle();
+  expect(world.sends()).toHaveLength(1);
+  expect(world.logged).toEqual(['push: the push service answered 503']);
+});
+
+it('warns of a retryWaits that is not a list of seconds, and retries on the default', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  const world = up((url, body) => (url === ENDPOINT ? { status: 503 } : accepted(url, body)), phones({
+    'phone-1': 'ExponentPushToken[phone]',
+  }), { retryWaits: 'often' });
+  expect(world.logged).toEqual(['push: retryWaits is not a list of seconds of 0 or more, so the default of [1,2] is used']);
+  await listening(world);
+  await told(world, 'echo:/one');
+  await vi.advanceTimersByTimeAsync(1000);
+  await settle();
+  expect(world.sends()).toHaveLength(2);
+});
+
+// Softov 2026-11-28, "Drop a stale retry".
+it('drops a retry whose session moved out of needing input during the wait', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  const world = up((url, body) => (url === ENDPOINT ? { status: 503 } : accepted(url, body)), phones({
+    'phone-1': 'ExponentPushToken[phone]',
+  }), { retryWaits: [30] });
+  await listening(world);
+  await told(world, 'echo:/one');
+  changed(world, 'echo:/one', { status: RUNNING });
+  await settle();
+
+  await vi.advanceTimersByTimeAsync(30_000);
+  await settle();
+  expect(world.sends()).toHaveLength(1);
+  expect(world.logged).toEqual(['push: a retry was not sent, because its session moved on']);
+});
+
 it('asks Expo for a send\'s receipts three hundred to a request', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   const { calls, request } = service((url, body) => (url === ENDPOINT

@@ -166,14 +166,64 @@ it('removes a device its push service answers 410 for, and keeps one it answers 
   expect(logged[0]).toContain('browser-1');
 
   const kept: string[] = [];
+  const refusing = service(500);
   const other = createWebSender({
     log: () => {},
     gone: (id) => { kept.push(id); },
     vapid: pair(),
-    request: service(500).request,
+    request: refusing.request,
+    wait: async () => {},
   });
   await other.send([message('echo:/one')]);
   expect(kept).toEqual([]);
+  // The default waits are two retries.
+  expect(refusing.calls).toHaveLength(3);
+});
+
+// Softov 2026-11-28, "Include retries": a Web Push send retries as an Expo send does.
+it('sends again after each wait while the push service answers a 5xx, and keeps the device it reaches then', async () => {
+  const answers = [500, 503, 201];
+  const calls: string[] = [];
+  const request = (async (input: unknown) => {
+    calls.push(String(input));
+    return new Response('', { status: answers.shift() ?? 201 });
+  }) as unknown as typeof fetch;
+  const waited: number[] = [];
+  const gone: string[] = [];
+  const logged: string[] = [];
+  const sender = createWebSender({
+    log: (line) => { logged.push(line); },
+    gone: (id) => { gone.push(id); },
+    vapid: pair(),
+    request,
+    waits: [2000, 30000],
+    wait: async (ms) => { waited.push(ms); },
+  });
+  await sender.send([message('echo:/one')]);
+  expect(calls).toEqual(['https://fcm.googleapis.com/wp/one', 'https://fcm.googleapis.com/wp/one', 'https://fcm.googleapis.com/wp/one']);
+  expect(waited).toEqual([2000, 30000]);
+  expect(gone).toEqual([]);
+  expect(logged).toEqual([]);
+});
+
+it('does not retry a 410, and removes the device', async () => {
+  const gone: string[] = [];
+  const answered = service(410);
+  const waited: number[] = [];
+  const sender = createWebSender({ log: () => {}, gone: (id) => { gone.push(id); }, vapid: pair(), request: answered.request, wait: async (ms) => { waited.push(ms); } });
+  await sender.send([message('echo:/one')]);
+  expect(answered.calls).toHaveLength(1);
+  expect(waited).toEqual([]);
+  expect(gone).toEqual(['browser-1']);
+});
+
+it('drops a retry when the send says the notice is no longer due', async () => {
+  const answered = service(503);
+  const logged: string[] = [];
+  const sender = createWebSender({ log: (line) => { logged.push(line); }, gone: () => {}, vapid: pair(), request: answered.request, wait: async () => {} });
+  await sender.send([message('echo:/one')], () => false);
+  expect(answered.calls).toHaveLength(1);
+  expect(logged).toEqual(['a retry for browser-1 was not sent, because its session moved on']);
 });
 
 it('removes a device its push service answers 404 for', async () => {

@@ -7,7 +7,7 @@ import { createHost } from '../../sdk/src/host.js';
 import { fileResources } from '../../sdk/src/resources/resources.js';
 import { loadPlugins } from '../../server/src/plugins.js';
 import { echo } from '../../../examples/echo/agent.js';
-import { deviceStore, pushProvider } from '../src/provider.js';
+import { deviceStore, pushProvider, transportOf } from '../src/provider.js';
 import { loadVapid } from '../src/vapid.js';
 import type { PushProvider } from '../src/provider.js';
 import type { HostOptions } from '../../sdk/src/types/host.js';
@@ -150,6 +150,63 @@ it('refuses a web body that is not a subscription this host can seal a message f
     await expect(provider.write('push://devices/browser-1', body(said), undefined, 'browser')).rejects.toMatchObject({ code: -32602 });
   }
   expect(await provider.list('push://devices')).toEqual([]);
+});
+
+// Softov 2026-11-28, "transport": what a device is and how it is reached are two fields.
+it('keeps a phone that its app\'s relay reaches by Web Push, with the transport it named', async () => {
+  const where = dir();
+  const provider = pushProvider({ store: deviceStore(where, () => {}), webPushHosts: ['push.relay.example'] });
+  const relay = { transport: 'webpush', platform: 'android', endpoint: 'https://push.relay.example/d/8f3a', keys: WEB.keys };
+  await provider.write('push://devices/phone-1', body(relay), 'user:ana', 'hostline');
+
+  expect(JSON.parse((await provider.read('push://devices/phone-1')).data)).toEqual({
+    transport: 'webpush',
+    platform: 'android',
+    owner: 'user:ana',
+    client: 'hostline',
+  });
+  const kept = deviceStore(where, () => {}).get('phone-1');
+  expect(kept === undefined ? undefined : transportOf(kept)).toBe('webpush');
+});
+
+it('refuses a transport that the body\'s fields do not fit', async () => {
+  const provider = over();
+  const refused = [
+    { transport: 'expo', platform: 'web', token: TOKEN },
+    { transport: 'expo', platform: 'android', token: TOKEN, endpoint: WEB.endpoint },
+    { transport: 'webpush', platform: 'android', token: TOKEN, endpoint: WEB.endpoint, keys: WEB.keys },
+    { transport: 'webpush', platform: 'ios', token: TOKEN },
+    { transport: 'fcm', platform: 'android', token: TOKEN },
+  ];
+  for (const said of refused) {
+    await expect(provider.write('push://devices/phone-1', body(said), undefined, 'phone')).rejects.toMatchObject({ code: -32602 });
+  }
+  expect(await provider.list('push://devices')).toEqual([]);
+});
+
+it('stores no transport a write did not name, and reads one from the fields of a device on disk', async () => {
+  const where = dir();
+  const provider = pushProvider({ store: deviceStore(where, () => {}) });
+  await provider.write('push://devices/phone-1', body({ token: TOKEN, platform: 'ios' }), undefined, 'phone');
+  await provider.write('push://devices/browser-1', body(WEB), undefined, 'browser');
+  const file = JSON.parse(readFileSync(join(where, 'push-devices.json'), 'utf8')) as Record<string, Record<string, unknown>>;
+  expect(file['phone-1']).not.toHaveProperty('transport');
+  expect(file['browser-1']).not.toHaveProperty('transport');
+
+  writeFileSync(join(where, 'push-devices.json'), JSON.stringify({
+    ...file,
+    'phone-2': { platform: 'android', endpoint: WEB.endpoint, keys: WEB.keys },
+    'phone-3': { transport: 'expo', platform: 'android', token: TOKEN },
+    'phone-4': { transport: 'fcm', platform: 'android', token: TOKEN },
+  }));
+  const problems: string[] = [];
+  const store = deviceStore(where, (line) => { problems.push(line); });
+  const transports = Object.fromEntries(store.ids().map((id) => {
+    const device = store.get(id);
+    return [id, device === undefined ? undefined : transportOf(device)];
+  }));
+  expect(transports).toEqual({ 'phone-1': 'expo', 'browser-1': 'webpush', 'phone-2': 'webpush', 'phone-3': 'expo' });
+  expect(problems).toEqual([`${join(where, 'push-devices.json')}: phone-4 is not a device; its registration was left out`]);
 });
 
 it('serves the host public key at push://vapid, and refuses to write or delete it', async () => {

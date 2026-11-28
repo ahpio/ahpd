@@ -9,11 +9,12 @@ import type { Vapid } from './vapid.js';
  *
  * A registration is a record under `push://devices/<install id>`: a client
  * writes one with the protocol's own `resourceWrite` and takes it out with
- * `resourceDelete`, which is the whole of the seam. A phone registers an Expo
- * token; a browser registers the subscription its push service gave it, an
- * endpoint and the two keys a message to it is encrypted with.
+ * `resourceDelete`, which is the whole of the seam. A phone with an Expo app
+ * registers an Expo token. A browser, or a native app whose relay speaks Web
+ * Push, registers the subscription it was given, an endpoint and the two keys
+ * a message to it is encrypted with.
  *
- * What a record holds is the platform it belongs to, the person and client it
+ * What a record holds is the platform it is, the transport that reaches it, the person and client it
  * was registered by, which sessions it hears about, and, when a device asked
  * for a language, that language. The person and the client are the host's, as
  * the connection is signed in and introduced itself, and the body cannot name
@@ -86,11 +87,16 @@ interface Kept {
 /** Which sessions a device hears about, as its registration chose. */
 export type Audience = 'person' | 'device';
 
+/** How the host reaches a device: Expo's push service, or Web Push to the device's endpoint. */
+export type Transport = 'expo' | 'webpush';
+
 /** A phone or a tablet, which Expo reaches through its token. */
 export interface ExpoDevice extends Kept {
+  /** How the host reaches it, where the registration named it. Absent means `expo`, from the token. */
+  transport?: 'expo';
   /** The Expo push token. */
   token: string;
-  /** Which service the token belongs to. */
+  /** What the device is. */
   platform: 'ios' | 'android';
 }
 
@@ -102,10 +108,15 @@ export interface SubscriptionKeys {
   auth: string;
 }
 
-/** A browser, which its push service reaches through the subscription's endpoint. */
+/**
+ * A browser, or a native app whose relay speaks Web Push, which the push
+ * service or the relay reaches through the subscription's endpoint.
+ */
 export interface WebDevice extends Kept {
-  /** Which service the subscription belongs to. */
-  platform: 'web';
+  /** How the host reaches it, where the registration named it. Absent means `webpush`, from the endpoint. */
+  transport?: 'webpush';
+  /** What the device is: a browser, or a phone whose app has a relay. */
+  platform: 'web' | 'ios' | 'android';
   /** The capability URL the push service accepts a message at. */
   endpoint: string;
   /** The keys a message to this subscription is encrypted with. */
@@ -115,13 +126,20 @@ export interface WebDevice extends Kept {
 /** One device, as it was registered. */
 export type Device = ExpoDevice | WebDevice;
 
+/** Whether a device is reached by Web Push, which only a device with an endpoint is. */
+export const isWebPush = (device: Device): device is WebDevice => 'endpoint' in device;
+
+/** How the host reaches a device: the transport it named, or the one its fields imply. */
+export const transportOf = (device: Device): Transport => (isWebPush(device) ? 'webpush' : 'expo');
+
 /** The body a write to the scheme's root makes a device from. */
 const EXPO_BODY = {
   type: 'object',
   required: ['token', 'platform'],
   properties: {
+    transport: { type: 'string', enum: ['expo'], description: 'How the host reaches the device: Expo\'s push service. A body with a token and no transport is this one.' },
     token: { type: 'string', description: 'The Expo push token this device answers to.' },
-    platform: { type: 'string', enum: ['ios', 'android'], description: 'Which service the token belongs to.' },
+    platform: { type: 'string', enum: ['ios', 'android'], description: 'What the device is.' },
     lang: { type: 'string', description: 'The language the device asked for, a BCP 47 tag, which its notifications are worded in.' },
     audience: { type: 'string', enum: ['person', 'device'], description: 'Which sessions the device hears about: every session of its person unless this says device, the ones its own client created or opened.' },
   },
@@ -132,7 +150,8 @@ const WEB_BODY = {
   type: 'object',
   required: ['platform', 'endpoint', 'keys'],
   properties: {
-    platform: { type: 'string', enum: ['web'], description: 'A browser, reached through its push service.' },
+    transport: { type: 'string', enum: ['webpush'], description: 'How the host reaches the device: Web Push to its endpoint. A body with an endpoint and no transport is this one.' },
+    platform: { type: 'string', enum: ['web', 'ios', 'android'], description: 'What the device is: a browser, or a phone whose app has a Web Push relay.' },
     endpoint: { type: 'string', description: 'The endpoint a subscription gave, at an https address of a push service the host allows.' },
     keys: {
       type: 'object',
@@ -206,7 +225,7 @@ const asFile = (data: string): Read => ({ data, encoding: 'utf-8', contentType: 
  * a capability URL and the keys are what a message to it is sealed with.
  */
 export const shownOf = (device: Device): Record<string, unknown> => {
-  if (device.platform === 'web') {
+  if (isWebPush(device)) {
     const { endpoint: _endpoint, keys: _keys, ...shown } = device;
     return shown;
   }
@@ -272,16 +291,19 @@ const kept = (said: unknown): Device | undefined => {
   const one = said as Record<string, unknown>;
   const common = keptCommon(one);
   const platform = one['platform'];
+  const transport = one['transport'];
+  if (transport !== undefined && transport !== 'expo' && transport !== 'webpush') return undefined;
+  if (transport === 'webpush' || (transport === undefined && one['endpoint'] !== undefined)) {
+    const endpoint = one['endpoint'];
+    const keys = keysOf(one['keys']);
+    if (platform !== 'web' && platform !== 'ios' && platform !== 'android') return undefined;
+    if (typeof endpoint !== 'string' || endpoint === '' || keys === undefined) return undefined;
+    return { ...(transport === 'webpush' ? { transport } : {}), platform, endpoint, keys, ...common };
+  }
   if (platform === 'ios' || platform === 'android') {
     const token = one['token'];
     if (typeof token !== 'string' || token === '') return undefined;
-    return { token, platform, ...common };
-  }
-  if (platform === 'web') {
-    const endpoint = one['endpoint'];
-    const keys = keysOf(one['keys']);
-    if (typeof endpoint !== 'string' || endpoint === '' || keys === undefined) return undefined;
-    return { platform, endpoint, keys, ...common };
+    return { ...(transport === 'expo' ? { transport } : {}), token, platform, ...common };
   }
   return undefined;
 };
@@ -375,6 +397,20 @@ const hostAllowed = (host: string, patterns: readonly string[]): boolean => {
   });
 };
 
+/**
+ * The transport a write's body asks for: the one it names, or the one its
+ * fields imply when it names none.
+ *
+ * A body with an endpoint, or a browser's, is Web Push. Any other is Expo, so
+ * a phone's body with a token and no transport keeps its Expo sender.
+ */
+const transportSaid = (uri: string, body: Record<string, unknown>, platform: 'ios' | 'android' | 'web'): Transport => {
+  const said = body['transport'];
+  if (said === 'expo' || said === 'webpush') return said;
+  if (said !== undefined) throw new RpcError(-32602, `${uri} has a transport that is not expo or webpush`);
+  return body['endpoint'] !== undefined || platform === 'web' ? 'webpush' : 'expo';
+};
+
 /** The device a write's body describes, or the refusal a body that is not one is owed. */
 const deviceOf = (uri: string, content: Write, webPushHosts: readonly string[]): Device => {
   let said: unknown;
@@ -403,40 +439,50 @@ const deviceOf = (uri: string, content: Write, webPushHosts: readonly string[]):
   };
 
   const platform = body['platform'];
-  if (platform === 'ios' || platform === 'android') {
+  if (platform !== 'ios' && platform !== 'android' && platform !== 'web') {
+    throw new RpcError(-32602, `${uri} needs a platform of ios, android or web`);
+  }
+  const transport = transportSaid(uri, body, platform);
+
+  if (transport === 'expo') {
+    if (platform === 'web') {
+      throw new RpcError(-32602, `${uri} is a browser, which Expo does not reach: its transport is webpush`);
+    }
+    if (body['endpoint'] !== undefined) {
+      throw new RpcError(-32602, `${uri} has an endpoint, which an expo device does not take: its transport is webpush`);
+    }
     const token = body['token'];
     if (typeof token !== 'string' || token.trim() === '') {
       throw new RpcError(-32602, `${uri} needs a token: a device is registered with its push token`);
     }
-    return { token, platform, ...common };
+    return { ...(body['transport'] === undefined ? {} : { transport }), token, platform, ...common };
   }
 
-  if (platform === 'web') {
-    const endpoint = body['endpoint'];
-    if (typeof endpoint !== 'string' || endpoint.trim() === '') {
-      throw new RpcError(-32602, `${uri} needs an endpoint: a browser is registered with its subscription`);
-    }
-    let address: URL;
-    try {
-      address = new URL(endpoint);
-    }
-    catch {
-      throw new RpcError(-32602, `${uri} has an endpoint that is not a URL`);
-    }
-    if (address.protocol !== 'https:') {
-      throw new RpcError(-32602, `${uri} has an endpoint that is not https`);
-    }
-    if (!hostAllowed(address.hostname, webPushHosts)) {
-      throw new RpcError(-32602, `${uri} has an endpoint at ${address.hostname}, which is not a push service this host allows`);
-    }
-    const keys = keysOf(body['keys']);
-    if (keys === undefined) {
-      throw new RpcError(-32602, `${uri} needs keys: the browser's p256dh of 65 octets and auth of 16, in base64url`);
-    }
-    return { platform, endpoint, keys, ...common };
+  if (body['token'] !== undefined) {
+    throw new RpcError(-32602, `${uri} has a token, which a webpush device does not take: its transport is expo`);
   }
-
-  throw new RpcError(-32602, `${uri} needs a platform of ios, android or web`);
+  const endpoint = body['endpoint'];
+  if (typeof endpoint !== 'string' || endpoint.trim() === '') {
+    throw new RpcError(-32602, `${uri} needs an endpoint: a Web Push device is registered with its subscription`);
+  }
+  let address: URL;
+  try {
+    address = new URL(endpoint);
+  }
+  catch {
+    throw new RpcError(-32602, `${uri} has an endpoint that is not a URL`);
+  }
+  if (address.protocol !== 'https:') {
+    throw new RpcError(-32602, `${uri} has an endpoint that is not https`);
+  }
+  if (!hostAllowed(address.hostname, webPushHosts)) {
+    throw new RpcError(-32602, `${uri} has an endpoint at ${address.hostname}, which is not a push service this host allows`);
+  }
+  const keys = keysOf(body['keys']);
+  if (keys === undefined) {
+    throw new RpcError(-32602, `${uri} needs keys: the browser's p256dh of 65 octets and auth of 16, in base64url`);
+  }
+  return { ...(body['transport'] === undefined ? {} : { transport }), platform, endpoint, keys, ...common };
 };
 
 /**

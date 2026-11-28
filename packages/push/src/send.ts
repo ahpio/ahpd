@@ -1,4 +1,5 @@
 import { bag, reason, str } from '@ahpd/sdk';
+import { RETRY_WAITS_MS, retrying, timer } from './retry.js';
 import type { LogLevel } from '@ahpd/sdk';
 
 /**
@@ -13,13 +14,10 @@ import type { LogLevel } from '@ahpd/sdk';
  * error of the service's, and is said.
  * https://docs.expo.dev/push-notifications/sending-notifications/#check-push-receipts-for-errors
  *
- * A send that the network, a 429 or a 5xx fails is tried again after a second
- * and then two, Expo's exponential backoff with its Node SDK's retry count and
- * first wait. Receipts are read once, as the SDK reads them. Any other failure,
- * and a send still failing after its retries, is one line to the daemon's log:
- * a notification is worth a log line, and the host goes on serving.
- * https://docs.expo.dev/push-notifications/sending-notifications/#retry-on-failure
- * https://github.com/expo/expo-server-sdk-node/blob/main/src/ExpoClient.ts
+ * A send is retried as `retry.ts` says, after each of the sender's waits.
+ * Receipts are read once, as Expo's Node SDK reads them. Any other failure, and
+ * a send still failing after its retries, is one line to the daemon's log: a
+ * notification is worth a log line, and the host goes on serving.
  *
  * The one thing a failure does do is remove a device: the service is the only
  * party that knows a token has been retired - an app uninstalled, a phone
@@ -41,9 +39,6 @@ export const RECEIPT_BATCH = 300;
 
 /** How long after a send its receipts are read, in milliseconds: Expo's fifteen minutes. */
 export const RECEIPT_DELAY_MS = 15 * 60 * 1000;
-
-/** The waits before each retry of a send, in milliseconds: the SDK's two retries from one second, doubling. */
-export const RETRY_WAITS_MS = [1000, 2000] as const;
 
 /** One notification, as the service takes it. */
 export interface PushMessage {
@@ -69,6 +64,8 @@ export interface SendOptions {
   receipts?: string;
   /** The request function, which is `fetch` unless a test says otherwise. */
   request?: typeof fetch;
+  /** The waits before each retry of a send, in milliseconds. `retry.ts`'s default unless the plugin's option says otherwise. */
+  waits?: readonly number[];
   /** Wait this long, which is a timer unless a test says otherwise. */
   wait?: (ms: number) => Promise<void>;
 }
@@ -81,8 +78,12 @@ interface Ticket {
 
 /** One send, and the read of its receipts a quarter of an hour on. */
 export interface Sender {
-  /** Send these messages, and read their receipts fifteen minutes after. */
-  send(messages: PushMessage[], accessToken?: string): Promise<void>;
+  /**
+   * Send these messages, and read their receipts fifteen minutes after.
+   * `due` is asked before each retry, and a retry is dropped when it answers
+   * false. Without it every retry is sent.
+   */
+  send(messages: PushMessage[], accessToken?: string, due?: () => boolean): Promise<void>;
   /** Drop the receipt reads still to come, as the plugin unloads. */
   close(): void;
 }
@@ -99,7 +100,8 @@ export const createSender = (options: SendOptions): Sender => {
   const endpoint = options.endpoint ?? ENDPOINT;
   const receipts = options.receipts ?? RECEIPTS;
   const request = options.request ?? fetch;
-  const wait = options.wait ?? ((ms: number) => new Promise<void>((done) => { setTimeout(done, ms); }));
+  const wait = options.wait ?? timer;
+  const waits = options.waits ?? RETRY_WAITS_MS;
   /** The receipt reads still to come, which `close` drops. */
   const pending = new Set<ReturnType<typeof setTimeout>>();
 
@@ -113,32 +115,22 @@ export const createSender = (options: SendOptions): Sender => {
 
   /**
    * One request, whose answer is nothing when it failed, which is said and
-   * thrown nowhere. The network, a 429 or a 5xx is tried again after each of
-   * `waits`.
+   * thrown nowhere. It is retried as `retry.ts` says, after each of `tries`.
    */
-  const post = async (url: string, body: unknown, accessToken: string | undefined, waits: readonly number[]): Promise<unknown> => {
-    let response: Response;
-    for (let attempt = 0; ; attempt += 1) {
-      let answered: Response | undefined;
-      let failure: unknown;
-      try {
-        answered = await request(url, { method: 'POST', headers: headers(accessToken), body: JSON.stringify(body) });
-      }
-      catch (error) {
-        failure = error;
-      }
-      const again = answered === undefined || answered.status === 429 || answered.status >= 500;
-      if (!again || attempt >= waits.length) {
-        if (answered === undefined) {
-          options.log(`the push service could not be reached: ${reason(failure)}`, 'error');
-          return undefined;
-        }
-        response = answered;
-        break;
-      }
-      await answered?.body?.cancel().catch(() => undefined);
-      await wait(waits[attempt] ?? 0);
+  const post = async (url: string, body: unknown, accessToken: string | undefined, tries: readonly number[], due: () => boolean): Promise<unknown> => {
+    const tried = await retrying(
+      async () => await request(url, { method: 'POST', headers: headers(accessToken), body: JSON.stringify(body) }),
+      { waits: tries, wait, due },
+    );
+    if (tried.kind === 'dropped') {
+      options.log('a retry was not sent, because its session moved on');
+      return undefined;
     }
+    if (tried.kind === 'unreachable') {
+      options.log(`the push service could not be reached: ${reason(tried.failure)}`, 'error');
+      return undefined;
+    }
+    const response = tried.response;
     if (!response.ok) {
       options.log(`the push service answered ${response.status}`, 'warn');
       return undefined;
@@ -178,7 +170,7 @@ export const createSender = (options: SendOptions): Sender => {
   const readReceipts = async (held: Ticket[], accessToken: string | undefined): Promise<void> => {
     for (let from = 0; from < held.length; from += RECEIPT_BATCH) {
       const chunk = held.slice(from, from + RECEIPT_BATCH);
-      const answered = await post(receipts, { ids: chunk.map((one) => one.id) }, accessToken, []);
+      const answered = await post(receipts, { ids: chunk.map((one) => one.id) }, accessToken, [], () => true);
       if (answered === undefined) continue;
       const data = bag(bag(answered)['data']);
       for (const ticket of chunk) {
@@ -213,12 +205,12 @@ export const createSender = (options: SendOptions): Sender => {
   };
 
   return {
-    send: async (messages, accessToken) => {
+    send: async (messages, accessToken, due = () => true) => {
       const tickets: Ticket[] = [];
       for (let from = 0; from < messages.length; from += BATCH) {
         const batch = messages.slice(from, from + BATCH);
         if (batch.length === 0) continue;
-        const answered = await post(endpoint, batch, accessToken, RETRY_WAITS_MS);
+        const answered = await post(endpoint, batch, accessToken, waits, due);
         if (answered === undefined) continue;
         tickets.push(...collect(batch, answered));
       }

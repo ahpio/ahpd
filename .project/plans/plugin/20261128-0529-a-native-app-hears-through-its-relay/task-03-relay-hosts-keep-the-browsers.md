@@ -1,6 +1,6 @@
 ---
 title: Relay hosts keep the browsers
-status: todo
+status: done
 depends: []
 layer: push plugin
 refs:
@@ -41,3 +41,5 @@ An operator allows a relay's host with `relayHosts`, and the browser push servic
 - `pnpm vitest run packages/push` passes.
 
 ## Resume
+
+Done 2026-11-28. See [implemented.md](implemented.md).
