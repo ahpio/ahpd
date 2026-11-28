@@ -1,0 +1,41 @@
+---
+title: An old turn finds its files by content
+status: todo
+depends: [task-01-a-record-keeps-its-attachments.md]
+layer: "sdk, agent-claude"
+refs:
+  - "[code://packages/agent-claude/src/transcript.ts#L804-L811](../../../../packages/agent-claude/src/transcript.ts#L804-L811) - the user turn read back"
+  - "[code://packages/agent-claude/src/session/attachments.ts#L40](../../../../packages/agent-claude/src/session/attachments.ts#L40) - the image block a picture goes as"
+---
+
+## Objective
+
+A Claude turn whose record has no attachments gets back the files whose bytes its transcript holds. The host finds each file in the session's attachments folder by a hash of its bytes.
+
+## Files
+
+- `UPDATE: packages/agent-claude/src/transcript.ts:804-811` - a user turn read back carries a hash of each image and document block's bytes.
+- `UPDATE: packages/sdk/src/host/localturns.ts` - the host matches each hash to a file in the session's attachments folder, and puts the attachment on the message.
+- `UPDATE: packages/sdk/src/host/attachments.ts:219-241` - `tagged` is shared, so a matched file comes back as a live one does.
+- `UPDATE: packages/agent-claude/test/agent-claude-transcript.test.ts` - the hashes on a read-back turn.
+- `UPDATE: packages/sdk/test/host-chats.test.ts` - the match cases.
+
+## Steps
+
+1. In the Claude read-back, hash the decoded bytes of each image and document block of a user turn with SHA-256.
+2. Put the hashes in the read-back message's `_meta`, under a key of the host's, in the order of the blocks.
+3. At a session's first read-back in a daemon run, hash every file under its attachments folder, except `turns` and `recorded`.
+4. Keep the hashes in memory by session, and hash only files added since the last read.
+5. For a turn with no recorded attachments, put back the file of each hash with `tagged`.
+6. Leave out a hash with no file, and remove the key from the message the client sees.
+7. Write a case that sends a picture, removes the record's attachments, restarts, and reads the picture back.
+8. Write a case where the record and a match both exist, and the record wins.
+
+## Validation
+
+- The new cases in `agent-claude-transcript.test.ts` and `host-chats.test.ts` pass.
+- The sdk and agent-claude suites pass.
+- `pnpm typecheck` passes.
+- On a test daemon, a copy of a session sent before the fix shows its pictures.
+
+## Resume
