@@ -20,4 +20,4 @@ Today the plugin tells three session moves and knows nothing of automations.
 A topic for automations needs the plugin to know which sessions an automation made.
 "Topic" here is the device's choice, not the Web Push `Topic` header.
 
-The relay path comes first: [a-native-app-hears-through-its-relay.md](../briefs/a-native-app-hears-through-its-relay.md).
+The relay path comes first: [plugin/20261128-0529-a-native-app-hears-through-its-relay](../plans/plugin/20261128-0529-a-native-app-hears-through-its-relay/plan.md).
