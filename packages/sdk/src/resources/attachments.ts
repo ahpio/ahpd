@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { lstat, open } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { localPath } from './fileuri.js';
@@ -32,6 +33,27 @@ import type { MessageAttachment } from '../types/session.js';
  * works in, which is named by path and left for the model to read.
  */
 export const SNAPSHOT_TAG = 'vscode.agentHost.snapshotAttachment';
+
+/**
+ * The key of a message's `_meta`, read back out of a transcript, that names
+ * the bytes the message was sent with (`SentBytes`).
+ *
+ * A transcript keeps a picture as the bytes the model read, not as the file
+ * this host wrote them from, so a backend names each by its hash and the host
+ * puts back the file of the session's that holds the same bytes. It is the
+ * host's own key, and the host removes it before a client reads the message.
+ */
+export const SENT_BYTES_KEY = 'ahpd.sentBytes';
+
+/** One of the bytes a message was sent with: their SHA-256, in hex, and their type. */
+export interface SentBytes {
+  sha256: string;
+  contentType: string;
+}
+
+/** The name of some bytes a message was sent with, as `SENT_BYTES_KEY` lists them. */
+export const sentBytesOf = (bytes: Uint8Array, contentType: string): SentBytes =>
+  ({ sha256: createHash('sha256').update(bytes).digest('hex'), contentType });
 
 /** The largest image sent as an image, in bytes. */
 const IMAGE_LIMIT = 5 * 1024 * 1024;

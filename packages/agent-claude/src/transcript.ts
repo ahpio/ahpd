@@ -2,7 +2,7 @@ import { getSessionMessages, getSubagentMessages, listSubagents } from '@anthrop
 import type { SessionStore, SessionStoreEntry } from '@anthropic-ai/claude-agent-sdk';
 import type { ResponsePart, ToolCallCompletedState, ToolResultContent, Turn } from '@microsoft/agent-host-protocol';
 import type { Bag, OnWire, RestoredSubagent, WireTurn } from '@ahpd/sdk';
-import { bag, steerPart, str, toolCallDurationMs, withToolCallDuration } from '@ahpd/sdk';
+import { bag, SENT_BYTES_KEY, sentBytesOf, steerPart, str, toolCallDurationMs, withToolCallDuration } from '@ahpd/sdk';
 import { createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
@@ -802,13 +802,24 @@ function buildTurns(messages: unknown[], forkAnchorUuids?: Map<string, string>):
        */
       const notice = str(bag(frame.origin).kind) === 'task-notification';
       const summary = notice ? /<summary>([\s\S]*?)<\/summary>/.exec(said)?.[1]?.trim() : undefined;
+      /*
+       * The pictures it was sent with, which the transcript keeps as the bytes
+       * the model read: each named by its hash, for the host to put back the
+       * file it wrote them from (`SENT_BYTES_KEY`).
+       */
+      const pictures = list(message.content).map(bag).flatMap((block) => {
+        const source = bag(block.source);
+        if (block.type !== 'image' || source.type !== 'base64' || typeof source.data !== 'string') return [];
+        return [sentBytesOf(Buffer.from(source.data, 'base64'), str(source.media_type) ?? 'application/octet-stream')];
+      });
+      const sentWith = pictures.length === 0 ? {} : { _meta: { [SENT_BYTES_KEY]: pictures } };
       const opened: WireTurn<Turn> = {
         id: str(frame.uuid) ?? `u${built.length}`,
         startedAt: at,
         // Who produced it, which `Message` requires and this never sent.
         message: notice
           ? { text: summary === undefined || summary === '' ? said : summary, origin: { kind: 'systemNotification' } }
-          : { text: said, origin: { kind: 'user' } },
+          : { text: said, origin: { kind: 'user' }, ...sentWith },
         responseParts: [],
         // A turn out of a transcript is one that already happened, so it is
         // complete by definition. `Turn.state` is required and used to be

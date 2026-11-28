@@ -5,7 +5,7 @@ import type { ChatAction, ChatState } from '@microsoft/agent-host-protocol';
 import { CommandAutoApprover, DEFAULT_TERMINAL_AUTO_APPROVE_RULES, splitCommand } from '../access/commandautoapprover.js';
 import type { CommandSplit, CommandSplitter, SensitiveEditLocation, TerminalAutoApprovePatterns, TerminalAutoApproveRules } from '../access/commandautoapprover.js';
 import { RpcError, INTERNAL_ERROR } from '../rpc.js';
-import { bag, reason } from '../utils/values.js';
+import { bag, isRecord, reason } from '../utils/values.js';
 import { computerId, computersFor } from '../machines/computers.js';
 import { localPath, uriOf } from '../resources/fileuri.js';
 import { deepFreeze, frozenCopy } from '../utils/frozen.js';
@@ -1674,11 +1674,16 @@ export function createSpawn(ctx: HostContext): Spawn {
         // A turn the chat began, under its own id: the id a read after a
         // restart holds it by, unless the backend says it wrote it otherwise.
         // The origin goes with it where the turn was not a person's, so a turn
-        // an automation began reads back as one.
+        // an automation began reads back as one, and the attachments as this
+        // host rewrote them, so its message reads back with its files.
         if (channel === 'chat' && action.type === 'chat/turnStarted') {
-          const startedFrom = bag(bag(action.message).origin);
-          ctx.turnRecordedAs(uri, chatUri, turn, turn,
-            typeof startedFrom.kind === 'string' && startedFrom.kind !== 'user' ? startedFrom : undefined);
+          const message = bag(action.message);
+          const startedFrom = bag(message.origin);
+          const attachments = Array.isArray(message.attachments) ? (message.attachments as unknown[]).filter(isRecord) : [];
+          ctx.turnRecordedAs(uri, chatUri, turn, turn, {
+            ...(typeof startedFrom.kind === 'string' && startedFrom.kind !== 'user' ? { origin: startedFrom } : {}),
+            ...(attachments.length > 0 ? { attachments } : {}),
+          });
         }
         const sender = senderOf(turn);
         /*
@@ -2033,9 +2038,9 @@ export function createSpawn(ctx: HostContext): Spawn {
        */
       onTurnRecorded: (turnId, transcriptId) => {
         if (transcriptId === turnId) return;
-        // The origin the turn began with goes to the record under the id it
-        // will be read back by.
-        ctx.turnRecordedAs(uri, chatUri, turnId, transcriptId, ctx.turnOriginOf(chatUri, turnId));
+        // What the record keeps of the turn's message goes to the record
+        // under the id it will be read back by.
+        ctx.turnRecordedAs(uri, chatUri, turnId, transcriptId, ctx.turnSaidOf(chatUri, turnId));
         const sender = senderOf(turnId) ?? kept.sender(idOf(uri), turnId);
         if (sender !== undefined) kept.setSender(idOf(uri), transcriptId, sender);
       },

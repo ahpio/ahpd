@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto';
+import { readdir, readFile } from 'node:fs/promises';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Turn } from '@microsoft/agent-host-protocol';
+import { SENT_BYTES_KEY, sentBytesOf } from '../resources/attachments.js';
 import { idOf } from '../sessions/catalog.js';
 import { steerOf, steerPart } from '../sessions/steer.js';
 import { readJsonObject, writeJsonAtomic } from '../utils/jsonfile.js';
@@ -9,6 +11,7 @@ import { bag, isRecord, reason, str } from '../utils/values.js';
 import type { Agent, SessionAt } from '../types/agent.js';
 import type { Bag } from '../types/common.js';
 import type { WireTurn } from '../types/wire.js';
+import { heldAttachment } from './attachments.js';
 import type { HostContext } from './context.js';
 
 /**
@@ -37,22 +40,23 @@ export interface LocalTurns {
    * That a chat's turn began, or was written down again, under a transcript id:
    * its own id as it starts, and what `onTurnRecorded` says.
    *
-   * `origin` is the message's, where it is not a person's: a turn an
-   * automation began reads back as one after a restart, as it ran.
+   * `said` is what of the turn's message a transcript may not keep: its
+   * origin, where it is not a person's, so a turn an automation began reads
+   * back as one after a restart, as it ran; and its attachments, as this host
+   * rewrote them, so a message reads back with the files it was sent with.
    *
    * Kept for as long as the chat is held, for the anchors of the turns it
    * holds, and in the session's folder for a read after a restart.
    */
-  turnRecordedAs(session: string, chat: string, turnId: string, transcriptId: string, origin?: Bag): void;
+  turnRecordedAs(session: string, chat: string, turnId: string, transcriptId: string, said?: Said): void;
   /**
-   * The message origin a chat's turn began with, where it began with one that
-   * is not a person's.
+   * What of its message a chat's turn began with that its record keeps.
    *
    * Held for the turn still running: a backend that writes the turn under an id
    * of its own says so when it ends, and the record written then carries the
-   * same origin as the one written as the turn started.
+   * same as the one written as the turn started.
    */
-  turnOriginOf(chat: string, turnId: string): Bag | undefined;
+  turnSaidOf(chat: string, turnId: string): Said | undefined;
   /**
    * Record a command's turn that has ended, as the chat holds it in `turns`,
    * as VS Code's local turn store records one beside its anchor.
@@ -172,12 +176,18 @@ const keptOf = (value: Bag): Kept | undefined => {
   return { turnId, ...(anchor === undefined ? {} : { anchor }), seq, turn, ...(failed === true ? { failed: true as const } : {}) };
 };
 
-/** One file of a chat's record: a transcript id, and the turn that began, or was written again, under it. */
-interface Recorded {
-  transcriptId: string;
-  turnId: string;
+/** What of a turn's message its record keeps, beside the ids. */
+export interface Said {
   /** The message's origin, where it is not a person's. */
   origin?: Bag;
+  /** The message's attachments, as this host rewrote them, where it had any. */
+  attachments?: Bag[];
+}
+
+/** One file of a chat's record: a transcript id, and the turn that began, or was written again, under it. */
+interface Recorded extends Said {
+  transcriptId: string;
+  turnId: string;
 }
 
 /** The folder under a session's own where its chats record the transcript ids their turns began under. */
@@ -185,12 +195,18 @@ const RECORDED = 'recorded';
 
 /** Whether a file holds a record this version wrote. */
 const recordedOf = (value: Bag): Recorded | undefined => {
-  const { version, transcriptId, turnId, origin } = value;
+  const { version, transcriptId, turnId, origin, attachments } = value;
   if (version !== 1 || typeof transcriptId !== 'string' || typeof turnId !== 'string') return undefined;
   // A kind is the whole of an origin the protocol defines, and a value without
   // one says nothing a client can draw from.
   const held = bag(origin);
-  return { transcriptId, turnId, ...(typeof held.kind === 'string' ? { origin: held } : {}) };
+  const sent = Array.isArray(attachments) ? attachments.filter(isRecord) : [];
+  return {
+    transcriptId,
+    turnId,
+    ...(typeof held.kind === 'string' ? { origin: held } : {}),
+    ...(sent.length > 0 ? { attachments: sent } : {}),
+  };
 };
 
 /** Two numbers added, or the one there is; absent where neither is. */
@@ -298,8 +314,8 @@ export function createLocalTurns(ctx: HostContext): LocalTurns {
   /** Each held chat's transcript ids, by the id its turns go by while they run. */
   const recordedAs = new Map<string, Map<string, string>>();
 
-  /** Each held chat's message origins, by the id its turns go by while they run. */
-  const originsAs = new Map<string, Map<string, Bag>>();
+  /** What each held chat's records keep of its messages, by the id its turns go by while they run. */
+  const saidAs = new Map<string, Map<string, Said>>();
 
   /** A chat's folder in a session's own, or nothing where the store keeps none. */
   const folderOf = (session: string, chat: string): string | undefined => {
@@ -376,19 +392,26 @@ export function createLocalTurns(ctx: HostContext): LocalTurns {
     });
   };
 
-  const turnRecordedAs = (session: string, chat: string, turnId: string, transcriptId: string, origin?: Bag): void => {
+  const turnRecordedAs = (session: string, chat: string, turnId: string, transcriptId: string, said?: Said): void => {
     const names = recordedAs.get(chat) ?? new Map<string, string>();
     names.set(turnId, transcriptId);
     recordedAs.set(chat, names);
-    if (origin !== undefined) {
-      const held = originsAs.get(chat) ?? new Map<string, Bag>();
-      held.set(turnId, origin);
-      originsAs.set(chat, held);
+    // An attachment still embedded is one this host could not write to a
+    // file, and its bytes stay out of the record.
+    const attachments = (said?.attachments ?? []).filter((one) => one.type !== 'embeddedResource');
+    const kept: Said = {
+      ...(said?.origin === undefined ? {} : { origin: said.origin }),
+      ...(attachments.length === 0 ? {} : { attachments }),
+    };
+    if (kept.origin !== undefined || kept.attachments !== undefined) {
+      const held = saidAs.get(chat) ?? new Map<string, Said>();
+      held.set(turnId, kept);
+      saidAs.set(chat, held);
     }
-    record(session, chat, { transcriptId, turnId, ...(origin === undefined ? {} : { origin }) });
+    record(session, chat, { transcriptId, turnId, ...kept });
   };
 
-  const turnOriginOf = (chat: string, turnId: string): Bag | undefined => originsAs.get(chat)?.get(turnId);
+  const turnSaidOf = (chat: string, turnId: string): Said | undefined => saidAs.get(chat)?.get(turnId);
 
   const keep = (session: string, chat: string, turns: readonly Bag[], turnId: string, failed: boolean): void => {
     const at = turns.findIndex((turn) => str(turn.id) === turnId);
@@ -552,21 +575,94 @@ export function createLocalTurns(ctx: HostContext): LocalTurns {
   };
 
   /**
-   * A transcript's turns with the message origin the chat recorded for each.
+   * A transcript's turns with what the chat recorded of each one's message:
+   * its origin, and its attachments, which a transcript keeps as the model
+   * read them or not at all.
    *
    * Applied before `asBegun`, because a turn that folds into the one before it
-   * keeps the earlier turn's message: an origin set after the fold would land
+   * keeps the earlier turn's message: what is set after the fold would land
    * on a turn the chat no longer holds.
    */
-  const begunWithOrigins = (turns: readonly WireTurn<Turn>[], records: readonly Recorded[]): WireTurn<Turn>[] => {
-    const origins = new Map(records.flatMap((one) =>
-      one.origin === undefined ? [] : [[one.transcriptId, one.origin] as const]));
-    if (origins.size === 0) return [...turns];
+  const begunAsRecorded = (turns: readonly WireTurn<Turn>[], records: readonly Recorded[]): WireTurn<Turn>[] => {
+    const said = new Map(records.flatMap((one) =>
+      one.origin === undefined && one.attachments === undefined ? [] : [[one.transcriptId, one] as const]));
+    if (said.size === 0) return [...turns];
     return turns.map((turn) => {
-      const origin = origins.get(String(turn.id));
-      if (origin === undefined) return turn;
-      return { ...turn, message: { ...bag(turn.message), origin } } as unknown as WireTurn<Turn>;
+      const one = said.get(String(turn.id));
+      if (one === undefined) return turn;
+      const message = {
+        ...bag(turn.message),
+        ...(one.origin === undefined ? {} : { origin: one.origin }),
+        ...(one.attachments === undefined ? {} : { attachments: one.attachments }),
+      };
+      return { ...turn, message } as unknown as WireTurn<Turn>;
     });
+  };
+
+  /** The folder name `put` gives each attachment's file. */
+  const HELD = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  /** Each session's attachment files read so far, by the hash of their bytes, and the files read. */
+  const heldBytes = new Map<string, { read: Set<string>; byHash: Map<string, string> }>();
+
+  /**
+   * A session's attachment files by the hash of their bytes: the files this
+   * host wrote for its messages, each in a folder of its own, and nothing else
+   * the folder holds. Each file is read once in a daemon run.
+   */
+  const filesByBytes = async (session: string): Promise<Map<string, string>> => {
+    const dir = ctx.kept.attachmentsDir?.(idOf(session));
+    if (dir === undefined) return new Map();
+    const held = heldBytes.get(dir) ?? { read: new Set<string>(), byHash: new Map<string, string>() };
+    heldBytes.set(dir, held);
+    const folders = await readdir(dir).catch(() => [] as string[]);
+    for (const folder of folders.filter((name) => HELD.test(name))) {
+      const names = await readdir(join(dir, folder)).catch(() => [] as string[]);
+      for (const name of names) {
+        const path = join(dir, folder, name);
+        if (held.read.has(path)) continue;
+        held.read.add(path);
+        const bytes = await readFile(path).catch(() => undefined);
+        if (bytes === undefined) continue;
+        const { sha256 } = sentBytesOf(bytes, '');
+        if (!held.byHash.has(sha256)) held.byHash.set(sha256, path);
+      }
+    }
+    return held.byHash;
+  };
+
+  /**
+   * A transcript's turns with the files their messages were sent with, where
+   * the record keeps no attachments for them: a backend names the bytes each
+   * message was sent with by their hash, and the session's file with the same
+   * bytes is put back. Bytes no file holds come back as nothing, and the key
+   * the backend named them under is removed from every message.
+   */
+  const begunWithBytes = async (session: string, turns: readonly WireTurn<Turn>[]): Promise<WireTurn<Turn>[]> => {
+    const named = (turn: WireTurn<Turn>): unknown => bag(bag(turn.message)._meta)[SENT_BYTES_KEY];
+    if (!turns.some((turn) => named(turn) !== undefined)) return [...turns];
+    let files: Map<string, string> | undefined;
+    const out: WireTurn<Turn>[] = [];
+    for (const turn of turns) {
+      const sent = named(turn);
+      if (sent === undefined) {
+        out.push(turn);
+        continue;
+      }
+      const message = { ...bag(turn.message) };
+      const { [SENT_BYTES_KEY]: _sent, ...meta } = bag(message._meta);
+      if (Object.keys(meta).length > 0) message._meta = meta;
+      else delete message._meta;
+      if (!Array.isArray(message.attachments) || message.attachments.length === 0) {
+        files ??= await filesByBytes(session);
+        const found = (Array.isArray(sent) ? sent : []).filter(isRecord).flatMap((one) => {
+          const path = files?.get(String(one.sha256 ?? ''));
+          return path === undefined ? [] : [heldAttachment(path, String(one.contentType ?? 'application/octet-stream'))];
+        });
+        if (found.length > 0) message.attachments = found;
+      }
+      out.push({ ...turn, message } as unknown as WireTurn<Turn>);
+    }
+    return out;
   };
 
   /**
@@ -595,7 +691,7 @@ export function createLocalTurns(ctx: HostContext): LocalTurns {
     if (turns === undefined) return keptIn(session, chat).length > 0 ? interleaveLocalTurns(session, chat, []) : undefined;
     const records = recordedIn(session, chat);
     const read = ctx.steerReadBack === 'ownTurn' ? withoutSteers(turns) : turns;
-    const begun = asBegun(session, chat, begunWithOrigins(read, records), records, agent.transcriptTurnIds === 'recorded');
+    const begun = asBegun(session, chat, await begunWithBytes(session, begunAsRecorded(read, records)), records, agent.transcriptTurnIds === 'recorded');
     return interleaveLocalTurns(session, chat, begun.turns, begun.joined);
   };
 
@@ -655,7 +751,7 @@ export function createLocalTurns(ctx: HostContext): LocalTurns {
 
   const forgetChatLocalTurns = (session: string, chat: string): void => {
     recordedAs.delete(chat);
-    originsAs.delete(chat);
+    saidAs.delete(chat);
     for (const folder of [folderOf(session, chat), recordOf(session, chat)]) {
       if (folder === undefined) continue;
       try { rmSync(folder, { recursive: true, force: true }); }
@@ -697,7 +793,7 @@ export function createLocalTurns(ctx: HostContext): LocalTurns {
   };
 
   return {
-    turnRecordedAs, turnOriginOf, recordLocalTurn, recordFailedTurn, transcriptOf, interleaveLocalTurns, liveTurnsOf, resolveConcreteTurnId,
+    turnRecordedAs, turnSaidOf, recordLocalTurn, recordFailedTurn, transcriptOf, interleaveLocalTurns, liveTurnsOf, resolveConcreteTurnId,
     deleteLocalTurns, persistForkedLocalTurns, forgetChatLocalTurns, moveChatLocalTurns, loadSessionLocalTurns,
   };
 }

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -227,6 +228,32 @@ it('reads a prompt and every round that answered it as one turn', async () => {
   expect(parts[0]?.toolCall).toMatchObject({ toolCallId: 'toolu_1', status: 'completed', content: [{ type: 'text', text: 'a b c' }] });
   expect(parts[1]?.toolCall).toMatchObject({ toolCallId: 'toolu_2', status: 'completed', content: [{ type: 'text', text: 'contents' }] });
   expect(parts[2]).toMatchObject({ content: 'All read.' });
+});
+
+/*
+ * A picture a prompt was sent with is in the transcript as the bytes the model
+ * read. The turn read back names them by their hash, for the host to put back
+ * the file it wrote them from.
+ */
+it('names the pictures a prompt was sent with by the hash of their bytes', async () => {
+  const bytes = Buffer.from('a picture');
+  const turns = await read([
+    frame('user', 'u1', { role: 'user', content: [
+      { type: 'text', text: 'look' },
+      { type: 'image', source: { type: 'base64', media_type: 'image/png', data: bytes.toString('base64') } },
+    ] }),
+    said('a1', 'm1', [{ type: 'text', text: 'Seen.' }]),
+  ]);
+  expect(turns[0]?.message).toEqual({
+    text: 'look',
+    origin: { kind: 'user' },
+    _meta: { 'ahpd.sentBytes': [{ sha256: createHash('sha256').update(bytes).digest('hex'), contentType: 'image/png' }] },
+  });
+});
+
+it('names nothing for a prompt sent with no picture', async () => {
+  const turns = await read([prompt('u1', 'look'), said('a1', 'm1', [{ type: 'text', text: 'Seen.' }])]);
+  expect(turns[0]?.message).toEqual({ text: 'look', origin: { kind: 'user' } });
 });
 
 it('counts one message\'s usage once however many frames repeat it', async () => {
