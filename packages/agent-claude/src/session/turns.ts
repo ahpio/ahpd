@@ -2,6 +2,7 @@ import type { ActiveTurn } from '@microsoft/agent-host-protocol';
 import { reason, titleFrom } from '@ahpd/sdk';
 import type { Bag, Chosen, MessageAttachment, MessageFrom, SteeringMessage, TurnOptions, WireTurn } from '@ahpd/sdk';
 import { blocksFor } from './attachments.js';
+import { closeCli } from './clis.js';
 import { bag, str, UUID } from './common.js';
 import { EFFORTS } from './config.js';
 import type { PendingSdkMessage, SessionContext } from './context.js';
@@ -670,7 +671,7 @@ export function createTurns(ctx: SessionContext): Turns {
         ctx.abandonStart();
         if (running !== undefined) {
           ctx.rebind = running;
-          try { running.close(); }
+          try { closeCli(running); }
           catch { /* A CLI already closing is stopped all the same. */ }
         }
         ctx.yielded.clear();

@@ -5,9 +5,13 @@ import type { Bag } from '@ahpd/sdk';
 import type { HookCallback, Options, query, SDKUserMessage, SettingSource } from '@anthropic-ai/claude-agent-sdk';
 import { clearFor } from '../catalog.js';
 import { lastCostState } from '../transcript.js';
+import { clisOn, closeCli, forgetCli, isClosed, keepCli, ownedBy, processOf, stopCli, stopClis } from './clis.js';
 import { bag, list, str, UUID } from './common.js';
 import type { PendingSdkMessage, SessionContext } from './context.js';
 import { contextOf } from './contextusage.js';
+import { ownSpawn, withStderr } from './ownspawn.js';
+import type { SpawnedProcess } from '../spawn.js';
+import type { OwnCli, SpawnAsked } from './ownspawn.js';
 import type { ContextFigure } from './contextusage.js';
 import { accountOf, limitsOf, noteAccount, noteLimit, refreshLimits } from './limits.js';
 import { learnLimits, limitOf } from './parts.js';
@@ -414,8 +418,11 @@ export function createQuery(ctx: SessionContext): Query {
    * rebinds at the next; a turn handed behind it is that send.
    * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/claude/claudeSdkPipeline.ts#L696-L718
    */
-  const putAway = (handle: unknown, why: string): void => {
+  const putAway = (handle: object, why: string): void => {
     ctx.rebind = handle;
+    // Closed as well, so a CLI whose stream ended or broke while its process
+    // runs on is not left writing the conversation the next send resumes.
+    void stopCli(handle).then(() => { forgetCli(ctx.options.clis, handle); });
     ctx.gone = why;
     ctx.toYield.length = 0;
     ctx.yielded.clear();
@@ -747,6 +754,13 @@ export function createQuery(ctx: SessionContext): Query {
     }
     const options = optionsFor(agent, first, cut);
     ctx.cliEnv = options.env ?? process.env;
+    // The CLI is spawned through this host's hook, so a later start can wait
+    // for its process to exit (`ownSpawn`).
+    let own: OwnCli | undefined;
+    (options as { spawnClaudeCodeProcess?: unknown }).spawnClaudeCodeProcess = ownSpawn(
+      ctx.options.spawn as ((asked: SpawnAsked) => SpawnedProcess) | undefined,
+      (cli) => { own = cli; },
+    );
     /*
      * Where this CLI's running cost starts.
      *
@@ -766,23 +780,29 @@ export function createQuery(ctx: SessionContext): Query {
       else ctx.seedCost(saved);
     }
     /*
-     * A CLI named under an id starts on a clean transcript, cleared once the
-     * CLIs that could write it have exited: this session's last, which the
-     * caller has closed, and a closed session's of the same conversation, as
-     * VS Code's Claude shuts the live query down before it deletes. A start
-     * the session's close or a later start overtook while it waited clears
-     * nothing, so only the start that runs the conversation clears it, as VS
-     * Code runs a start-over in its session's sequence. A session in a machine
-     * keeps its files there, out of this host's reach.
+     * One CLI on a conversation at a time (`Clis`): this session's last, and
+     * every CLI of the agent's other sessions still on the conversation this
+     * one writes, are closed and waited for until each has exited. A fork
+     * writes a conversation of its own, under an id its CLI names, and leaves
+     * the CLI of the one it was cut from running.
+     *
+     * A CLI named under an id starts on a clean transcript, cleared once those
+     * CLIs have exited, as VS Code's Claude shuts the live query down before
+     * it deletes. A start the session's close or a later start overtook while
+     * it waited clears nothing and starts nothing, so only the start that runs
+     * the conversation clears it, as VS Code runs a start-over in its
+     * session's sequence. A session in a machine keeps its files there, out
+     * of this host's reach.
      * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/claude/claudeAgent.ts#L1133-L1160
      */
-    const { sessionId } = options as { sessionId?: string };
-    if (sessionId !== undefined && ctx.options.spawn === undefined) {
-      await (ctx.query as unknown as { [Symbol.asyncDispose]?: () => Promise<void> } | undefined)?.[Symbol.asyncDispose]?.().catch(() => {});
-      await ctx.options.exits?.get(sessionId);
-      if (ctx.disposed || mine !== bound) throw new Error('The CLI was stopped while it started');
-      await clearFor(sessionId, ctx.options.cwd);
-    }
+    const { sessionId, resume, forkSession } = options as { sessionId?: string; resume?: string; forkSession?: boolean };
+    const writes = forkSession === true ? undefined : (resume ?? sessionId);
+    // Nothing is waited for where nothing runs, so a start with no CLI before
+    // it binds as soon as it did before.
+    const running = clisOn(ctx.options.clis, [writes], ctx.query);
+    if (running.length > 0) await stopClis(ctx.options.clis, running);
+    if (ctx.disposed || mine !== bound) throw new Error('The CLI was stopped while it started');
+    if (sessionId !== undefined && ctx.options.spawn === undefined) await clearFor(sessionId, ctx.options.cwd);
     const warm = await startup({ options, initializeTimeoutMs: ctx.options.handshakeTimeoutMs ?? HANDSHAKE_MS });
     if (ctx.disposed || mine !== bound) {
       try { await warm[Symbol.asyncDispose](); }
@@ -791,6 +811,8 @@ export function createQuery(ctx: SessionContext): Query {
     }
     const handle = warm.query(iterable(mine));
     ctx.query = handle;
+    ownedBy(handle, own);
+    keepCli(ctx.options.clis, [writes], handle);
     void consume(handle);
     void ctx.describe().catch(() => {});
     void handle.initializationResult().then(() => introduce(handle), () => {});
@@ -872,7 +894,7 @@ export function createQuery(ctx: SessionContext): Query {
     if (was !== undefined) {
       // A CLI that will not close fails the send in the error's own words, as
       // VS Code shows a failed send.
-      try { was.close(); }
+      try { closeCli(was); }
       catch (error: unknown) { return reason(error); }
     }
     ctx.appliedAgent = name;
@@ -1079,13 +1101,19 @@ export function createQuery(ctx: SessionContext): Query {
     try {
       for await (const raw of mine) {
         // A CLI put away for the next send to start again is read no further,
-        // as the reference's reader ends once its query is aborted.
-        if (ctx.rebind === mine) break;
+        // as the reference's reader ends once its query is aborted, and nor is
+        // one this host closed or replaced: its frames answer no turn.
+        if (ctx.rebind === mine || ctx.query !== mine || isClosed(mine)) break;
         const message = bag(raw as unknown);
         const type = str(message.type);
         // Every message carries it, so this needs no particular one to arrive.
+        // The CLI is kept under the id it writes as well, which a CLI that
+        // named its own conversation says here first.
         const said = str(message.session_id);
-        if (said) ctx.sdkSessionId = said;
+        if (said) {
+          ctx.sdkSessionId = said;
+          keepCli(ctx.options.clis, [said], mine);
+        }
         /*
          * A stop waiting to interrupt the CLI until it has recorded the
          * answers the stop gave. Each result reported for one of them is one
@@ -1576,17 +1604,17 @@ export function createQuery(ctx: SessionContext): Query {
       // to another login is about to start it, or a death or a stop that
       // aborts the query closed it for the next send to start again, a close
       // keeping the reason it was put away for.
-      if (ctx.disposed || ctx.query !== mine || ctx.replacing(mine) || ctx.rebind === mine) return;
+      if (ctx.disposed || ctx.query !== mine || ctx.replacing(mine) || ctx.rebind === mine || isClosed(mine)) return;
       /*
        * The failure in its own words, as VS Code's host ends a send that
        * failed with the error's own message.
        * https://github.com/microsoft/vscode/blob/6b68d3fe7dd7db9a3aaa052efc1f3a1fd4432eb2/src/vs/platform/agentHost/node/agentSideEffects.ts#L2565
        */
-      putAway(mine, reason(error));
+      putAway(mine, withStderr(reason(error), processOf(mine)));
       return;
     }
     // A stream that ended without a result.
-    if (ctx.disposed || ctx.query !== mine || ctx.replacing(mine) || ctx.rebind === mine) return;
+    if (ctx.disposed || ctx.query !== mine || ctx.replacing(mine) || ctx.rebind === mine || isClosed(mine)) return;
     putAway(mine, 'Claude SDK stream ended without a result message');
   };
 
@@ -1625,7 +1653,7 @@ export function createQuery(ctx: SessionContext): Query {
     if (was !== undefined) {
       // A CLI that will not close fails the send in the error's own words, as
       // VS Code shows a failed send.
-      try { was.close(); }
+      try { closeCli(was); }
       catch (error: unknown) { return reason(error); }
     }
     ctx.values = now;

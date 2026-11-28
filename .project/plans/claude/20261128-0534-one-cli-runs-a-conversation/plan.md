@@ -1,7 +1,7 @@
 ---
 title: One CLI runs a conversation
 domain: claude
-status: planned
+status: active
 priority: high
 created: 2026-11-28
 revalidated: 2026-11-28
@@ -40,31 +40,34 @@ The CLI's running total lost the spend of one of them.
 | The CLIs are kept by conversation id in the map that `exits` is now, from their start until their exit | (defaulted: `exits` is already shared by the sessions of one agent) | 01 |
 | A background task of the old CLI ends with it | (defaulted: VS Code ends it on a rebind) | 01 |
 | `consume` reads no frame of a CLI that is not the session's current one | (defaulted: a CLI that was replaced has no turn to answer) | 01 |
-| A CLI that does not exit before the SDK's own bound fails the start, in the start's words | (defaulted: a start must not run beside a CLI it could not stop) | 01 |
+| The host spawns each CLI through the SDK's `spawnClaudeCodeProcess` hook, and a start waits for the process's own exit | Softov, 2026-11-28, chose "Own the spawn" | 01 |
+| A CLI spawned here keeps the end of its stderr, which its failure names as the SDK names it | (defaulted: the SDK adds the tail only to a CLI it spawned itself) | 01 |
+| `consume` ends silently on a CLI this host closed, before the new CLI is the current one | (defaulted: an agent change closed the old CLI before it set the new one, and its end failed the turn) | 01 |
 | The 2026-11-21 sequence is repeated with a real CLI on Haiku, as the probes of that day were | (defaulted: the cause is not known, so a real run is the check) | 02 |
 
 ## Tasks
 
 | Task | Status | Depends on |
 | --- | --- | --- |
-| [01 - a-start-waits-for-the-cli-before-it](task-01-a-start-waits-for-the-cli-before-it.md) | todo | - |
-| [02 - a-real-cli-repeats-the-switch](task-02-a-real-cli-repeats-the-switch.md) | todo | 01 |
+| [01 - a-start-waits-for-the-cli-before-it](task-01-a-start-waits-for-the-cli-before-it.md) | done | - |
+| [02 - a-real-cli-repeats-the-switch](task-02-a-real-cli-repeats-the-switch.md) | done | 01 |
 
 ## Risks and tradeoffs
 
 - A start after a rebind waits for the old CLI to exit, about 2 s with a background task.
+- A CLI on this host starts without the SDK's `--await-initialize` flag and its default debug file. The SDK adds them only to a CLI it spawns itself.
 - A Monitor or other background task of the old CLI ends at the switch, and its notification does not come.
 - A conversation that two daemons open still runs two CLIs.
 
 ## Resume state
 
-- **Done so far:** nothing.
-- **Next action:** task 01.
+- **Done so far:** both tasks, on 2026-11-28. [implemented.md](implemented.md) holds the checks.
+- **Next action:** Softov's review, and `check-windows`.
 - **Open questions:** none.
 - **Watch out for:** a CLI in a machine (`ctx.options.spawn`) is closed and waited for the same way. Its transcript is out of this host's reach.
 
 ## Final verification checklist
 
-- [ ] No start runs while another CLI of the conversation is alive, on every start path.
-- [ ] A real CLI repeats the 2026-11-21 switch with one CLI on the conversation.
+- [x] No start runs while another CLI of the conversation is alive, on every start path.
+- [x] A real CLI repeats the 2026-11-21 switch with one CLI on the conversation.
 - [ ] The agent-claude and sdk suites pass, and `check-windows` passes.

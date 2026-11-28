@@ -71,8 +71,10 @@ class Deferred implements SpawnedProcess {
   settle(child: ChildProcess | Error): void {
     if (this.#settled) return;
     this.#settled = true;
+    // Each list is copied before it is called, because a `once` listener
+    // takes itself out as it runs, and the one after it would be skipped.
     if (child instanceof Error) {
-      for (const listener of this.#error) listener(child);
+      for (const listener of [...this.#error]) listener(child);
       this.stdout.end();
       return;
     }
@@ -95,8 +97,8 @@ class Deferred implements SpawnedProcess {
     if (child.stdout !== null) quiet(child.stdout);
     this.stdin.pipe(child.stdin as Writable);
     (child.stdout as Readable).pipe(this.stdout);
-    child.on('exit', (code, signal) => { for (const listener of this.#exit) listener(code, signal); });
-    child.on('error', (error) => { for (const listener of this.#error) listener(error); });
+    child.on('exit', (code, signal) => { for (const listener of [...this.#exit]) listener(code, signal); });
+    child.on('error', (error) => { for (const listener of [...this.#error]) listener(error); });
     if (this.#killed) child.kill(this.#signal ?? 'SIGTERM');
   }
 

@@ -3,6 +3,7 @@ import type { Bag } from '@ahpd/sdk';
 import { forgetSession } from '../catalog.js';
 import { BEFORE_TOKEN, FAILOVER, loginsOf, REFUSED } from '../logins.js';
 import type { Login } from '../logins.js';
+import { closeCli } from './clis.js';
 import { bag, list, str } from './common.js';
 import type { SessionContext } from './context.js';
 
@@ -317,7 +318,7 @@ export function createLogins(ctx: SessionContext): Logins {
     let failed: string | undefined;
     closing = was;
     try {
-      try { was?.close(); }
+      try { if (was !== undefined) closeCli(was); }
       catch { /* A CLI already gone is the same ending. */ }
       ctx.login = login;
       if (cut.over === true) {
